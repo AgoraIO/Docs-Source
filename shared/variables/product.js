@@ -1,19 +1,17 @@
 const data = {
   'video-calling': {
-    PRODUCT: 'Video Calling',
-    CLIENT: 'app',
-    PATH: 'video-calling'
+    NAME: 'Video Calling',
+    PATH: 'video-calling',
+    SDK: 'Video SDK'
   },
 
   'voice-calling': {
-    PRODUCT: 'Voice Calling',
-    CLIENT: 'app',
+    NAME: 'Voice Calling',
     PATH: 'voice-calling'
   },
 
   'interactive-live-streaming': {
-    PRODUCT: 'Interactive Live Streaming',
-    CLIENT: 'app',
+    NAME: 'Interactive Live Streaming',
     PATH: 'interactive-live-streaming'
   }
 };

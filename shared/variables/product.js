@@ -18,7 +18,7 @@ const data = {
     NAME: 'Interactive Live Streaming',
     PATH: 'interactive-live-streaming',
     SDK: 'Video SDK',
-    PRODUCT: 'Video Calling',
+    PRODUCT: 'Interactive Live Streaming',
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS_Beta'
 
   }

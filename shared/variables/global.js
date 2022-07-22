@@ -19,6 +19,7 @@ export const RTES = `${RTE} SDK`;
 export const APP_ID_LINK = `http://agora.io`;
 export const AGORA_CONSOLE_URL = `http://console.agora.io`;
 export const API_REF_ANDROID = `http://api.agora.io/android`;
+export const LINK_APP_ID = `[Generate a temporary token](../reference/manage-agora-account#get-the-app-id)`;
 
 export const PLATFORM = 'dummy';
 

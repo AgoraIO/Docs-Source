@@ -3,6 +3,12 @@ export const URL_ROOT = 'https://docs.agora.io/en';
 export const AGORA_BACKEND = `${COMPANY} SD-RTN`;
 export const CLIENT = platform => (platform === 'unity' ? 'game' : 'app');
 
+export const API_REF_ROOT = 'https://docs.agora.io/en/video-call-4.x-beta/API%20Reference';
+export const API_REF_OLD = 'https://docs.agora.io/en/Video/API%20Reference';
+export const API_REF_WEB_ROOT = `${API_REF_OLD}/web_ng`;
+export const API_REF_ANDROID_ROOT  = `${API_REF_ROOT}/java_ng/API`;
+export const API_REF_IOS_ROOT = `${API_REF_ROOT}/ios_ng/API`;
+
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
 
@@ -13,6 +19,7 @@ export const RTES = `${RTE} SDK`;
 export const APP_ID_LINK = `http://agora.io`;
 export const AGORA_CONSOLE_URL = `http://console.agora.io`;
 export const API_REF_ANDROID = `http://api.agora.io/android`;
+export const LINK_APP_ID = `[Generate a temporary token](../reference/manage-agora-account#get-the-app-id)`;
 
 export const PLATFORM = 'dummy';
 
@@ -29,7 +36,7 @@ export const VSDK_RELEASE_FOLDER = 'video-call-4.x-beta';
 export const AV = 'Audio/Video';
 export const AV_URL = `${URL_ROOT}/video`;
 
-export const MESS = 'Real-Time Messaging';
+export const MESS = 'Signalling';
 export const MESS_SDK = 'RTM SDK';
 export const SIG = `${MESS}`;
 export const CHAT = `${COMPANY} Chat`;

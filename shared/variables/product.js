@@ -1,18 +1,26 @@
 const data = {
-  'video-calling': {
+    'video-calling': {
     NAME: 'Video Calling',
     PATH: 'video-calling',
-    SDK: 'Video SDK'
+    SDK: 'Video SDK',
+    PRODUCT: 'Video Calling',
+    IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS_Beta'
   },
 
   'voice-calling': {
     NAME: 'Voice Calling',
-    PATH: 'voice-calling'
+    PATH: 'voice-calling',
+    SDK: 'Voice SDK',
+    PRODUCT: 'Voice Calling'
   },
 
   'interactive-live-streaming': {
     NAME: 'Interactive Live Streaming',
-    PATH: 'interactive-live-streaming'
+    PATH: 'interactive-live-streaming',
+    SDK: 'Video SDK',
+    PRODUCT: 'Interactive Live Streaming',
+    IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS_Beta'
+
   }
 };
 

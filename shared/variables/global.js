@@ -87,7 +87,7 @@ export const DOWNLOAD_URL = 'https://download.agora.io/sdk/release';
 export const AGORA_PLATFORM_FOLDER = 'Agora%20Platform';
 
 export const API_REF_FOLDER = 'API%20Reference';
-export const API_REF_WEB = 'https://api.agora.io/web';
+export const API_REF_WEB = 'https://docs.agora.io/en/Video/API%20Reference/web_ng';
 
 export const APP_LINK = `${AGORA_DOCS_URL}/${AGORA_PLATFORM_FOLDER}/get_appid_token#get-the-app-id[App ID]`;
 

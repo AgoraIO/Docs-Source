@@ -105,7 +105,7 @@ export const DEMO_BASIC_VIDEO_CALL_URL =
 
 export const DEMO_PAGE_LINK = `${DEMO_BASIC_VIDEO_CALL_URL}[${COMPANY} web demo,role=external,window=_blank]`;
 
-export const TOKEN_GENERATE_LINK = `xref:{rootdir}/reference/manage-agora-account.adoc#_generate_a_temporary_token[Generate a temporary token]`;
+export const TOKEN_GENERATE_LINK = `[Generate a temporary token](../reference/manage-agora-account#generate-a-temporary-token)`;
 
 export const AGORA_DYNAMIC_KEY_CODE_BASE_URL =
   'https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey';

@@ -1,0 +1,336 @@
+<PlatformWrapper platform="web">
+
+## Understand the tech
+
+Agora provides the following abstract classes for developing a video extension:
+
+- Required basic classes:
+ - `Extension`: This class implements initialization-related functions, including creating an extension, setting log reports, and setting event reports.
+ - `VideoProcessor:` This class implements video processing capabilities, including receiving, processing, and delivering video data.
+- Optional auxiliary classes:
+ - `Ticker`: This class helps manage periodic tasks.
+ - `Logger`: This class uploads logs to the Agora SDK.
+ - `Reporter`: This class reports events to the Agora SDK.
+
+## Prerequisites
+
+Before proceeding, ensure that your development environment meets the following requirements:
+
+- A Windows or macOS computer that meets the following criteria:
+   - A browser that matches the [supported browser list](https://docs.agora.io/cn/Video/web_sdk_compatibility?platform=Web). Agora highly recommends using [the latest stable version]( https://www.google.com/chrome/) of Google Chrome.
+   - Physical media input devices, such as a built-in camera and a built-in microphone.
+   - Access to the Internet. If your network has a firewall, follow the instructions in [Firewall Requirements]( https://docs.agora.io/cn/AgoraPlatform/firewall?platform=Web) to access Agora services.
+   - An Intel 2.2GHz Core i3/i5/i7 processor (2nd generation) or equivalent
+- [Node.js and npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+
+## Project setup
+
+Integrate the extension development module ([agora-rte-extension ](https://www.npmjs.com/package/agora-rte-extension)) into your project via npm:
+
+1. To install the required module, run the following command:
+
+   ```
+   npm install --save agora-rte-extension
+   ```
+
+2. To import the required module, add the following code to your `.js` file:
+
+   ```
+   import {AudioExtension, AudioProcessor} from 'agora-rte-extension'
+   ```
+
+## Develop a video extension
+
+This section introduces the APIs you must implement in order to develop a video extension. Optionally, based on the actual needs, you can implement certain auxiliary APIs to optimize the design and performance of your extension. For details, refer to [See also](#ref).
+
+### Implement extension initialization
+
+Extension initialization is implemented through the `Extension` class. You need to implement the `createProcessor` method of the `Extension` class:
+
+**createProcessor**
+
+```
+abstract class Extension<T extends BaseProcessor> {
+    createProcessor(): T;
+}
+```
+
+Creates a `VideoProcessor` instance.
+
+The SDK calls this method when the app client calls `extension.createProcessor`. You need to return the created `VideoProcessor` instance in this method.
+
+### Implement video processing
+
+To implement video processing, you need to implement the following steps:
+
+1. Receive video: Through the `onTrack` method of the` VideoProcessor` class.
+2. Process video: You need to implement this module on your own.
+3. Output processed video: Through the `output` method of the `VideoProcessor` class.
+
+**onTrack**
+
+```
+abstract onTrack?(track: MediaStreamTrack, context: IProcessorContext): void;
+```
+
+Reports that video data from the previous node is received.
+
+**Parameters**
+
+- `track`: The previous `MediaStreamTrack`. `MediaStreamTrack` is an interface provided by Web API. For details, see [MediaStreamTrack](https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack ).
+
+- `context`: The context of the current video processing pipeline.
+
+**output**
+
+```
+output(track: MediaStreamTrack, context: IProcessorContext): void;
+```
+
+Outputs the processed video data.
+
+**Parameters**
+
+- `track`: The processed `MediaStreamTrack`.
+
+- `context`: The context of the current video processing pipeline.
+
+### Sample project
+
+
+
+
+Agora provides a Web sample project [ExtensionDemo](https://github.com/AgoraIO/API-Examples-Web/tree/main/ExtensionDemo) for developing audio and video extensions.
+
+
+The following code sample shows how to develop a video extension:
+
+```typescript
+class YourExtension extends Extension<YourProcessor> {
+    // Create a Processor
+    protected _createProcessor(): YourProcessor {
+        return new YourProcessor();
+    }
+}
+
+class CustomVideoProcessor extends VideoProcessor {
+    // Receive video data from the previous MediaStreamTrack 
+    onTrack(track: MediaStreamTrack, context: IProcessorContext) {
+        this.videoElement.srcObject = new MediaStream([track]);
+        this.videoElement.play();
+
+        this.loop();
+    }
+
+    // Continue to extract video frames as ImageData for  video processing
+    loop() {
+        this.ctx.drawImage(this.videoElement, 0, 0);
+        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+
+        this.process(imageData);
+
+        requestAnimationFrame(() => this.loop());
+    }
+
+    process() {
+        //TODO: Add the video processing logic for your extension
+    }
+
+    doneProcessing() {
+        // Assemble MediaStreamTrack
+        const msStream = this.canvas.captureStream(30);
+        const outputTrack = msStream.getVideoTracks()[0];
+
+        // Output the processed video
+        if (this.context) {
+            this.output(outputTrack, this.context);
+        }
+    }
+}
+```
+
+## See also<a name="ref"></a>
+
+This section describes the auxiliary APIs for developing a video extension.
+
+### VideoProcessor
+
+#### name
+
+```
+name: string;
+```
+
+The name of the` Processor`.
+
+#### enabled
+
+```
+enabled :boolean;
+```
+
+Whether the` Processor` is enabled.
+
+#### ID
+
+```
+public readonly ID:string;
+```
+
+The identifier of the` Processor`.
+
+#### kind
+
+```
+public get Kind():'video' | 'audio';
+```
+
+The type of the ` Processor`, which is categorized as video or audio.
+
+#### context
+
+```
+protected context?: IProcessorContext;
+```
+
+This property allows the `Processor` to request and recapture the original media stream.
+
+#### onPiped
+
+```
+abstract onPiped?(context: IProcessorContext): void;
+```
+
+Reports that a `LocalVideoTrack` connects to the current media processing pipeline.
+
+**Note**: This callback is not triggered if only `Processor`s are connected``. For example: The app client calls `processorA.pipe(processorB)`.
+
+#### onUnpiped
+
+```
+abstract onUnPiped?(): void;
+```
+
+Reports that the `Processor` disconnects from the media processing pipeline.
+
+#### onEnableChange
+
+```
+abstract onEnableChange?(enabled: boolean): void | Promise<void>;
+```
+
+Reports that the `Processor` is enabled or disabled.
+
+#### inputTrack
+
+```
+protected inputTrack?:MediaStreamTrack;
+```
+
+Video received by the extension from the previous `Processor` or `LocalVideoTrack`.
+
+#### outputTrack
+
+```
+protected outputTrack?:MediaStreamTrack;
+```
+
+Video output by the `Processor`. Calling the `output` method automatically sets the `outputTrack` property.
+
+### Ticker
+
+#### constructor
+
+```typescript
+public constructor(type:"Timer" | "RAF" | "Oscillator", interval: number):Ticker;
+```
+
+The constructor of the ` Ticker` class.
+
+**Parameters**
+
+- `type`: The following types are supported:
+   - `Timer`: Using `setTimeout` as the internal ` timer` of the extension.
+   - (Recommended) `RAF`: Using `requestAnimationFrame` as the internal timer of the extension. In most cases, this type of `Ticker` has the best rendering performance.
+   - `Oscillator`: Using `Web Audio's ``OscillatorNode` as the internal timer of the extension. This type of `Ticker` keeps running when the browser page is not being viewed.
+- `interval`: The `interval `between two recurring callbacks.  The `Ticker` tries its best to execute at this interval, but might not be 100% accurate.
+
+#### Ticker.add
+
+```typescript
+public add(fn: Function): void;
+```
+
+Adds a timer task.
+
+#### Ticker.remove
+
+```typescript
+public remove():void;
+```
+
+Removes the added timer task.
+
+#### Ticker.start
+
+```typescript
+public start():void;
+```
+
+Starts the timer.
+
+#### Ticker.stop
+
+```typescript
+public stop():void;
+```
+
+Stops the timer.
+
+### Logger
+
+```
+interface IExtensionLogger {
+    debug(...args: any): void;
+    error(...args: any): void;
+    info(...args: any): void;
+    warning(...args: any): void;
+}
+```
+
+This class provides four levels of logs.
+
+If the app client chooses to upload the logs when calling `AgoraRTC.registerExtension`, the status of the extension that implements the `Logger` class is updated.
+
+### Reporter
+
+#### Reporter.reportApiInvoke
+
+```typescript
+public reportApiInvoke<T>(params: ReportApiInvokeParams): AgoraApiExecutor<T>;
+```
+
+Reports events related to API calls to the SDK.
+
+The definitions of `ReportApiInvokeParams` and `AgoraApiExecutor` are as follows:
+
+```typescript
+interface ReportApiInvokeParams {
+    // The API name
+    name: string;
+    // Parameters or options related to the API
+    options: any;
+    // Whether to report the result of the API call
+    reportResult?: boolean;
+    // How long is counted as timeout for the API call
+    timeout?: number;
+}
+interface AgoraApiExecutor<T> {
+    // The API call succeeds
+    onSuccess: (result: T) => void;
+    // The API call fails
+    onError: (err: Error) => void;
+}
+```
+
+</PlatformWrapper>

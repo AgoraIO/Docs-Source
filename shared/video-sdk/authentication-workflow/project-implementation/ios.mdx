@@ -1,0 +1,155 @@
+<PlatformWrapper platform="ios">
+        
+1.  **Add the required import statements**
+
+    In `ViewController`, add the following lines after the last `import` statement:
+
+    ``` swift
+    import Foundation
+    import Dispatch
+    ```
+
+2.  **Add variables for your connection to the token server**
+
+    Declare the variables you need to generate the token. In `ViewController`. replace:
+
+    ``` swift
+    // Update with the temporary token generated in Agora Console.
+    var token = "<#the token you added when you tested your app#>"
+
+    // Update with the channel name you used to generate the token in Agora Console.
+    var channelName = "<#the channel name you added when you tested your app#>"
+    ```
+
+    with:
+
+    ``` swift
+    // Update with the temporary token generated in Agora Console.
+    var token = ""
+
+    // Update with the channel name you used to generate the token in Agora Console.
+    var channelName = ""
+
+    // Store the name of the channel to join
+    var channelTextField: UITextField!
+
+    // Add the base URL to your token server. For example, https://app-name.herokuapp.com"
+    var serverUrl = ""
+    // The ID of the app user
+    var userID = 0
+    // Expire time in Seconds.
+    var tokenExpireTime = 40
+    ```
+
+3.  **Enable the user to specify a channel**
+
+    Add a text box to the user interface. To implement this, In `ViewController`, copy the following code at the beginning of the `initViews()` function:
+
+    ``` swift
+    channelTextField =  UITextField(frame: CGRect(x: 30, y: 30, width: 300, height: 40))
+    channelTextField.placeholder = "Enter channel name"
+    self.view.addSubview(channelTextField)
+    ```
+
+4.  **Retrieve a token from the server**
+
+    Use a GET request to retrieve an authentication token for a specific channel from the token server, then decode the return parameters to obtain the token.
+
+    In `ViewController` class, add the following `fetchToken` method:
+
+    ``` swift
+    func fetchToken() -> Bool {
+        // Construct the endpoint URL
+        channelName = channelTextField.text ?? ""
+        if channelName.isEmpty {
+            showMessage(title: "Channel", text: "Please set a channel to join")
+            return false
+        }
+        guard let tokenServerURL = URL(string: "\(serverUrl)/rtc/\(channelName)/\(userRole.rawValue)/uid/\(userID)/?expiry=\(tokenExpireTime)") else {
+            return false
+        }
+        /// Semaphore waits for the request to complete, before returning the token.
+        let semaphore = DispatchSemaphore(value: 0)
+        var request = URLRequest(url: tokenServerURL, timeoutInterval: 10)
+        request.httpMethod = "GET"
+
+        // Construct the GET request
+        let task = URLSession.shared.dataTask(with: request) { data, response, err in
+            defer {
+                // Signal that the request has completed
+                semaphore.signal()
+            }
+            guard let data = data else {
+                // No data, no token
+                return
+            }
+            let responseJSON = try? JSONSerialization.jsonObject(with: data, options: [])
+            if let responseDict = responseJSON as? [String: Any], let tokenToReturn = responseDict["rtcToken"] as? String {
+                // Key "rtcToken" found in response, assigning to tokenToReturn
+                self.token = tokenToReturn
+            }
+        }
+
+        task.resume()
+
+        // Waiting for signal found inside the GET request handler
+        semaphore.wait()
+        return true
+    }
+    ```
+
+5.  **Join a channel using the token**
+
+    Use the retrieved token to either join a channel or to renew an expiring token.
+
+    In `ViewController`, replace the following `joinChannel` code:
+
+    ``` swift
+    // Join the channel with a temp token. Pass in your token and channel name here
+    let result = agoraEngine.joinChannel(
+        byToken: token, channelId: channelName, uid: 0, mediaOptions: option,
+        joinSuccess: { (channel, uid, elapsed) in }
+    )
+    // Check if joining the channel was successful and set joined Bool accordingly
+    if (result == 0) {
+        joined = true
+        showMessage(title: "Success", text: "Successfully joined the channel as \(self.userRole)")
+    }
+    ```
+
+    With:
+
+    ``` swift
+    if !fetchToken() {
+        return
+    }
+    // If already joined to a channel, renew the expiring token. If not, join a channel passing fetched token saved in token variable.
+    if joined {
+        agoraEngine.renewToken(token)
+    } else {
+        let result = agoraEngine.joinChannel(
+            byToken: self.token, channelId: self.channelName, uid: 0, mediaOptions: option,
+            joinSuccess: { (channel, uid, elapsed) in }
+        )
+        // Check if joining the channel was successful and set joined Bool accordingly
+        if (result == 0) {
+            joined = true
+            showMessage(title: "Success", text: "Successfully joined the channel as \(self.userRole)")
+        }
+    }
+    ```
+
+6.  **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
+
+    A token expires after the `expireTime` specified in the call to the token server or after 24 hours, if `expireTime` is not specified. The `tokenPrivilegeWillExpire` event handler receives a callback when the current token is about to expire. Your event handler retrieves a fresh token and persists the connection with <Vg k="AGORA_BACKEND" />.
+
+    In `extension ViewController: AgoraRtcEngineDelegate {`, add the following event handler function:
+
+    ``` swift
+    // Handle the event triggered by {AGORA_BACKEND} when the token is about to expire
+    func rtcEngine(_ engine: AgoraRtcEngineKit, tokenPrivilegeWillExpire token: String) {
+        joinChannel()
+        showMessage(title: "Authentication", text: "Token renewed")
+    }
+    ```
+</PlatformWrapper>

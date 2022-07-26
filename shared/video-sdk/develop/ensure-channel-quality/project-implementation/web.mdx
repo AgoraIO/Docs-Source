@@ -1,0 +1,225 @@
+<PlatformWrapper platform="web">
+
+### Implement the user interface
+
+To integrate the call-quality optimization features into your <Vpl k="CLIENT" />, add the following elements to the user interface:
+
+* Labels to show the last-mile uplink and downlink network quality. 
+* Two buttons, one to start and stop mixing an audio file and one to enable call quality statistics.
+
+To do this, open `index.html` and add the following lines after `<button type="button" id="leave">Leave</button>`:
+
+```html
+<button type="button" id="audioMixing">Start audio mixing</button>
+<button type="button" id="statistics">Show Statistics</button><br>
+<label id= "upLinkLabel">UplinkQuality :</label>
+<label id= "upLinkIndicator">Good</label><br>
+<label id= "downLinkLabel">DownlinkQuality :</label>
+<label id= "downLinkIndicator">Good</label>
+```
+
+### Handle the system logic
+
+**Declare the required variable**
+
+    In `main.js`, add the following declaration after `async function startBasicCall(){`:
+
+    ```javascript
+    // A variable to track the state of remote video quality.
+    var isHighRemoteVideoQuality = false;
+    ```
+
+### Implement the call-quality optimization features
+
+1. **Implement best practice for app initiation**
+
+    When you start your <Vpl k="CLIENT" />, it does the following:
+
+    - _Set an audio profile_: Setting an audio profile is optional and only required if you have special requirements such as streaming  music.
+    - _Set a video profile_: Setting a video profile is also optional. It is useful when you want to change one or more of  `frameRate`, `bitrate`, `width`, and `height` from default setting to custom values.
+    - _Set a transmission optimization mode_: Required to ensure video quality and smoothness under poor network conditions. 
+    - _Enable dual stream mode_: Required for fallback and multi-user scenarios.
+    - _Set video stream fallback_: Define fallback for publishing the local video stream and subscription to remote streams.
+
+    To implement these features in your <Vpl k="CLIENT" />, do the following:
+
+    1. **Enable dual stream mode**
+
+        To enable dual-stream mode, call `enableDualStream` before joining a channel. In `main.js` add the following code after `document.getElementById("join").onclick = async function (){`:
+
+        ```javascript
+        // Enable dual-stream mode.
+        agoraEngine.enableDualStream();
+        ```
+
+    1. **Set the audio profile**
+
+        In `main.js`, replace `channelParameters.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();` with the following code:
+
+        ```javascript
+        // Create a local audio track and set an audio profile for the local audio track.
+        channelParameters.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack(
+        {encoderConfig: "high_quality_stereo",});
+        ```
+
+    1. **Set the video profile**
+
+        In `main.js`, replace `channelParameters.localVideoTrack = await AgoraRTC.createCameraVideoTrack();` with the following code:
+
+        ```javascript
+        // Set a video profile.
+        channelParameters.localVideoTrack = await AgoraRTC.createCameraVideoTrack({
+                encoderConfig: 
+                {
+                width: 640,
+                // Specify a value range and an ideal value
+                height: { ideal: 480, min: 400, max: 500 },
+                frameRate: 15,
+                bitrateMin: 600, bitrateMax: 1000,
+                },
+            });
+        ```
+
+    1. **Set a transmission optimization mode**
+
+        When you call `createCameraVideoTrack`, select an optimization mode to ensure video quality under poor network conditions. <Vg k="VSDK" /> provides the following optimization mode:
+
+        - `detail`: Prioritizes video quality by keeping the bitrate value above the minimum bitrate.
+        - `motion`: Prioritizes video smoothness by reducing the bitrate and keeping the framerate retained.
+
+        To set an optimization mode, in `main.js`, add the following code after `hannelParameters.localVideoTrack = await AgoraRTC.createCameraVideoTrack({`:
+
+        ```javascript
+        optimizationMode: "detail",
+        ```
+        
+    1. **Set a stream fallback strategy**
+
+        To set a stream fallback strategy for a remote user, in `main.js`, add the following code after `document.body.append(remotePlayerContainer);`:
+
+        ```javascript
+        // Set a stream fallback option to automatically switch remote video quality when network conditions degrade. 
+        agoraEngine.setStreamFallbackOption(channelParameters.remoteUid, 1);
+        ```
+
+1. **Add the connection state monitoring callback function**
+
+    To monitor the <Vpl k="CLIENT" /> connection state, add the following callback before `agoraEngine.on("user-published", async (user, mediaType) =>`:
+
+    ```javascript
+    agoraEngine.on("connection-state-change", (curState, prevState, reason) => {
+
+    // The sample code uses debug console to show the connection state. In a real-world application, you can add
+    // a label or a icon to the user interface to show the connection state. 
+
+    // Display the current connection state.
+    console.log("Connection state has changed to :" + curState);
+    // Display the previous connection state.
+    console.log("Connection state was : "+ prevState);
+    // Display the connection state change reason.
+    console.log("Connection state change reason : "+ reason);
+    });
+    ```
+
+1. **Switch stream quality when the user taps the remote video**
+
+    To take advantage of dual-stream mode and switch remote video quality to high or low, add the following after `agoraEngine.setStreamFallbackOption(channelParameters.remoteUid, 1);`:
+
+    ```javascript
+    document.getElementById(remotePlayerContainer.id).addEventListener('click', function () 
+    {
+    if(isHighRemoteVideoQuality == false)
+    {
+        agoraEngine.setRemoteVideoStreamType(channelParameters.remoteUid, 0);
+        isHighRemoteVideoQuality = true;
+    }
+    else
+    {
+        agoraEngine.setRemoteVideoStreamType(channelParameters.remoteUid, 1);
+        isHighRemoteVideoQuality = false;
+    }
+    });
+    ```
+
+1. **Enable the user to test the last-mile network quality**
+
+    To get the last-mile uplink and downlink network quality, in `main.js`, add the following events before `window.onload = function ()`:
+
+    ```javascript
+    // Get the uplink network condition
+    agoraEngine.on("network-quality", (quality) => {
+    if(quality.uplinkNetworkQuality == 1)
+    {
+        document.getElementById("upLinkIndicator").innerHTML = "Excellent";
+        document.getElementById("upLinkIndicator").style.color = "green";
+    }
+    else if(quality.uplinkNetworkQuality == 2)
+    {
+        document.getElementById("upLinkIndicator").innerHTML = "Good";
+        document.getElementById("upLinkIndicator").style.color = "yellow";
+    }
+    else (quality.uplinkNetworkQuality >= 4)
+    {
+        document.getElementById("upLinkIndicator").innerHTML = "Poor";
+        document.getElementById("upLinkIndicator").style.color = "red";
+    }
+    });
+
+    // Get the downlink network condition
+    agoraEngine.on("network-quality", (quality) => {
+    if(quality.downlinkNetworkQuality == 1)
+    {
+        document.getElementById("downLinkIndicator").innerHTML = "Excellent";
+        document.getElementById("downLinkIndicator").style.color = "green";
+    }
+    else if(quality.downlinkNetworkQuality == 2)
+    {
+        document.getElementById("downLinkIndicator").innerHTML = "Good";
+        document.getElementById("downLinkIndicator").style.color = "yellow";
+    }
+    else if(quality.downlinkNetworkQuality >= 4)
+    {
+        document.getElementById("downLinkIndicator").innerHTML = "Poor";
+        document.getElementById("downLinkIndicator").style.color = "red";
+    }
+    });
+    ```
+
+1. **Implement the logic to get the call-quality statistics**
+
+    When user presses *Enable statistics*, the <Vpl k="CLIENT" /> calls the following methods to get the statistics:
+
+    - `getLocalAudioStats`: Retrieves statistics about the local audio.
+    - `getLocalVideoStats`: Retrieves statistics about the local video.
+    - `getRemoteAudioStats`: Retrieves statistics about the remote audio.
+    - `getRemoteVideoStats`: Retrieves statistics about the remote video.
+    - `getRTCStats`: Retrieve the Agora Engine stats.
+
+    In `main.js`, add the following code before `document.getElementById("join").onclick = async function ()`:
+
+    ```javascript
+    document.getElementById("statistics").onclick = async function ()
+    {
+        // The sample code uses debug console to show the call-quality statistics. In a real-world application, you can
+        // add label or paragraph to the user interface to show the call-quality statistics.
+
+        // Collect the call quality statistics.
+        var localAudioStats = agoraEngine.getLocalAudioStats();
+        console.log( "Local audio stats = { sendBytes :" +localAudioStats.sendBytes + ", sendBitrate :" + localAudioStats.sendBitrate + ", sendPacketsLost :"
+        + localAudioStats.sendPacketsLost+ " }");
+        var localVideoStats = agoraEngine.getLocalVideoStats();
+        console.log("Local video stats = { sendBytes :" +localVideoStats.sendBytes + ", sendBitrate :" + localVideoStats.sendBitrate +
+        ", sendPacketsLost :" + localVideoStats.sendPacketsLost+ " }");
+        var remoteAudioStats = agoraEngine.getRemoteAudioStats()[channelParameters.remoteUid];
+        console.log("Remote audio stats = { receiveBytes :" +remoteAudioStats.receivedBytes + ", receiveBitrate :" + remoteAudioStats.receiveBitrate +
+        ", receivePacketsLost :" + remoteAudioStats.receivePacketsLost + "}");
+        var remoteVideoStats = agoraEngine.getRemoteVideoStats()[channelParameters.remoteUid];
+        console.log(" Local video stats = { receiveBytes :" +remoteVideoStats.receiveBytes + ", receiveBitrate :" + remoteVideoStats.receiveBitrate +
+        ", receivePacketsLost :" + remoteVideoStats.receivePacketsLost + " }");
+        var rtcStats = agoraEngine.getRTCStats();
+        console.log("Channel statistics = { UserCount :" +rtcStats.UserCount + ", OutgoingAvailableBandwidth :" + rtcStats.OutgoingAvailableBandwidth +
+        ", RTT :" + rtcStats.RTT + " }");
+    }
+    ```
+
+</PlatformWrapper>

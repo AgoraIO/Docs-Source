@@ -22,7 +22,15 @@ const data = {
     PRODUCT: 'Interactive Live Streaming',
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS_Beta'
 
-  }
+  },
+    'analytics': {
+        NAME: 'Agora Analytics',
+        PATH: 'agora-analytics',
+        SDK: 'Agora Analytics',
+        PRODUCT: 'Agora Analytics',
+        IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS_Beta'
+
+    }
 };
 
 export default data;

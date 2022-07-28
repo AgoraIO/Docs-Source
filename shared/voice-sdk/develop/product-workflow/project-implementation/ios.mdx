@@ -1,0 +1,357 @@
+<PlatformWrapper platform="ios">
+
+To implement this functionality for a UIKit based app, retrieve an Agora Engine instance with a call to `agoraView.agkit`.
+
+### Implement the user interface
+
+In a real-world application, for each volume setting you want to control, you typically add a volume control UI element such as a <Link target="_blank" to="https://developer.apple.com/documentation/uikit/uislider">UISlider</Link> to the audio configuration panel. To enable the user to mute local or remote audio, you add a <Link target="_blank" to="https://developer.apple.com/documentation/uikit/uiswitch">UISwitch</Link> to the interface for each user. In this example, you add a `UISlider` and a `UISwitch` to the UI to test different volume settings. For screen sharing, you add a `UIButton` to start and stop sharing.
+
+To create this user interface, in the `ViewController` class:
+
+1. **Add UI elements to manage volume and muting**
+
+    Add the following variables at the head of the class with the other declarations:
+
+    ```swift
+    var volumeSlider: UISlider!
+    var muteSwitch: UISwitch!
+    ```
+
+1. **Configure the buttons in your interface**
+
+    Add the following lines to the `initViews` function:
+
+    ```swift
+    volumeSlider = UISlider()
+    volumeSlider.frame = CGRect(x: 40, y:550, width:240, height:50)
+    volumeSlider.maximumValue = 100
+    volumeSlider.value = 80
+
+    volumeSlider.addTarget(self, action: #selector(volumeSliderValueChanged), for: .valueChanged)
+    self.view.addSubview(volumeSlider)
+
+    muteSwitch = UISwitch()
+    muteSwitch.frame = CGRect(x: 300, y:600, width:40, height:50)
+
+    muteSwitch.addTarget(self, action: #selector(muteSwitchValueChanged), for: .touchUpInside)
+    self.view.addSubview(muteSwitch)
+    ```
+
+    xCode presents some build time errors. Worry not, these are for functions that you add to your project a bit later on.
+
+### Handle the system logic
+
+Enable your <Vpl k="CLIENT" /> to run in the background while it captures and streams the screen.
+
+1. **Ensure that your <Vpl k="CLIENT" /> is active when minimized**
+
+    <Link target="_blank" to="https://developer.apple.com/documentation/xcode/adding-capabilities-to-your-app">Add the **Background Modes** capability</Link> then Select **Audio, AirPlay, and Picture in Picture** from the **Modes** list.
+
+1. **Enable your <Vpl k="CLIENT" /> to broadcast the screen recording**
+
+    <Link target="_blank" to="https://developer.apple.com/documentation/xcode/configuring-a-new-target-in-your-project">Add a new **Broadcast Upload Extension** target</Link> called `screenSharer`.
+
+    You see the `screenSharer` and `screenSharerSetupUI` targets in the project explorer.
+
+1. **Remove unnecessary targets**
+
+    xCode adds `screenSharerSetupUI` as a target and as dependency of your project. You don't need them. Delete `screenSharerSetupUI` from the project navigator, and as a dependency in the project settings.
+
+1. **Add project permissions for screen recording in the `screenSharer` project**
+
+    Open **screenSharer > Info** in the project navigation panel, then add the following properties to the <Link target="_blank" to="https://help.apple.com/xcode/mac/current/#/dev3f399a2a6">Information Property List</Link>:
+
+
+    |Key |Type | Value
+    |:---|:---|:---|
+    | RPBroadcastProcessMode | String | RPBroadcastProcessModeSampleBuffer |
+
+### Implement volume control and screen sharing logic
+
+To implement these features in your <Vpl k="CLIENT" />, take the following steps:
+
+1. **Declare the variables you need**
+
+    To read, store, and apply workflow settings, add the following variables to the declarations at the top of the `ViewController` class:
+
+    ```swift
+    // Volume Control
+    var volume: Int = 50
+    var isMuted: Bool = false
+    var remoteUid: UInt = 0 // Stores the uid of the remote user
+
+    // Screen sharing
+    let screenShareExtensionName = "screenSharer"
+    ```
+
+1. **Setup volume control and mute**
+
+    To change the volume or mute local or remote users:
+
+    1. Store the `uid` of the remote user
+
+        To adjust the volume or mute a specific remote user, you need the `uid` of that user. Add the following line at the beginning of the `func rtcEngine(_ engine: AgoraRtcEngineKit, didJoinedOfUid uid: UInt, elapsed: Int) {` delegate to store the `uid` of the remote user:
+
+        ```swift
+        remoteUid = uid
+        ```
+
+    2. Adjust or mute the volume
+
+        You use the `volumeSliderValueChanged` and `muteSwitchValueChanged` callbacks to handle the volume change actions taken by the user. Add the following callbacks to the <Vg k="ENGINE" /> event handler, `extension ViewController: AgoraRtcEngineDelegate {`:
+
+        ```swift
+        @objc func volumeSliderValueChanged(_ sender: UISlider) {
+            volume = Int(sender.value)
+            print("Changing volume to \(volume)")
+            agoraEngine.adjustRecordingSignalVolume(volume)
+        }
+
+        @objc func muteSwitchValueChanged(_ sender: UISwitch) {
+            isMuted = sender.isOn
+            print("Changing mute state to \(isMuted)")
+            agoraEngine.muteRemoteAudioStream(remoteUid, mute: isMuted)
+        }
+        ```
+
+1. **Create an extension for screen sharing**
+
+    iOS uses a separate target for screen sharing that uses `ReplayKit`. You use a new instance of `AgoraRtcEngineKit` to stream to the same channel your user is already connected to. To implement this:
+
+    1. In the `screenSharer` target, create a new swift file called `screenSharingAgoraEngine`, then paste the following into it:
+
+        ```swift
+        import Foundation
+        import CoreMedia
+        import ReplayKit
+        import AgoraRtcKit
+
+        class screenSharingAgoraEngine {
+
+            // Update with the App ID of your project generated on Agora Console.
+            private static let appID = "Your App ID"
+            // Update with the temporary token generated in Agora Console.
+            private static let  token = "Your token"
+            // Update with the channel name you used to generate the token in Agora Console.
+            private static let  channelName = "Your channel name"
+            // Return an instance of Agora Engine that is configured for screen sharing
+            private static let agoraEngine: AgoraRtcEngineKit = {
+
+                let config = AgoraRtcEngineConfig()
+                config.appId = appID
+                config.channelProfile = .liveBroadcasting
+                let agoraEngine = AgoraRtcEngineKit.sharedEngine(with: config, delegate: nil)
+
+                agoraEngine.enableVideo()
+                agoraEngine.setExternalVideoSource(true, useTexture: true, sourceType: .videoFrame)
+                let videoConfig = AgoraVideoEncoderConfiguration(size: videoDimension,
+                                                                frameRate: .fps10,
+                                                                bitrate: AgoraVideoBitrateStandard,
+                                                                orientationMode: .adaptative, mirrorMode: .auto)
+                agoraEngine.setVideoEncoderConfiguration(videoConfig)
+
+                agoraEngine.setAudioProfile(.default)
+                agoraEngine.setExternalAudioSource(true, sampleRate: Int(audioSampleRate), channels: Int(audioChannels))
+                agoraEngine.muteAllRemoteVideoStreams(true)
+                agoraEngine.muteAllRemoteAudioStreams(true)
+                return agoraEngine
+            }()
+
+
+            // Set the audio configuration
+            private static let audioSampleRate: UInt = 44100
+            private static let audioChannels: UInt = 2
+
+
+            // Get the screen size and orientation
+            private static let videoDimension : CGSize = {
+                let screenSize = UIScreen.main.currentMode!.size
+                var boundingSize = CGSize(width: 540, height: 980)
+                let mW = boundingSize.width / screenSize.width
+                let mH = boundingSize.height / screenSize.height
+                if( mH < mW ) {
+                    boundingSize.width = boundingSize.height / screenSize.height * screenSize.width
+                }
+                else if( mW < mH ) {
+                    boundingSize.height = boundingSize.width / screenSize.width * screenSize.height
+                }
+                return boundingSize
+            }()
+
+
+            //Configure agoraEngine to use custom video with no audio, then join the channel.
+            static func startScreenSharing(to channel: String) {
+
+                let channelMediaOptions = AgoraRtcChannelMediaOptions()
+                channelMediaOptions.publishAudioTrack = .of(false)
+                channelMediaOptions.publishCameraTrack = .of(false)
+                channelMediaOptions.publishCustomVideoTrack = .of(true)
+                channelMediaOptions.publishCustomAudioTrack = .of(true)
+                channelMediaOptions.autoSubscribeAudio = .of(false)
+                channelMediaOptions.autoSubscribeVideo = .of(false)
+                channelMediaOptions.clientRoleType = .of((Int32)(AgoraClientRole.broadcaster.rawValue))
+
+                agoraEngine.joinChannel(byToken: token, channelId: channelName, uid: UInt(1001), mediaOptions: channelMediaOptions, joinSuccess: nil)
+            }
+
+
+            // Leave the channel
+            static func stopScreenSharing() {
+                agoraEngine.leaveChannel(nil)
+                AgoraRtcEngineKit.destroy()
+            }
+
+
+            //Retrieve the local video frame, figure out the orientation and duration of the buffer and send it to the chnanel.
+            static func sendVideoBuffer(_ sampleBuffer: CMSampleBuffer) {
+                guard let videoFrame = CMSampleBufferGetImageBuffer(sampleBuffer)
+                    else {
+                    return
+                }
+
+                var rotation : Int32 = 0
+                if let orientationAttachment = CMGetAttachment(sampleBuffer, key: RPVideoSampleOrientationKey as CFString, attachmentModeOut: nil) as? NSNumber {
+                    if let orientation = CGImagePropertyOrientation(rawValue: orientationAttachment.uint32Value) {
+                        switch orientation {
+                        case .up,    .upMirrored:    rotation = 0
+                        case .down,  .downMirrored:  rotation = 180
+                        case .left,  .leftMirrored:  rotation = 90
+                        case .right, .rightMirrored: rotation = 270
+                        default:   break
+                        }
+                    }
+                }
+                let time = CMTime(seconds: CACurrentMediaTime(), preferredTimescale: 1000 * 1000)
+
+                let frame = AgoraVideoFrame()
+                frame.format = 12
+                frame.time = time
+                frame.textureBuf = videoFrame
+                frame.rotation = rotation
+                agoraEngine.pushExternalVideoFrame(frame)
+            }
+
+            // To extend the functionality
+            static func sendAudioAppBuffer(_ sampleBuffer: CMSampleBuffer) {
+
+            }
+
+            // Audio is blocked, do nothing
+            static func sendAudioMicBuffer(_ sampleBuffer: CMSampleBuffer) {
+
+            }
+
+        }
+        ```
+
+    1. Update the `SampleHandler` in the `screenSharer` target to stream the screen capture video frames to the channel. In `screenSharer` > `SampleHandler` replace the contents with:
+
+        ```swift
+        import ReplayKit
+
+        class SampleHandler: RPBroadcastSampleHandler {
+
+            var bufferCopy : CMSampleBuffer?
+            var lastSendTs : Int64 = Int64(Date().timeIntervalSince1970 * 1000)
+            var timer:Timer?
+
+
+            override func broadcastStarted(withSetupInfo setupInfo: [String : NSObject]?) {
+                if let setupInfo = setupInfo, let channel = setupInfo["sigh"] as? String {
+                    //In-App Screen Capture
+                    screenSharingAgoraEngine.startScreenSharing(to: channel)
+                } else {
+                    // iOS Screen Record and Broadcast
+                    // IMPORTANT
+                    // You have to use App Group to pass information/parameter
+                    // from main app to extension
+                    // in this demo we don't introduce app group as it increases complexity
+                    // this is the reason why channel name is hardcoded to be ScreenShare
+                    // You may use a dynamic channel name through keychain or userdefaults
+                    // after enable app group feature
+                    screenSharingAgoraEngine.startScreenSharing(to: "sigh")
+                }
+                DispatchQueue.main.async {
+                    self.timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) {[weak self] (timer:Timer) in
+                        guard let weakSelf = self else {return}
+                        let elapse = Int64(Date().timeIntervalSince1970 * 1000) - weakSelf.lastSendTs
+                        print("elapse: \(elapse)")
+                        // if frame stopped sending for too long time, resend the last frame
+                        // to avoid stream being frozen when viewed from remote
+                        if elapse > 300 {
+                            if let buffer = weakSelf.bufferCopy {
+                                weakSelf.processSampleBuffer(buffer, with: .video)
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            override func broadcastPaused() {
+                // User has requested to pause the broadcast. Samples will stop being delivered.
+            }
+
+            override func broadcastResumed() {
+                // User has requested to resume the broadcast. Samples delivery will resume.
+            }
+
+            override func broadcastFinished() {
+                timer?.invalidate()
+                timer = nil
+                screenSharingAgoraEngine.stopScreenSharing()
+            }
+
+            override func processSampleBuffer(_ sampleBuffer: CMSampleBuffer, with sampleBufferType: RPSampleBufferType) {
+                DispatchQueue.main.async {[weak self] in
+                    switch sampleBufferType {
+                    case .video:
+                        if let weakSelf = self {
+                            weakSelf.bufferCopy = sampleBuffer
+                            weakSelf.lastSendTs = Int64(Date().timeIntervalSince1970 * 1000)
+                        }
+                        screenSharingAgoraEngine.sendVideoBuffer(sampleBuffer)
+                    case .audioApp:
+                        screenSharingAgoraEngine.sendAudioAppBuffer(sampleBuffer)
+                        break
+                    case .audioMic:
+                        screenSharingAgoraEngine.sendAudioMicBuffer(sampleBuffer)
+                        break
+                    @unknown default:
+                        break
+                    }
+                }
+            }
+
+        }
+        ```
+
+    1. Create an iOS `RPSystemBroadcastPickerView` and enable it to connect to the `screenSharer` extension.
+
+        In `ViewController`, add the following code to prepare your <Vpl k="CLIENT" /> to share the screen:
+
+        ```swift
+            func prepareScreenSharing() {
+                let frame = CGRect(x: 50, y:690, width: 60, height: 60)
+                let systemBroadcastPicker = RPSystemBroadcastPickerView(frame: frame)
+                systemBroadcastPicker.showsMicrophoneButton = false
+                systemBroadcastPicker.autoresizingMask = [.flexibleTopMargin, .flexibleRightMargin]
+                if let url = Bundle.main.url(forResource: screenShareExtensionName, withExtension: "appex", subdirectory: "PlugIns") {
+                    if let bundle = Bundle(url: url) {
+                        systemBroadcastPicker.preferredExtension = bundle.bundleIdentifier
+                    }
+                }
+                self.view.addSubview(systemBroadcastPicker)
+            }
+        ```
+
+    1. Initialize the screenSharing extension when you initialize your <Vpl k="CLIENT" />.
+
+    In `ViewController`, add the following code to the end of the `initViews()` function:
+
+        ```swift
+        //Enable your app to share the local screen to a channel
+        prepareScreenSharing()
+        ```
+
+</PlatformWrapper>

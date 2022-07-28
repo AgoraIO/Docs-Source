@@ -1,0 +1,104 @@
+---
+title: 'Troubleshooting'
+sidebar_position: 5
+description: >
+    How to troubleshoot common call-quality issues.
+---
+
+## Prerequisites
+
+Before you start troubleshooting, you should be familiar with [Call Details Breakdown](./call_search_detail).
+
+
+## Case 1: Receiver reports black, stuttering, or blurry video
+
+If a user says the received video is black, stuttering, or blurry, you can troubleshoot the issue using the following steps:
+
+### 1. Check the video sender
+
+Refer to the following steps:
+
+1. Check whether the sender stopped the local video: Go to the [Call details homepage](./call_search_detail), find the **Key events** of the sender, and switch to the list view. Look for the **user stopped local video** event under the **Video sending** category. If you find such an event, contact the sender to confirm the operation.
+ ![](https://web-cdn.agora.io/docs-files/1658831859143)
+
+2. Check the sender's network conditions: Go to the [Sender details page](./call_search_detail), and find the network status and device status metrics.
+
+   In the following figure, the **Video upstream packet loss** is high and the **Wi-Fi signal quality** is poor. It can be concluded that the sender's network conditions are abnormal. Agora recommends reminding the sender to be closer to the Wi-Fi source or advising them to use a different network.
+
+ ![](https://web-cdn.agora.io/docs-files/1658832351090)
+
+### 2. Check the video receiver
+
+If no issue is found when checking the video sender, follow these steps to check the video receiver:
+
+1. Check whether the receiver stopped the sender's video: On the Call Details homepage, find the **Key events** of the receiver, and switch to the list view. Look for the **Stopped xxx's video** (where xxx is the user ID of the sender) event under the **Video receiving** category. If you find such an event, contact the receiver to confirm the operation.
+ ![](https://web-cdn.agora.io/docs-files/1658832861834)
+
+2. Check the receiver's network conditions: Go to the [End-to-end details page](./call_search_detail), and find the network status and device status metrics.
+
+   In the following figure, the charts on the left represent the sender, and the charts on the right represent the receiver. The sender's network is normal, but the **Video end-to-end packet loss** is high, and the receiver's **Wi-Fi signal quality** is poor. It can be concluded that the receiver's network conditions are abnormal. Agora recommends reminding the receiver to be closer to the Wi-Fi source or advising them to use a different network.
+
+ ![](https://web-cdn.agora.io/docs-files/1658832878940)
+
+### 3. Check the CPU usage
+
+**Check the sender's CPU usage**
+
+1. On the Sender details page, check the video capture frame rate and video sending frame rate.
+2. If either metric is abnormal, continue to check the **CPU usage** metrics. If the CPU usage is high, Agora recommends that the sender clear any background tasks or restart the app.
+
+**Check the receiver's CPU usage**
+
+1. On the End-to-end details page, check the video receiving frame rate.
+2. If the metric is abnormal, continue to check the **CPU usage** metrics. If the CPU usage is high, Agora recommends that the receiver clear any background tasks or restart the app.
+
+![](https://web-cdn.agora.io/docs-files/1658832895138)
+
+## Case 2: Receiver reports silent or stuttering audio
+
+If a user says the received audio is silient or stuttering, you can troubleshoot the issue using the following steps:
+
+### 1. Check the audio sender
+
+Refer to the following steps:
+
+1. Check whether the sender muted the local audio: Go to the [Call details homepage](./call_search_detail), find the **Key events** of the sender, and switch to the list view. Look for the **user muted local audio** event under the **Audio sending** category. If you find such an event, contact the sender to confirm the operation.
+ ![](https://web-cdn.agora.io/docs-files/1658832926530)
+
+
+2. Check the sender's network conditions: Go to the [Sender details page](./call_search_detail), and find the network status metrics.
+
+   Take the following figure as an example. The **Audio upstream packet loss** is high, so it can be concluded that the sender's network conditions are abnormal. Agora recommends reminding the sender to be closer to the Wi-Fi source or advising them to use a different network.
+
+  ![](https://web-cdn.agora.io/docs-files/1658832944922)
+
+### 2. Check the audio receiver
+
+If no issue is found when checking the audio sender, follow these steps to check the audio receiver:
+
+1. Check whether the receiver stopped the sender's audio: On the Call Details homepage, find the **Key events** of the receiver, and switch to the list view. Look for the **Stopped xxx's audio** (where xxx is the user ID of the sender) event under the **Audio receiving** category. If you find such an event, contact the receiver to confirm the operation.
+ ![](https://web-cdn.agora.io/docs-files/1658832962166)
+
+
+2. Check the receiver's network condition: Go to the [End-to-end details page](./call_search_detail), and find the network status and audio freezing metrics.
+
+   In the following figure, the charts on the left represent the sender, and the charts on the right represent the receiver. The sender's network condition is normal, but the **Audio end-to-end packet loss** is high, and the **Freeze time in rendering audio** is long. It can be concluded that the receiver's network conditiona are abnormal. Agora recommends reminding the receiver to be closer to the Wi-Fi source or advising them to use a different network.
+
+   ![](https://web-cdn.agora.io/docs-files/1658833048224)
+
+### 3. Check the CPU usage
+
+**Check the sender's CPU usage**
+
+1. On the Sender details page, check the audio capture signal strength.
+2. If the metric is abnormal, continue to check the **CPU usage** metrics. If the CPU usage is high, Agora recommends that the sender clear any background tasks or restart the app.
+
+**Check the receiver's CPU usage**
+
+1. On the End-to-end details page, check the audio playback signal strength.
+2. If the metric is abnormal, continue to check the **CPU usage** metrics. If the CPU usage is high, Agora recommends that the receiver clear any background tasks or restart the app.
+
+ ![](https://web-cdn.agora.io/docs-files/1658833061820)
+
+
+

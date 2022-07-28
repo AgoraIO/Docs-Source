@@ -27,9 +27,13 @@ const data = {
         NAME: 'Agora Analytics',
         PATH: 'agora-analytics',
         SDK: 'Agora Analytics',
-        PRODUCT: 'Agora Analytics',
-        IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS_Beta'
-
+        PRODUCT: 'Agora Analytics'
+    },
+    'cloud-recording': {
+        NAME: 'Cloud Recording',
+        PATH: 'cloud-recording',
+        SDK: 'Cloud Recording',
+        PRODUCT: 'Cloud Recording'
     }
 };
 

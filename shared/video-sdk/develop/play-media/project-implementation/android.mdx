@@ -1,0 +1,279 @@
+<PlatformWrapper platform="android">
+        
+# Implement the user interface
+
+In a real-word application, you provide several buttons to enable a user to open, play, pause and stop playing files in the media player. In this simple example, you use a single `Button` to demonstrate the basic media player functions. You also add a `ProgressBar` to display the play progress to the user.
+
+To add the UI elements, in `/app/res/layout/activity_main.xml`, add the following code before `</RelativeLayout>`:
+
+``` xml
+<Button
+    android:id="@+id/MediaPlayerButton"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_below="@+id/JoinButton"
+    android:layout_alignEnd="@id/LeaveButton"
+    android:layout_alignStart="@id/JoinButton"
+    android:onClick="playMedia"
+    android:text="Open Media File" />
+
+<ProgressBar
+    android:id="@+id/MediaProgress"
+    android:layout_width="wrap_content"
+    android:layout_height="5dp"
+    android:layout_alignEnd="@id/LeaveButton"
+    android:layout_alignStart="@id/JoinButton"
+    android:layout_alignBottom="@id/local_video_view_container"
+    style="@android:style/Widget.ProgressBar.Horizontal" />
+```
+
+# Handle the system logic
+
+To setup your project to use the media player APIs and access the UI elements, take the following steps:
+
+1.  **Add the required libraries**
+
+    To import the required <Vg k="COMPANY" /> and Android libraries, in `/app/java/com.example.<projectname>/MainActivity`, add the following to the list of `import` statements:
+
+    ``` java
+    import io.agora.mediaplayer.IMediaPlayer;
+    import io.agora.mediaplayer.IMediaPlayerObserver;
+    import io.agora.mediaplayer.data.PlayerUpdatedInfo;
+    import io.agora.mediaplayer.Constants.MediaPlayerState;
+    import io.agora.mediaplayer.Constants.MediaPlayerError;
+    import io.agora.mediaplayer.data.SrcInfo;
+
+    import android.widget.Button;
+    import android.widget.ProgressBar;
+    ```
+
+2.  **Declare the variables you need**
+
+    To create and manage an instance of the media player and access the UI elements, in `/app/java/com.example.<projectname>/MainActivity`, add the following declarations to the `MainActivity` class:
+
+    ``` java
+    private IMediaPlayer mediaPlayer; // Instance of the media player
+    private boolean isMediaPlaying = false;
+    private long mediaDuration = 0;
+    // In a real world app, you declare the media location variable with an empty string
+    // and update it when a user chooses a media file from a local or remote source.
+    private String mediaLocation =
+            "https://webdemo.agora.io/agora-web-showcase/examples/Agora-Custom-VideoSource-Web/assets/sample.mp4";
+
+    private Button mediaButton;
+    private ProgressBar mediaProgressBar;
+    ```
+
+3.  **Access the progress bar**
+
+    In the `onCreate` method of the `MainActivity` class, add the following line at the end:
+
+    ``` java
+    mediaProgressBar = findViewById(R.id.MediaProgress);
+    ```
+
+# Implement media player functions
+
+To implement playing and publishing media files in your <Vpl k="CLIENT" />, take the following steps:
+
+1.  **Open, play and pause media files**
+
+    When a user presses the button for the first time, you create an instance of the media player, set its `mediaPlayerObserver` to receive the callbacks, and open the media file. When the user presses the button again, you play the media file. On subsequent button presses, you pause or resume playing the media file alternately. To do this, add the following method to the `MainActivity` class:
+
+    ``` java
+    public void playMedia(View view) {
+        if (mediaButton == null) mediaButton = (Button) view;
+
+        // Initialize the mediaPlayer and open a media file
+        if (mediaPlayer == null) {
+            // Create an instance of the media player
+            mediaPlayer = agoraEngine.createMediaPlayer();
+            // Set the mediaPlayerObserver to receive callbacks
+            mediaPlayer.registerPlayerObserver(mediaPlayerObserver);
+            // Open the media file
+            mediaPlayer.open(mediaLocation, 0);
+
+            mediaButton.setEnabled(false);
+            mediaButton.setText("Opening Media File...");
+            return;
+        }
+
+        // Set up the local video container to handle the media player output
+        // or the camera stream, alternately.
+        isMediaPlaying = !isMediaPlaying;
+        // Set the stream publishing options
+        updateChannelPublishOptions(isMediaPlaying);
+        // Display the stream locally
+        setupLocalVideo(isMediaPlaying);
+
+        MediaPlayerState state = mediaPlayer.getState();
+        if (isMediaPlaying) { // Start or resume playing media
+            if (state == MediaPlayerState.PLAYER_STATE_OPEN_COMPLETED) {
+                mediaPlayer.play();
+            } else if (state == MediaPlayerState.PLAYER_STATE_PAUSED) {
+                mediaPlayer.resume();
+            }
+            mediaButton.setText("Pause Playing Media");
+        } else {
+            if (state == MediaPlayerState.PLAYER_STATE_PLAYING) {
+                // Pause media file
+                mediaPlayer.pause();
+                mediaButton.setText("Resume Playing Media");
+            }
+        }
+    }
+    ```
+
+2.  **Manage media player callbacks**
+
+    The `IMediaPlayerObserver` implements media player callbacks. You create an instance of `IMediaPlayerObserver` and register it with the media player instance. When the player state changes, you take appropriate actions to update the UI in `onPlayerStateChanged`. You use the `onPositionChanged` callback to update the progress bar. To create an instance named `mediaPlayerObserver`, add the following code to the `MainActivity` class:
+
+    ``` java
+    private IMediaPlayerObserver mediaPlayerObserver = new IMediaPlayerObserver() {
+        @Override
+        public void onPlayerStateChanged(MediaPlayerState state, MediaPlayerError error) {
+            showMessage(state.toString());
+            if (state == MediaPlayerState.PLAYER_STATE_OPEN_COMPLETED) {
+                // Media file opened successfully
+                mediaDuration = mediaPlayer.getDuration();
+                // Update the UI
+                runOnUiThread(() -> {
+                    mediaButton.setText("Play Media File");
+                    mediaButton.setEnabled(true);
+                    mediaProgressBar.setProgress(0);
+                });
+
+            } else if (state == MediaPlayerState.PLAYER_STATE_PLAYBACK_ALL_LOOPS_COMPLETED) {
+                isMediaPlaying = false;
+                // Media file finished playing
+                runOnUiThread(() -> {
+                    mediaButton.setText("Load Media File");
+                    // Restore camera and microphone streams
+                    setupLocalVideo(false);
+                    updateChannelPublishOptions(false);
+                    // Clean up
+                    mediaPlayer.destroy();
+                    mediaPlayer = null;
+                });
+            }
+        }
+
+        @Override
+        public void onPositionChanged(long position) {
+            if (mediaDuration > 0) {
+                final int result = (int) ((float) position / (float) mediaDuration * 100);
+                runOnUiThread(() -> {
+                    // Update the ProgressBar
+                    mediaProgressBar.setProgress(Long.valueOf(result).intValue());
+                });
+            }
+        }
+
+        @Override
+        public void onPlayerEvent(io.agora.mediaplayer.Constants.MediaPlayerEvent eventCode, long elapsedTime, String message) {
+            // Required to implement IMediaPlayerObserver
+        }
+
+        @Override
+        public void onMetaData(io.agora.mediaplayer.Constants.MediaPlayerMetadataType type, byte[] data) {
+            // Required to implement IMediaPlayerObserver
+        }
+
+        @Override
+        public void onPlayBufferUpdated(long playCachedBuffer) {
+            // Required to implement IMediaPlayerObserver
+        }
+
+        @Override
+        public void onPreloadEvent(String src, io.agora.mediaplayer.Constants.MediaPlayerPreloadEvent event) {
+            // Required to implement IMediaPlayerObserver
+        }
+
+        @Override
+        public void onCompleted() {
+            // Required to implement IMediaPlayerObserver
+        }
+
+        @Override
+        public void onAgoraCDNTokenWillExpire() {
+            // Required to implement IMediaPlayerObserver
+        }
+
+        @Override
+        public void onPlayerSrcInfoChanged(SrcInfo from, SrcInfo to) {
+            // Required to implement IMediaPlayerObserver
+        }
+
+        @Override
+        public void onPlayerInfoUpdated(PlayerUpdatedInfo info) {
+            // Required to implement IMediaPlayerObserver
+        }
+
+        @Override
+        public void onAudioVolumeIndication(int volume) {
+            // Required to implement IMediaPlayerObserver
+        }
+    };
+    ```
+
+3.  **Configure <Vg k="ENGINE" /> to publish the media player stream**
+
+    You use `ChannelMediaOptions` and the `updateChannelMediaOptions` method to specify the type of stream to publish. To switch between publishing media player and camera and microphone streams, add the following method to the `MainActivity` class:
+
+    ``` java
+    private void updateChannelPublishOptions(boolean publishMediaPlayer){
+        ChannelMediaOptions channelOptions = new ChannelMediaOptions();
+
+        channelOptions.publishMediaPlayerAudioTrack = publishMediaPlayer;
+        channelOptions.publishMediaPlayerVideoTrack = publishMediaPlayer;
+        channelOptions.publishAudioTrack = !publishMediaPlayer;
+        channelOptions.publishCameraTrack = !publishMediaPlayer;
+        if (publishMediaPlayer) channelOptions.publishMediaPlayerId = mediaPlayer.getMediaPlayerId();
+
+        agoraEngine.updateChannelMediaOptions(channelOptions);
+    }
+    ```
+
+4.  **Display media player output locally**
+
+    Create a `VideoCanvas` and use it in the `setupLocalVideo` method of the <Vg k="ENGINE" /> to show the media player output locally. To switch between displaying media player output and the camera stream, replace the `setupLocalVideo()` method in the `MainActivity` class with the following:
+
+    ``` java
+    private void setupLocalVideo(boolean forMediaPlayer) {
+        FrameLayout container = findViewById(R.id.local_video_view_container);
+        container.removeAllViews();
+
+        // Create a SurfaceView object and add it as a child to the FrameLayout.
+        localSurfaceView = new SurfaceView(getBaseContext());
+        container.addView(localSurfaceView);
+
+        // Pass the SurfaceView object to the engine so that it renders the local video.
+        if (forMediaPlayer) {
+            VideoCanvas videoCanvas = new VideoCanvas(localSurfaceView, Constants.RENDER_MODE_HIDDEN, Constants.VIDEO_MIRROR_MODE_AUTO,
+                    Constants.VIDEO_SOURCE_MEDIA_PLAYER,  mediaPlayer.getMediaPlayerId(), 0);
+            agoraEngine.setupLocalVideo(videoCanvas);
+        } else {
+            agoraEngine.setupLocalVideo(new VideoCanvas(localSurfaceView, VideoCanvas.RENDER_MODE_HIDDEN, 0));
+        }
+    }
+    ```
+
+5.  **Update the `joinChannel` method**
+
+    When you join a channel, you set up the local video panel to initially display the camera output. In the `joinChannel(View view)` method, replace `setupLocalVideo();` with a call to the updated method:
+
+    ``` java
+    setupLocalVideo(false);
+    ```
+
+6.  **Clean up when you close the <Vpl k="CLIENT" />**
+
+    To free up resources when you exit the <Vpl k="CLIENT" />, add the following lines to the `onDestroy` method after `super.onDestroy();`:
+
+    ``` java
+    // Destroy the media player
+    mediaPlayer.stop();
+    mediaPlayer.unRegisterPlayerObserver(mediaPlayerObserver);
+    mediaPlayer.destroy();
+    ```
+</PlatformWrapper>

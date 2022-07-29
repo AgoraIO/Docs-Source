@@ -37,9 +37,9 @@ export const AV = 'Audio/Video';
 export const AV_URL = `${URL_ROOT}/video`;
 
 export const MESS = 'Signalling';
-export const MESS_SDK = 'RTM SDK';
+export const MESS_SDK = `${MESS} SDK`;
 export const SIG = `${MESS}`;
-export const CHAT = `${COMPANY} Chat`;
+export const CHAT = `Chat`;
 export const PS = 'Pub-Sub';
 export const PUSH = 'Push Notifications';
 

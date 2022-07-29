@@ -22,7 +22,15 @@ const data = {
     PRODUCT: 'Interactive Live Streaming',
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS_Beta'
 
+  },
+  'signalling': {
+      NAME: 'Signalling',
+      PATH: 'signalling',
+      SDK: 'Signalling SDK',
+      PRODUCT: 'Signalling'
   }
+
+
 };
 
 export default data;

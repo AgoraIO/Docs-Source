@@ -1,0 +1,319 @@
+<PlatformWrapper platform="ios">
+
+This section shows you how to implement the following methods of multi-channel streaming:
+
+-   [Channel media relay](#channel-media-relay)
+
+-   [Join multiple channels](#implement-joining-multiple-channels)
+
+Choose the method that best suits your scenario and follow the step by step procedure.
+
+### Channel media relay
+
+In this example, you use a single `Button` to start and stop channel media relay.
+
+#### Implement the user interface
+
+To enable your users to start and stop relaying to another channel, add a `Button` to the user interface.
+
+To create this user interface, in the `ViewController` class:
+
+1.  **Add a button to start channel media relay.**
+
+    Add the following line along with the other declarations at the top:
+
+    ``` swift
+    var channelRelayBtn: UIButton!
+    ```
+
+2.  **Configure the `channelRelayBtn` button in your interface**
+
+    Paste the following lines inside the `initViews` function:
+
+    ``` swift
+    channelRelayBtn = UIButton(type: .system)
+    channelRelayBtn.frame = CGRect(x: 100, y:550, width:200, height:50)
+    channelRelayBtn.setTitle("Start Channel Media Relay", for: .normal)
+
+    channelRelayBtn.addTarget(self, action: #selector(channelRelayBtnClicked), for: .touchUpInside)
+    self.view.addSubview(channelRelayBtn)
+    ```
+
+You see an error in your IDE. This is because `channelRelayBtnClicked`
+refers to a function that you create later.
+
+#### Handle the system logic
+
+In your project, declare the required variables.
+
+1.  **Declare the variables you need**
+
+    To store source and destination channel settings and manage channel
+    relay, add the following declaration to the top of the
+    `ViewController` class:
+
+    ``` swift
+    var destChannelName = "<name of the destination channel>"
+    var destChannelToken = "<access token for the destination channel>"
+    var destUid:UInt = 100 // User ID that the user uses in the destination channel.
+    var sourceChannelToken = "<access token for the source channel>" // Generate with the channelName and uid = 0.
+    var mediaRelaying:Bool = false
+    ```
+
+#### Implement channel media relay
+
+To enable <Vpl k="CLIENT" /> users to relay channel media to a destination channel, take the following steps:
+
+1.  **Start or stop channel media relay**
+
+    When a user presses the button, the <Vpl k="CLIENT" /> starts relaying media from the source channel to the destination channel. If channel media relay is already running, the <Vpl k="CLIENT" /> stops it. To integrate this workflow, add the following function to the `ViewController` class:
+
+    ```swift
+    @objc func channelRelayBtnClicked() 
+    {
+        if (mediaRelaying) 
+        {
+            agoraEngine.stopChannelMediaRelay()
+        } 
+        else 
+        {
+            // Configure the source channel information.
+            let srcChannelInfo: AgoraChannelMediaRelayInfo = AgoraChannelMediaRelayInfo.init(token: sourceChannelToken)
+            srcChannelInfo.channelName = channelName
+            srcChannelInfo.uid = 0
+            let mediaRelayConfiguration: AgoraChannelMediaRelayConfiguration = AgoraChannelMediaRelayConfiguration()
+            mediaRelayConfiguration.sourceInfo = srcChannelInfo
+
+            // Configure the destination channel information.
+            let destChannelInfo: AgoraChannelMediaRelayInfo = AgoraChannelMediaRelayInfo(token: destChannelToken)
+            destChannelInfo.channelName = destChannelName
+            destChannelInfo.uid = destUid
+            mediaRelayConfiguration.setDestinationInfo(destChannelInfo, forChannelName: destChannelName)
+
+            // Start relaying media streams across channels
+            agoraEngine.startChannelMediaRelay(mediaRelayConfiguration)
+        }
+    }
+    ```
+
+2.  **Monitor the channel media relay state**
+
+    To receive the state change notifications sent during media relay, you add a function to the <Vg k="ENGINE" /> event handler. To have your <Vpl k="CLIENT" /> respond to connection and failure events,
+    add the `channelMediaRelayStateDidChange` callback to the <Vg k="ENGINE" /> event handler, `extension ViewController: AgoraRtcEngineDelegate {`:
+
+    ``` swift
+    func rtcEngine(_ engine: AgoraRtcEngineKit,
+                   channelMediaRelayStateDidChange state: AgoraChannelMediaRelayState, error: AgoraChannelMediaRelayError) {
+        // This example shows toast messages when the relay state changes,
+        // a production level app needs to handle state change properly.
+        switch state {
+            case .connecting:
+                DispatchQueue.main.async {[weak self] in
+                    guard let weakself = self else { return }
+                    weakself.showMessage(title: "Channel Media Relay State", text: "Channel media relay is connecting.")
+                    weakself.channelRelayBtn.setTitle("Connecting...", for: .normal)
+                }
+
+            case .running:
+                mediaRelaying = true
+                DispatchQueue.main.async {[weak self] in
+                    guard let weakself = self else { return }
+                    weakself.showMessage(title: "Channel Media Relay State", text: "Channel media relay is running.")
+                    weakself.channelRelayBtn.setTitle("Stop Channel Media Relay", for: .normal)
+                }
+
+            case .failure:
+                mediaRelaying = false
+                DispatchQueue.main.async {[weak self] in
+                    guard let weakself = self else { return }
+                    weakself.showMessage(title: "Channel Media Relay State", text: "Channel media relay failure. Error code: \(error.rawValue)")
+                    weakself.channelRelayBtn.setTitle("Start Channel Media Relay", for: .normal)
+                }
+            default:
+                break
+        }
+    }
+    }```
+
+3.  **Monitor channel media relay events**
+
+    To receive notifications of important channel relay events such as network disconnection, reconnection, and users joining channels, you add a `didReceiveChannelMediaRelayEvent` function to the <Vg k="ENGINE" /> event handler. Add the following function inside `extension ViewController: AgoraRtcEngineDelegate {`:
+
+    ``` swift
+    func rtcEngine(_ engine: AgoraRtcEngineKit, didReceive event: AgoraChannelMediaRelayEvent) {
+        switch event {
+            case .disconnect:
+                DispatchQueue.main.async {[weak self] in
+                    guard let weakself = self else { return }
+                    weakself.showMessage(title: "Channel Media Relay Event", text: "User disconnected from the server due to a poor network connection.")
+                }
+
+            case .connected:
+                DispatchQueue.main.async {[weak self] in
+                    guard let weakself = self else { return }
+                    weakself.showMessage(title: "Channel Media Relay Event", text: "Network reconnected")
+                }
+
+            case .joinedSourceChannel:
+                DispatchQueue.main.async {[weak self] in
+                    guard let weakself = self else { return }
+                    weakself.showMessage(title: "Channel Media Relay Event", text: "User joined the source channel")
+                }
+            default:
+                break
+        }
+    }
+    ```
+
+### Join multiple channels
+
+The alternate approach to multi-channel live streaming is joining multiple channels. In this section, you learn how to implement joining a
+second channel in your <Vpl k="CLIENT" />.
+
+#### Implement the user interface
+
+In this example, you use a single `UIButton` to join and leave a second channel.
+
+1.  **Add a second channel join and leave button.**
+
+    To enable the `UIButton` to be accessible to multiple classes in the `ViewController.swift` file, add the following line before `class ViewController: UIViewController {`:
+
+    ``` swift
+    var secondChannelBtn: UIButton!
+    ```
+
+2.  **Configure the `secondChannelBtn` button in your interface.**
+
+    Paste the following lines inside the `initViews` function:
+
+    ``` swift
+    secondChannelBtn = UIButton(type: .system)
+    secondChannelBtn.frame = CGRect(x: 120, y:600, width:180, height:50)
+    secondChannelBtn.setTitle("Join second channel", for: .normal)
+
+    secondChannelBtn.addTarget(self, action: #selector(secondChannelBtnClicked), for: .touchUpInside)
+    self.view.addSubview(secondChannelBtn)
+    ```
+
+#### Handle the system logic
+
+In your project, declare the necessary variables, and setup access to the UI elements.
+
+1.  **Declare the variables you need**
+
+    To join and manage a second channel, add the following declarations
+    before `class ViewController: UIViewController {`:
+
+    ``` swift
+    var rtcSecondConnection: AgoraRtcConnection!
+    var secondChannelName = "<name of the second channel>"
+    var secondChannelUid:UInt = 100 // Uid for the second channel
+    var secondChannelToken = "<access token for the second channel>"
+    var isSecondChannelJoined:Bool = false // Track connection state of the second channel
+    ```
+
+2.  **Enable the user to join another channel**
+
+    1.  Add the following lines after
+        `agoraEngine = AgoraRtcEngineKit.sharedEngine(with: config, delegate: self)`
+        in the `initializeAgoraEngine` function:
+
+        ``` swift
+        secondChannelBtn.isEnabled = false
+        ```
+
+    2.  Enable this button when a user joins the initial channel. Add
+        the following line to the `joinChannel` function after
+        `joined = true`:
+
+        ``` swift
+        secondChannelBtn.isEnabled = true
+        ```
+
+#### Implement joining multiple channels
+
+To add multi-channel functionality to your <Vpl k="CLIENT" />, take
+the following steps:
+
+1.  **Join a second channel**
+
+    When a user presses the button, the <Vpl k="CLIENT" /> joins a second channel. If the <Vpl k="CLIENT" /> is already connected to a second channel, it leaves the channel. To do this, add the following method to the `ViewController` class.
+
+        ``` swift
+        @objc func secondChannelBtnClicked() {
+            if (isSecondChannelJoined) {
+                let result = agoraEngine.leaveChannelEx(rtcSecondConnection, leaveChannelBlock: nil)
+                print("leaveChannelEx result: \(result)")
+                if (result == 0) {
+                    showMessage(title: "Success", text: "Successfully left the second channel")
+                    isSecondChannelJoined = false
+                    print("Leave Channel Success - left channel: \(secondChannelName)")
+                    secondChannelBtn.setTitle("Join Second Channel", for: .normal)
+                }
+            } else {
+                let mediaOptions: AgoraRtcChannelMediaOptions = AgoraRtcChannelMediaOptions()
+
+                if (self.userRole == .audience) { // Audience Role
+                    mediaOptions.autoSubscribeAudio = .of((Bool)(true))
+                    mediaOptions.autoSubscribeVideo = .of((Bool)(true))
+                    mediaOptions.clientRoleType = .of((Int32)(AgoraClientRole.audience.rawValue))
+                } else { // Host Role
+                    mediaOptions.publishCameraTrack = .of((Bool)(true))
+                    mediaOptions.publishAudioTrack = .of((Bool)(true))
+                    mediaOptions.channelProfile = .of((Int32)(AgoraChannelProfile.liveBroadcasting.rawValue))
+                    mediaOptions.clientRoleType = .of((Int32)(AgoraClientRole.broadcaster.rawValue))
+                }
+
+                rtcSecondConnection = AgoraRtcConnection()
+                rtcSecondConnection.channelId = secondChannelName
+                rtcSecondConnection.localUid = secondChannelUid
+
+                let result = agoraEngine.joinChannelEx(byToken: secondChannelToken, connection: rtcSecondConnection, delegate: secondChannelDelegate, mediaOptions: mediaOptions)
+                if (result == 0) {
+                    showMessage(title: "Success", text: "Successfully joined the second channel")
+                    isSecondChannelJoined = true
+                }
+            }
+        }
+        ```
+
+2.  **Receive callbacks from the second channel**
+
+    The `AgoraRtcEngineDelegate` implements channel callbacks. For the second channel, you create another instance of `AgoraRtcEngineDelegate` and register it with the <Vg k="ENGINE"/> when you join the channel using `joinChannelEx`. To create an instance named `secondChannelDelegate`, do the following:
+
+    1.  In the `ViewController`, add the following line along with the
+        other declarations at the top:
+
+        ``` swift
+        var secondChannelDelegate:SecondChannelDelegate = SecondChannelDelegate()
+        ```
+
+    2.  In your `ViewController.swift` file, add the following
+        `AgoraRtcEngineDelegate` event handler class:
+
+        ``` swift
+        class SecondChannelDelegate: NSObject, AgoraRtcEngineDelegate {
+            func rtcEngine(_ engine: AgoraRtcEngineKit, didJoinChannel channel: String, withUid uid: UInt, elapsed: Int) {
+                print("Join Channel Success - joined channel: \(channel) uid: \(uid)")
+                secondChannelBtn.setTitle("Leave Second Channel", for: .normal)
+            }
+
+            func rtcEngine(_ engine: AgoraRtcEngineKit, didJoinedOfUid uid: UInt, elapsed: Int) {
+                print("User Join Success - joined uid: \(uid)")
+
+                let videoCanvas = AgoraRtcVideoCanvas()
+                videoCanvas.uid = uid
+                videoCanvas.view = remoteView
+                videoCanvas.renderMode = .hidden
+                engine.setupRemoteVideoEx(videoCanvas, connection: rtcSecondConnection)
+            }
+        }
+        ```
+
+3.  **Make `remoteView` visible to both classes**
+
+    In this example, you need both `ViewController` and `SecondChannelDelegate` to be able to set `remoteView` as its `UIView` when calling `setupRemoteVideo` or `setupRemoteVideoEx`. To do this, move the following declaration from `ViewController` to before `class ViewController: UIViewController {`:
+    ``` swift
+    var remoteView: UIView!
+    ```
+</PlatformWrapper>

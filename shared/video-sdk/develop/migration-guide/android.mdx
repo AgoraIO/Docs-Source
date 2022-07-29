@@ -1,0 +1,437 @@
+<PlatformWrapper platform="android">
+
+## Migration steps
+
+This section introduces the main steps to upgrade the SDK from v<Vg k="VSDK_PREVIOUS_RELEASE" /> to <Vg k="VSDK_RELEASE" />.
+
+1.  Integrate the SDK
+
+    See [Get started](../get-started/get-started-sdk) for more information about integrating the <Vg k="VSDK_RELEASE" /> SDK into your project.
+
+2.  Rename imported classes
+
+    After successfully integrating the SDK, you need to update the codes of imported classes from the `io.agora.rtc` prefix to the `io.agora.rtc2` prefix in the `/app/java/com.example.<projectname>/MainActivity` file of your project.
+
+    The file path of `ChannelMediaOptions.java` in the <Vg k="VSDK_RELEASE" /> SDK is also changed from `/models` to the root directory.
+
+3.  Update the Agora code in your app
+
+    The <Vg k="VSDK_RELEASE" /> SDK has optimized or modified the implementation of some functions, resulting in incompatibility with the v<Vg k="VSDK_PREVIOUS_RELEASE" /> SDK. In order to retain Agora functionality in your app, update the code in your app according to [What has changed](#what-has-changed).
+
+## What has changed
+
+This section introduces the main changes of <Vg k="VSDK_RELEASE" /> compared to v<Vg k="VSDK_PREVIOUS_RELEASE" /> in the following categories. You need to update the code of your app according to your business scenario.
+
+-   [Breaking changes](#breaking-changes): Introduces API compatibility changes that have a big impact. You need to spend significant time modifying the related implementation.
+
+-   [Behavior changes](#behavior-changes): Introduces changes caused by reasonable optimization of the SDK default behavior and API behavior. Less time is required to modify the related implementation, if any.
+
+-   [Function gaps](#function-gaps): Introduces functions that were supported in v<Vg k="VSDK_PREVIOUS_RELEASE" /> but are not supported in <Vg k="VSDK_RELEASE" />. However, these functions are intended to be added in a future release.
+
+-   [Removed APIs](#removed-apis): Introduces APIs that were supported in v<Vg k="VSDK_PREVIOUS_RELEASE" /> but removed in <Vg k="VSDK_RELEASE" />. Most of these APIs have alternatives in <Vg k="VSDK_RELEASE" />. Modifying the related implementation should require less time.
+
+-   [Naming and data type changes](#naming-and-data-type-changes): Introduces the naming and data type changes of the main APIs. You can update the relevant implementation according to the error message in the IDE, which is expected to take less time.
+
+## Breaking changes
+
+After upgrading from v<Vg k="VSDK_PREVIOUS_RELEASE" /> to <Vg k="VSDK_RELEASE" />, the way the APIs implement some functions is different. This section introduces compatibility changes for these APIs and the logic for updating the code of your app.
+
+### Multiple channels
+
+In v<Vg k="VSDK_PREVIOUS_RELEASE" />, the SDK provides the `RtcChannel` and `IRtcChannelEventHandler` classes to implement multi-channel control. The v<Vg k="VSDK_PREVIOUS_RELEASE" /> SDK supports subscribing to the audio and video streams of multiple channels, but only supports publishing one group of audio and video streams in one channel.
+
+<Vg k="VSDK_RELEASE" /> introduces the following changes:
+
+-   The SDK supports capturing or publishing multiple groups of audio and video streams at the same time. For example, simultaneously publishing video streams captured by multiple cameras or multiple screens.
+
+-   The SDK retains the following behavior of `RtcEngine`: you can call `joinChannel` (replacing `joinChannel` of the `RtcChannel` class in v<Vg k="VSDK_PREVIOUS_RELEASE" />) multiple times, and publish the specified stream to different channels through different user IDs (`localUid`) and `ChannelMediaOptions` settings.
+
+-   Added a binary group `RtcConnection` to represent the connection established by `joinChannel`. A connection is determined by the channel name (`channelId`) and `localUid`. You can control the publishing and subscribing state of different connections through `RtcConnection`. The SDK adds Ex in the name of all APIs with a `connection` parameter (corresponding to the `RtcConnection` class) to distinguish them, and gathers these APIs in the `IRtcEngineEx` class to implement more multi-stream functions.
+
+By setting `ChannelMediaOptions`, <Vg k="VSDK_RELEASE" /> supports using one `RtcEngine` instance to capture audio and video streams from multiple sources at the same time and publish them to the remote user, adapting to various business scenarios. For example:
+
+-   Simultaneously publish a media player stream, a screen-sharing stream, and a video stream captured by the front and rear cameras.
+
+-   Simultaneously publish one audio stream captured by the microphone and one by the custom audio source, and one media player steam.
+
+Combined with the multi-channel capability, you can also experience the following functions:
+
+-   Publish multiple groups of audio and video streams to the remote user through different `localUids`.
+
+-   Mix multiple audio streams and publish them to the remote user through one `localUid`.
+
+-   Mix multiple video streams and publish them to the remote user through one `localUid`.
+
+    `RtcChannel` and `RtcEngine` of v<Vg k="VSDK_PREVIOUS_RELEASE" /> are partially duplicated and overlap in their functionality, so <Vg k="VSDK_RELEASE" /> hides the `RtcChannel` and `IRtcChannelEventHandler` classes. See the [JoinMultiChannel](https://github.com/AgoraIO/API-Examples/tree/4.0.0-beta/windows/APIExample/APIExample/Advanced/MultiChannel) sample project for more details on how to replace `RtcChannel` with `joinChannel` and `ChannelMediaOptions`. The expected migration cost is one day or less.
+
+If you need to continue to use the `RtcChannel` and `IRtcChannelEventHandler` classes, contact [support@agora.io](mailto:support@agora.io). The decision whether to maintain compatibility in a future release is based on your feedback.
+
+### Media stream publishing control
+
+In v<Vg k="VSDK_PREVIOUS_RELEASE" />, the SDK uses the `publishLocalAudio` and `publishLocalVideo` members in `ChannelMediaOptions` to control the audio and video publishing state in the channel.
+
+In <Vg k="VSDK_RELEASE" />, the SDK gathers more channel-related settings into `ChannelMediaOptions`, including publishing of audio and video streams from different sources, automatic subscribing of audio and video streams, user role switching, token updating, and default dual stream options. You can determine the media stream publishing and subscribing behavior by calling `joinChannel` or `joinChannelEx` when joining a channel, or you can flexibly update the media options by calling `updateChannelMediaOptions` after joining a channel, such as switching video sources.
+
+See the [JoinChannelVideo](https://github.com/AgoraIO/API-Examples/tree/4.0.0-beta/Android/APIExample/app/src/main/java/io/agora/api/example/examples/basic/JoinChannelVideo.java) sample project to update the code in your app.
+
+### Custom video source and renderer
+
+In v<Vg k="VSDK_PREVIOUS_RELEASE" />, the SDK provides the following ways to implement the custom video source and renderer:
+
+-   Push mode for custom video source
+
+-   Raw video data mode for custom video renderer
+
+-   MediaIO mode (`IVideoSource`) for custom video source
+
+-   MediaIO mode (`IVideoSink`) for custom video renderer
+
+<Vg k="VSDK_RELEASE" /> unifies the audio and video processing pipeline internally. Push mode and raw video data mode are simpler for integration, so Agora recommends using them for custom video source and renderer and removes the following related APIs of the MediaIO mode:
+
+-   `IVideoSource`
+
+-   `IVideoSink`
+
+-   `IVideoFrameConsumer`
+
+-   `setVideoSource`
+
+-   `setLocalVideoRenderer`
+
+-   `setRemoteVideoRenderer`
+
+If you use the MediaIO mode in v<Vg k="VSDK_PREVIOUS_RELEASE" /> to implement custom video source, custom video renderer, switching video source, and other functions, Agora recommends updating the code of your app by referring to the following sample projects:
+
+-   Custom video source: [CustomVideoSourcePush](https://github.com/AgoraIO/API-Examples/tree/4.0.0-beta/windows/APIExample/APIExample/Advanced/CustomVideoCapture)
+
+-   Custom video renderer: [CustomVideoRender](https://github.com/AgoraIO/API-Examples/tree/4.0.0-beta/Android/APIExample/app/src/main/java/io/agora/api/example/examples/advanced/CustomRemoteVideoRender.java)
+
+-   Switching video source: [ScreenShare](https://github.com/AgoraIO/API-Examples/tree/4.0.0-beta/windows/APIExample/APIExample/Advanced/ScreenShare)
+
+### Error codes and warning codes
+
+In v<Vg k="VSDK_PREVIOUS_RELEASE" />, the SDK returns error codes and warning codes through the `onError` and `onWarning` callbacks.
+
+To facilitate locating and troubleshooting issues, <Vg k="VSDK_RELEASE" /> reports problems and causes through the return values of APIs or different callbacks for listening to states. For example:
+
+-   `getConnectionState`: Reports the network connection state.
+
+-   `onLocalAudioStateChanged`: Reports the local audio state.
+
+-   `onLocalVideoStateChanged`: Reports the local video state.
+
+-   `onRemoteAudioStateChanged`: Reports the remote audio state.
+
+-   `onRemoteVideoStateChanged`: Reports the remote video state.
+
+As a consequence, <Vg k="VSDK_RELEASE" /> removes the `onError` and `onWarning` callbacks.
+
+## Behavior changes
+
+This section introduces changes caused by reasonable optimization of the SDK default behavior and API behavior.
+
+### Channel profile
+
+In v<Vg k="VSDK_PREVIOUS_RELEASE" />, the default channel profile is `CHANNEL_PROFILE_COMMUNICATION` (the communication profile).
+
+Because the interactive live streaming profile supports seamless switching from one-to-one calls to multi-user interaction, since v3.0.0, Agora has changed the internal transmission protocol and the ability to resist poor network conditions in the communication profile to be consistent with the interactive live streaming profile. In <Vg k="VSDK_RELEASE" />, Agora also changed the default channel profile to `CHANNEL_PROFILE_LIVE_BROADCASTING` (the interactive live streaming profile).
+
+### Network quality callback
+
+In v<Vg k="VSDK_PREVIOUS_RELEASE" />, if the `uid` parameter returned in `onNetworkQuality` is `0`, the callback reports the network quality of the local user. In <Vg k="VSDK_RELEASE" />, the `uid` of the local user returned in this callback is the same as the local user’s actual `uid` in the channel.
+
+### Default log file
+
+In v<Vg k="VSDK_PREVIOUS_RELEASE" />, when the SDK creates multiple log files, the earlier files are named in a agorasdk\_x.log format, such as agorasdk\_1.log. <Vg k="VSDK_RELEASE" /> modified the naming format to agorasdk.x.log, such as agorasdk.1.log. Additionally, <Vg k="VSDK_RELEASE" /> adds the agoraapi.log file to record API logs.
+
+### Fast channel switching
+
+In v<Vg k="VSDK_PREVIOUS_RELEASE" />, you need to call `switchChannel` to quickly switch a channel.
+
+In <Vg k="VSDK_RELEASE" />, you can achieve the same switching speed as `switchChannel` in v<Vg k="VSDK_PREVIOUS_RELEASE" /> by switching a channel through `leaveChannel` and `joinChannel`. Therefore, <Vg k="VSDK_RELEASE" /> removes `switchChannel`. If you call `switchChannel` to quickly switch a channel in v<Vg k="VSDK_PREVIOUS_RELEASE" />, see the [VideoQuickSwitch](https://github.com/AgoraIO/API-Examples/tree/4.0.0-beta/Android/APIExample/app/src/main/java/io/agora/api/example/examples/advanced/VideoQuickSwitch.java) sample project to update the code in your app.
+
+## Function gaps
+
+This section introduces functions that were supported in v<Vg k="VSDK_PREVIOUS_RELEASE" /> but are no longer supported or behave inconsistently in <Vg k="VSDK_RELEASE" />. Plans exist to support them or make them consistent in a future release, however.
+
+### Audio application scenarios.
+
+<Vg k="VSDK_RELEASEVSDK_RELEASE" /> reconstructs the audio application scenarios, which can replace most of the audio application scenarios of v<Vg k="VSDK_PREVIOUS_RELEASE" />. The following table shows the correspondence of audio application scenarios in the two releases:
+
+| v<Vg k="VSDK_PREVIOUS_RELEASE" />              | <Vg k="VSDK_RELEASE" />                                                     |
+|-----------------------------------------|---------------------------------------------------------------------|
+| `AUDIO_SCENARIO_DEFAULT`                | `AUDIO_SCENARIO_DEFAULT`                                            |
+| `AUDIO_SCENARIO_CHATROOM_ENTERTAINMENT` | `AUDIO_SCENARIO_CHATROOM`                                           |
+| `AUDIO_SCENARIO_EDUCATION`              | `AUDIO_SCENARIO_DEFAULT`                                            |
+| `AUDIO_SCENARIO_GAME_STREAMING`         | `AUDIO_SCENARIO_GAME_STREAMING` or `AUDIO_SCENARIO_HIGH_DEFINITION` |
+| `AUDIO_SCENARIO_SHOWROOM`               | `AUDIO_SCENARIO_DEFAULT`                                            |
+| `AUDIO_SCENARIO_CHATROOM_GAMING`        | `AUDIO_SCENARIO_CHATROOM`                                           |
+| `AUDIO_SCENARIO_IOT`                    | `AUDIO_SCENARIO_DEFAULT`                                            |
+| `AUDIO_SCENARIO_MEETING`                | None                                                                |
+
+### Audio route
+
+The following table shows the differences in the behavior of APIs related to the audio route between v<Vg k="VSDK_PREVIOUS_RELEASE" /> and <Vg k="VSDK_RELEASEVSDK_RELEASE" />:
+
+<table>
+    <colgroup>
+        <col/>
+        <col/>
+        <col/>
+    </colgroup>
+    <thead>
+    <tr>
+        <th>API</th>
+        <th>v3.x</th>
+        <th>v4.x</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="odd">
+        <td><p><code>setDefaultAudioRouteToSpeakerphone</code></p></td>
+        <td><ul>
+            <li><p>You can only set the audio route before joining a channel.</p></li>
+            <li><p>This method only controls the initial state of the audio route and does not change the default audio route of the system. For example, regardless of whether you set the parameter of <code>setDefaultAudioRouteToSpeakerphone</code> to <code>true</code> or <code>false</code>, calling <code>setEnableSpeakerphone(false)</code> changes the audio route to the earpiece.&lt;/li&gt;</p></li>
+        </ul></td>
+        <td><ul>
+            <li><p>You can set the audio route either before or after joining a channel.</p></li>
+            <li><p>This method is a steady API and can change the default audio route of the system. For example, after calling <code>setDefaultAudioRouteToSpeakerphone(true)</code> to set the initial audio route to the speakerphone, calling <code>setEnableSpeakerphone(false)</code> cannot change the audio route to the earpiece.&lt;/li&gt;</p></li>
+        </ul></td>
+    </tr>
+    <tr class="even">
+        <td><p><code>setEnableSpeakerphone</code></p></td>
+        <td><p>After connecting external playback devices such as Bluetooth and wired headphones, calling <code>setEnableSpeakerphone</code> cannot switch the audio route to the speakerphone or earpiece.</p></td>
+        <td><p>Not recommended.</p></td>
+    </tr>
+    </tbody>
+</table>
+Also, when an external playback device is removed, for example, by disconnecting the Bluetooth headset, the audio route change is different between v3.5.0 and <Vg k="VSDK_RELEASE" />:
+
+-   In v<Vg k="VSDK_PREVIOUS_RELEASE" />, the audio route changes as follows (in terms of priority): The external device connected next to last (if any) &gt; … &gt; The external device connected first &gt; `setEnableSpeakerphone` &gt; `setDefaultAudioRoutetoSpeakerphone` &gt; The default audio route.
+
+-   In <Vg k="VSDK_RELEASE" />, the audio route changes as follows (in terms of priority): The external device connected next to last (if any) &gt; … &gt; The external device connected first &gt; `setDefaultAudioRoutetoSpeakerphone` &gt; The default audio route.
+
+### Default video bitrate
+
+In v<Vg k="VSDK_PREVIOUS_RELEASE" />, if you set the video bitrate in VideoEncoderConfiguration as `STANDARD_BITRATE`, the default video bitrate in the `CHANNEL_PROFILE_LIVE_BROADCASTING` profile is twice that of the `CHANNEL_PROFILE_COMMUNICATION` profile.
+
+In <Vg k="VSDK_RELEASE" />, the video bitrate in the `CHANNEL_PROFILE_COMMUNICATION` profile is the same as that in the `CHANNEL_PROFILE_LIVE_BROADCASTING` profile, which means the video bitrate in the `CHANNEL_PROFILE_COMMUNICATION` profile is doubled.
+
+### Virtual background
+
+<Vg k="VSDK_RELEASE" /> modifies the calling logic of enableVirtualBackground. Before calling enableVirtualBackground, you need to do the following:
+
+1.  Call `addExtension(agora_segmentation_extension)` during `RtcEngine` initialization to specify the extension’s library path.
+
+2.  Call `enableExtension("agora_segmentation", "PortraitSegmentation", "true")` to enable the extension.
+
+3.  Call `enableVideo` to enable the video module.
+
+See the [VideoProcessExtension](https://github.com/AgoraIO/API-Examples/tree/4.0.0-beta/Android/APIExample/app/src/main/java/io/agora/api/example/examples/advanced/VideoProcessExtension.java) sample project to update the code in your app.
+
+### Image enhancement
+
+<Vg k="VSDK_RELEASE" /> modifies the calling logic of `setBeautyEffectOptions`. Before calling `setBeautyEffectOptions`, you need to do the following:
+
+1.  Call `addExtension(agora_video_process)` during `RtcEngine` initialization to specify the extension’s library path.
+
+2.  Call `enableExtension (agora, beauty, true)` to enable the extension.
+
+3.  Call `enableVideo` to enable the video module.
+
+See the [VideoProcessExtension](https://github.com/AgoraIO/API-Examples/tree/4.0.0-beta/Android/APIExample/app/src/main/java/io/agora/api/example/examples/advanced/VideoProcessExtension.java) sample project to update the code in your app.
+
+### Unsupported functions
+
+Compared to v<Vg k="VSDK_PREVIOUS_RELEASE" />, some features are not supported or only partially supported in <Vg k="VSDK_RELEASE" />. This section shows the APIs currently unsupported but for which support is planned for a future release.
+
+Remote video stream fallback:
+
+-   `setRemoteUserPriority`
+
+-   `setRemoteSubscribeFallbackOption`
+
+-   `onRemoteSubscribeFallbackToAudioOnly`
+
+Raw audio data:
+
+-   `getObservedAudioFramePosition`
+
+-   `getRecordAudioParams`
+
+-   `getMixedAudioParams`
+
+-   `getPlaybackAudioParams`
+
+Raw video data:
+
+-   `getVideoFormatPreference`
+
+Audio and video statistics:
+
+-   `qualityChangedReason` member in `RemoteAudioStats`
+
+-   `captureBrightnessLevel` member in `LocalVideoStats`
+
+Network type:
+
+-   `NETWORK_TYPE_MOBILE_5G` in `AgoraNetworkType`
+
+Audio and video errors:
+
+-   `LOCAL_VIDEO_STREAM_ERROR_DEVICE_NOT_FOUND(8)`
+
+Selecting the playback track of the audio file:
+
+-   `selectAudioTrack`
+
+Pre-call network test: Before supporting the following APIs, you can use `startLastmileProbeTest` and `stopLastmileProbeTest` instead.
+
+-   `enableLastmileTest`
+
+-   `disableLastmileTest`
+
+Call loop test:
+
+-   `startEchoTest` (with the `config` parameter)
+
+Screen sharing:
+
+-   `startScreenCaptureByDisplayId`
+
+-   `onScreenCaptureInfoUpdated`
+
+Audio recording on the client:
+
+-   `recordingChannel` in `AudioRecordingConfiguration`
+
+-   `AgoraMediaRecorder`
+
+-   `getMediaRecorder`
+
+-   `startRecording`
+
+-   `stopRecording`
+
+-   `releaseRecorder`
+
+-   `onRecorderStateChanged`
+
+-   `onRecorderInfoUpdated`
+
+Wi-Fi acceleration:
+
+-   `enableWirelessAccelerate`
+
+-   `onWlAccMessage`
+
+-   `onWlAccStats`
+
+Video content inspection:
+
+-   `enableContentInspect`
+
+-   `onContentInspectResult`
+
+Cloud proxy connection state:
+
+-   `onProxyConnected`
+
+External audio data:
+
+-   `pushExternalAudioFrame` (with the `sourcePos` parameter)
+
+-   `setExternalAudioSourceVolume`
+
+
+## Removed APIs
+
+The <Vg k="VSDK_RELEASE" /> removes deprecated or unrecommended APIs. Alternatives to the removed API or reasons for their removal are shown as follows:
+
+-   `setVideoDenoiserOptions`, `setLowlightEnhanceOptions`, and `setColorEnhanceOptions`: Use `setExtensionProperty` instead.
+
+-   `onvirtualBackgroundSourceEnabled`: Use the return value of `enableVirtualBackground` instead.
+
+-   `onUserSuperResolutionEnabled`: Use the `RemoteVideoStats` member of the `superResolutionType` class instead.
+
+-   `setAudioMixingPlaybackSpeed`: Use `setPlaybackSpeed` instead.
+
+-   `setAudioMixingDualMonoMode`: Use `setAudioDualMonoMode` instead.
+
+-   `getEffectCurrentPosition`: Use `getPosition` instead.
+
+-   `setEffectPosition`: Use `seek` instead.
+
+-   `getEffectDuration`：Use `getDuration` instead.
+
+-   `setAgoraLibPath`: Use the `mNativeLibPath` member in `RtcEngineConfig` instead when calling `create` [2/2].
+
+-   `getAudioFileInfo` and `onRequestAudioFileInfo`：Use `getDuration` instead.
+
+-   `onFirstLocalAudioFrame`：Use `onFirstLocalAudioFramePublished` instead.
+
+-   `getRecordAudioParams`：Use `setRecordingAudioFrameParameters` instead.
+
+-   `getMixedAudioParams`：Use `setMixedAudioFrameParameters` instead.
+
+-   `getPlaybackAudioParams`：Use `setPlaybackAudioFrameParameters` instead.
+
+-   The `pushMode` parameter in `setExternalVideoSource`: The default value of this parameter is `true`, and this parameter only takes effect when it is set to `true`. After deletion, it does not affect the function.
+
+-   `setLocalPublishFallbackOption` and `onLocalPublishFallbackToAudioOnly`: Rarely used in v<Vg k="VSDK_PREVIOUS_RELEASE" />.
+
+-   `RENDER_MODE_FILL(4)` in `RENDER_MODE_TYPE`: This mode might cause image overstretch and is not recommended.
+
+-   The following enumerations of audio mixing: Rarely used in v<Vg k="VSDK_PREVIOUS_RELEASE" />.
+
+-   `AUDIO_MIXING_REASON_STARTED_BY_USER`
+
+-   `AUDIO_MIXING_REASON_ONE_LOOP_COMPLETED`
+
+-   `AUDIO_MIXING_REASON_START_NEW_LOOP`
+
+-   `AUDIO_MIXING_REASON_ALL_LOOPS_COMPLETED`
+
+-   `AUDIO_MIXING_REASON_STOPPED_BY_USER`
+
+-   `AUDIO_MIXING_REASON_PAUSED_BY_USER`
+
+-   `AUDIO_MIXING_REASON_RESUMED_BY_USER`
+
+-   `onAudioMixingFinished`: Rarely used in v<Vg k="VSDK_PREVIOUS_RELEASE" />.
+
+-   The `info` parameter in `joinChannel` [2/2]: This parameter is optional and rarely used in v<Vg k="VSDK_PREVIOUS_RELEASE" />.
+
+-   `enableDeepLearningDenoise`: The SDK will add deep-learning noise reduction as one of its capability in a future release instead of implementing through an API.
+
+## Naming and data type changes
+
+The naming and data type changes in <Vg k="VSDK_RELEASE" /> cause error messages in the IDE when you compile your project, and you need to update the code of your app according to each error message.
+
+### Naming changes
+
+The main API and parameter name changes are as follows:
+
+-   `adjustLoopbackRecordingSignalVolume` is changed to `adjustLoopbackRecordingVolume`.
+
+-   The `fileSize` member in `LogConfig` is renamed to `fileSizeInKB`.
+
+-   The `options` parameter in `joinChannel`[2/2] is changed to `mediaOptions`.
+
+-   The `report_vad` parameter in enableAudioVolumeIndication is changed to `reportVad`.
+
+-   `registerVideoEncodedFrameObserver` is changed to `registerVideoEncodedImageReceiver`.
+
+### Data type changes
+
+The main API data type changes are as follows:
+
+-   The `state` and `reason` parameters in `onRemoteAudioStateChanged` are changed from integer to enumeration.
+
+-   The `oldState` and `newState` parameters in `onAudioPublishStateChanged`, `onVideoPublishStateChanged`, `onAudioSubscribeStateChanged`, and `onVideoSubscribeStateChanged` are changed from integer to enumeration.
+
+-   The `state` and `error` parameters in `onLocalAudioStateChanged` are changed from integer to enumeration.
+
+-   The `state` and `error` parameters in `onRtmpStreamingStateChanged` are changed from integer to enumeration
+
+</PlatformWrapper>

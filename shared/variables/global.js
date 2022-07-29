@@ -25,6 +25,7 @@ export const PLATFORM = 'dummy';
 
 export const VIDEO = 'Video Calling';
 export const AUDIO = 'Voice Calling';
+export const ASDK = 'Voice SDK';
 export const ILS = 'Interactive Live Streaming';
 export const ILSS = 'Interactive Live Streaming Standard';
 export const ILSP = 'Interactive Live Streaming Premium';

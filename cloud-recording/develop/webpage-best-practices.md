@@ -50,4 +50,4 @@ Agora recommends that you use the detection logic of the page to be recorded to 
 
 ### Use the web_recorder_stopped callback to detect abnormal recording stoppages 
 
-Open the message notification service, and subscribe to the [`71 web_recorder_stopped`](../reference/rest-api/rest-api-overview#a-name71a71-web_recorder_stopped) callback event. When the business server receives the `web_recorder_stopped` callback and the code is not `0`, it means that the web page recording has stopped abnormally. Agora recommends that you restart the recording process and create a new recording.
+Open the message notification service, and subscribe to the [`71 web_recorder_stopped`](../reference/rest-api/rest-api-overview#71-web_recorder_stopped-web_recorder_stopped) callback event. When the business server receives the `web_recorder_stopped` callback and the code is not `0`, it means that the web page recording has stopped abnormally. Agora recommends that you restart the recording process and create a new recording.

@@ -69,7 +69,7 @@ For scenarios requiring high security, to guarantee the confidentiality, integri
 
 **Push media stream to the CDN during a web page recording**
 
-Adds support for converting the content and audio of a web page into a media stream and pushing it to the CDN during the web page recording. See the [`start`](../reference/rest-api/rest" >}}?platform=RESTful#start-start-cloud-recording), [`update`](../reference/rest-api/update) and [`query`](../reference/rest-api/rest" >}}?platform=RESTful#query-query-the-recording-status) methods of the Agora Cloud Recording RESTful API for details.
+Adds support for converting the content and audio of a web page into a media stream and pushing it to the CDN during the web page recording. See the [`start`](../reference/rest-api/start), [`update`](../reference/rest-api/update) and [`query`](../reference/rest-api/query) methods of the Agora Cloud Recording RESTful API for details.
 
 **Third-party cloud storage**
 
@@ -110,7 +110,7 @@ In order to ensure the validity and completeness of page recording, this version
 
 **Pause the page recording**
 
-This release adds the `onhold` parameter to the [`start`](../reference/rest-api/start#start-start-cloud-recording) and [`update`](../reference/rest-api/update) methods, which is used to pause the recording when the web page recording starts or is in progress.
+This release adds the `onhold` parameter to the [`start`](../reference/rest-api/start#extension-service-configuration) and [`update`](../reference/rest-api/updateupdate-update-the-cloud-recording) methods, which is used to pause the recording when the web page recording starts or is in progress.
 
 **Capture screenshots and recording in a recording process**
 
@@ -118,7 +118,7 @@ This release adds support for recording and taking screenshots in a recording pr
 
 #### Improvements 
 
-- [`The web_recorder_stopped`](../reference/rest-api/rest-api-overview#a-name71a71-web_recorder_stopped) callback adds error codes and error messages to indicate the reason for the abnormal stop of the web page recording. You can take corresponding measures based on the information.
+- [`The web_recorder_stopped`](../reference/rest-api/rest-api-overview#71-web_recorder_stopped-web_recorder_stopped) callback adds error codes and error messages to indicate the reason for the abnormal stop of the web page recording. You can take corresponding measures based on the information.
 - The [`update`](../reference/rest-api/update) method adds the `webRecordingConfig` parameter, which is used to update related parameters during a web page recording.
 
 ## 2021.07.30
@@ -181,8 +181,8 @@ Fixed security issues caused by vulnerabilities in Chrome V8.
 #### API changes
 
 - Adds the `region` parameter in the [`acquire`](../reference/rest-api/rest" >}}?platform=RESTful#a-nameacquireaget-a-resource-id) method.
-- Adds `recorderStartTime` in the [`web_recorder_started`](../reference/rest-api/rest-api-overview#a-name70a70-web_recorder_started) callback.
-- Adds the [`web_recorder_reload`](../reference/rest-api/rest-api-overview#a-name73a73-web_recorder_reload) callback.
+- Adds `recorderStartTime` in the [`web_recorder_started`](../reference/rest-api/rest-api-overview#70-web_recorder_started-web_recorder_started) callback.
+- Adds the [`web_recorder_reload`](../reference/rest-api/rest-api-overview#73-web_recorder_reload) callback.
 
 ## 2021.04.29
 
@@ -210,7 +210,7 @@ From this release, the recording service automatically detects and resolves the 
 **API changes**
 
 - Adds enumerators `5` and `6` for `decryptionMode` in the [`start`](../reference/rest-api/start#start) method.
-- Adds the `fileList` field in the [`uploaded`](../reference/rest-api/rest-api-overview#31) and [`backuped`](../reference/rest-api/rest-api-overview#32) callbacks.
+- Adds the `fileList` field in the [`uploaded`](../reference/rest-api/rest-api-overview#31-uploaded) and [`backuped`](../reference/rest-api/rest-api-overview#32-backuped) callbacks.
 
 ## 2021.03.31
 
@@ -236,7 +236,7 @@ In composite recording mode, you can set the background image for both the video
 
 - Adds the `backgroundImage`, `defaultUserBackgroundImage` and `backgroundConfig` fields in the `transcodingConfig` parameter of the [`start`](../reference/rest-api/start#start) method.
 - Adds the `backgroundImage`, `defaultUserBackgroundImage` and `backgroundConfig` fields in the `clientRequest` parameter of the [`updateLayout`](../reference/rest-api/start#updateLayout) method.
-- Adds the `fileList` field in the [`web_recorder_stopped`](../reference/rest-api/rest-api-overview#71) callback.
+- Adds the `fileList` field in the [`web_recorder_stopped`](../reference/rest-api/rest-api-overview#71-web_recorder_stopped) callback.
 
 ## 2021.02.05
 This release raises the maximum resolution of video sources for [web page recording](../develop/webpage-mode). The recorded web page can now contain video that has a resolution of up to of 1920 × 1080. 
@@ -254,9 +254,9 @@ Adds [web page recording](../develop/webpage-mode) mode. In this mode, the conte
 - Adds `scene` as a new parameter in the `acquire `method for setting the application of the cloud recording resources.
 - Adds `"web_recorder_service"` as an extension service in the `extensionServiceConfig` parameter of the [`start`](../reference/rest-api/start#start) method.
 - Adds the following callbacks, which report the status of web page recording:
-  - [`web_recorder_started`](../reference/rest-api/rest-api-overview#70)
-  - [`web_recorder_stopped`](../reference/rest-api/rest-api-overview#71)
-  - [`web_recorder_capability_limit`](../reference/rest-api/rest-api-overview#72)
+  - [`web_recorder_started`](../reference/rest-api/rest-api-overview#70-web_recorder_started)
+  - [`web_recorder_stopped`](../reference/rest-api/rest-api-overview#71-web_recorder_stopped)
+  - [`web_recorder_capability_limit`](../reference/rest-api/rest-api-overview#72-web_recorder_capability_limit)
   
 ## 2020.09.16
 
@@ -276,7 +276,7 @@ In composite recording mode, you can now upload recorded files to [ApsaraVideo f
 
 **API changes**
 - [`start`](../reference/rest-api/start) adds the `extensionServiceConfig` parameter for specifying the configurations of ApsaraVideo for VoD. 
-- Adds the [`vod_started`](../reference/rest-api/rest-api-overview#60) and the [`vod_triggered`](../reference/rest-api/rest-api-overview#61) callbacks, which report the status of uploading recorded files to ApsaraVideo for VoD.
+- Adds the [`vod_started`](../reference/rest-api/rest-api-overview#60-vod_started) and the [`vod_triggered`](../reference/rest-api/rest-api-overview#61-vod_triggered) callbacks, which report the status of uploading recorded files to ApsaraVideo for VoD.
 
 
 ## 2020.06.12
@@ -289,7 +289,7 @@ This release provides a more flexible user ID subscription feature, enabling you
 
 #### Callback for high availability
 
-This release adds the [`session_failover`](../reference/rest-api/rest-api-overview#12) event, which occurs when the high availability mechanism is enabled and reports the new recording user ID.
+This release adds the [`session_failover`](../reference/rest-api/rest-api-overview#12-session_failover) event, which occurs when the high availability mechanism is enabled and reports the new recording user ID.
 
 **API changes**
 
@@ -352,7 +352,7 @@ You can achieve synchronized playback between the recorded files and other strea
 
 **Improvement**
 
-When an error occurs, you receive the error message in the HTTP response body, instead of just the error code. See [Agora Cloud Recording RESTful API](../reference/rest-api/rest-api-overview#a-nameclouderraerror-codes-for-the-agora-cloud-recording-service) for detailed information about the error codes.
+When an error occurs, you receive the error message in the HTTP response body, instead of just the error code. See [Agora Cloud Recording RESTful API](../reference/rest-api/rest-api-overview#error-codes-for-the-agora-cloud-recording-service) for detailed information about the error codes.
 
 **Fixed issue**
 

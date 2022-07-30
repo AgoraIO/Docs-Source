@@ -50,10 +50,10 @@ The related fields of the Agora Cloud Recording callback events are listed below
 | [3](#3)   | 0 (cloud recording service)   | The status of the Agora Cloud Recording service changes.     |
 | [4](#4)   | 0 (cloud recording service)   | The M3U8 playlist file is generated.                         |
 | [11](#11)   | 0 (cloud recording service)   | The cloud recording service has ended its tasks and exited.                    |
-| [12](#12)   | 0 (cloud recording service)   | The cloud recording service has enabled the [high availability mechanism](../understand/product-overview#features).                    |
+| [12](#12-session_failover)   | 0 (cloud recording service)   | The cloud recording service has enabled the [high availability mechanism](../understand/product-overview#features).                    |
 | [30](#30) | 2 (uploader module)           | The upload service starts.                                   |
-| [31](#31) | 2 (uploader module)           | All the recorded files are uploaded to the specified third-party cloud storage. |
-| [32](#32) | 2 (uploader module)           | All the recorded files are uploaded, but at least one file is uploaded to Agora Cloud Backup. |
+| [31](#31-uploaded) | 2 (uploader module)           | All the recorded files are uploaded to the specified third-party cloud storage. |
+| [32](#32-backuped) | 2 (uploader module)           | All the recorded files are uploaded, but at least one file is uploaded to Agora Cloud Backup. |
 | [33](#33) | 2 (uploader module)           | The progress of uploading the recorded files to the cloud storage. |
 | [40](#40) | 1 (recorder module)           | The recording starts.                                        |
 | [41](#41) | 1 (recorder module)           | The recording exits.                                         |
@@ -61,11 +61,11 @@ The related fields of the Agora Cloud Recording callback events are listed below
 | [43](#43) | 1 (recorder module)           | The state of the audio stream changes. |
 | [44](#44) | 1 (recorder module)           | The state of the video stream changes. |
 | [45](#45) | 1 (recorder module)           | The screenshot is captured successfully. |
-| [60](#60) | 4 (extension services)           | The uploader for ApsaraVideo for VoD has started and successfully acquired the upload credential.|
-| [61](#61) | 4 (extension services)         | All recorded files have been uploaded to ApsaraVideo for VoD. |
-| [70](#70) | 6 (web page recording module) | Web page recording starts.  |
-| [71](#71) | 6 (web page recording module) | Web page recording stops.   |
-| [72](#72) | 6 (web page recording module) | The web page to record uses a feature that is unsupported by web page recording. The recording service will stop immediately. |
+| [60](#60-vod_started) | 4 (extension services)           | The uploader for ApsaraVideo for VoD has started and successfully acquired the upload credential.|
+| [61](#61-vod_triggered) | 4 (extension services)         | All recorded files have been uploaded to ApsaraVideo for VoD. |
+| [70](#70-web_recorder_started) | 6 (web page recording module) | Web page recording starts.  |
+| [71](#71-web_recorder_stopped) | 6 (web page recording module) | Web page recording stops.   |
+| [72](#72-web_recorder_capability_limit) | 6 (web page recording module) | The web page to record uses a feature that is unsupported by web page recording. The recording service will stop immediately. |
 | [73](#73) | 6 (web page recording module) |The web page reloads. |
 | [90](#90) | 	8（download module） |The recording service fails to download the recorded files.|
 | [100](#100) | 	6（web page recording module） |The CDN streaming status of the web page recording changes.|

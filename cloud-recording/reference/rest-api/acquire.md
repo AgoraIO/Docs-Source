@@ -22,7 +22,7 @@ The following parameter is required in the URL.
 
 | Parameter | Type   | Description                                                  |
 | :-------- | :----- | :----------------------------------------------------------- |
-| `appid`   | String |  Your [App ID](../manage-agora-account#_get_the_app_id)。<ul><li>In web page recording mode: Use the App ID for which the cloud recording service has been enabled.</li><li>In other modes: Use the same App ID as the channel to be recorded. Ensure that the cloud recording service has been enabled for this App ID.</li></ul>  |
+| `appid`   | String |  Your [App ID](../manage-agora-account#get-the-app-id)。<ul><li>In web page recording mode: Use the App ID for which the cloud recording service has been enabled.</li><li>In other modes: Use the same App ID as the channel to be recorded. Ensure that the cloud recording service has been enabled for this App ID.</li></ul>  |
 
 The following parameters are required in the request body.
 

@@ -33,7 +33,7 @@ The Agora Cloud Recording Service provides the following predefined layout types
 
 ### Implementation
 
-Set the `mixedVideoLayout` parameter in `transcodingConfig` as 0 (floating layout), 1 (best fit layout), or 2 (vertical layout) when calling the [`start`](../reference/rest-api/start) or [`updateLayout`](../reference/rest-api/rest#updateLayout) method.
+Set the `mixedVideoLayout` parameter in `transcodingConfig` as 0 (floating layout), 1 (best fit layout), or 2 (vertical layout) when calling the [`start`](../reference/rest-api/start) or [`updateLayout`](../reference/rest-api/update#updatelayout-update-the-video-mixing-layout) method.
 
 > If you set the `mixedVideoLayout` parameter as 0, 1, or 2, do not pass in the `layoutConfig` parameter.
 
@@ -90,7 +90,7 @@ In this layout, one large region is displayed on the left edge of the screen, an
 
 Therefore, when you start cloud recording, you must specify a uid, whose region is displayed on the left edge of the screen in a large size.  
 
-To specify a uid, set the `maxResolutionUid` parameter when calling the [`start`](../reference/rest-api/start) or [`updateLayout`](../reference/rest-api/rest#updateLayout) method.
+To specify a uid, set the `maxResolutionUid` parameter when calling the [`start`](../reference/rest-api/start) or [`updateLayout`](../reference/rest-api/update#updatelayout-update-the-video-mixing-layout) method.
 
 Sample code:
 ```json
@@ -218,7 +218,7 @@ The following figure shows the layout of the sample code:
 
 #### Update the customized layout during a recording
 
-During a recording, you can call the [`updateLayout`](../reference/rest-api/rest#updateLayout) method to update the video mixing layout multiple times.
+During a recording, you can call the [`updateLayout`](../reference/rest-api/update#updatelayout-update-the-video-mixing-layout) method to update the video mixing layout multiple times.
 
 To update a customized layout, set the `mixedVideoLayout` parameter as 3 (customized layout), and populate `layoutConfig`.
 

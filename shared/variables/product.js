@@ -23,18 +23,27 @@ const data = {
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS_Beta'
 
   },
-    'analytics': {
-        NAME: 'Agora Analytics',
-        PATH: 'agora-analytics',
-        SDK: 'Agora Analytics',
-        PRODUCT: 'Agora Analytics'
-    },
-    'cloud-recording': {
-        NAME: 'Cloud Recording',
-        PATH: 'cloud-recording',
-        SDK: 'Cloud Recording',
-        PRODUCT: 'Cloud Recording'
-    }
+
+  'analytics': {
+      NAME: 'Agora Analytics',
+      PATH: 'agora-analytics',
+      SDK: 'Agora Analytics',
+      PRODUCT: 'Agora Analytics'
+  },
+
+  'cloud-recording': {
+      NAME: 'Cloud Recording',
+      PATH: 'cloud-recording',
+      SDK: 'Cloud Recording',
+      PRODUCT: 'Cloud Recording'
+  },
+
+  'signalling': {
+      NAME: 'Signalling',
+      PATH: 'signalling',
+      SDK: 'Signalling SDK',
+      PRODUCT: 'Signalling'
+  }
 };
 
 export default data;

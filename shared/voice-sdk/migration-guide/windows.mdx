@@ -1,0 +1,393 @@
+<PlatformWrapper platform="windows">
+        
+# Migration steps
+
+This section introduces the main steps to upgrade the SDK from v3.6.2 to v4.0.0 Beta.
+
+1.  Integrate the SDK
+
+    See [Get started]({rootdir}/get-started/get-started.xml) for more information about integrating the v4.0.0 Beta SDK into your project.
+
+2.  Update the Agora code in your app
+
+    The v4.0.0 Beta SDK has optimized or modified the implementation of some functions, resulting in incompatibility with the v3.6.2 SDK. In order to retain Agora functionality in your app, update the code in your app according to [???](#user-content-what-has-changed).
+
+# What has changed
+
+This section introduces the main changes of v4.0.0 Beta compared to v3.6.2 in the following categories. You need to update the code of your app according to your business scenario.
+
+-   Breaking changes: Introduces API compatibility changes that have a big impact. You need to spend significant time modifying the related implementation.
+
+-   Behavior changes: Introduces changes caused by reasonable optimization of the SDK default behavior and API behavior. Less time is required to modify the related implementation, if any.
+
+-   Function gaps: Introduces functions that were supported in v3.6.2 but are not supported in v4.0.0 Beta. However, these functions are intended to be added in a future release.
+
+-   Removed APIs: Introduces APIs that were supported in v3.6.2 but removed in v4.0.0 Beta. Most of these APIs have alternatives in v4.0.0 Beta. Modifying the related implementation should require less time.
+
+-   Naming and data type changes: Introduces the naming and data type changes of the main APIs. You can update the relevant implementation according to the error message in the IDE, which is expected to take less time.
+
+## Breaking changes
+
+After upgrading from v3.6.2 to v4.0.0 Beta, the way the APIs implement some functions is different. This section introduces compatibility changes for these APIs and the logic for updating the code of your app.
+
+### Multiple channels
+
+In v3.6.2, the SDK provides the `IChannel` and `IChannelEventHandler` classes to implement multi-channel control. The v3.6.2 SDK supports subscribing to the audio and video streams of multiple channels, but only supports publishing one group of audio and video streams in one channel.
+
+v4.0.0 Beta introduces the following changes:
+
+-   The SDK supports capturing or publishing multiple groups of audio and video streams at the same time. For example, simultaneously publishing video streams captured by multiple cameras or multiple screens.
+
+-   The SDK retains the following behavior of `IRtcEngine`: you can call `joinChannel` (replacing `joinChannel` of the `IChannel` class in v3.6.2) multiple times, and publish the specified stream to different channels through different user IDs (`localUid`) and `ChannelMediaOptions` settings.
+
+-   Added a binary group `RtcConnection` to represent the connection established by `joinChannel`. A connection is determined by the channel name (`channelId`) and `localUid`. You can control the publishing and subscribing state of different connections through `RtcConnection`. The SDK adds Ex in the name of all APIs with a `connection` parameter (corresponding to the `RtcConnection` class) to distinguish them, and gathers these APIs in the `IRtcEngineEx` class to implement more multi-stream functions.
+
+By setting `ChannelMediaOptions`, v4.0.0 Beta supports using one `IRtcEngine` instance to capture audio and video streams from multiple sources at the same time and publish them to the remote user, adapting to various business scenarios. For example:
+
+-   Simultaneously publish multiple video streams captured by multiple cameras or multiple screens.
+
+-   Simultaneously publish a media player stream, a screen-sharing stream, and a video stream captured by the camera.
+
+-   Simultaneously publish one audio stream captured by the microphone and one by the custom audio source, and one media player steam.
+
+Combined with the multi-channel capability, you can also experience the following functions:
+
+-   Publish multiple groups of audio and video streams to the remote user through different `localUids`.
+
+-   Mix multiple audio streams and publish them to the remote user through one `localUid`.
+
+-   Mix multiple video streams and publish them to the remote user through one `localUid`.
+
+`IChannel` and `IRtcEngine` of v3.6.2 are partially duplicated and overlap in their functionality, so v4.0.0 Beta hides the `IChannel` and `IChannelEventHandler` classes. See the [JoinMultiChannel](https://github.com/AgoraIO/API-Examples/tree/4.0.0-beta/windows/APIExample/APIExample/Advanced/MultiChannel) sample project for more details on how to replace `IChannel` with `joinChannel` and `ChannelMediaOptions`. The expected migration cost is one day or less.
+
+If you need to continue to use the `IChannel` and `IChannelEventHandler` classes, contact <support@agora.io>. The decision whether to maintain compatibility in a future release is based on your feedback.
+
+### Media stream publishing control
+
+In v3.6.2, the SDK uses the `publishLocalAudio` and `publishLocalVideo` members in `ChannelMediaOptions` to control the audio and video publishing state in the channel.
+
+In v4.0.0 Beta, the SDK gathers more channel-related settings into `ChannelMediaOptions`, including publishing of audio and video streams from different sources, automatic subscribing of audio and video streams, user role switching, token updating, and default dual stream options. You can determine the media stream publishing and subscribing behavior by calling `joinChannel` or `joinChannelEx` when joining a channel, or you can flexibly update the media options by calling `updateChannelMediaOptions` after joining a channel, such as switching video sources.
+
+See the [LiveBroadcasting](https://github.com/AgoraIO/API-Examples/tree/4.0.0-beta/windows/APIExample/APIExample/Basic/LiveBroadcasting) sample project to update the code in your app.
+
+### Custom video source and renderer
+
+In v3.6.2, the SDK provides the following ways to implement the custom video source and renderer:
+
+-   Push mode for custom video source
+
+-   Raw video data mode for custom video renderer
+
+-   MediaIO mode (`IVideoSource`) for custom video source
+
+-   MediaIO mode (`IVideoSink`) for custom video renderer
+
+v4.0.0 Beta unifies the audio and video processing pipeline internally. Push mode and raw video data mode are simpler for integration, so Agora recommends using them for custom video source and renderer and removes the following related APIs of the MediaIO mode:
+
+-   `IVideoSource`
+
+-   `IVideoSink`
+
+-   `IVideoFrameConsumer`
+
+-   `setVideoSource`
+
+-   `setLocalVideoRenderer`
+
+-   `setRemoteVideoRenderer`
+
+If you use the MediaIO mode in v3.6.2 to implement custom video source, custom video renderer, switching video source, and other functions, Agora recommends updating the code of your app by referring to the following sample projects:
+
+-   Custom video source/Custom video renderer: [CustomVideoCapture](https://github.com/AgoraIO/API-Examples/tree/4.0.0-beta/windows/APIExample/APIExample/Advanced/CustomVideoCapture)
+
+-   Switching video source: [ScreenCapture](https://github.com/AgoraIO/API-Examples/blob/4.0.0-beta/windows/APIExample/APIExample/Advanced/ScreenShare)
+
+### Error codes and warning codes
+
+In v3.6.2, the SDK returns error codes and warning codes through the `onError` and `onWarning` callbacks.
+
+To facilitate locating and troubleshooting issues, v4.0.0 Beta reports problems and causes through the return values of APIs or different callbacks for listening to states. For example:
+
+-   `getConnectionState`: Reports the network connection state.
+
+-   `onLocalAudioStateChanged`: Reports the local audio state.
+
+-   `onLocalVideoStateChanged`: Reports the local video state.
+
+-   `onRemoteAudioStateChanged`: Reports the remote audio state.
+
+-   `onRemoteVideoStateChanged`: Reports the remote video state.
+
+As a consequence, v4.0.0 Beta removes the `onError` and `onWarning` callbacks.
+
+## Behavior changes
+
+This section introduces changes caused by reasonable optimization of the SDK default behavior and API behavior.
+
+### Channel profile
+
+In v3.6.2, the default channel profile is `CHANNEL_PROFILE_COMMUNICATION` (the communication profile).
+
+Because the interactive live streaming profile supports seamless switching from one-to-one calls to multi-user interaction, since v3.0.0, Agora has changed the internal transmission protocol and the ability to resist poor network conditions in the communication profile to be consistent with the interactive live streaming profile. In v4.0.0 Beta, Agora also changed the default channel profile to `CHANNEL_PROFILE_LIVE_BROADCASTING` (the interactive live streaming profile).
+
+### Network quality callback
+
+In v3.6.2, if the `uid` parameter returned in `onNetworkQuality` is `0`, the callback reports the network quality of the local user. In v4.0.0 Beta, the `uid` of the local user returned in this callback is the same as the local user’s actual `uid` in the channel.
+
+### Default log file
+
+In v3.6.2, when the SDK creates multiple log files, the earlier files are named in a agorasdk\_x.log format, such as agorasdk\_1.log. v4.0.0 Beta modified the naming format to agorasdk.x.log, such as agorasdk.1.log. Additionally, v4.0.0 Beta adds the agoraapi.log file to record API logs.
+
+### Fast channel switching
+
+In v3.6.2, you need to call `switchChannel` to quickly switch a channel.
+
+In v4.0.0 Beta, you can achieve the same switching speed as `switchChannel` in v3.6.2 by switching a channel through `leaveChannel` and `joinChannel`. Therefore, v4.0.0 Beta removes `switchChannel`. If you call `switchChannel` to quickly switch a channel in v3.6.2, you need to call `leaveChannel` to leave the current channel and `joinChannel` to join the second channel instead.
+
+## Function gaps
+
+This section introduces functions that were supported in v3.6.2 but are no longer supported or behave inconsistently in v4.0.0 Beta. Plans exist to support them or make them consistent in a future release, however.
+
+### Audio application scenarios.
+
+v4.0.0 Beta reconstructs the audio application scenarios, which can replace most of the audio application scenarios of v3.6.2. The following table shows the correspondence of audio application scenarios in the two releases:
+
+| v3.6.2                                  | v4.0.0 Beta                                                         |
+|-----------------------------------------|---------------------------------------------------------------------|
+| `AUDIO_SCENARIO_DEFAULT`                | `AUDIO_SCENARIO_DEFAULT`                                            |
+| `AUDIO_SCENARIO_CHATROOM_ENTERTAINMENT` | `AUDIO_SCENARIO_CHATROOM`                                           |
+| `AUDIO_SCENARIO_EDUCATION`              | `AUDIO_SCENARIO_DEFAULT`                                            |
+| `AUDIO_SCENARIO_GAME_STREAMING`         | `AUDIO_SCENARIO_GAME_STREAMING` or `AUDIO_SCENARIO_HIGH_DEFINITION` |
+| `AUDIO_SCENARIO_SHOWROOM`               | `AUDIO_SCENARIO_DEFAULT`                                            |
+| `AUDIO_SCENARIO_CHATROOM_GAMING`        | `AUDIO_SCENARIO_CHATROOM`                                           |
+| `AUDIO_SCENARIO_IOT`                    | `AUDIO_SCENARIO_DEFAULT`                                            |
+| `AUDIO_SCENARIO_MEETING`                | None                                                                |
+
+### Default video bitrate
+
+In v3.6.2, if you set the video bitrate in VideoEncoderConfiguration as `STANDARD_BITRATE`, the default video bitrate in the `CHANNEL_PROFILE_LIVE_BROADCASTING` profile is twice that of the `CHANNEL_PROFILE_COMMUNICATION` profile.
+
+In v4.0.0 Beta, the video bitrate in the `CHANNEL_PROFILE_COMMUNICATION` profile is the same as that in the `CHANNEL_PROFILE_LIVE_BROADCASTING` profile, which means the video bitrate in the `CHANNEL_PROFILE_COMMUNICATION` profile is doubled.
+
+### Virtual background
+
+v4.0.0 Beta modifies the calling logic of enableVirtualBackground. Before calling enableVirtualBackground, you need to do the following:
+
+1.  Call `loadExtensionProvider`(libagora\_segmentation\_extension.dll) during `IRtcEngine` initialization to specify the extension’s library path.
+
+2.  Call `enableExtension`(agora\_segmentation, PortraitSegmentation, true) to enable the extension.
+
+3.  Call `enableVideo` to enable the video module.
+
+See the [Beauty](https://github.com/AgoraIO/API-Examples/tree/4.0.0-beta/windows/APIExample/APIExample/Advanced/Beauty) sample project to update the code in your app.
+
+### Image enhancement
+
+v4.0.0 Beta modifies the calling logic of `setBeautyEffectOptions`. Before calling `setBeautyEffectOptions`, you need to do the following:
+
+1.  Call `loadExtensionProvider (libagora_video_process_extension.dll)` during `IRtcEngine` initialization to specify the extension’s library path.
+
+2.  Call `enableExtension (agora, beauty, true)` to enable the extension.
+
+3.  Call `enableVideo` to enable the video module.
+
+See the [Beauty](https://github.com/AgoraIO/API-Examples/tree/4.0.0-beta/windows/APIExample/APIExample/Advanced/Beauty) sample project to update the code in your app.
+
+### Audio device test
+
+In v3.6.2, you can call the following methods to test the audio device either before or after joining a channel:
+
+-   `startRecordingDeviceTest`
+
+-   `startPlaybackDeviceTest`
+
+-   `startAudioDeviceLoopbackTest`
+
+In v4.0.0 Beta, you can only call the above methods before joining a channel.
+
+### Unsupported functions
+
+Compared to v3.6.2, some features are not supported or only partially supported in v4.0.0 Beta. This section shows the APIs currently unsupported but for which support is planned for a future release.
+
+Remote video stream fallback:
+
+-   `setRemoteUserPriority`
+
+-   `setRemoteSubscribeFallbackOption`
+
+-   `onRemoteSubscribeFallbackToAudioOnly`
+
+Raw video data:
+
+-   `getSmoothRenderingEnabled`
+
+-   `getVideoFormatPreference`
+
+Audio and video statistics:
+
+-   `qualityChangedReason` member in `RemoteAudioStats`
+
+-   `captureBrightnessLevel` member in `LocalVideoStats`
+
+Network type:
+
+-   `NETWORK_TYPE_MOBILE_5G` in `AgoraNetworkType`
+
+Audio and video errors:
+
+-   `LOCAL_VIDEO_STREAM_ERROR_DEVICE_NOT_FOUND(8)`
+
+-   `LOCAL_AUDIO_STREAM_ERROR_RECORD_INVALID_ID(9)`
+
+-   `LOCAL_AUDIO_STREAM_ERROR_PLAYOUT_INVALID_ID(10)`
+
+-   `LOCAL_VIDEO_STREAM_ERROR_DEVICE_INVALID_ID(10)`
+
+-   `LOCAL_VIDEO_STREAM_ERROR_SCREEN_CAPTURE_WINDOW_OCCLUDED(13)`
+
+-   `LOCAL_VIDEO_STREAM_ERROR_SCREEN_CAPTURE_WINDOW_NOT_SUPPORTED(20)`
+
+Selecting the playback track of the audio file:
+
+-   `selectAudioTrack`
+
+Pre-call network test: Before supporting the following APIs, you can use `startLastmileProbeTest` and `stopLastmileProbeTest` instead.
+
+-   `enableLastmileTest`
+
+-   `disableLastmileTest`
+
+Call loop test:
+
+-   `startEchoTest` (with the `config` parameter)
+
+Screen sharing:
+
+-   `startScreenCaptureByDisplayId`
+
+-   `onScreenCaptureInfoUpdated`
+
+Audio recording on the client:
+
+-   `recordingChannel` in `AudioRecordingConfiguration`
+
+-   `IMediaRecorder`
+
+-   `getMediaRecorder`
+
+-   `startRecording`
+
+-   `stopRecording`
+
+-   `releaseRecorder`
+
+-   `onRecorderStateChanged`
+
+-   `onRecorderInfoUpdated`
+
+Wi-Fi acceleration:
+
+-   `enableWirelessAccelerate`
+
+-   `onWlAccMessage`
+
+-   `onWlAccStats`
+
+Video content inspection:
+
+-   `enableContentInspect`
+
+-   `onContentInspectResult`
+
+Cloud proxy connection state:
+
+-   `onProxyConnected`
+
+Following default audio device of system (Windows/macOS):
+
+-   `getDefaultDevice`
+
+-   `followSystemPlaybackDevice`
+
+-   `followSystemRecordingDevice`
+
+External audio data:
+
+-   `pushAudioFrame` (with the `sourcePos` parameter)
+
+-   `setExternalAudioSourceVolume`
+
+## Removed APIs
+
+The v4.0.0 Beta removes deprecated or unrecommended APIs. Alternatives to the removed API or reasons for their removal are shown as follows:
+
+-   `setVideoDenoiserOptions`, `setLowlightEnhanceOptions`, and `setColorEnhanceOptions`: Use `setExtensionProperty` instead.
+
+-   `virtualBackgroundSourceEnabled`: Use the return value of `enableVirtualBackground` instead.
+
+-   `onUserSuperResolutionEnabled`: Use the `remoteVideoStats` member of the `superResolutionType` class instead.
+
+-   `setAudioMixingPlaybackSpeed`: Use `setPlaybackSpeed` instead.
+
+-   `setAudioMixingDualMonoMode`: Use `setAudioDualMonoMode` instead.
+
+-   `getEffectCurrentPosition`: Use `getPosition` instead.
+
+-   `setEffectPosition`: Use `seek` instead.
+
+-   `getEffectDuration`：Use `getDuration` instead.
+
+-   `getAudioFileInfo` and `onRequestAudioFileInfo`：Use `getDuration` instead.
+
+-   `onFirstLocalAudioFrame`：Use `onFirstLocalAudioFramePublished` instead.
+
+-   `getRecordAudioParams`：Use `setRecordingAudioFrameParameters` instead.
+
+-   `getMixedAudioParams`：Use `setMixedAudioFrameParameters` instead.
+
+-   `getPlaybackAudioParams`：Use `setPlaybackAudioFrameParameters` instead.
+
+-   `onAudioDeviceTestVolumeIndication`：Use `onAudioVolumeIndication` instead.
+
+-   `setLocalPublishFallbackOption` and `onLocalPublishFallbackToAudioOnly`: Rarely used in v3.6.2.
+
+-   `RENDER_MODE_FILL(4)` in `RENDER_MODE_TYPE`: This mode might cause image overstretch and is not recommended.
+
+-   The following enumerations in `AUDIO_MIXING_REASON_TYPE`: Rarely used in v3.6.2.
+
+-   `AUDIO_MIXING_REASON_STARTED_BY_USER`
+
+-   `AUDIO_MIXING_REASON_ONE_LOOP_COMPLETED`
+
+-   `AUDIO_MIXING_REASON_START_NEW_LOOP`
+
+-   `AUDIO_MIXING_REASON_ALL_LOOPS_COMPLETED`
+
+-   `AUDIO_MIXING_REASON_STOPPED_BY_USER`
+
+-   `AUDIO_MIXING_REASON_PAUSED_BY_USER`
+
+-   `AUDIO_MIXING_REASON_RESUMED_BY_USER`
+
+-   `onAudioMixingFinished`: Rarely used in v3.6.2.
+
+-   The `info` parameter in `joinChannel` [2/2]: This parameter is optional and rarely used in v3.6.2.
+
+-   `enableDeepLearningDenoise`: The SDK will add deep-learning noise reduction as one of its capability in a future release instead of implementing through an API.
+
+## Naming changes
+
+The naming changes in v4.0.0 Beta cause error messages in the IDE when you compile your project, and you need to update the code of your app according to each error message.
+
+The main API and parameter name changes are as follows:
+
+-   `adjustLoopbackRecordingSignalVolume` is changed to `adjustLoopbackRecordingVolume`.
+
+-   The `fileSize` member in `LogConfig` is renamed to `fileSizeInKB`.
+
+-   The `options` parameter in `joinChannel`[2/2] is changed to `mediaOptions`.
+
+-   The `report_vad` parameter in enableAudioVolumeIndication is changed to `reportVad`.
+
+-   `registerVideoEncodedFrameObserver` is changed to `registerVideoEncodedImageReceiver`.
+</PlatformWrapper>

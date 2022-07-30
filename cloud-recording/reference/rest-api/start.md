@@ -8,7 +8,7 @@ description: >
 
 After getting a resource ID, call the `start` method to begin cloud recording. The Cloud Recording service does the following after you call `start`:
 
-1. [Subscribes](../glossary#sub) to the audio and video streams in the channel according to `recordingConfig`.
+1. [Subscribes](../glossary#subscribe) to the audio and video streams in the channel according to `recordingConfig`.
 2. Processes the subscribed media streams, such as generating recorded files in the specified file format, taking video screenshots, or uploading recorded files to an extension service.
 3. Uploads the recorded files or screenshots to your third-party cloud storage according to `storageConfig`.
 

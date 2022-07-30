@@ -338,5 +338,5 @@ Your recording fee has nothing to do with the recording mode you choose. Regardl
 
 ## Relevant links
 
-- [Agora's free-of-charge policy for the first 10,000 minutes](../reference/billing-policies)
-- [Billing, free deduction, and account suspension](../reference/billing-policies)
+- [Agora's free-of-charge policy for the first 10,000 minutes](../reference/billing-policies#agoras-free-of-charge-policy-for-the-first-10000-minutes)
+- [Billing, free deduction, and account suspension](../reference/billing-policies#billing-fee-deductions-and-account-suspension-policies)

@@ -20,7 +20,7 @@ Billing for the cloud recording service begins once you use Agora Cloud Recordin
 
 On the first day of each month, Agora sends you the bill via email, and five days later deducts the payment from your account. For details, see [Billing, fee deduction, and account suspension](../reference/billing-policies).
 
-Agora gives each Agora account 10,000 free-of-charge minutes each month. For more information on the deduction sequence and applicable products, see [Agora's free-of-charge policy for the first 10,000 minutes](../reference/billing-policies).
+Agora gives each Agora account 10,000 free-of-charge minutes each month. For more information on the deduction sequence and applicable products, see [Agora's free-of-charge policy for the first 10,000 minutes](../reference/billing-policies#agoras-free-of-charge-policy-for-the-first-10000-minutes).
 
 
 ## Composition
@@ -299,7 +299,7 @@ At the end of each month, Agora adds up the usage duration (in seconds) of audio
 
 ### Video resolution in the dual-stream scenario
 
-When the user being recorded enables [dual-stream mode](../reference/glossary#dual-stream), the recording service can receive only one stream at a time:
+When the user being recorded enables [dual-stream mode](../reference/glossary#dual-stream-mode), the recording service can receive only one stream at a time:
 
 - If the recording server records the high-quality video stream, the aggregate video resolution is calculated based on the resolution of the high-quality video.
 - If the recording server records the low-quality video stream, the aggregate video resolution is calculated based on the resolution of the video received by the server.

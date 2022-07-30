@@ -8,7 +8,7 @@ description: >
 
 Agora provides the Message Notification Service. You can set up an HTTP/HTTPS server to receive the event notifications of Agora Cloud Recording. When an event occurs, the Agora Cloud Recording service notifies the Message Notification Service, and then the Message Notification Service notifies your server of that event through an HTTP/HTTPS request.
 
-Agora recommends that core apps should not rely on the Message Notification Service. If your apps already rely heavily on the Message Notification Service, Agora recommends that you contact <a href="mailto:support@agora.io">support@agora.io</a> to enable the redundant message notification function, which doubles the received notifications and reduces the probability of message loss. Redundant message notification still cannot guarantee a 100% arrival rate.
+Agora recommends that core apps should not rely on the Message Notification Service. If your apps already rely heavily on the Message Notification Service, Agora recommends that you contact [support@agora.io](mailto:support@agora.io) to enable the redundant message notification function, which doubles the received notifications and reduces the probability of message loss. Redundant message notification still cannot guarantee a 100% arrival rate.
 
 
 ## Callback information
@@ -88,10 +88,10 @@ The related fields of the Agora Cloud Recording callback events are listed below
   - `4`: Major
   - `5`: Fatal. A fatal error may cause the recording to exit. If you receive a message of this level, call `query` to check the current status and process the error according to the error notifications.
 - `errorCode`: Number. The error code. 
-  - If the error occurs in the recorder module (`0`), see [common errors](./common-errors).
+  - If the error occurs in the recorder module (`0`), see [common errors](../common-errors).
   - If the error occurs in the uploader (`1`), see [upload error code](#uploaderr). 
   - If the error occurs in the Agora Cloud Recording Service (`2`), see [cloud recording service error code](#clouderr).
-  - If the error occurs in the other modules, see [common errors](./common-errors).
+  - If the error occurs in the other modules, see [common errors](../common-errors).
   If you do not find any error code in the above-mentioned pages, contact our technical support.
 
 - `stat`: Number. The event status. 0 indicates normal status; other values indicate abnormal status.
@@ -476,7 +476,7 @@ eventType 43 indicates that the state of the audio stream has changed, and `deta
 | `1`          | `max_recording_hour`  | The recording time reaches the set maximum recording length (`maxRecordingHour`), which causes the recording to stop. |
 | `2`          | `capability_limit`    | The web page to be recorded uses an unsupported function, causing the web page recording to stop. |
 | `3`          | `start_engine_failed` | The recording engine failed to start, causing the web page recording to stop. |
-| `4`          | `page_load_timeout`   | When you use the [web page load timeout detection](../develop/webpage-load-timeout), the web page load timeout causes the web page recording to stop. |
+| `4`          | `page_load_timeout`   | When you use the [web page load timeout detection](../../develop/webpage-load-timeout), the web page load timeout causes the web page recording to stop. |
 | `5`          | `access_url_failed`   | An error occurred when opening the web page to be recorded, which causes the web page recording to stop. |
 | `6`          | `recorder_error `     | The web page recording has an error and cannot continue, causing the web page recording to stop. |
 
@@ -514,7 +514,7 @@ eventType 43 indicates that the state of the audio stream has changed, and `deta
 - `msgName: `String. The message name, `"web_recorder_reload"`:
 - `reason: `String. The reason for the page reload:
   - `"audio_silence"`: Audio loss issue.
-  -  `"page_load_timeout"`: Web page load timeout. The callback returns this field only under the following conditions: the web page load detection function is enabled, and the web page load timeout. See [Web page load detection](../develop/webpage-load-timeout).
+  -  `"page_load_timeout"`: Web page load timeout. The callback returns this field only under the following conditions: the web page load detection function is enabled, and the web page load timeout. See [Web page load detection](../../develop/webpage-load-timeout).
  
 ### <a name="80"></a>80 transcoder_started
 

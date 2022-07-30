@@ -11,7 +11,7 @@ When a recording finishes, call the `stop` method to leave the channel and stop 
 - Method: POST
 - Endpoint: /v1/apps/\<appid\>/cloud_recording/resourceid/\<resourceid\>/sid/\<sid\>/mode/\<mode\>/stop
 
-> - The request frequency limit is 10 requests per second for each [Agora account](../manage-agora-account#_create_an_agora_account). Contact [Agora technical supoort](mailto:support@agora.io) if you need to raise the limit.
+> - The request frequency limit is 10 requests per second for each [Agora account](../manage-agora-account#create-an-agora-account). Contact [Agora technical supoort](mailto:support@agora.io) if you need to raise the limit.
 > - By default, Agora Cloud Recording automatically leaves the channel and stops recording if there are ever no users in the channel for more than 30 seconds.
 
 ## HTTP request

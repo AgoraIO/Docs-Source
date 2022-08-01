@@ -8,7 +8,7 @@ description: >
 
 After getting a resource ID, call the `start` method to begin cloud recording. The Cloud Recording service does the following after you call `start`:
 
-1. [Subscribes](../glossary#sub) to the audio and video streams in the channel according to `recordingConfig`.
+1. [Subscribes](../glossary#subscribe) to the audio and video streams in the channel according to `recordingConfig`.
 2. Processes the subscribed media streams, such as generating recorded files in the specified file format, taking video screenshots, or uploading recorded files to an extension service.
 3. Uploads the recorded files or screenshots to your third-party cloud storage according to `storageConfig`.
 
@@ -17,7 +17,7 @@ The HTTP method and endpoint of `start`:
 - Method: POST
 - Endpoint: /v1/apps/\<appid\>/cloud_recording/resourceid/\<resourceid\>/mode/\<mode\>/start
 
-> The request frequency limit is 10 requests per second for each [Agora account](../manage-agora-account#_create_an_agora_account). Contact [Agora technical support](mailto:support@agora.io) if you need to raise the limit.
+> The request frequency limit is 10 requests per second for each [Agora account](../manage-agora-account#create-an-agora-account). Contact [Agora technical support](mailto:support@agora.io) if you need to raise the limit.
 
 ## HTTP request
 

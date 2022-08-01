@@ -13,7 +13,7 @@ description: >
 - Method: GET
 - Endpoint: /v1/apps/\<appid\>/cloud_recording/resourceid/\<resourceid\>/sid/\<sid\>/mode/\<mode\>/query
 
-> The request frequency limit is 10 requests per second for each [Agora account](../manage-agora-account#_create_an_agora_account). Contact [Agora technical support](mailto:support@agora.io) if you need to raise the limit.
+> The request frequency limit is 10 requests per second for each [Agora account](../manage-agora-account#create-an-agora-account). Contact [Agora technical support](mailto:support@agora.io) if you need to raise the limit.
 
 ## HTTP request
 
@@ -221,7 +221,7 @@ If the reliability of the status of a cloud recording is a high priority, Agora 
 
 ### Message Notification Service
 
-You can use the Message Notification Service as a complementary option to monitor the recording service status. You need to configure an HTTP/HTTPS server to receive event notifications. For details, see [Agora Cloud Recording RESTful API Callback Service](../rest-api-overview).
+You can use the Message Notification Service as a complementary option to monitor the recording service status. You need to configure an HTTP/HTTPS server to receive event notifications. For details, see [Agora Cloud Recording RESTful API Callback Service](./rest-api-overview).
 
 - Pros: Real-time
 - Cons:
@@ -229,4 +229,4 @@ You can use the Message Notification Service as a complementary option to monito
   - The confirmation message of the message delivery may get lost, causing the message to be resent. In such a case, you need to deduplicate the notifications.
   - The messages may not arrive in the correct order.
 
-Agora recommends that core apps should not rely on the Message Notification Service. If your apps already rely heavily on the Message Notification Service, Agora recommends that you contact link:mailto:support@agora.io[support@agora.io] to enable the redundant message notification function, which doubles the received notifications and reduces the probability of message loss. Redundant message notification still cannot guarantee a 100% arrival rate.
+Agora recommends that core apps should not rely on the Message Notification Service. If your apps already rely heavily on the Message Notification Service, Agora recommends that you contact [support@agora.io](mailto:support@agora.io) to enable the redundant message notification function, which doubles the received notifications and reduces the probability of message loss. Redundant message notification still cannot guarantee a 100% arrival rate.

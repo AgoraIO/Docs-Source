@@ -232,4 +232,4 @@ For the naming rules of recorded files, see [Manage Recording Files](./manage-fi
 If you enable Postpone Audio Mixing, you can also get the MP3/M4A/AAC file of all user IDs mixed in the channel within 24 hours after the Audio Individual non-transcoding Recording ends.
 
 ## Callback events
-You can subscribe to the related callback events of the cloud recording service (`serviceType` is `0`) before you start an individual audio non-transcoding recording. For details, see [Callback Events](../reference/rest-api/rest-api-overview#a-nameeventacallback-events).
+You can subscribe to the related callback events of the cloud recording service (`serviceType` is `0`) before you start an individual audio non-transcoding recording. For details, see [Callback Events](../reference/rest-api/rest-api-overview#callback-events).

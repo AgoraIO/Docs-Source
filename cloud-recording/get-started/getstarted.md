@@ -30,7 +30,7 @@ After the recording is over, the cloud recording service uploads the recording f
 ## Prerequisites
 
 - A valid [Agora account](https://console.agora.io/).
-- A valid Agora project with an App ID and a temporary token. For details, see [Get Started with Agora](../reference/manage-agora-account#_get_the_app_id).
+- A valid Agora project with an App ID and a temporary token. For details, see [Get Started with Agora](../reference/manage-agora-account#get-the-app-id).
 - A computer with access to the internet. If your network has a firewall, follow the instructions in [Firewall Requirements](../reference/firewall).
 - Ensure that a third-party cloud storage service has been enabled. The currently supported third-party cloud storage service providers are as follows:
   - [Qiniu Cloud](https://www.qiniu.com/en/products/kodo)
@@ -150,7 +150,7 @@ curl --location --request POST  'https://api.agora.io/v1/apps/<appid>/cloud_reco
 
 During the recording, you can call the [`query`](../reference/rest-api/query) method to query the recording status multiple times.
 
-After calling this method successfully, you can get the current recording status and related information about the recording file from the response body. See *Best Practices in Integrating Cloud Recording* for details about how to [Monitor service status during a recording](../develop/integration-best-practices#monitor_status) and[ Obtain the M3U8 file name](../develop/integration-best-practices#get_filename).
+After calling this method successfully, you can get the current recording status and related information about the recording file from the response body. See *Best Practices in Integrating Cloud Recording* for details about how to [Monitor service status during a recording](../develop/integration-best-practices#monitor-service-status-during-a-recording) and[ Obtain the M3U8 file name](../develop/integration-best-practices#obtain-the-m3u8-file-name).
 
 #### Sample code
 

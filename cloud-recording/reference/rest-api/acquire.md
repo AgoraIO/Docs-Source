@@ -12,7 +12,7 @@ description: >
 - Method:POST
 - Endpoint: /v1/apps/\<appid\>/cloud_recording/acquire
 
-> The request frequency limit is 10 requests per second for each [Agora account](../manage-agora-account#_create_an_agora_account). Contact [Agora technical support](mailto:support@agora.io) if you want to raise the limit.
+> The request frequency limit is 10 requests per second for each [Agora account](../manage-agora-account#create-an-agora-account). Contact [Agora technical support](mailto:support@agora.io) if you want to raise the limit.
 
 If this method call succeeds, you get a resource ID (`resourceId`) from the HTTP response body. The resource ID is valid for five minutes, so you need to [start recording](./start) with this resource ID with it before it expires.
 
@@ -22,7 +22,7 @@ The following parameter is required in the URL.
 
 | Parameter | Type   | Description                                                  |
 | :-------- | :----- | :----------------------------------------------------------- |
-| `appid`   | String |  Your [App ID](../manage-agora-account#_get_the_app_id)。<ul><li>In web page recording mode: Use the App ID for which the cloud recording service has been enabled.</li><li>In other modes: Use the same App ID as the channel to be recorded. Ensure that the cloud recording service has been enabled for this App ID.</li></ul>  |
+| `appid`   | String |  Your [App ID](../manage-agora-account#get-the-app-id)。<ul><li>In web page recording mode: Use the App ID for which the cloud recording service has been enabled.</li><li>In other modes: Use the same App ID as the channel to be recorded. Ensure that the cloud recording service has been enabled for this App ID.</li></ul>  |
 
 The following parameters are required in the request body.
 

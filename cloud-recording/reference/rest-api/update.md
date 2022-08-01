@@ -15,7 +15,7 @@ During a cloud recording, you can call this method to update the Cloud Recording
 - Method: POST
 - Endpoint: /v1/apps/\<appid\>/cloud_recording/resourceid/\<resourceid\>/sid/\<sid\>/mode/\<mode\>/update
 
-> The request frequency limit is 10 requests per second for each [Agora account](../manage-agora-account#_create_an_agora_account). Contact support@agora.io if you want to raise the limit.
+> The request frequency limit is 10 requests per second for each [Agora account](../manage-agora-account#create-an-agora-account). Contact support@agora.io if you want to raise the limit.
 
 ### HTTP request
 
@@ -153,7 +153,7 @@ This method call overrides the existing layout configurations. For example, if y
 - Method: POST
 - Endpoint: /v1/apps/\<appid\>/cloud_recording/resourceid/\<resourceid\>/sid/\<sid\>/mode/\<mode\>/updateLayout
 
-> The request frequency limit is 10 requests per second for each [Agora account](../manage-agora-account#_create_an_agora_account). Contact [Agora technical support](mailto:support@agora.io) if you want to raise the limit.
+> The request frequency limit is 10 requests per second for each [Agora account](../manage-agora-account#create-an-agora-account). Contact [Agora technical support](mailto:support@agora.io) if you want to raise the limit.
 
 ### HTTP request
 

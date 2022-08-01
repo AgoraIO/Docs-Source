@@ -209,7 +209,7 @@ In the above background image settings, the URL supports the HTTP and HTTPS prot
 
 - The request URL is:
 
-```http
+```html
 https://api.agora.io/v1/apps/<appid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/<mode>/updateLayout
 ```
 

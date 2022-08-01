@@ -7,7 +7,7 @@ description:
 ---
 
 
-<div class="alert info">Web page recording mode is free to use by November 1, 2021. See <a href="../understand/pricing"> Pricing for Web Page Recording</a> for details.</div>
+<div class="alert info">Web page recording mode is free to use by November 1, 2021. See <a href="../overview/pricing"> Pricing for Web Page Recording</a> for details.</div>
 
 ## Overview
 
@@ -47,7 +47,7 @@ Before recording, call the [`acquire`](../reference/rest-api/acquire) method to 
 
 - Request URL: 
 
-```http
+```html
 https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
 ```
 - `Content-type`: `application/json;charset=utf-8`
@@ -84,7 +84,7 @@ In web page recording mode, you can configure the following parameters in `clien
 
 - Request URL:
 
-```http
+```html
 https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/web/start
 ```
 
@@ -145,7 +145,7 @@ When a recording finishes, call [`stop`](../reference/rest-api/stop) to leave th
 
 - The request URL is: 
 
- ```http
+ ```html
  http://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/web/stop
  ```
 - `Content-type`: `application/json;charset=utf-8`
@@ -172,7 +172,7 @@ Before starting the process, call the [`acquire`](../reference/rest-api/acquire)
 
 - Request URL: 
 
-```http
+```html
 https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
 ```
 - `Content-type`: `application/json;charset=utf-8`
@@ -209,7 +209,7 @@ In web page recording mode, you can configure the following parameters in `clien
 
 - Request URL:
 
-```http
+```html
 https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/web/start
 ```
 
@@ -279,7 +279,7 @@ When a recording and stream pushing finishes, call [`stop`](../reference/rest-ap
 
 - The request URL is: 
 
- ```http
+ ```html
  http://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/web/stop
  ```
 - `Content-type`: `application/json;charset=utf-8`
@@ -302,7 +302,7 @@ A web page recording session generates one M3U8 file and multiple TS files. Depe
 
 ## Pricing
 
-Web page recording mode is free to use by November 1, 2021. See [Pricing for Web Page Recording](../understand/pricing-webpage-recording) for details.
+Web page recording mode is free to use by November 1, 2021. See [Pricing for Web Page Recording](../overview/pricing-webpage-recording) for details.
 
 ## Considerations
 

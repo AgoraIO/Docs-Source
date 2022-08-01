@@ -30,7 +30,7 @@ The following parameters are required in the URL.
 
 - The request URL is:
 
-```http
+```html
 https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/<mode>/query
 ```
 - `Content-type` is `application/json;charset=utf-8`.

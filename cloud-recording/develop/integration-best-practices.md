@@ -56,7 +56,7 @@ After enabling the redundant message notification function, you need to deduplic
 3. During this period, your server receives notifications of event `31`, `32`, or `11` again. If `sid` contained in the above notifications is identical to the previous ones, you can ignore them as redundant notifications.
 4. Call `query` if you need to fully ensure that the recording service successfully starts.
 
-When the recording service enables the [high availability mechanism](../understand/product-overview#features), some notifications may be sent twice. You can distinguish them by the user ID in the notification. If the user ID is the same as the one you use when you start the recording, the notification belongs to the original recording session; otherwise, the notification belongs to the recording session initiated by the high availability mechanism.
+When the recording service enables the [high availability mechanism](../overview/product-overview#features), some notifications may be sent twice. You can distinguish them by the user ID in the notification. If the user ID is the same as the one you use when you start the recording, the notification belongs to the original recording session; otherwise, the notification belongs to the recording session initiated by the high availability mechanism.
 
 ### <a name="get_filename"></a>Obtain the M3U8 file name
 

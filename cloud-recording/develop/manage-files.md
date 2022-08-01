@@ -117,7 +117,7 @@ The cloud recording service does not append the suffix to the names of the TS/We
 
 ### When a server is disconnected or the process killed
 
-When [a cloud recording server is disconnected or the process killed](../understand/product-overview#features), the cloud recording service enables the high availability mechanism, where the fault processing center automatically switches to a new server within 90 seconds to resume the service. Each time the service enables the high availability mechanism, it creates a new M3U8 file, which contains the index information of the recorded slice files from the time when the service resumes. The file name is prepended with `bak<n>`, where `n` stands for the number of times the mechanism is enabled in a recording, starting with `0`.
+When [a cloud recording server is disconnected or the process killed](../overview/product-overview#features), the cloud recording service enables the high availability mechanism, where the fault processing center automatically switches to a new server within 90 seconds to resume the service. Each time the service enables the high availability mechanism, it creates a new M3U8 file, which contains the index information of the recorded slice files from the time when the service resumes. The file name is prepended with `bak<n>`, where `n` stands for the number of times the mechanism is enabled in a recording, starting with `0`.
 
 For example, in the filename `bak0_sid713476478245_cnameagora.m3u8`, `bak0` indicates that this file is generated after the service enables the high availability mechanism for the first time.
 

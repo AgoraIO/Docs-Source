@@ -12,7 +12,7 @@ This page introduces the billing policy for the [Agora Web Page Recording](../de
 
 When you use the Agora web page recording service, Agora charges you fees based on the usage and resolution of the recorded videos.
 
-> If you use other Agora products or services in the web page being recorded, such as the [Agora Video SDK](../../video-calling/understand/product-overview), [Agora Interactive Whiteboard SDK](../../whiteboard/understand/overview), or [Agora Real-time Messaging SDK](../../real-time-messaging/understand/product-overview), expect additional charges. See the pricing documentations of each product or service for details.
+> If you use other Agora products or services in the web page being recorded, such as the [Agora Video SDK](../../video-calling/overview/product-overview), [Agora Interactive Whiteboard SDK](../../whiteboard/understand/overview), or [Agora Real-time Messaging SDK](../../real-time-messaging/understand/product-overview), expect additional charges. See the pricing documentations of each product or service for details.
 
 ![](https://web-cdn.agora.io/docs-files/1634096581592)
 

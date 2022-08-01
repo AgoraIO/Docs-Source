@@ -1,6 +1,6 @@
 ---
 title: "Pricing for Web Page Recording"
-sidebar_position: 3
+sidebar_position: 2
 type: docs
 description: >
   Depending on the number of minutes you intend to record, estimate your monthly cost for Web Page Recording. 

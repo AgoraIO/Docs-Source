@@ -1,6 +1,6 @@
 ---
 title: "Pricing"
-sidebar_position: 2
+sidebar_position: 1
 type: docs
 description: >
    Depending on the number of minutes you intend to record, estimate your monthly Cloud Recording cost.

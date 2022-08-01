@@ -202,7 +202,7 @@ Agora supports only taking screenshots in a recording process or recording and t
 
 In order to improve the success rate and real-time performance when uploading recording files, if you set the `region` of the cloud recording service in the `acquire` method, make sure that the region of the third-party cloud storage corresponds to the same geographical region. For example, if the region of the cloud recording service is set to `NA` (North America), the third-party cloud storage needs to be set to a location within North America.
 
-```http	
+```html	
 <details>
 		<summary><font color="#3ab7f8">When the third-party cloud storage is Qiniu Cloud (`vendor` = 0):</font></summary>
 <ul>
@@ -455,7 +455,7 @@ When pushing media stream to the CDN during a web page recording, `extensionServ
 
 - The request URL is：
 
-```http
+```html
 https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/<mode>/start
 ```
 

@@ -31,7 +31,7 @@ Before recording, call the [`acquire`](../reference/rest-api/acquire) method to 
 
 - Request URL:
 
-  ```http
+  ```html
   https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
   ```
 
@@ -71,7 +71,7 @@ Configure the following parameters in `clientRequest` for Audio Individual non-t
 
 - Request URL:
 
-```http
+```html
 https://http://api.agora.io//v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/individual/start
 ```
 
@@ -123,7 +123,7 @@ When a recording finishes, call [`stop`](../reference/rest-api/stop) to leave th
 
 - The request URL is:
 
-```http
+```html
 http://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/individual/stop
 ```
 
@@ -169,7 +169,7 @@ Configure the following parameters in `clientRequest` for Postpone Audio Mixing:
 
 - Request URL:
 
-```http
+```html
 https://http://api.agora.io//v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/individual/start
 ```
 

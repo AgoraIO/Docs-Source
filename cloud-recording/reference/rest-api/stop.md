@@ -38,7 +38,7 @@ The following parameters are required in the request body.
 
 - The request URL is:
 
-```http
+```html
 https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/<mode>/stop
 ```
 - `Content-type` is `application/json;charset=utf-8`.

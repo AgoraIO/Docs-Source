@@ -27,7 +27,7 @@ Before recording, call the [`acquire`](../reference/rest-api/acquire) method to 
 
 - Request URL: 
 
-    ```http
+    ```html
     https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
     ```
 - 
@@ -68,7 +68,7 @@ To capture screenshots, you need to configure the following parameters in `clien
 
 - Request URL:
 	
-    ```http
+    ```html
     https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/individual/start
     ```
 

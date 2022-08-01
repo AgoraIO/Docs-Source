@@ -33,7 +33,7 @@ Before recording, call the [`acquire`](../reference/rest-api/acquire) method to 
 
 - Request URL: 
 
-```http
+```html
 https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
 ```
 
@@ -72,7 +72,7 @@ In composite recording mode, you can configure the following parameters in `clie
 
 - Request URL:
 
-```http
+```html
 https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/mix/start
 ```
 
@@ -133,7 +133,7 @@ When a recording finishes, call [`stop`](../reference/rest-api/stop) to leave th
 
 - The request URL is: 
 
- ```http
+ ```html
  http://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/mix/stop
  ```
 - `Content-type`: `application/json;charset=utf-8`

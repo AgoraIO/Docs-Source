@@ -7,7 +7,7 @@ description:
 ---
 
 
-<div class="alert info">Web page recording mode is free to use by November 1, 2021. See <a href="../understand/pricing"> Pricing for Web Page Recording</a> for details.</div>
+<div class="alert info">Web page recording mode is free to use by November 1, 2021. See <a href="../overview/pricing"> Pricing for Web Page Recording</a> for details.</div>
 
 ## Overview
 
@@ -302,7 +302,7 @@ A web page recording session generates one M3U8 file and multiple TS files. Depe
 
 ## Pricing
 
-Web page recording mode is free to use by November 1, 2021. See [Pricing for Web Page Recording](../understand/pricing-webpage-recording) for details.
+Web page recording mode is free to use by November 1, 2021. See [Pricing for Web Page Recording](../overview/pricing-webpage-recording) for details.
 
 ## Considerations
 

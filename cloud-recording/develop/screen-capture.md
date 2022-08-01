@@ -158,7 +158,7 @@ The naming convention of screenshot files is `<sid>_<cname>__uid_s_<uid>__uid_e_
 
 The screenshot file format is determined by `fileType` you set in `start`. Currently only the JPG format is supported.
 
-When [a cloud recording server is disconnected or the process killed](../understand/product-overview#features), the cloud recording service enables the high availability mechanism, where the fault processing center automatically switches to a new server within 90 seconds to resume the service. When the service enables the mechanism, the screenshot filenames are prepended with `bak<n>`, where `n` stands for the number of times the mechanism is enabled in a recording and starts off with `0`. Taking the filename `bak0_sid_channel1__uid_s_123__uid_e_video_20190611073246073.jpg` as an example, `bak0` indicates that this file was generated after the service enabled the high availability mechanism for the first time.
+When [a cloud recording server is disconnected or the process killed](../overview/product-overview#features), the cloud recording service enables the high availability mechanism, where the fault processing center automatically switches to a new server within 90 seconds to resume the service. When the service enables the mechanism, the screenshot filenames are prepended with `bak<n>`, where `n` stands for the number of times the mechanism is enabled in a recording and starts off with `0`. Taking the filename `bak0_sid_channel1__uid_s_123__uid_e_video_20190611073246073.jpg` as an example, `bak0` indicates that this file was generated after the service enabled the high availability mechanism for the first time.
 
 ## Considerations
 

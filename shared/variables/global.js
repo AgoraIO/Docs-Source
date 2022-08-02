@@ -117,6 +117,7 @@ export const ANDROID_UIKIT_VERSION = '4.0.1';
 export const ANDROID_UIKIT_SDK = 'com.github.AgoraIO-Community.Android-UIKit:final';
 
 export const WEB_UIKIT = 'Agora React Web UIKit';
+
 export const IOS_MI_PACKAGE_VERSION = '4.0.0-beta.1';
 export const IOS_PACKAGE = 'NAME: AgoraRtcEngine_iOS_Beta';
 export const IOS_VOICE_PACKAGE = 'AgoraRtcEngine_iOS_Voice_Beta';

@@ -103,9 +103,9 @@ export const APP_CERTIFICATE_LINK =
   'xref:{rootdir}/reference/manage-agora-account.adoc#_get_the_app_certificate[App Certificate]';
 
 export const DEMO_BASIC_VIDEO_CALL_URL =
-  'https://webdemo.agora.io/agora-web-showcase/examples/Agora-Web-Tutorial-1to1-Web/';
+  'https://webdemo.agora.io/agora-websdk-api-example-4.x/basicVideoCall/index.html';
 
-export const DEMO_PAGE_LINK = `${DEMO_BASIC_VIDEO_CALL_URL}[${COMPANY} web demo,role=external,window=_blank]`;
+export const DEMO_PAGE_LINK = `<Link to="{{Global.DEMO_BASIC_VIDEO_CALL_URL}}"><Vg k="COMPANY" /> web demo</Link>`;
 
 export const TOKEN_GENERATE_LINK = `<Link to="https://docs.agora.io/en/Agora%20Platform/get_appid_token?platform=All#generate-a-temporary-token">Generate a temporary token</Link>`;
 export const TOKEN_GENERATE_URL = `https://docs.agora.io/en/Agora%20Platform/get_appid_token?platform=All#generate-an-rtc-temporary-token`;

@@ -31,7 +31,7 @@ export const ILSS = 'Interactive Live Streaming Standard';
 export const ILSP = 'Interactive Live Streaming Premium';
 export const VSDK = 'Video SDK';
 export const VSDK_RELEASE = '4.x';
-export const VSDK_PREVIOUS_RELEASE = '3.xs';
+export const VSDK_PREVIOUS_RELEASE = '3.7.x';
 export const VSDK_RELEASE_FOLDER = 'video-call-4.x-beta';
 
 export const AV = 'Audio/Video';
@@ -117,6 +117,7 @@ export const ANDROID_UIKIT_VERSION = '4.0.1';
 export const ANDROID_UIKIT_SDK = 'com.github.AgoraIO-Community.Android-UIKit:final';
 
 export const WEB_UIKIT = 'Agora React Web UIKit';
+
 export const IOS_MI_PACKAGE_VERSION = '4.0.0-beta.1';
 export const IOS_PACKAGE = 'NAME: AgoraRtcEngine_iOS_Beta';
 export const IOS_VOICE_PACKAGE = 'AgoraRtcEngine_iOS_Voice_Beta';

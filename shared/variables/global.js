@@ -31,7 +31,7 @@ export const ILSS = 'Interactive Live Streaming Standard';
 export const ILSP = 'Interactive Live Streaming Premium';
 export const VSDK = 'Video SDK';
 export const VSDK_RELEASE = '4.x';
-export const VSDK_PREVIOUS_RELEASE = '3.xs';
+export const VSDK_PREVIOUS_RELEASE = '3.7.x';
 export const VSDK_RELEASE_FOLDER = 'video-call-4.x-beta';
 
 export const AV = 'Audio/Video';

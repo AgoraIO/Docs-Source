@@ -1,0 +1,237 @@
+<PlatformWrapper platform="ios">
+
+### Initialize AgoraChatCallKit
+
+Call `init` to initialize the AgoraChatCallKit.
+
+```objective-c
+AgoraChatCallConfig *config = [[AgoraChatCallConfig alloc] init];
+config.agoraAppId = @"agoraAppId";
+config.enableRTCTokenValidate = YES;
+config.enableIosCallKit = YES;
+[AgoraChatCallManager.sharedManager initWithConfig:config delegate:self];
+```
+
+In this method, you need to set the `AgoraChatCallConfig` interface. Some of the configurations include the following:
+
+```objective-c
+@interface AgoraChatCallConfig : NSObject
+/**
+ * The timeout duration for the call invitation, in seconds. The default value is 30.
+ */
+@property (nonatomic) UInt32 callTimeOut;
+/**
+ * The dictionary of the user information. The data format is key-value pairs, where key represents the user ID and value is EaseCallUser. 
+ */
+@property (nonatomic,strong) NSMutableDictionary<NSString*,AgoraChatCallUser*>* users;
+/**
+ * Specify the file URL of the ringtone. This field is valid only when enableIosCallKit is set to NO.
+ */
+@property (nonatomic,strong) NSURL* ringFileUrl;
+/**
+ * The App ID of the project, which you can obtain from Agora Console.
+ */
+@property (nonatomic,strong) NSString* agoraAppId;
+/**
+ *  Whether to enable token authentication when users join the Agora channel:
+ *  - (Default) YES: Enable token authentication. Once you set it as YES, you must implement the callDidRequestRTCTokenForAPPId callback. After receiving this callback, you need to call setRTCToken to pass in the token to start or join a call.
+ *  - NO: Do not enable token authentication.
+ */
+@property (nonatomic) BOOL enableRTCTokenValidate;
+/**
+ * Whether to use the iOS CallKit framework.
+ */
+@property (nonatomic, assign) BOOL enableIosCallKit;
+
+@end
+```
+
+### Send a call invitation
+
+From the caller's client, call `startSingleCallWithUId` or `startInviteUsers` to send a call invitation for a one-to-one call or group call. You need to specify the call type when calling the method.
+
+- One-to-one audio call
+
+    ```objective-c
+    [AgoraChatCallManager.sharedManager startSingleCallWithUId:userId type:AgoraChatCallType1v1Audio ext:nil completion:^(NSString * callId, AgoraChatCallError * aError) {
+    }];
+    ```
+
+- One-to-one video call
+
+    ```objective-c
+    [AgoraChatCallManager.sharedManager startSingleCallWithUId:userId type:AgoraChatCallType1v1Video ext:nil completion:^(NSString * callId, AgoraChatCallError * aError) {
+    }];
+    ```
+
+- Group audio call
+
+    ```objective-c
+    ConfInviteUsersViewController *controller = [[ConfInviteUsersViewController alloc] initWithGroupId:groupId excludeUsers:@[AgoraChatClient.sharedClient.currentUsername]];
+    controller.didSelectedUserList = ^(NSArray * _Nonnull aInviteUsers) {
+        for (NSString *strId in aInviteUsers) {
+            AgoraChatUserInfo *info = [UserInfoStore.sharedInstance getUserInfoById:strId];
+            if (info && (info.avatarUrl.length > 0 || info.nickname > 0)) {
+                    AgoraChatCallUser *user = [AgoraChatCallUser userWithNickName:info.nickname image:[NSURL URLWithString:info.avatarUrl]];
+                [[AgoraChatCallManager.sharedManager getAgoraChatCallConfig] setUser:strId info:user];
+            }
+        }
+        [AgoraChatCallManager.sharedManager startInviteUsers:aInviteUsers groupId:groupId callType:AgoraChatCallTypeMultiAudio ext:@{
+            @"groupId":groupId
+        } completion:^(NSString * callId, AgoraChatCallError * aError) {
+                
+        }];
+    };
+    
+    controller.modalPresentationStyle = UIModalPresentationPageSheet;
+    [viewController presentViewController:controller animated:YES completion:nil];
+    ```
+
+- Group video call
+
+    ```objective-c
+    ConfInviteUsersViewController *controller = [[ConfInviteUsersViewController alloc] initWithGroupId:groupId excludeUsers:@[AgoraChatClient.sharedClient.currentUsername]];
+    controller.didSelectedUserList = ^(NSArray * _Nonnull aInviteUsers) {
+        for (NSString *strId in aInviteUsers) {
+            AgoraChatUserInfo *info = [UserInfoStore.sharedInstance getUserInfoById:strId];
+            if (info && (info.avatarUrl.length > 0 || info.nickname > 0)) {
+                    AgoraChatCallUser *user = [AgoraChatCallUser userWithNickName:info.nickname image:[NSURL URLWithString:info.avatarUrl]];
+                [[AgoraChatCallManager.sharedManager getAgoraChatCallConfig] setUser:strId info:user];
+            }
+        }
+        [AgoraChatCallManager.sharedManager startInviteUsers:aInviteUsers groupId:groupId callType:AgoraChatCallTypeMultiVideo ext:@{
+            @"groupId":groupId
+        } completion:^(NSString * callId, AgoraChatCallError * aError) {
+                
+        }];
+    };
+    
+    controller.modalPresentationStyle = UIModalPresentationPageSheet;
+    [viewController presentViewController:controller animated:YES completion:nil];
+    ```
+
+The following screenshot gives an example of the user interface after sending a call invitation for one-to-one audio call:
+
+<img src="https://web-cdn.agora.io/docs-files/1655259327417" style="zoom:50%;" />
+
+### Receive the invitation
+
+Once a call invitaion is sent, the callee receives the invitation in the `callDidReceive` callback.
+
+```objective-c
+- (void)callDidReceive:(EaseCallType)aType inviter:(NSString*_Nonnull)user ext:(NSDictionary*)aExt
+{
+
+}
+```
+
+If the callee is online and available for a call, you can pop out a user interface that allows the callee to accept or decline the invitation. If you have enabled the iOS CallKit, the system call user interface is launched. Otherwise, you can refer to the following screenshot to implement the interface:
+
+<img src="https://web-cdn.agora.io/docs-files/1655259340569" style="zoom:50%;" />
+
+
+### Send a call invitation during a group call
+
+In call sessions with multiple users, these users can also send call invitations to other users. After sending the invitation, the SDK triggers the `multiCallDidInvitingWithCurVC` callback in `AgoraChatCallDelegate` on the sender's client.
+
+```objective-c
+/**
+ * Occurs when the local user sends a call invitation during a group call.
+ * vc     The current UI view controller.
+ * users  The user IDs that are already in the group call.
+ * aExt   Extension information.
+ */
+- (void)multiCallDidInvitingWithCurVC:(UIViewController*_Nonnull)vc excludeUsers:(NSArray<NSString*> *_Nullable)users ext:(NSDictionary *)aExt
+  {
+    NSString *groupId = nil;
+    if (aExt) {
+        groupId = [aExt objectForKey:@"groupId"];
+    }
+    if (!groupId || groupId.length <= 0) {
+        return;
+    }
+    
+    ConfInviteUsersViewController *confVC = [[ConfInviteUsersViewController alloc] initWithGroupId:groupId excludeUsers:users];
+    confVC.didSelectedUserList = ^(NSArray * _Nonnull aInviteUsers) {
+        for (NSString* strId in aInviteUsers) {
+            AgoraChatUserInfo *info = [[UserInfoStore sharedInstance] getUserInfoById:strId];
+            if (info && (info.avatarUrl.length > 0 || info.nickname.length > 0)) {
+                AgoraChatCallUser *user = [AgoraChatCallUser userWithNickName:info.nickname image:[NSURL URLWithString:info.avatarUrl]];
+                [[AgoraChatCallManager.sharedManager getAgoraChatCallConfig] setUser:strId info:user];
+            }
+        }
+        [AgoraChatCallManager.sharedManager startInviteUsers:aInviteUsers groupId:groupId callType:AgoraChatCallTypeMultiAudio ext:aExt completion:nil];
+    };
+    confVC.modalPresentationStyle = UIModalPresentationPopover;
+    [vc presentViewController:confVC animated:YES completion:nil];
+}
+```
+
+### Listen for callback events
+
+During the call, you can also listen for the following callback events:
+
+- `callDidJoinChannel`, occurs when the local user successfully joins the call.
+
+    ```objective-c
+    - (void)callDidJoinChannel:(NSString*_Nonnull)aChannelName uid:(NSUInteger)aUid
+    {
+        [self _fetchUserMapsFromServer:aChannelName];
+    }
+    ```
+
+- `remoteuserDidJoinChannel`, occurs when the remote user successfully joins the call.
+
+    ```objective-c
+    -(void)remoteUserDidJoinChannel:( NSString*_Nonnull)aChannelName uid:(NSInteger)aUid username:(NSString*_Nullable)aUserName
+    {
+        if (aUserName.length > 0) {
+            AgoraChatUserInfo* userInfo = [[UserInfoStore sharedInstance] getUserInfoById:aUserName];
+            if (userInfo && (userInfo.avatarUrl.length > 0 || userInfo.nickname.length > 0)) {
+                AgoraChatCallUser* user = [AgoraChatCallUser userWithNickName:userInfo.nickname image:[NSURL URLWithString:userInfo.avatarUrl]];
+                [[AgoraChatCallManager.sharedManager getAgoraChatCallConfig] setUser:aUserName info:user];
+            }
+        } else {
+            [self _fetchUserMapsFromServer:aChannelName];
+        }
+    }
+    ```
+
+### End the call
+
+A one-to-one call ends as soon as one of the two users hangs up, while a group call ends only after the local user hangs up. When the call ends, the SDK triggers the `callDidEnd` callback.
+
+
+```objective-c
+- (void)callDidEnd:(NSString*_Nonnull)aChannelName reason:(AgoarChatCallEndReason)aReason time:(int)aTm type:(AgoraChatCallType)aType
+{
+    NSString *msg = @"";
+    switch (aReason) {
+        case AgoarChatCallEndReasonHandleOnOtherDevice:
+            msg = NSLocalizedString(@"otherDevice", nil);
+            break;
+        case AgoarChatCallEndReasonBusy:
+            msg = NSLocalizedString(@"remoteBusy", nil);
+            break;
+        case AgoarChatCallEndReasonRefuse:
+            msg = NSLocalizedString(@"RemoreRefuseCall", nil);
+            break;
+        case AgoarChatCallEndReasonCancel:
+            msg = NSLocalizedString(@"cancelCall", nil);
+            break;
+        case AgoarChatCallEndReasonNoResponse:
+            msg = NSLocalizedString(@"remoteNoResponse", nil);
+            break;
+        case AgoarChatCallEndReasonHangup:
+            msg = [NSString stringWithFormat:NSLocalizedString(@"callendPrompt", nil),aTm];
+            break;
+        default:
+            break;
+    }
+    if (msg.length > 0) {
+        [self showHint:msg];
+    }
+}
+```
+
+</PlatformWrapper>

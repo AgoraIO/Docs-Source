@@ -1,5 +1,217 @@
 <PlatformWrapper platform="flutter">
 
-Not implemented yet for Flutter
+### Implement the user interface
 
+To implement the user interface, you create the following widgets:
+
+* An `AgoraVideoView` to show the local video preview.
+* An `AgoraVideoView` to render the remote video.
+* A button to **Join** a channel.
+* A button to **Leave** the channel.
+
+To implement this user interface, copy the following code into `/lib/main.dart`, after the `import` statements.
+
+```dart
+// Define App Id, Channel name, and Token of your project generated on Agora Console.
+String appId = 'Your App ID';
+String channel = 'Your channel name';
+String token = 'Your temp token';
+
+// Variables for system logic
+bool _joined = false;
+int _remoteUid = 0;
+var engine;
+
+// Entry point for the app
+void main() {
+  runApp( const MyApp());
+}
+
+class MyApp extends StatefulWidget
+{
+  const MyApp({Key? key}) : super(key: key);
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp>
+{
+  // Build UI
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(
+            title: const Text('Get started with <Vpd k="NAME"/>'),
+          ),
+          body: ListView(
+            children: [
+              Container(
+                child: Row(
+                  children: <Widget>[
+                    ElevatedButton(
+                      child: Text("Join"),
+                      onPressed: () => {join()},
+                    ),
+                    SizedBox(width: 10),
+                    ElevatedButton(
+                      child: Text("Leave"),
+                      onPressed: () => {leave()},
+                    ),
+                  ],
+                ),
+              ),
+              // Container for the local video
+              Container( 
+                child: _renderLocalPreview(),
+                height: 240,
+              ),
+              SizedBox(height: 10),
+              //Container for the Remote video
+              Container(
+                child: _renderRemoteVideo(),
+                height: 240,
+              ),
+           ],
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+         )
+      ),
+    );
+  }
+}
+```
+
+### Implement the <Vpd k="NAME"/> logic
+
+The following figure shows the basic <Vpd k="NAME"/> API call sequence.
+
+<ProductWrapper product="video-calling">
+![image](/images/video-sdk/video-call-logic-flutter.svg)
+</ProductWrapper>
+<ProductWrapper product="interactive-live-streaming">
+![image](/images/video-sdk/ils-call-logic-flutter.svg)
+</ProductWrapper>
+
+To implement the client logic you need to do the following:
+
+1. Create an `RTCEngine` instance with a call to [`RtcEngine.create`](https://docs.agora.io/en/Voice/API%20Reference/flutter/v3.3.1/rtc_engine/RtcEngine/create.html) using the App ID.
+
+1. Enable the video module with a call to [`enableVideo`](https://docs.agora.io/en/Voice/API%20Reference/flutter/v3.3.1/rtc_engine/RtcEngine/enableVideo.html)
+
+1. Set the channel profile with [setChannelProfile](https://docs.agora.io/en/Voice/API%20Reference/flutter/v3.3.1/rtc_engine/RtcEngine/setChannelProfile.html)
+
+<ProductWrapper product="interactive-live-streaming">
+1. Set the client role as `Host` or `Audience` with [setClientRole](https://docs.agora.io/en/Voice/API%20Reference/flutter/v3.3.1/rtc_channel/RtcChannel/setClientRole.html)
+</ProductWrapper>
+
+1. Call [`joinChannel`](https://docs.agora.io/en/Voice/API%20Reference/flutter/v3.3.1/rtc_channel/RtcChannel/joinChannel.html) to join a channel using the token, and channel name.
+
+1. Set the following event handlers with a call to `setEventHandler`:
+.. [`joinChannelSuccess`](https://docs.agora.io/en/Voice/API%20Reference/flutter/v3.3.1/rtc_channel/RtcChannelEventHandler/joinChannelSuccess.html)
+.. [`userJoined`](https://docs.agora.io/en/Voice/API%20Reference/flutter/v3.3.1/rtc_channel/RtcChannelEventHandler/userJoined.html)
+.. [`userOffline`](https://docs.agora.io/en/Voice/API%20Reference/flutter/v3.3.1/rtc_channel/RtcChannelEventHandler/userOffline.html)
+
+1. Play the local and remote videos:
+  
+    1. Play the local video using `rtc_local_view.SurfaceView()` when you join the channel as a host or broadcaster
+    1. Show the remote video using `rtc_remote_view.SurfaceView()` when a user joins the channel as audience
+
+To implement the <Vpl k="CLIENT" /> logic, add the following code to `/lib/main.dart` before `// Build UI`.
+
+```dart
+  // Get camera and microphone permissions
+  Future<void> _handleCameraAndMic() async {
+    await [Permission.camera, Permission.microphone].request();
+  }
+
+  // Initialize the engine and set event handlers
+  Future<void> initializeEngine() async {
+    // Call function to request audio and camera permission.
+    await _handleCameraAndMic();
+    // Create RTC engine/client instance
+    engine = await RtcEngine.create(appId);
+    
+    // Implement event handling logic
+    engine.setEventHandler(RtcEngineEventHandler(
+        joinChannelSuccess: (String channel1, int uid, int elapsed) {
+          print('joinChannelSuccess ${channel1} ${uid}');
+          setState(() {
+            _joined = true;
+          });
+        }, userJoined: (int uid, int elapsed) {
+      print('userJoined ${uid}');
+      setState(() {
+        _remoteUid = uid;
+      });
+    }, userOffline: (int uid, UserOfflineReason reason) {
+      print('userOffline ${uid}');
+      setState(() {
+        _remoteUid = 0;
+      });
+    }));
+  }
+
+  // Widget for local video
+  Widget _renderLocalPreview() {
+    if (_joined) {
+      return rtc_local_view.SurfaceView();
+    } else {
+      return const Text(
+        'Join a channel',
+        textAlign: TextAlign.center,
+      );
+    }
+  }
+
+  // Widget for remote video
+  Widget _renderRemoteVideo() {
+    if (_remoteUid != 0) {
+      return rtc_remote_view.SurfaceView(
+        uid: _remoteUid,
+        channelId: channel,
+      );
+    } else {
+      return const Text(
+        'Waiting for remote user to join',
+        textAlign: TextAlign.center,
+      );
+    }
+  }
+
+  // Initialize
+  @override
+  void initState() {
+    super.initState();
+    initializeEngine();
+  }
+
+  // Clean up the resources when you leave
+  @override
+  void dispose() async {
+    await engine.leaveChannel();
+    await engine.destroy();
+    super.dispose();
+  }
+
+  // Join a channel
+  void join() async {
+    // Enable video
+    await engine.enableVideo();
+   
+    // Set the channel profile
+    await engine.setChannelProfile(ChannelProfile.Communication);
+
+    // Join channel using the channel name and token generated from Agora console.
+    await engine.joinChannel(token, channel, null, 0);   
+  }
+
+  // leave a channel
+  void leave() {
+    setState(() {
+      _joined = false;
+      _remoteUid = 0;
+    });
+    engine.leaveChannel();
+  }
+```
 </PlatformWrapper>

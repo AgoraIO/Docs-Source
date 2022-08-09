@@ -1,0 +1,162 @@
+1. **Add the necessary dependencies**
+
+In order to make HTTPS calls to a token server, integrate the `http` library into your <Vpl k="NAME" /> project. In `pubspec.yaml` add the following under `dependencies`:
+
+```yaml
+  http: ^0.13.5
+```
+
+1. **Download the `http` dependency to your project**
+
+Open a terminal window, navigate to your project folder and run:
+
+```bash
+flutter pub get
+```
+
+1. **Enable the user to specify a channel**
+
+To add a `TextField` for the channel name to the user interface, open `/lib/main.dart` and copy the following code into the method `Widget build(BuildContext context)`, under `body: ListView(... children: [`:
+
+```dart
+TextField(
+    controller: channelTextController,
+    decoration: const InputDecoration(hintText: 'Type the channel name here'),
+),
+```
+
+1. **Import the required dart libraries**
+
+In `/lib/main.dart`, add the following lines after the last `import` statement:
+
+```dart
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+```
+
+1. **Add variables for your connection to the token server**
+
+Declare the variables you need to specify the user id, token role, token-server url and the token expire time. Add the following declarations to `/lib/main.dart` after the `import` statements:
+
+```dart
+int tokenRole = 1; // use 1 for Broadcaster, 2 for Subscriber/Audience
+String serverUrl = ""; // The base URL to your token server. For example, https://app-name.herokuapp.com"
+int tokenExpireTime = 45; // Expire time in Seconds.
+```
+
+1. **Set up access to UI elements**
+
+To set up access to the channel name text box, and display https://api.flutter.dev/flutter/material/SnackBar-class.html[SnackBar] messages, add the following lines after `class _MyAppState extends State<MyApp> {` in `/lib/main.dart`:
+
+```dart
+final myTextController = TextEditingController(text: '');
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey 
+  = GlobalKey<ScaffoldMessengerState>(); // Global key to access the scaffold
+```
+
+In `/lib/main.dart` add the following line to method `Widget build(BuildContext context)`, after `MaterialApp(`:
+
+```dart
+scaffoldMessengerKey: scaffoldMessengerKey,
+```
+
+1. **Retrieve a token from the server**
+
+Use a GET request to retrieve an authentication token for a specific channel from the token server, then decode the return parameters to obtain the token.
+
+In `/lib/main.dart`, add the following `fetchToken` method to class `_MyAppState`:
+
+```dart
+// Fetches the RTC token
+Future<void> fetchToken(int uid, String channelName, int tokenRole) async {
+  // Prepare the Url
+  String URLString = serverUrl +
+      "/rtc/" +
+      channelName +
+      "/" +
+      tokenRole.toString() +
+      "/uid/" +
+      uid.toString() +
+      "?expiry=" +
+      tokenExpireTime.toString();
+
+  // Send the request
+  final response = await http.get(Uri.parse(URLString));
+
+  if (response.statusCode == 200) {
+    // If the server returns an OK response, then parse the JSON.
+    Map<String, dynamic> json = jsonDecode(response.body);
+    String _token = json['rtcToken'];
+    debugPrint("Token Received: " + _token);
+    setToken(_token);
+  } else {
+    // If the server did not return an OK response,
+    // then throw an exception.
+    throw Exception(
+        'Failed to fetch a token. Make sure that your server URL is valid');
+  }
+}
+```
+
+1. **Join a channel using the token**
+
+Use the retrieved token to either join a channel or to renew an expiring token. 
+
+In `/lib/main.dart`, add the following `setToken` method to class `_MyAppState`:
+
+```dart
+void setToken(String newValue) async {
+  token = newValue;
+
+  if (!_joined) {
+    // If not already joined, join a channel.
+    await engine.joinChannel(token, channel, null, uid);
+
+    scaffoldMessengerKey.currentState?.showSnackBar(const SnackBar(
+      content: Text("Joining a channel"),
+    ));
+
+  } else {
+    // user has joined, renew the token by calling renewToken
+    engine.renewToken(token);
+
+    scaffoldMessengerKey.currentState?.showSnackBar(const SnackBar(
+      content: Text("Token Renewed"),
+    ));
+  }
+}
+```
+1. **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
+
+A token expires after the `expireTime` specified in the call to the token server or after 24 hours, if `expireTime` is not specified. The `tokenPrivilegeWillExpire` event handler receives a callback when the current token is about to expire. Your event handler retrieves a fresh token and persists the connection with <Vg k="AGORA_BACKEND" />.
+
+In the `_MyAppState` class, add the following lines after `engine.setEventHandler(RtcEngineEventHandler(`
+
+```dart
+tokenPrivilegeWillExpire: (String token) {
+    print('token expiring...');
+    setState(() {
+    // fetch a new token when the current token is about to expire
+    fetchToken(uid, channel, tokenRole);
+    });
+},
+```
+1. **Update the `join` method to fetch a token**
+
+In the `join()` method, replace the line:
+
+```dart
+await engine.joinChannel(token, channel, null, 0);
+```
+with:
+
+```dart
+ifeval::[ "<Vpd k="NAME"/>" != "{Video}"]
+if (_isBroadcaster==true) 
+    tokenRole = 1;
+else 
+    tokenRole = 2;
+endif::[]
+channel = myTextController.text;
+await fetchToken(uid, channel, tokenRole);
+```

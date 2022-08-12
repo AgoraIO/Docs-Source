@@ -27,6 +27,12 @@ const data = {
     NAME: 'Unity',
     PATH: 'unity',
     CLIENT: 'game'
+  },
+
+  'flutter': {
+    NAME: 'Flutter',
+    PATH: 'flutter',
+    CLIENT: 'app'
   }
 };
 

@@ -1,0 +1,365 @@
+<PlatformWrapper platform="react-native">
+
+1. **Implement a client for Video Call**
+    
+    1. Create the UI
+
+        Create the user interface (UI) for video call in the layout file of your project. For video call, we recommend adding the following elements into the UI:
+
+        1. The start-call button
+        1. The end-call button
+        1. The local video view
+        1. The remote video view
+
+        You can create a `components` folder under the root directory of your project, add a `Style.ts` file under that folder, and add the code that defines the styles of the UI elements as follows to the file:
+
+        ```typescript
+        import {Dimensions, StyleSheet} from 'react-native'
+
+        const dimensions = {
+            width: Dimensions.get('window').width,
+            height: Dimensions.get('window').height,
+        }
+
+        export default StyleSheet.create({
+            max: {
+                flex: 1,
+            },
+            buttonHolder: {
+                height: 100,
+                alignItems: 'center',
+                flex: 1,
+                flexDirection: 'row',
+                justifyContent: 'space-evenly',
+            },
+            button: {
+                paddingHorizontal: 20,
+                paddingVertical: 10,
+                backgroundColor: '#0093E9',
+                borderRadius: 25,
+            },
+            buttonText: {
+                color: '#fff',
+            },
+            fullView: {
+                width: dimensions.width,
+                height: dimensions.height - 100,
+            },
+            remoteContainer: {
+                width: '100%',
+                height: 150,
+                position: 'absolute',
+                top: 5
+            },
+            remote: {
+                width: 150,
+                height: 150,
+                marginHorizontal: 2.5
+            },
+            noUserText: {
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                color: '#0093E9',
+            },
+        })
+        ```
+
+    1. Import classes
+
+        Open the `App.tsx` file, and delete all code. Add the following code to the beginning of the `App.tsx` file:
+
+        ```typescript
+        import React, {Component} from 'react'
+
+        // Import the React Native classes into your project.
+        import {Platform, Text, TouchableOpacity, View, PermissionsAndroid} from 'react-native'
+        // Import the Agora SDK classes into your project.
+        import {
+            ChannelProfileType,
+            ClientRoleType,
+            createAgoraRtcEngine,
+            ErrorCodeType,
+            IRtcEngineEventHandler,
+            LocalVideoStreamError,
+            LocalVideoStreamState,
+            RtcConnection,
+            RtcStats,
+            RtcSurfaceView,
+            RtcTextureView,
+            UserOfflineReasonType,
+            VideoViewSetupMode,
+            WarnCodeType,
+        } from 'react-native-agora-rtc-ng';
+        // Import the UI styles.
+        import styles from './components/Style'
+        ```
+
+    1. Add project permissions
+    
+        1. Android
+            Add the following code to the `App.tsx` file to set a prompt box for getting permissions to use the microphone and camera on an Android device:
+
+            ```typescript
+            const requestCameraAndAudioPermission = async () =>{
+                try {
+                    const granted = await PermissionsAndroid.requestMultiple([
+                        PermissionsAndroid.PERMISSIONS.CAMERA,
+                        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+                    ])
+                    if (
+                        granted['android.permission.RECORD_AUDIO'] === PermissionsAndroid.RESULTS.GRANTED
+                        && granted['android.permission.CAMERA'] === PermissionsAndroid.RESULTS.GRANTED
+                    ) {
+                        console.log('You can use the cameras & mic')
+                    } else {
+                        console.log('Permission denied')
+                    }
+                } catch (err) {
+                    console.warn(err)
+                }
+            }
+            ```
+        1. iOS
+            In Xcode, open the info.plist file. Add the following contents to add permissions for your device:
+
+            | Key 	                                 | Type   | Value                                                                                       |
+            |----------------------------------------|--------|---------------------------------------------------------------------------------------------|
+            | Privacy - Microphone Usage Description | String | The purpose for accessing the microphone, such as for a call or interactive live streaming. |
+            | Privacy - Camera Usage Description     | String | The purpose for accessing the camera, such as for a call or interactive live streaming.     |
+
+    1. Create an App Component
+
+        When creating an App component, you need to define your `App ID`, `token`, and `channel name`, which will be used for initializing the RtcEngine object and joining the channel.
+
+        - appId: The App ID of your Agora project. See [Get an App ID](../manage-agora-account#get-the-app-id) for details.
+
+        - channelName: The unique channel name for the AgoraRTC session. Users with the same App ID and channel name can join the same channel.
+
+        - token: Pass a token that identifies the role and privilege of the user. The token must be generated using the preceding App ID and channel name. You can set it to one of the following values:
+            A temporary token generated in Console. A temporary token is valid for 24 hours. For details, see [Get a Temporary Token](../reference/manage-agora-account#get-the-app-id).
+            A token generated at the server. This applies to scenarios with high-security requirements. For details, see Generate a token from Your Server.
+
+        If your project has enabled the app certificate, ensure that you provide a token.
+
+        Add the following code to the `App.tsx` file to create variables for initializing RtcEngine and joining a channel.
+
+        ```typescript
+        // Create an App component, which extends the properties of the Pros and State interfaces.
+        export default class App extends Component<Props, State>
+        implements IRtcEngineEventHandler
+        {
+            _engine?: RtcEngine
+
+            // Add a constructor，and initialize this.state. You need:
+            // Replace yourAppId with the App ID of your Agora project.
+            // Replace yourChannel with the channel name that you want to join.
+            // Replace yourToken with the token that you generated using the App ID and channel name above.
+            constructor(props) {
+                super(props)
+                this.state = {
+                    appId: 'yourAppId',
+                    channelName: 'yourChannel',
+                    token: 'yourToken',
+                    joinSucceed: false,
+                    peerIds: [],
+                }
+                if (Platform.OS === 'android') {
+                    requestCameraAndAudioPermission().then(() => {
+                        console.log('requested!')
+                    })
+                }
+            }
+            // Other code. See step 5 to step 12.
+        }
+        ```
+    1. Initialize RtcEngine
+
+        Create and initialize the RtcEngine object before calling any other Agora APIs. Add the following code after the `// Other code line` in `App.tsx`:
+
+        ```typescript
+        // Mount the App component into the DOM.
+        componentDidMount() {
+            this.init()
+        }
+        // Pass in your App ID through this.state, create and initialize an RtcEngine object.
+        init = async () => {
+            const {appId} = this.state
+            this._engine = await RtcEngine.create(appId)
+            // Enable the video module.
+            await this._engine.enableVideo()
+            // Enable the local video preview.
+            await this._engine.startPreview()
+        }
+        ```
+    1. Handle Callback Events
+
+        You can also listen for callback events, such as when the local user joins the channel, when a remote user joins the channel, and when a remote user leaves the channel. Add the following code after `await this._engine.startPreview()` in the `App.tsx` file.
+
+        ```typescript
+        //Listens for the joining channel event of the local user
+        onJoinChannelSuccess(connection: RtcConnection, elapsed: number) {
+            console.info(
+                'onJoinChannelSuccess',
+                'connection',
+                connection,
+                'elapsed',
+                elapsed
+            );
+            this.setState({ joinSucceed: true });
+        }
+
+        //Listens for the leaving channel event of the local user
+        onLeaveChannel(connection: RtcConnection, stats: RtcStats) {
+            console.info('onLeaveChannel', 'connection', connection, 'stats', stats);
+            this.setState({ joinSucceed: false, peerIds: [] });
+        }
+
+        //Listens for the joining channel event of the remote user
+        onUserJoined(connection: RtcConnection, remoteUid: number, elapsed: number) {
+            console.info(
+                'onUserJoined',
+                'connection',
+                connection,
+                'remoteUid',
+                remoteUid,
+                'elapsed',
+                elapsed
+            );
+            const { peerIds } = this.state;
+            this.setState({
+                peerIds: [...peerIds, remoteUid],
+            });
+        }
+
+        //Listens for the leaving channel event of the remote user
+        onUserOffline(
+            connection: RtcConnection,
+            remoteUid: number,
+            reason: UserOfflineReasonType
+        ) {
+            console.info(
+                'onUserOffline',
+                'connection',
+                connection,
+                'remoteUid',
+                remoteUid,
+                'reason',
+                reason
+            );
+            const { peerIds } = this.state;
+            this.setState({
+                peerIds: peerIds.filter((value) => value !== remoteUid),
+            });
+        }
+        ```
+
+    1. Join a channel
+
+        After initializing the RtcEngine object, you can call joinChannel to join a channel. Add the following code after the `onUserOffline` callback in the `App.tsx` file.
+
+        ```typescript
+        // Sets the client role to host and pass in your token, channel name and user ID to join a channel.
+        // You need to specify the uid of the local user and ensure it's unique in the channel.
+        startCall = () => {
+            const { channelName, token } = this.state;
+            this._engine?.joinChannelWithOptions(token, channelId, 0, {
+                clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+            });
+        }
+        ```
+    
+    1. Render UI elements
+
+        Call the `render()` method in the App component to render the UI elements and handle the button click event. Add the following code after `startCall` to the `App.tsx` file.
+
+        ```typescript
+        render() {
+            return (
+                <View style={styles.max}>
+                    <View style={styles.max}>
+                        <View style={styles.buttonHolder}>
+                            <TouchableOpacity
+                                onPress={this.startCall}
+                                style={styles.button}>
+                                <Text style={styles.buttonText}> Start Call </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={this.endCall}
+                                style={styles.button}>
+                                <Text style={styles.buttonText}> End Call </Text>
+                            </TouchableOpacity>
+                        </View>
+                        {this._renderVideos()}
+                    </View>
+                </View>
+            )
+        }
+        ```
+
+    1. Render the local view
+
+        Configure the video view of the local user. After joining the channel, the user can see themselves. Add the following code after `render()` in the `App.tsx` file.
+
+        ```typescript
+        _renderVideos = () => {
+            const {joinSucceed} = this.state
+            return joinSucceed ? (
+                <View style={styles.fullView}>
+                    <RtcSurfaceView
+                    style={styles.max}
+                    canvas={{ uid: 0 }}
+                    />
+                </View>
+            ) : null
+        }
+        ```
+    
+    1. Render the remote view
+
+        After joining the channel, pass in the uid of the remote host, and set the video view of the remote host. Add the following code after `_renderVideos()` in the `App.tsx` file.
+
+        ```typescript
+        _renderRemoteVideos = () => {
+            const {peerIds} = this.state
+            return (
+                <ScrollView
+                    style={styles.remoteContainer}
+                    contentContainerStyle={{paddingHorizontal: 2.5}}
+                    horizontal={true}>
+                    {peerIds.map((value, index, array) => {
+                        return (
+                            <RtcSurfaceView
+                            key={`${value}-${index}`}
+                            style={styles.remote}
+                            zOrderMediaOverlay={true}
+                            canvas={{ uid: value }}
+                            />
+                        )
+                    })}
+                </ScrollView>
+            )
+        }
+        ```
+
+    1. Leave the channel
+        
+        Call `leaveChannel` to leave the current channel according to your scenario. For example, when you need to close the <Vpl k="CLIENT" />, or when your <Vpl k="CLIENT" /> runs in the background. Add the following code after `endcall` in the `App.tsx` file.
+
+        ```typescript
+        endCall = () => {
+            this._engine.leaveChannel();
+        }
+        ```
+    
+    1. Release resources
+
+        When the user closes the <Vpl k="CLIENT" />, release all resources used by the Agora SDK. Add the following code after `componentDidMount()` in the `App.tsx` file.
+
+        ```typescript
+        // When the component is being uninstalled
+        componentWillUnmount() {
+            this._engine?.unregisterEventHandler(this);
+            this._engine?.release();
+        }
+        ```
+</PlatformWrapper>

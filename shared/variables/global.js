@@ -8,6 +8,7 @@ export const API_REF_OLD = 'https://docs.agora.io/en/Video/API%20Reference';
 export const API_REF_WEB_ROOT = `${API_REF_OLD}/web_ng`;
 export const API_REF_ANDROID_ROOT  = `${API_REF_ROOT}/java_ng/API`;
 export const API_REF_IOS_ROOT = `${API_REF_ROOT}/ios_ng/API`;
+export const API_REF_ELECTRON_ROOT  = `${API_REF_ROOT}/electron_ng/API`;
 
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
@@ -93,6 +94,7 @@ export const REPO_URL = 'https://gitlab.com/billy-the-fish/asciidoc-test';
 export const AGORA_DOCS_URL = 'https://docs.agora.io/en';
 export const DOWNLOAD_URL = 'https://download.agora.io/sdk/release';
 export const AGORA_PLATFORM_FOLDER = 'Agora%20Platform';
+
 
 export const API_REF_FOLDER = 'API%20Reference';
 export const API_REF_WEB = 'https://docs.agora.io/en/Video/API%20Reference/web_ng';

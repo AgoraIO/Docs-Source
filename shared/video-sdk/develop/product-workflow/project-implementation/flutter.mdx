@@ -1,0 +1,204 @@
+<PlatformWrapper platform="flutter">
+
+### Implement the user interface
+
+In a real-world application, for each volume setting you want to control, you typically add a volume control UI element such as a <Link target="_blank" to="https://developer.android.com/reference/android/widget/SeekBar">SeekBar</Link> to the audio configuration panel. To enable the user to mute local or remote audio, you add a switch or a checkBox to the interface for each user. In this example, you add a `SeekBar` and a `CheckBox` to the UI to test different volume settings. For screen sharing, you add a `Button` to start and stop sharing.
+
+To add the UI elements, in `/app/res/layout/activity_main.xml`, add the following code before `</RelativeLayout>`:
+
+```xml
+<SeekBar
+    android:id="@+id/volumeSeekBar"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_below="@id/JoinButton"
+    android:layout_alignStart="@id/JoinButton"
+    android:layout_alignEnd="@id/LeaveButton"
+    android:layout_marginTop="10dp"
+    android:max="100"
+    android:min="0"
+    android:progress="50" />
+
+<CheckBox
+    android:id="@+id/muteCheckBox"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_below="@id/volumeSeekBar"
+    android:checked="false"
+    android:layout_alignStart="@id/JoinButton"
+    android:text="Mute" />
+
+<Button
+    android:id="@+id/ShareScreenButton"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_below="@id/muteCheckBox"
+    android:layout_alignEnd="@id/remote_video_view_container"
+    android:layout_alignStart="@id/JoinButton"
+    android:onClick="shareScreen"
+    android:text="Start Screen Sharing" />
+```
+
+You see errors in your IDE. This is because this layout refers to methods that you create later.
+
+### Handle the system logic
+
+1. **Add the required libraries**
+
+    To access and use the UI elements and to capture and share your screen, import the corresponding <Vg k="COMPANY" /> and Android libraries. In `/app/java/com.example.<projectname>/MainActivity`, add the following to the list of `import` statements:
+
+    ```java
+    import android.widget.Button;
+    import android.widget.SeekBar;
+    import android.widget.CheckBox;
+    import android.widget.CompoundButton;
+
+    import android.util.DisplayMetrics;
+    import android.os.Build;
+    import android.content.Intent;
+    import android.media.projection.MediaProjectionManager;
+    import android.content.Context;
+    import androidx.annotation.Nullable;
+    import io.agora.rtc2.video.ScreenCaptureParameters;
+    ```
+
+1. **Add the permission to run a foreground service**
+
+    Your <Vpl k="CLIENT" /> must run as a foreground service so that it is not killed when it is minimized. To get the required permission, in `AndroidManifest.xml`, add the following line after `</application>`.
+
+    ```xml
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    ```
+
+### Implement volume control and screen sharing logic
+
+To implement these features in your <Vpl k="CLIENT" />, take the following steps:
+
+1. **Declare the variables you need**
+
+    To  to read, store and apply workflow settings, in `/app/java/com.example.<projectname>/MainActivity`, add the following declarations to the `MainActivity` class:
+
+    ```java
+    // Volume Control
+    private SeekBar volumeSeekBar;
+    private CheckBox muteCheckBox;
+    private int volume = 50;
+    private int remoteUid = 0; // Stores the uid of the remote user
+
+    // Screen sharing
+    private int PROJECTION_REQ_CODE = 345; // A unique id
+    private int DEFAULT_SHARE_FRAME_RATE = 10; 
+    private boolean sharingScreen = false;
+    ```
+
+1. **Store the `uid` of the remote user**
+
+    To adjust the volume or mute a specific remote user, you need the `uid` of that user. Add the following line to the beginning of the `onUserJoined` callback, to store the `remoteUid`: 
+
+    ```java
+    remoteUid = uid;
+    ```
+
+1. **Adjust or mute the volume**
+
+    You use the `OnSeekBarChangeListener` and `OnCheckedChangeListener` callbacks to handle the volume change actions taken by the user. In `/app/java/com.example.<projectname>/MainActivity`, add the following lines to `onCreate` after `SetupVideoSDKEngine();`:
+
+    ```java
+    volumeSeekBar = (SeekBar)findViewById(R.id.volumeSeekBar);
+    volumeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+
+        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            volume = progress;
+            agoraEngine.adjustRecordingSignalVolume(volume);
+        }
+
+        public void onStartTrackingTouch(SeekBar seekBar) {
+            //Required to implement OnSeekBarChangeListener
+        }
+
+        public void onStopTrackingTouch(SeekBar seekBar) {
+            //Required to implement OnSeekBarChangeListener
+        }
+    });
+
+    muteCheckBox = (CheckBox) findViewById(R.id.muteCheckBox);
+    muteCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener(){
+
+        @Override
+        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+            agoraEngine.muteRemoteAudioStream(remoteUid, isChecked);
+        }
+    });
+    ```
+
+1. **Start or stop screen sharing**
+
+    When a user presses the screen sharing button, you create an `Intent` based on Android `MediaProjection`, and pass the `Intent` to the native Android method `startActivityForResult` to request capturing of screen data. When the user presses the button again, you stop screen sharing. To do this, add the following method to the `MainActivity` class:
+
+    ```java
+    public void shareScreen(View view) {
+        Button sharingButton = (Button) view;
+
+        if (!sharingScreen){ // Start sharing
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
+            // Ensure that your Android version is Lollipop or higher.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    Intent fgServiceIntent = new Intent(this, MainActivity.class);
+                    startForegroundService(fgServiceIntent);
+
+                    // Instantiate a MediaProjectionManager object
+                    MediaProjectionManager mpm = (MediaProjectionManager)
+                            getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+                    // Create an intent
+                    Intent intent = mpm.createScreenCaptureIntent();
+                    // Start screen capturing
+                    startActivityForResult(intent, PROJECTION_REQ_CODE);
+                    sharingButton.setText("Stop Screen Sharing");
+                }
+            }           
+        } else { // Stop sharing
+            agoraEngine.stopScreenCapture();
+
+            ChannelMediaOptions mediaOptions = new ChannelMediaOptions();
+            mediaOptions.publishCameraTrack = true;
+            mediaOptions.publishScreenTrack = false;
+            agoraEngine.updateChannelMediaOptions(mediaOptions);
+
+            sharingScreen = false;
+            sharingButton.setText("Start Screen Sharing");
+        }
+    }
+    ```
+
+1. **Start publishing screen capture data**
+
+    In the `onActivityResult` callback, you get the screen data. Pass it as a parameter in the `startScreenCapture` method to start screen sharing. Set `ChannelMediaOptions` to start publishing the screen track and stop publishing the camera track. You call `updateChannelMediaOptions` to apply the changes. To do this, add the following method to the `MainActivity` class:
+
+    ```java
+    @Override
+    // Listen for onActivityResult.
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == PROJECTION_REQ_CODE && resultCode == RESULT_OK) { // Sharing permission granted
+            // Get the screen metrics
+            DisplayMetrics metrics = new DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getMetrics(metrics);
+
+            // Set capture parameters
+            ScreenCaptureParameters parameters = new ScreenCaptureParameters();
+            parameters.setFrameRate(DEFAULT_SHARE_FRAME_RATE);
+
+            // Start screen sharing
+            agoraEngine.startScreenCapture(data, parameters);
+            sharingScreen = true;
+
+            // Update channel media options to publish the screen sharing video stream
+            ChannelMediaOptions mediaOptions = new ChannelMediaOptions();
+            mediaOptions.publishCameraTrack = false;
+            mediaOptions.publishScreenTrack = true;
+            agoraEngine.updateChannelMediaOptions(mediaOptions);
+        }
+    }
+    ```
+</PlatformWrapper>

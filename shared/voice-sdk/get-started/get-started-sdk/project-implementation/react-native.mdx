@@ -1,0 +1,289 @@
+<PlatformWrapper platform="react-native">
+
+1. **Implement a client for Video Call**
+    
+    1. Create the UI
+
+        Create the user interface (UI) for <Vpd k="NAME"/> in the layout file of your project. For video call, we recommend adding the following elements into the UI:
+
+        1. The join/leave button
+        1. The mute/unmute button
+
+        You can create a `components` folder under the root directory of your project, add a `Style.ts` file under that folder, and add the code that defines the styles of the UI elements as follows to the file:
+
+        ```typescript
+        import {StyleSheet} from 'react-native'
+
+        export default StyleSheet.create({
+        container: {
+            flex: 1,
+        },
+        float: {
+            position: 'absolute',
+            right: 0,
+            bottom: 0,
+        },
+        top: {
+            width: '100%',
+        },
+        input: {
+            borderColor: 'gray',
+            borderWidth: 1,
+        },
+        })
+        ```
+
+    1. Import classes
+
+        Open the `App.tsx` file, and delete all code. Add the following code to the beginning of the `App.tsx` file:
+
+        ```typescript
+        import React, {Component} from 'react'
+        import {Platform, Button, TextInput, View, PermissionsAndroid} from 'react-native'
+        // Import the RtcEngine class into your project.
+        import RtcEngine from 'react-native-agora'
+        // Import the UI styles.
+        import styles from './components/Style'
+        ```
+
+    1. Add project permissions
+    
+        1. Android
+            Add the following code to the `App.tsx` file to set a prompt box for getting permissions to use the microphone and camera on an Android device:
+
+            ```typescript
+            const requestCameraAndAudioPermission = async () => {
+            try {
+                const granted = await PermissionsAndroid.requestMultiple([
+                PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+                ]);
+                if (
+                granted['android.permission.RECORD_AUDIO'] ===
+                    PermissionsAndroid.RESULTS.GRANTED
+                ) {
+                console.log('You can use the mic');
+                } else {
+                console.log('Permission denied');
+                }
+            } catch (err) {
+                console.warn(err);
+            }
+            };
+            ```
+        1. iOS
+            In Xcode, open the info.plist file. Add the following contents to add permissions for your device:
+
+            | Key 	                                 | Type   | Value                                                                                       |
+            |----------------------------------------|--------|---------------------------------------------------------------------------------------------|
+            | Privacy - Microphone Usage Description | String | The purpose for accessing the microphone, such as for a call or interactive live streaming. |
+
+    1. Create an App Component
+
+        When creating an App component, you need to define your `App ID`, `token`, and `channel name`, which will be used for initializing the RtcEngine object and joining the channel.
+
+        - appId: The App ID of your Agora project. See [Get an App ID](../reference/manage-agora-account#get-the-app-id) for details.
+
+        - channelName: The unique channel name for the AgoraRTC session. Users with the same App ID and channel name can join the same channel.
+
+        - token: Pass a token that identifies the role and privilege of the user. The token must be generated using the preceding App ID and channel name. You can set it to one of the following values:
+            A temporary token generated in Console. A temporary token is valid for 24 hours. For details, see [Get a Temporary Token](../reference/manage-agora-account#generate-a-temporary-token).
+            A token generated at the server. This applies to scenarios with high-security requirements. For details, see Generate a token from Your Server.
+
+        If your project has enabled the app certificate, ensure that you provide a token.
+
+        Add the following code to the `App.tsx` file to create variables for initializing RtcEngine and joining a channel.
+
+        ```typescript
+        // Define a Props interface.
+        interface Props {
+        }
+
+        // Define a State interface.
+        interface State {
+            appId: string,
+            channelName: string,
+            token: string,
+            joinSucceed: boolean,
+            peerIds: number[],
+        }
+
+        // Create an App component, which extends the properties of the Pros and State interfaces.
+        export default class App extends Component<Props, State> {
+            _engine?: RtcEngine
+            // Add a constructor，and initialize this.state. You need:
+            // Replace yourAppId with the App ID of your Agora project.
+            // Replace yourChannel with the channel name that you want to join.
+            // Replace yourToken with the token that you generated using the App ID and channel name above.
+            constructor(props) {
+                super(props)
+                this.state = {
+                    appId: 'yourAppId',
+                    channelName: 'yourChannel',
+                    token: 'yourToken',
+                    joinSucceed: false,
+                    peerIds: [],
+                }
+                if (Platform.OS === 'android') {
+                    requestCameraAndAudioPermission().then(() => {
+                        console.log('requested!')
+                    })
+                }
+            }
+            // Other code. See next steps.
+        }
+        ```
+
+    1. Initialize RtcEngine
+
+        Create and initialize the RtcEngine object before calling any other Agora APIs. Add the following code after the `// Other code line` in `App.tsx`:
+
+        ```typescript
+        // Mount the App component into the DOM.
+        componentDidMount() {
+            this.init()
+        }
+        // Pass in your App ID through this.state, create and initialize an RtcEngine object.
+        init = async () => {
+            const {appId} = this.state
+            this._engine = await RtcEngine.create(appId)
+            // Enable the audio module.
+            await this._engine.enableAudio()
+
+
+            // Listen for the UserJoined callback.
+            // This callback occurs when the remote user successfully joins the channel.
+            this._engine.addListener('UserJoined', (uid, elapsed) => {
+                console.log('UserJoined', uid, elapsed)
+                const {peerIds} = this.state
+                if (peerIds.indexOf(uid) === -1) {
+                    this.setState({
+                        peerIds: [...peerIds, uid]
+                    })
+                }
+            })
+
+
+            // Listen for the UserOffline callback.
+            // This callback occurs when the remote user leaves the channel or drops offline.
+            this._engine.addListener('UserOffline', (uid, reason) => {
+                console.log('UserOffline', uid, reason)
+                const {peerIds} = this.state
+                this.setState({
+                    // Remove peer ID from state array
+                    peerIds: peerIds.filter(id => id !== uid)
+                })
+            })
+
+            // Listen for the JoinChannelSuccess callback.
+            // This callback occurs when the local user successfully joins the channel.
+            this._engine.addListener('JoinChannelSuccess', (channel, uid, elapsed) => {
+                console.log('JoinChannelSuccess', channel, uid, elapsed)
+                this.setState({
+                    joinSucceed: true
+                })
+            })
+        }
+        ```
+
+    1. Join a channel
+
+        After initializing the `RtcEngine` object, you can call `joinChannel` to join a channel. Add this after the `init = async () => {` code block:
+
+        ```typescript
+        // Pass in your token and channel name through this.state.token and this.state.channelName.
+        // Set the ID of the local user, which is an integer and should be unique. If you set uid as 0,
+        // the SDK assigns a user ID for the local user and returns it in the JoinChannelSuccess callback.
+        _joinChannel = async () => {
+                await this._engine?.joinChannel(this.state.token, this.state.channelName, null, 0)
+            }
+        ```
+
+    1. Switch audio devices
+
+        During a voice call, the user can click the button on the user interface to turn the microphone on or off, or switch the audio playback device. Add the following code after `_joinChannel()`:
+
+        ```typescript
+        // Turn the microphone on or off.
+        _switchMicrophone = () => {
+                const { openMicrophone } = this.state
+                this._engine?.enableLocalAudio(!openMicrophone).then(() => {
+                    this.setState({ openMicrophone: !openMicrophone })
+                }).catch((err) => {
+                    console.warn('enableLocalAudio', err)
+                })
+            }
+
+        // Switch the audio playback device.
+        _switchSpeakerphone = () => {
+                const { enableSpeakerphone } = this.state
+                this._engine?.setEnableSpeakerphone(!enableSpeakerphone).then(() => {
+                    this.setState({ enableSpeakerphone: !enableSpeakerphone })
+                }).catch((err) => {
+                    console.warn('setEnableSpeakerphone', err)
+                })
+            }
+        ```
+    
+    1. Render UI elements
+
+        Call the `render()` method in the App component to render the UI elements and handle the button click event. Add the following code after `_switchSpeakerPhone = () => {` code block:
+        ```typescript
+        render() {
+            const {
+                channelName,
+                joinSucceed,
+                openMicrophone,
+                enableSpeakerphone,
+            } = this.state;
+            return (
+                <View style={styles.container}>
+                <View style={styles.top}>
+                    <TextInput
+                    style={styles.input}
+                    onChangeText={(text) => this.setState({ channelName: text })}
+                    placeholder={'Channel Name'}
+                    value={channelName}
+                    />
+                    <Button
+                    onPress={joinSucceed ? this._leaveChannel : this._joinChannel}
+                    title={`${joinSucceed ? 'Leave' : 'Join'} channel`}
+                    />
+                </View>
+                <View style={styles.float}>
+                    <Button
+                    onPress={this._switchMicrophone}
+                    title={`Microphone ${openMicrophone ? 'on' : 'off'}`}
+                    />
+                    <Button
+                    onPress={this._switchSpeakerphone}
+                    title={enableSpeakerphone ? 'Speakerphone' : 'Earpiece'}
+                    />
+                </View>
+                </View>
+            )
+        }
+        ```
+    
+    1. Leave the channel
+
+        Call `leaveChannel` to leave the current channel according to your scenario. For example, when the <Vpd k="NAME"/> ends, when you need to close the app, or when your app runs in the background. Add the following code after `render()` in `App.tsx`:
+
+        ```typescript
+        _leaveChannel = async () => {
+            await this._engine?.leaveChannel()
+            this.setState({peerIds: [], joinSucceed: false})
+        }
+        ```
+
+    1. Release resources
+
+        When the user closes the <Vpl k="CLIENT" />, release all resources used by the Agora SDK. Add the following code after `componentDidMount()` in the `App.tsx` file.
+
+        ```typescript
+        // When the component is being uninstalled
+        componentWillUnmount() {
+            this._engine?.unregisterEventHandler(this);
+            this._engine?.release();
+        }
+        ```
+</PlatformWrapper>

@@ -27,6 +27,11 @@ const data = {
     NAME: 'Unity',
     PATH: 'unity',
     CLIENT: 'game'
+  },
+  'electron': {
+    NAME: 'Electron',
+    PATH: 'electron',
+    CLIENT: 'app'
   }
 };
 

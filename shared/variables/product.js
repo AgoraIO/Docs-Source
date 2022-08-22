@@ -39,10 +39,10 @@ const data = {
   },
 
   'signalling': {
-      NAME: 'Signalling',
-      PATH: 'signalling',
-      SDK: 'Signalling SDK',
-      PRODUCT: 'Signalling'
+      NAME: 'Signaling',
+      PATH: 'signaling',
+      SDK: 'Signaling SDK',
+      PRODUCT: 'Signaling'
   }
 };
 

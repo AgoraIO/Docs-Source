@@ -9,6 +9,17 @@ export const API_REF_WEB_ROOT = `${API_REF_OLD}/web_ng`;
 export const API_REF_ANDROID_ROOT  = `${API_REF_ROOT}/java_ng/API`;
 export const API_REF_IOS_ROOT = `${API_REF_ROOT}/ios_ng/API`;
 
+
+export const SIGNALING_API_REF_ROOT = `https://docs.agora.io/en/Real-time-Messaging/API%20Reference/RTM_java`;
+export const SIGNALING_API_REF_ANDROID_ROOT = `${SIGNALING_API_REF_ROOT}/RTM_java`;
+export const SIGNALING_API_REF_WEB_ROOT = `${SIGNALING_API_REF_ROOT}/RTM_web`;
+export const SIGNALING_API_REF_OC_ROOT = `${SIGNALING_API_REF_ROOT}/RTM_oc`;
+export const SIGNALING_API_REF_CPP_ROOT = `${SIGNALING_API_REF_ROOT}/RTM_cpp`;
+export const SIGNALING_API_REF_LINUX_JAVA_ROOT = `${SIGNALING_API_REF_ROOT}/RTM_java_linux`;
+export const SIGNALING_API_REF_REST_ROOT = `https://docs.agora.io/en/Real-time-Messaging/rtm_get_event`;
+export const SIGNALING_API_REF_UNITY_ROOT = `${SIGNALING_API_REF_ROOT}/RTM_unity`;
+
+
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
 

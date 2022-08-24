@@ -10,7 +10,7 @@ export const API_REF_ANDROID_ROOT  = `${API_REF_ROOT}/java_ng/API`;
 export const API_REF_IOS_ROOT = `${API_REF_ROOT}/ios_ng/API`;
 
 
-export const SIGNALING_API_REF_ROOT = `https://docs.agora.io/en/Real-time-Messaging/API%20Reference/RTM_java`;
+export const SIGNALING_API_REF_ROOT = `https://docs.agora.io/en/Real-time-Messaging/API%20Reference`;
 export const SIGNALING_API_REF_ANDROID_ROOT = `${SIGNALING_API_REF_ROOT}/RTM_java`;
 export const SIGNALING_API_REF_WEB_ROOT = `${SIGNALING_API_REF_ROOT}/RTM_web`;
 export const SIGNALING_API_REF_OC_ROOT = `${SIGNALING_API_REF_ROOT}/RTM_oc`;

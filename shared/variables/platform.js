@@ -17,6 +17,18 @@ const data = {
     CLIENT: 'app'
   },
 
+  'linux-cpp': {
+    NAME: 'linux-cpp',
+    PATH: 'linux-cpp',
+    CLIENT: 'app'
+  },
+
+  'linux-java': {
+    NAME: 'linux-java',
+    PATH: 'linux-java',
+    CLIENT: 'app'
+  },
+
   'react-native': {
     NAME: 'React Native',
     PATH: 'react-native',

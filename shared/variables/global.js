@@ -96,6 +96,7 @@ export const AGORA_DOCS_URL = 'https://docs.agora.io/en';
 export const DOWNLOAD_URL = 'https://download.agora.io/sdk/release';
 export const AGORA_PLATFORM_FOLDER = 'Agora%20Platform';
 
+
 export const API_REF_FOLDER = 'API%20Reference';
 export const API_REF_WEB = 'https://docs.agora.io/en/Video/API%20Reference/web_ng';
 

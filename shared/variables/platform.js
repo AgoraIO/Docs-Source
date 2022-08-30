@@ -21,12 +21,23 @@ const data = {
     NAME: 'React Native',
     PATH: 'react-native',
     CLIENT: 'app'
+  },  
+  'electron': {
+    NAME: 'Electron',
+    PATH: 'electron',
+    CLIENT: 'app'
   },
+
   
   'unity': {
     NAME: 'Unity',
     PATH: 'unity',
     CLIENT: 'game'
+  },
+  'electron': {
+    NAME: 'Electron',
+    PATH: 'electron',
+    CLIENT: 'app'
   }
 };
 

@@ -75,7 +75,7 @@ export const FC = 'Flexible Classroom';
 
 export const WEB = 'Web';
 export const IOS = 'iOS';
-export const MAC = 'MacOS';
+export const MAC = 'macOS';
 export const AND = 'Android';
 export const WIN = 'Windows';
 

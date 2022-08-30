@@ -11,6 +11,7 @@ export const API_REF_ANDROID_ROOT  = `${API_REF_ROOT}/java_ng/API`;
 export const API_REF_IOS_ROOT = `${API_REF_ROOT}/ios_ng/API`;
 export const API_REF_UNITY_ROOT = `${API_REF_ROOT}/unity_ng/API`;
 export const API_REF_UNITY_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/unity_ng/API`;
+export const API_REF_RN_ROOT  = `https://docs.agora.io/en/Voice/API%20Reference/react_native`;
 
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';

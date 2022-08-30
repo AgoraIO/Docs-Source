@@ -4,10 +4,14 @@ export const AGORA_BACKEND = `${COMPANY} SD-RTN`;
 export const CLIENT = platform => (platform === 'unity' ? 'game' : 'app');
 
 export const API_REF_ROOT = 'https://docs.agora.io/en/video-call-4.x-beta/API%20Reference';
+export const API_REF_ROOT_VOICE_SDK = 'https://docs.agora.io/en/voice-call-4.x-beta/API%20Reference';
 export const API_REF_OLD = 'https://docs.agora.io/en/Video/API%20Reference';
 export const API_REF_WEB_ROOT = `${API_REF_OLD}/web_ng`;
 export const API_REF_ANDROID_ROOT  = `${API_REF_ROOT}/java_ng/API`;
 export const API_REF_IOS_ROOT = `${API_REF_ROOT}/ios_ng/API`;
+export const API_REF_UNITY_ROOT = `${API_REF_ROOT}/unity_ng/API`;
+export const API_REF_UNITY_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/unity_ng/API`;
+export const API_REF_RN_ROOT  = `https://docs.agora.io/en/Voice/API%20Reference/react_native`;
 
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';

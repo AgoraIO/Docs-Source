@@ -1,0 +1,178 @@
+<PlatformWrapper platform="electron">
+
+To implement the <Vpd k="NAME"/> workflow in your <Vpl k="CLIENT" />, you need the following elements in the UI:
+
+* A button to start and stop screen sharing.
+* A button to mute and unmute the local audio track.
+* Two range sliders to change the volume of remote and local audio tracks.
+
+To create this UI, in `index.html`, add the following code after `<button type="button" id="leave">Leave</button>`:
+
+```html
+<button type="button" id="screenShare">Share Screen</button>
+<br><label> Mute </label>
+<input type="checkbox" id="mute">
+<br><label> Local Audio Level :</label>
+<input type="range" min="0" id= "localAudioVolume" max="100" step="1"><br>
+```
+
+### Handle the system logic
+
+1. **Add the required libraries**
+
+    To switch between publishing screen and camera streams, import the corresponding <Vg k="COMPANY" /> libraries. In `preload.js`, add the following code before `createAgoraRtcEngine,`:
+
+    ```javascript
+    ChannelMediaOptions,
+    ```
+
+1. **Add the required variables**
+
+   To mute and unmute the local user audio stream and track the screen sharing state, in `preload.js`, add the following variables to the declarations:
+   
+   ```javascript
+   // A variable to mute and unmute the local or remote user.
+   var isMuted = false;
+   // A variable to track the screen sharing state.
+   var isScreenSharing = false;
+   ```
+
+
+### Implement the <Vpd k="NAME"/> logic
+
+To implement volume control and screen sharing in your <Vpl k="CLIENT" />, take the following steps:
+
+1. **Implement volume control**
+
+    You use the `adjustRecordingSignalVolume` method to control the local user audio volume. In `preload.js`, add the following lines before `document.getElementById("join").onclick = async function ()`:
+
+    ```javascript
+    // Specify an event listener to control the local audio level using the range slider.
+    document.getElementById("localAudioVolume").addEventListener("change", function(evt) {
+        console.log("Volume of local audio :" + evt.target.value);
+        // Set the local audio volume.
+        agoraEngine.adjustRecordingSignalVolume(parseInt(evt.target.value));
+    });
+    ```
+1. **Mute and unmute the remote user**
+    
+    When the user select **Mute**, call `muteRemoteAudioStream` and pass `true` and `remoteUID` to mute the remote user. When the user unchecks **Mute**, call `muteRemoteAudioStream` and pass `false` and `remoteUID` to unmute the remote user. To implement this logic,
+    in `preload.js`, add the following code before `document.getElementById("join").onclick = async function ()`:
+
+    ```javascript
+    // Specify a event listener on the mute checkbox to mute or mute the remote user.
+    document.getElementById("mute").onclick = async function ()
+    { 
+        isMuted = !isMuted
+        agoraEngine.muteRemoteAudioStream(remoteUID, isMuted);
+    }
+    ```
+3.  **Configure <Vg k="ENGINE" /> to publish the screen sharing stream**
+
+    You use `ChannelMediaOptions` and the `updateChannelMediaOptions` method to specify the type of stream to publish. To switch between publishing screen and camera streams, in `preload.js`, add the following method before `window.onload = () => `:
+
+    ``` javascript
+    function updateChannelPublishOptions(publishScreenTrack)
+    {
+        // Update channel media options to switch between publishing screen and camera streams.
+        let channelOptions = new ChannelMediaOptions();
+        channelOptions.publishMicrophoneTrack = publishScreenTrack;
+        channelOptions.publishCameraTrack = !publishScreenTrack;
+        channelOptions.publishScreenTrack = publishScreenTrack
+        agoraEngine.updateChannelMediaOptions(channelOptions);
+    }
+    ```
+
+4.  **Display the screen sharing stream locally**
+
+    Setup a `VideoCanvas` and use it in the `setupLocalVideo` method to show the screen track locally. To switch between the screen stream and the camera stream, in `preload.js`, add the following method before `window.onload = () => `:
+
+    ``` javascript
+    function setupLocalVideo(setupLocalVideo) 
+    {
+        if (!setupLocalVideo)
+        {
+            // Destroy the renderer to display the screen track.
+            agoraEngine.destroyRendererByView(localVideoContainer);
+            // Setup local view to view the shared screen.
+            agoraEngine.setupLocalVideo(
+                {
+                    sourceType: VideoSourceType.VideoSourceScreenPrimary,
+                    view: localVideoContainer,
+                    renderMode: RenderModeType.RenderModeFit,
+                    uid: 1234
+                });
+        }
+        else 
+        {
+            // Destroy the renderer to display the local video in the local video container.
+            agoraEngine.destroyRendererByView(localVideoContainer);
+            // Setup local view to display the local video.
+            agoraEngine.setupLocalVideo(
+            {
+                sourceType: VideoSourceType.VideoSourceCameraPrimary,
+                view: localVideoContainer,
+                renderMode: RenderModeType.RenderModeFit,
+            });
+        }
+    }
+    ```
+1. **Start or stop screen sharing**
+
+    When the user presses **Share Screen**, your <Vpl k="CLIENT" />:
+    
+    * Calls `startScreenCaptureByScreenRect` and shares the whole screen.
+
+    * Calls `updateChannelPublishOptions` to publish the screen track and unpublish the local video track.
+
+    * Calls `setupLocalVideo` to display the screen track in the local video container.
+
+    When the user presses **Stop Sharing**, your <Vpl k="CLIENT" />:
+
+    * Calls `updateChannelPublishOptions` to publish the local video track and unpublish the screen track.
+
+    * Calls `setupLocalVideo` to display the local video in the local video container.
+
+    To implement this logic, in `preload.js`, add the following code before `document.getElementById("join").onclick = async function ()`:
+
+    ```javascript
+    document.getElementById("screenShare").onclick = async function ()
+    {
+        if(!isScreenSharing)
+        {
+            // Set screenRect, regionRect, and captureParams to share the screen.
+            // When you set x, y, width, height to 0. The Video SDK shares the whole screen.
+            agoraEngine.startScreenCaptureByScreenRect(
+                { x: 0, y: 0, width: 0, height: 0 },// screenRect
+                { x: 0, y: 0, width: 0, height: 0 },// regionRect
+                {
+                    dimensions: {width: 480, height: 680},
+                    frameRate: 15,
+                    captureMouseCursor: false,
+                    windowFocus: false,
+                } // captureParams
+            );
+            // Publish the screen track and unpublish the local video track.
+            updateChannelPublishOptions(true);
+            // Play the screen track in the local video container.
+            setupLocalVideo(false);
+            // Update the screen sharing state.
+            isScreenSharing = true;
+            // Update the UI.
+            document.getElementById("screenShare").innerHTML = "Stop Sharing";
+        }
+        else
+        {
+            // Publish the local video track and unpublish the screen track.
+            updateChannelPublishOptions(false);
+            // Play the local video in the local video container.
+            setupLocalVideo(true);
+            // Update the screen sharing state.
+            isScreenSharing = false;
+            // Update the UI.
+            document.getElementById("screenShare").innerHTML = "Share Screen";
+        }
+    }
+    ```
+</PlatformWrapper>
+

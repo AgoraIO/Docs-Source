@@ -1,5 +1,5 @@
 ---
-title: "Quickstart"
+title: "REST quickstart"
 sidebar_position: 1
 description: >
   Start cloud recording, query cloud recording status, and stop cloud recording by sending a RESTful API request.

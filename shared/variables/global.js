@@ -70,7 +70,7 @@ export const CREC = 'Cloud Recording';
 export const UCS = 'Use Cases';
 
 export const AB = 'App Builder';
-export const UIK = 'UIKit';
+export const UIK = 'UI Kit';
 export const FC = 'Flexible Classroom';
 
 export const WEB = 'Web';

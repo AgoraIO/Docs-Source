@@ -74,6 +74,7 @@ export const UCS = 'Use Cases';
 
 export const AB = 'App Builder';
 export const UIK = 'UI Kit';
+export const vUIK = `Video ${UIK}`;
 export const FC = 'Flexible Classroom';
 
 export const WEB = 'Web';

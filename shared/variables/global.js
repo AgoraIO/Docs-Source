@@ -126,7 +126,7 @@ export const AGORA_DYNAMIC_KEY_CODE_BASE_URL =
 export const ANDROID_UIKIT_VERSION = '4.0.1';
 export const ANDROID_UIKIT_SDK = 'com.github.AgoraIO-Community.Android-UIKit:final';
 
-export const WEB_UIKIT = 'Agora React Web UIKit';
+export const WEB_UIKIT = 'Agora React Web UI Kit';
 
 export const IOS_MI_PACKAGE_VERSION = '4.0.0-rc.1';
 export const IOS_PACKAGE = 'NAME: AgoraRtcEngine_iOS';

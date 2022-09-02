@@ -62,6 +62,8 @@ export const AA = `${COMPANY} Analytics`;
 export const WHITE = 'Interactive Whiteboard';
 export const EM = `${RTEE} Marketplace`;
 export const MS = 'Media Services';
+export const MPUSH = 'Media Push';
+export const MPULL = 'Media Pull';
 export const REC = 'Recording';
 export const MOD = 'Moderation';
 export const CP = 'Cloud Proxy';
@@ -73,12 +75,13 @@ export const CREC = 'Cloud Recording';
 export const UCS = 'Use Cases';
 
 export const AB = 'App Builder';
-export const UIK = 'UIKit';
+export const UIK = 'UI Kit';
+export const vUIK = `Video ${UIK}`;
 export const FC = 'Flexible Classroom';
 
 export const WEB = 'Web';
 export const IOS = 'iOS';
-export const MAC = 'MacOS';
+export const MAC = 'macOS';
 export const AND = 'Android';
 export const WIN = 'Windows';
 
@@ -125,6 +128,14 @@ export const ANDROID_UIKIT_SDK = 'com.github.AgoraIO-Community.Android-UIKit:fin
 
 export const WEB_UIKIT = 'Agora React Web UIKit';
 
-export const IOS_MI_PACKAGE_VERSION = '4.0.0-beta.1';
-export const IOS_PACKAGE = 'NAME: AgoraRtcEngine_iOS_Beta';
+export const IOS_MI_PACKAGE_VERSION = '4.0.0-rc.1';
+export const IOS_PACKAGE = 'NAME: AgoraRtcEngine_iOS';
 export const IOS_VOICE_PACKAGE = 'AgoraRtcEngine_iOS_Voice_Beta';
+
+export const UIKIT_GH_HUB = 'https://github.com/AgoraIO-Community/.github/wiki/Agora-Video-UIKit'
+export const UIKIT_PACKAGE_IOS = 'https://github.com/AgoraIO-Community/VideoUIKit-iOS'
+export const UIKIT_PACKAGE_ANDROID = 'https://github.com/AgoraIO-Community/Android-UIKit'
+export const UIKIT_PACKAGE_MACOS = 'https://github.com/AgoraIO-Community/macOS-UIKit'
+export const UIKIT_PACKAGE_FLUTTER = 'https://github.com/AgoraIO-Community/Flutter-UIKit'
+export const UIKIT_PACKAGE_RN = 'https://github.com/AgoraIO-Community/ReactNative-UIKit'
+export const UIKIT_PACKAGE_REACT_WEB = 'https://github.com/AgoraIO-Community/Web-React-UIKit'

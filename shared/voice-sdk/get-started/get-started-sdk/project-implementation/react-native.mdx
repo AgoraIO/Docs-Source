@@ -1,0 +1,293 @@
+<PlatformWrapper platform="react-native">
+
+
+
+### Implement the user interface
+
+Create the user interface (UI) for <Vpd k="NAME"/> in the layout file of your project. For  <Vpd k="NAME"/>, add the following elements into your UI:
+
+- A join/leave button
+- A mute/unmute button
+
+To create these elements, add the following code to `ProjectName/Style.ts`:
+
+```typescript
+import {StyleSheet} from 'react-native'
+
+export default StyleSheet.create({
+container: {
+    flex: 1,
+},
+float: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+},
+top: {
+    width: '100%',
+},
+input: {
+    borderColor: 'gray',
+    borderWidth: 1,
+},
+})
+```
+
+### Handle the system logic
+
+When your app launches, ensure that the system libraries and permissions classes necessary to insert <Vpd k="NAME"/> feature into the app are granted.
+
+1. **Import system and <Vg k="ASDK" /> classes**
+
+    Replace the contents of `App.tsx` with the following:
+
+    ```typescript
+    import React, {Component} from 'react'
+    import {Platform, Button, TextInput, View, PermissionsAndroid} from 'react-native'
+    // Import the RtcEngine class into your project.
+    import RtcEngine from 'react-native-agora'
+    // Import the UI styles.
+    import styles from './components/Style'
+    ```
+
+1. **Add project permissions**
+
+     - *Android*
+
+            Add the following code to the `App.tsx` file to set a permissions prompt to use the microphone on an Android device:
+
+            ```typescript
+            const requestCameraAndAudioPermission = async () => {
+            try {
+                const granted = await PermissionsAndroid.requestMultiple([
+                PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+                ]);
+                if (
+                granted['android.permission.RECORD_AUDIO'] ===
+                    PermissionsAndroid.RESULTS.GRANTED
+                ) {
+                console.log('You can use the mic');
+                } else {
+                console.log('Permission denied');
+                }
+            } catch (err) {
+                console.warn(err);
+            }
+            };
+            ```
+     -  *iOS*
+
+        Add project permissions for microphone usage.
+
+        Open **Info** in the project navigation panel, then add the following properties to the [Information Property List](https://help.apple.com/xcode/mac/current/#/dev3f399a2a6):
+
+        | Key                          | Type   | Value                  |
+        |------------------------------|--------|------------------------|
+        | NSMicrophoneUsageDescription | String | Access the microphone. |
+
+### Implement the  <Vpd k="NAME"/> logic
+
+When a user opens this <Vpl k="CLIENT" />, you initialize the <Vg k="ENGINE" />. When the user taps a button, the <Vpl k="CLIENT" /> joins or leaves a channel.
+
+The following figure shows the <Vpd k="SDK" /> call sequence of implementing   <Vpd k="PRODUCT" />.
+
+![video call logic ios](/images/voice-sdk/voice-call-logic-android.svg)
+
+To implement this logic, take the following steps:
+
+1. **Create an App Component**
+
+    Add the following code to the `App.tsx` file to create the variables to initialize  initializing  <Vg k="ENGINE" /> and join a channel.
+
+    ```typescript
+        // Define a Props interface.
+        interface Props {
+        }
+
+        // Define a State interface.
+        interface State {
+            appId: string,
+            channelName: string,
+            token: string,
+            joinSucceed: boolean,
+            peerIds: number[],
+        }
+
+        // Create an App component, which extends the properties of the Pros and State interfaces.
+        export default class App extends Component<Props, State> {
+            _engine?: RtcEngine
+            // Add a constructor，and initialize this.state. You need:
+            // Replace yourAppId with the App ID of your Agora project.
+            // Replace yourChannel with the channel name that you want to join.
+            // Replace yourToken with the token that you generated using the App ID and channel name above.
+            constructor(props) {
+                super(props)
+                this.state = {
+                    appId: 'yourAppId',
+                    channelName: 'yourChannel',
+                    token: 'yourToken',
+                    joinSucceed: false,
+                    peerIds: [],
+                }
+                if (Platform.OS === 'android') {
+                    requestCameraAndAudioPermission().then(() => {
+                        console.log('requested!')
+                    })
+                }
+            }
+            // Other code. See next steps.
+        }
+    ```
+
+1. **Initialize  <Vg k="ENGINE" />**
+
+    Create and initialize  <Vg k="ENGINE" /> before calling any other <Vg k="VSDK" /> APIs.
+
+    In `App.tsx`, add the following code after `// Other code line`:
+
+        ```typescript
+        // Mount the App component into the DOM.
+        componentDidMount() {
+            this.init()
+        }
+        // Pass in your App ID through this.state, create and initialize an RtcEngine object.
+        init = async () => {
+            const {appId} = this.state
+            this._engine = await RtcEngine.create(appId)
+            // Enable the audio module.
+            await this._engine.enableAudio()
+
+
+            // Listen for the UserJoined callback.
+            // This callback occurs when the remote user successfully joins the channel.
+            this._engine.addListener('UserJoined', (uid, elapsed) => {
+                console.log('UserJoined', uid, elapsed)
+                const {peerIds} = this.state
+                if (peerIds.indexOf(uid) === -1) {
+                    this.setState({
+                        peerIds: [...peerIds, uid]
+                    })
+                }
+            })
+
+
+            // Listen for the UserOffline callback.
+            // This callback occurs when the remote user leaves the channel or drops offline.
+            this._engine.addListener('UserOffline', (uid, reason) => {
+                console.log('UserOffline', uid, reason)
+                const {peerIds} = this.state
+                this.setState({
+                    // Remove peer ID from state array
+                    peerIds: peerIds.filter(id => id !== uid)
+                })
+            })
+
+            // Listen for the JoinChannelSuccess callback.
+            // This callback occurs when the local user successfully joins the channel.
+            this._engine.addListener('JoinChannelSuccess', (channel, uid, elapsed) => {
+                console.log('JoinChannelSuccess', channel, uid, elapsed)
+                this.setState({
+                    joinSucceed: true
+                })
+            })
+        }
+        ```
+
+1. **Join a channel**
+
+    After initializing <Vg k="ENGINE" />, call `joinChannel` to join a channel.
+
+    Add this after the `init = async () => {` code block:
+
+        ```typescript
+        // Pass in your token and channel name through this.state.token and this.state.channelName.
+        // Set the ID of the local user, which is an integer and should be unique. If you set uid as 0,
+        // the SDK assigns a user ID for the local user and returns it in the JoinChannelSuccess callback.
+        _joinChannel = async () => {
+                await this._engine?.joinChannel(this.state.token, this.state.channelName, null, 0)
+            }
+        ```
+
+1. **Switch audio devices**
+
+    During a voice call, the user can click the button on the user interface to turn the microphone on or off, or switch the audio playback device. Add the following code after `_joinChannel()`:
+
+    ```typescript
+    // Turn the microphone on or off.
+    _switchMicrophone = () => {
+            const { openMicrophone } = this.state
+            this._engine?.enableLocalAudio(!openMicrophone).then(() => {
+                this.setState({ openMicrophone: !openMicrophone })
+            }).catch((err) => {
+                console.warn('enableLocalAudio', err)
+            })
+        }
+
+    // Switch the audio playback device.
+    _switchSpeakerphone = () => {
+            const { enableSpeakerphone } = this.state
+            this._engine?.setEnableSpeakerphone(!enableSpeakerphone).then(() => {
+                this.setState({ enableSpeakerphone: !enableSpeakerphone })
+            }).catch((err) => {
+                console.warn('setEnableSpeakerphone', err)
+            })
+        }
+    ```
+
+1. **Render UI elements**
+
+    Call the `render()` method in the App component to render the UI elements and handle the button click event.
+
+    Add the following code after the `_switchSpeakerPhone = () => {` code block:
+
+    ```typescript
+    render() {
+        const {
+            channelName,
+            joinSucceed,
+            openMicrophone,
+            enableSpeakerphone,
+        } = this.state;
+        return (
+            <View style={styles.container}>
+            <View style={styles.top}>
+                <TextInput
+                style={styles.input}
+                onChangeText={(text) => this.setState({ channelName: text })}
+                placeholder={'Channel Name'}
+                value={channelName}
+                />
+                <Button
+                onPress={joinSucceed ? this._leaveChannel : this._joinChannel}
+                title={`${joinSucceed ? 'Leave' : 'Join'} channel`}
+                />
+            </View>
+            <View style={styles.float}>
+                <Button
+                onPress={this._switchMicrophone}
+                title={`Microphone ${openMicrophone ? 'on' : 'off'}`}
+                />
+                <Button
+                onPress={this._switchSpeakerphone}
+                title={enableSpeakerphone ? 'Speakerphone' : 'Earpiece'}
+                />
+            </View>
+            </View>
+        )
+    }
+    ```
+
+1. **Leave the channel**
+
+    Call `leaveChannel` to leave the current channel according to your scenario. For example, when the <Vpd k="NAME"/> ends, when you need to close the app, or when your app runs in the background.
+
+    Add the following code after `render()` in `App.tsx`:
+
+        ```typescript
+        _leaveChannel = async () => {
+            await this._engine?.leaveChannel()
+            this.setState({peerIds: [], joinSucceed: false})
+        }
+        ```
+
+</PlatformWrapper>

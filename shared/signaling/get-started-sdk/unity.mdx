@@ -1,0 +1,506 @@
+<PlatformWrapper platform="unity">
+        
+## Project setup
+
+In this section, we create a Unity project and integrate the SDK into the project.
+
+### Create a Unity project
+
+1.  Click **File** &gt; **New Project** in Unity.
+
+2.  Select **2D** as the template. Set the project name and location, and click **Create**. After the creation is complete, Unity will display the project editing interface.
+
+### Integrate the SDK
+
+#### Approach 1: Integrate the SDK by importing the asset package
+
+1.  Go to [GitHub](https://github.com/AgoraIO-Community/Agora-Unity-RTM-SDK/releases) to download the latest version of the Agora RTM Unity asset package and unzip it.
+
+2.  In the Unity Editor, select **Assets** &gt; **Import Package** &gt; **Custom Package**.
+
+3.  Select the Agora RTM Unity asset package and click **Open**.
+
+4.  All packages of the SDK are chosen by default. Uncheck the packages you do not need and click **Import**.
+
+#### Approach 2: Manually add the SDK files
+
+1.  Download and extract the latest version of the [Agora <Vg k="SIG_SDK" />](../reference/downloads.html).
+
+2.  Copy the `Rtm-Scripts` folder under the `libs` folder in the SDK package to the `Assets` folder of the project path.
+
+3.  Copy the following files under the `libs/Plugins` path in the SDK package to the corresponding path of the project:
+
+\| Development Platform \| File or folder \| Project directory \|
+\| :——————- \| :—————- \| :————————- \|
+\| Android \| `Plugins/Android` \| `/Assets/Plugins/Android/` \|
+\| iOS \| `Plugins/iOS` \| `/Assets/Plugins/iOS` \|
+\| macOS \| `Plugins/macOS` \| `/Assets/Plugins/macOS` \|
+\| Windows \| `Plugins/x86` \| `/Assets/Plugins/x86` \|
+\| Windows \| `Plugins/x86_64` \| `/Assets/Plugins/x86_64` \|
+
+## Implement Signaling
+
+This section shows how to use the Agora <Vg k="SIG_SDK" /> to implement Signaling into your app step by step.
+
+### 1.Create the UI
+
+Create the following user interface elements in Unity:
+
+-   **Canvas**
+
+-   **Panel**: The main operation interface.
+
+    -   **Text**: Title text, include App ID field and Token field.
+
+    -   **InputField**: The User IDs of the sender and receiver, Peer-to-peer message, Channel name, and Channel message.
+
+    -   **Button**: Log in, Log out, Send peer-to-peer message, Join channel, Send channel message and Leave channel.
+
+-   **ScrollView**: Display message records and status change records.
+
+When you are finished, your interface should look like the following figure:
+
+![1625627589066](https://web-cdn.agora.io/docs-files/1625627589066)
+
+### 2. Implement the interface script
+
+Create an empty GameObject in the **scene** and name it **MessageManager**. Add two scripts into the GameObject:
+
+-   `MessageManager.cs`: The basic logic of sending and receiving messages.
+
+-   `MessageDisplay.cs`: Display messages and status changes on the user interface.
+
+**MessageManager.cs sample code**
+    ```csharp
+    using System.Collections.Generic;
+    using UnityEngine;
+    using UnityEngine.UI;
+
+
+    using agora_rtm;
+
+    namespace io.agora.rtm.quickstart
+    {
+        public class MessageManager : MonoBehaviour
+        {
+
+
+            // Serialization field, used to fill in the App ID and the Token in the Unity Editor
+            [Header("Agora Properties")]
+            [SerializeField]
+            private string appId = "";
+            [SerializeField]
+            private string token = "";
+            // Serialization field, used to connect Unity objects and script variables in the Unity Editor
+            [Header("Application Properties")]
+
+            [SerializeField] InputField userNameInput, channelNameInput;
+            [SerializeField] InputField channelMsgInputBox;
+            [SerializeField] InputField peerUserBox;
+            [SerializeField] InputField peerMessageBox;
+            [SerializeField] MessageDisplay messageDisplay;
+
+
+            private RtmClient rtmClient = null;
+            private RtmChannel channel;
+
+            private RtmClientEventHandler clientEventHandler;
+            private RtmChannelEventHandler channelEventHandler;
+            private RtmCallEventHandler callEventHandler;
+
+            string _userName = "";
+            string UserName {
+                get { return _userName; }
+                set {
+                    _userName = value;
+                    PlayerPrefs.SetString("RTM_USER", _userName);
+                    PlayerPrefs.Save();
+                }
+            }
+
+            string _channelName = "";
+            string ChannelName
+            {
+                get { return _channelName; }
+                set {
+                    _channelName = value;
+                    PlayerPrefs.SetString("RTM_CHANNEL", _channelName);
+                    PlayerPrefs.Save();
+                }
+            }
+
+            agora_rtm.SendMessageOptions _MessageOptions = new agora_rtm.SendMessageOptions() {
+                        enableOfflineMessaging = true,
+                        enableHistoricalMessaging = true
+            };
+
+            private void Awake()
+            {
+                userNameInput.text = PlayerPrefs.GetString("RTM_USER", "");
+                channelNameInput.text = PlayerPrefs.GetString("RTM_CHANNEL", "");
+
+
+            }
+
+            // Initialize
+            void Start()
+            {
+                clientEventHandler = new RtmClientEventHandler();
+                channelEventHandler = new RtmChannelEventHandler();
+                callEventHandler = new RtmCallEventHandler();
+
+                rtmClient = new RtmClient(appId, clientEventHandler);
+    #if UNITY_EDITOR
+                rtmClient.SetLogFile("./rtm_log.txt");
+    #endif
+
+                clientEventHandler.OnQueryPeersOnlineStatusResult = OnQueryPeersOnlineStatusResultHandler;
+                clientEventHandler.OnLoginSuccess = OnClientLoginSuccessHandler;
+                clientEventHandler.OnLoginFailure = OnClientLoginFailureHandler;
+                clientEventHandler.OnMessageReceivedFromPeer = OnMessageReceivedFromPeerHandler;
+
+                channelEventHandler.OnJoinSuccess = OnJoinSuccessHandler;
+                channelEventHandler.OnJoinFailure = OnJoinFailureHandler;
+                channelEventHandler.OnLeave = OnLeaveHandler;
+                channelEventHandler.OnMessageReceived = OnChannelMessageReceivedHandler;
+
+            }
+
+            void OnApplicationQuit()
+            {
+                if (channel != null)
+                {
+                    channel.Dispose();
+                    channel = null;
+                }
+                if (rtmClient != null)
+                {
+                    rtmClient.Dispose();
+                    rtmClient = null;
+                }
+            }
+            // Log in
+            public void Login()
+            {
+                UserName = userNameInput.text;
+
+                if (string.IsNullOrEmpty(UserName) || string.IsNullOrEmpty(appId))
+                {
+                    Debug.LogError("We need a username and appId to login");
+                    return;
+                }
+
+                rtmClient.Login(token, UserName);
+            }
+            // Log out
+            public void Logout()
+            {
+                messageDisplay.AddTextToDisplay(UserName + " logged out of the rtm", Message.MessageType.Info);
+                rtmClient.Logout();
+            }
+
+            // Join the channel
+            public void JoinChannel()
+            {
+                ChannelName = channelNameInput.GetComponent<InputField>().text;
+                channel = rtmClient.CreateChannel(ChannelName, channelEventHandler);
+                ShowCurrentChannelName();
+                channel.Join();
+            }
+            // leave the channel
+            public void LeaveChannel()
+            {
+                messageDisplay.AddTextToDisplay(UserName + " left the chat", Message.MessageType.Info);
+                channel.Leave();
+            }
+            // Send channel message
+            public void SendMessageToChannel()
+            {
+                string msg = channelMsgInputBox.text;
+                string peer = "[channel:" + ChannelName + "]";
+
+                string displayMsg = string.Format("{0}->{1}: {2}", UserName, peer, msg);
+
+                messageDisplay.AddTextToDisplay(displayMsg, Message.MessageType.PlayerMessage);
+                channel.SendMessage(rtmClient.CreateMessage(msg));
+            }
+            // Send peer-to-peer message
+            public void SendPeerMessage()
+            {
+                string msg = peerMessageBox.text;
+                string peer = peerUserBox.text;
+
+                string displayMsg = string.Format("{0}->{1}: {2}", UserName, peer, msg);
+                messageDisplay.AddTextToDisplay(displayMsg, Message.MessageType.PlayerMessage);
+
+                rtmClient.SendMessageToPeer(
+                    peerId: peer,
+                    message: rtmClient.CreateMessage(msg),
+                    options: _MessageOptions
+               );
+
+                peerMessageBox.text = "";
+            }
+
+
+
+            void ShowCurrentChannelName()
+            {
+                ChannelName = channelNameInput.GetComponent<InputField>().text;
+                Debug.Log("Channel name is " + ChannelName);
+            }
+
+
+            void OnQueryPeersOnlineStatusResultHandler(int id, long requestId, PeerOnlineStatus[] peersStatus, int peerCount, QUERY_PEERS_ONLINE_STATUS_ERR errorCode)
+            {
+                if (peersStatus.Length > 0)
+                {
+                    Debug.Log("OnQueryPeersOnlineStatusResultHandler requestId = " + requestId +
+                    " peersStatus: peerId=" + peersStatus[0].peerId +
+                    " online=" + peersStatus[0].isOnline +
+                    " onlinestate=" + peersStatus[0].onlineState);
+                    messageDisplay.AddTextToDisplay("User " + peersStatus[0].peerId + " online status = " + peersStatus[0].onlineState, Message.MessageType.Info);
+                }
+            }
+            // Callback when joining a channel successfully
+            void OnJoinSuccessHandler(int id)
+            {
+                string msg = "channel:" + ChannelName + " OnJoinSuccess id = " + id;
+                Debug.Log(msg);
+                messageDisplay.AddTextToDisplay(msg, Message.MessageType.Info);
+
+            }
+            // Callback when failed to join a channel
+            void OnJoinFailureHandler(int id, JOIN_CHANNEL_ERR errorCode)
+            {
+                string msg = "channel OnJoinFailure  id = " + id + " errorCode = " + errorCode;
+                Debug.Log(msg);
+                messageDisplay.AddTextToDisplay(msg, Message.MessageType.Error);
+            }
+            // Callback when log in successfully
+            void OnClientLoginSuccessHandler(int id)
+            {
+                string msg = "client login successful! id = " + id;
+                Debug.Log(msg);
+                messageDisplay.AddTextToDisplay(msg, Message.MessageType.Info);
+            }
+            // Callback when failed to log in
+            void OnClientLoginFailureHandler(int id, LOGIN_ERR_CODE errorCode)
+            {
+                string msg = "client login unsuccessful! id = " + id + " errorCode = " + errorCode;
+                Debug.Log(msg);
+                messageDisplay.AddTextToDisplay(msg, Message.MessageType.Error);
+            }
+            // Callback when leave the channel
+            void OnLeaveHandler(int id, LEAVE_CHANNEL_ERR errorCode)
+            {
+                string msg = "client onleave id = " + id + " errorCode = " + errorCode;
+                Debug.Log(msg);
+                messageDisplay.AddTextToDisplay(msg, Message.MessageType.Info);
+            }
+            // Callback when receiving a channel message
+            void OnChannelMessageReceivedHandler(int id, string userId, TextMessage message)
+            {
+                Debug.Log("client OnChannelMessageReceived id = " + id + ", from user:" + userId + " text:" + message.GetText());
+                messageDisplay.AddTextToDisplay(userId + ": " + message.GetText(), Message.MessageType.ChannelMessage);
+            }
+            // Callback when receiving a peer-to-peer message
+            void OnMessageReceivedFromPeerHandler(int id, string peerId, TextMessage message)
+            {
+                Debug.Log("client OnMessageReceivedFromPeer id = " + id + ", from user:" + peerId + " text:" + message.GetText());
+                messageDisplay.AddTextToDisplay(peerId + ": " + message.GetText(), Message.MessageType.PeerMessage);
+            }
+            // Callback when a remote member joins the channel
+            void OnMemberJoinedHandler(int id, RtmChannelMember member)
+            {
+                string msg = "channel OnMemberJoinedHandler member ID=" + member.GetUserId() + " channelId = " + member.GetChannelId();
+                Debug.Log(msg);
+                messageDisplay.AddTextToDisplay(msg, Message.MessageType.Info);
+            }
+            // Callback when a remote member leaves the channel
+            void OnMemberLeftHandler(int id, RtmChannelMember member)
+            {
+                string msg = "channel OnMemberLeftHandler member ID=" + member.GetUserId() + " channelId = " + member.GetChannelId();
+                Debug.Log(msg);
+                messageDisplay.AddTextToDisplay(msg, Message.MessageType.Info);
+            }
+
+            // Returns the result of the `SendMessage` method call
+
+            void OnSendMessageResultHandler(int id, long messageId, PEER_MESSAGE_ERR_CODE errorCode)
+            {
+                string msg = string.Format("Sent message with id:{0} MessageId:{1} errorCode:{2}", id, messageId, errorCode);
+                Debug.Log(msg);
+                messageDisplay.AddTextToDisplay(msg, errorCode == PEER_MESSAGE_ERR_CODE.PEER_MESSAGE_ERR_OK ? Message.MessageType.Info : Message.MessageType.Error);
+            }
+
+            // Callback when the connection state changes between the SDK and the Agora RTM system
+            void OnConnectionStateChangedHandler(int id, CONNECTION_STATE state, CONNECTION_CHANGE_REASON reason)
+            {
+                string msg = string.Format("connection state changed id:{0} state:{1} reason:{2}", id, state, reason);
+                Debug.Log(msg);
+                messageDisplay.AddTextToDisplay(msg, Message.MessageType.Info);
+            }
+        }
+
+    }
+    ```
+
+**MessageDisplay.cs sample code**
+    ```csharp
+    using System.Collections.Generic;
+    using UnityEngine;
+    using UnityEngine.UI;
+
+    namespace io.agora.rtm.quickstart
+    {
+        public class MessageDisplay : MonoBehaviour
+        {
+    #pragma warning disable 0649
+            [SerializeField] int maxMessages = 25;
+            [SerializeField] GameObject chatPanel, textPrefab;
+            [SerializeField] MessageColorStruct MessageColors;
+            [SerializeField] List<Message> messageList = new List<Message>();
+    #pragma warning restore 0649
+
+            private void Awake()
+            {
+            }
+            // Convert Text to prefab and add it to the Content object of ScrollView to display the text line by line
+            public void AddTextToDisplay(string text, Message.MessageType messageType)
+            {
+                if (messageList.Count >= maxMessages)
+                {
+                    Destroy(messageList[0].textObj.gameObject);
+                    messageList.Remove(messageList[0]);
+                }
+
+                Message newMessage = new Message();
+                newMessage.text = text;
+
+                GameObject newText = Instantiate(textPrefab, chatPanel.transform);
+                newMessage.textObj = newText.GetComponent<Text>();
+                newMessage.textObj.text = newMessage.text;
+                newMessage.textObj.color = MessageTypeColor(messageType);
+                messageList.Add(newMessage);
+            }
+
+
+            public void Clear()
+            {
+
+                foreach (Message msg in messageList) {
+                    Destroy(msg.textObj.gameObject);
+                }
+                messageList.Clear();
+            }
+
+            Color MessageTypeColor(Message.MessageType messageType)
+            {
+                Color color = MessageColors.infoColor;
+
+                switch (messageType)
+                {
+                    case Message.MessageType.PlayerMessage:
+                        color = MessageColors.playerColor;
+                        break;
+                    case Message.MessageType.ChannelMessage:
+                        color = MessageColors.channelColor;
+                        break;
+                    case Message.MessageType.PeerMessage:
+                        color = MessageColors.peerColor;
+                        break;
+                    case Message.MessageType.Error:
+                        color = MessageColors.errorColor;
+                        break;
+                }
+
+                return color;
+            }
+        }
+
+
+        [System.Serializable]
+        public class Message
+        {
+            public string text;
+            public Text textObj;
+            public MessageType messageType;
+
+            public enum MessageType
+            {
+                Info,
+                Error,
+                PlayerMessage,
+                ChannelMessage,
+                PeerMessage
+            }
+        }
+
+        [System.Serializable]
+        public struct MessageColorStruct
+        {
+            public Color infoColor, errorColor, playerColor, peerColor, channelColor;
+        }
+    }
+    ```
+
+### 3. Connect the script to the user interface elements
+
+1.  Select the user interface elements and script resources according to the attributes in the **MessageManager**.
+
+    -   **userNameInput:** Select the InputField object of the local user ID.
+
+    -   **channelNameInput:** Select the InputField object of the channel name.
+
+    -   **channelMsgInputBox:** Select the InputField object of the channel message.
+
+    -   **peerUserBox:** Select the InputField object of the remote user ID.
+
+    -   **peerMessageBox:** Select the InputField object of the peer-to-peer message.
+
+    -   **messageDisplay:** Select the MessageManager script.
+
+2.  Set the properties of the **MessageDisplay** object :
+
+    -   **chatPanel:** Select the **Content** object in **ScrollView** &gt; **Viewport**.
+
+    -   **textPrefab:** Select the **prefab** in the asset. You must create a prefab of type Text in advance.
+
+    -   **MessageColors:** Choose the colors of the different types of text.
+
+3.  Set the OnClick trigger logic of the Button. When you click each Button, the corresponding method in the script will be triggered :
+
+    -   **Log in**: `MessageManager.Login`
+
+    -   **Send peer-to-peer message**: `MessageManager.SendPeerMessage`
+
+    -   **Log out**: `MessageManager.Logout`
+
+    -   **Join the channel**: `MessageManager.JoinChannel`
+
+    -   **Send channel message**: `MessageManager.SendMessageToChannel`
+
+    -   **Leave the channel**: `MessageManager.LeaveChannel`
+
+## Test your app
+
+To test your app, follow the steps:
+
+1.  Fill in the App ID and Token in the Agora Properties field of the **MessageManager** object.
+
+2.  Click the **File** menu bar in Unity, and set the device you need to run through **Build Settings**.
+
+3.  Click the **Play** button at the top of the Unity main interface to run the sample project directly, or click **File** &gt; **Build And Run** in the menu bar to compile and run the sample project. If the project runs successfully, you can see the following screen on your device:
+
+![1625628015802](https://web-cdn.agora.io/docs-files/1625628015802)
+
+## Next steps
+
+Generating a token by hand is not helpful in a production context. [Authenticate Your Users with Tokens](../develop/authentication.html) shows you how to start Signaling with a token that you retrieve from your server.
+
+## See also
+
+Agora also provides an open-source [sample project](https://github.com/AgoraIO-Community/Agora-Unity-RTM-SDK/tree/master/Unity-RTM-Demo) on GitHub for your reference.
+
+</PlatformWrapper>

@@ -8,6 +8,9 @@ export const API_REF_OLD = 'https://docs.agora.io/en/Video/API%20Reference';
 export const API_REF_WEB_ROOT = `${API_REF_OLD}/web_ng`;
 export const API_REF_ANDROID_ROOT  = `${API_REF_ROOT}/java_ng/API`;
 export const API_REF_IOS_ROOT = `${API_REF_ROOT}/ios_ng/API`;
+export const API_REF_RN_ROOT  = `${API_REF_ROOT}/rn_ng/API`;
+export const API_REF_ROOT_VOICE = 'https://docs.agora.io/en/voice-call-4.x-beta/API%20Reference';
+export const API_REF_RN_ROOT_VOICE = `${API_REF_ROOT_VOICE}/rn_ng/API`;
 
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';

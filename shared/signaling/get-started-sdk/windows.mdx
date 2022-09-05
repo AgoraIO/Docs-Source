@@ -1,0 +1,402 @@
+<PlatformWrapper platform="windows">
+
+
+
+## Project setup
+
+### Create a C++ console app
+
+[Create a C++ console app with Visual Studio](https://docs.microsoft.com/en-us/cpp/build/vscpp-step-1-create?view=msvc-150).
+
+- Select **Visual C++ > Console App**.
+- Set **Name** and the **Solution name** as `RtmQuickstart`.
+
+### Integrate the SDK
+
+Complete the following steps to integrate the Agora <Vg k="SIG_SDK" /> into your project.
+
+1. Configure the project files.
+
+- Go to [SDK Downloads](https://docs.agora.io/en/Agora%20Platform/downloads), download the latest version of the RTM C++ SDK for Windows, and unzip the downloaded SDK package.
+- Copy all subfolders of the **sdk** folder of the downloaded SDK package to the solution directory. Ensure that the subfolders are in the same location as your **.sln** file.
+
+2. Configure the project properties.
+
+Right-click the project name in the **Solution Explorer** window, click **Properties** to configure the following project properties, and click **OK**.
+
+- Go to the **C/C++ > General > Additional Include Directories** menu, click **Edit**, and input **$(SolutionDir)include** in the pop-up window.
+- Go to the **Linker > General > Additional Library Directories** menu, click **Edit**, and input **$(SolutionDir)lib** in the pop-up window.
+- Go to the **Linker > Input > Additional Dependencies** menu, click **Edit**, and input **agora_rtm_sdk.lib** in the pop-up window.
+
+## Implement real-time messaging
+
+Open `RtmQuickstart.cpp` and replace the file content with the following code. You need to replace `<Your App ID>` with your App ID; replace `<Your Token>` with your token.
+
+```cpp
+// RtmQuickstart.cpp : This file contains the 'main' function. Program execution begins and ends there.
+//
+
+#include <iostream>
+#include <memory>
+#include <vector>
+#include <string>
+#include <thread>
+#include <sstream>
+#include <vector>
+#include <map>
+#include <algorithm>
+
+#include "IAgoraRtmService.h"
+
+using namespace std;
+
+// Your App ID
+string APP_ID = "<Your App ID>";
+// Your Token
+string Token = "<Your Token>";
+
+class RtmEventHandler : public agora::rtm::IRtmServiceEventHandler {
+public:
+	RtmEventHandler() {}
+	~RtmEventHandler() {}
+	// Login successful.
+	virtual void onLoginSuccess() override {
+		cout << "on login success" << endl;
+	}
+	// Login failed.
+	virtual void onLoginFailure(agora::rtm::LOGIN_ERR_CODE errorCode) override {
+		cout << "on login failure: errorCode = " << errorCode << endl;
+	}
+	// Logout successful.
+	virtual void onLogout(agora::rtm::LOGOUT_ERR_CODE errorCode) override {
+		cout << "on logout" << endl;
+	}
+	// Occurs when connection state changes.
+	virtual void onConnectionStateChanged(agora::rtm::CONNECTION_STATE state,
+		agora::rtm::CONNECTION_CHANGE_REASON reason) override {
+		cout << "on connection state changed: state = " << state << endl;
+	}
+	// Occurs when the peer message send status is returned.
+	virtual void onSendMessageResult(long long messageId,
+		agora::rtm::PEER_MESSAGE_ERR_CODE state) override {
+		cout << "on send message messageId: " << messageId << " state: " << state << endl;
+	}
+	// Occurs when the peer message is received.
+	virtual void onMessageReceivedFromPeer(const char *peerId,
+		const agora::rtm::IMessage *message) override {
+		cout << "on message received from peer: peerId = " << peerId
+			<< " message = " << message->getText() << endl;
+	}
+};
+
+
+class ChannelEventHandler : public agora::rtm::IChannelEventHandler {
+public:
+	ChannelEventHandler(string channel) {
+		channel_ = channel;
+	}
+	~ChannelEventHandler() {}
+	// The user successfully joined channel.
+	virtual void onJoinSuccess() override {
+		cout << "on join channel success" << endl;
+	}
+	// The user failed to join channel.
+	virtual void onJoinFailure(agora::rtm::JOIN_CHANNEL_ERR errorCode) override {
+		cout << "on join channel failure: errorCode = " << errorCode << endl;
+	}
+	// The user leaves channel.
+	virtual void onLeave(agora::rtm::LEAVE_CHANNEL_ERR errorCode) override {
+		cout << "on leave channel: errorCode = " << errorCode << endl;
+	}
+	// The user receives a channel message.
+	virtual void onMessageReceived(const char* userId,
+		const agora::rtm::IMessage *msg) override {
+		cout << "receive message from channel: " << channel_.c_str()
+			<< " user: " << userId << " message: " << msg->getText()
+			<< endl;
+	}
+	// Occurs when a user joins a channel.
+	virtual void onMemberJoined(agora::rtm::IChannelMember *member) override {
+		cout << "member: " << member->getUserId() << " joined channel: "
+			<< member->getChannelId() << endl;
+	}
+	//  Occurs when a user leaves a channel.
+	virtual void onMemberLeft(agora::rtm::IChannelMember *member) override {
+		cout << "member: " << member->getUserId() << " lefted channel: "
+			<< member->getChannelId() << endl;
+	}
+	// Gets a list of channel members.
+	virtual void onGetMembers(agora::rtm::IChannelMember **members,
+		int userCount,
+		agora::rtm::GET_MEMBERS_ERR errorCode) override {
+		cout << "list all members for channel: " << channel_.c_str()
+			<< " total members num: " << userCount << endl;
+		for (int i = 0; i < userCount; i++) {
+			cout << "index[" << i << "]: " << members[i]->getUserId();
+		}
+	}
+	// Occurs when the channel message send status is returned.
+	virtual void onSendMessageResult(long long messageId,
+		agora::rtm::CHANNEL_MESSAGE_ERR_CODE state) override {
+		cout << "send messageId: " << messageId << " state: " << state << endl;
+	}
+private:
+	string channel_;
+};
+
+
+class Quickstart {
+public:
+	// Creates an IRtmService instance.
+	Quickstart() {
+		eventHandler_.reset(new RtmEventHandler());
+		agora::rtm::IRtmService* p_rs = agora::rtm::createRtmService();
+		rtmService_.reset(p_rs, [](agora::rtm::IRtmService* p) {
+			p->release();
+		});
+
+		if (!rtmService_) {
+			cout << "Failed to create RTM service! Check your App ID" << endl;
+			exit(0);
+		}
+
+		if (rtmService_->initialize(APP_ID.c_str(), eventHandler_.get())) {
+			cout << "Failed to initialize RTM service!" << endl;
+			exit(0);
+		}
+	}
+	// Releases an IRtmService instance.
+	~Quickstart() {
+		rtmService_->release();
+	}
+
+public:
+	// Logs in to RTM.
+	bool login() {
+		cout << "Please enter userID:"
+			<< endl;
+		string userID;
+		getline(std::cin, userID);
+		if (rtmService_->login(Token.c_str(), userID.c_str())) {
+			cout << "login failed!" << endl;
+			return false;
+		}
+		cout << "here" << endl;
+		return true;
+	}
+	// Logs out of RTM.
+	void logout() {
+		rtmService_->logout();
+		cout << "log out!" << endl;
+	}
+	// One-to-one chat using peer messaging.
+	void p2pChat(const std::string& dst) {
+		string msg;
+		while (true) {
+			cout << "please input message you want to send, or input \"quit\" "
+				<< "to leave p2pChat" << endl;
+			getline(std::cin, msg);
+			if (msg.compare("quit") == 0) {
+				return;
+			}
+			else {
+				sendMessageToPeer(dst, msg);
+			}
+		}
+	}
+	// Group chat using channel messaging.
+	void groupChat(const std::string& channel) {
+		string msg;
+		channelEvent_.reset(new ChannelEventHandler(channel));
+		agora::rtm::IChannel * channelHandler =
+			rtmService_->createChannel(channel.c_str(), channelEvent_.get());
+		if (!channelHandler) {
+			cout << "create channel failed!" << endl;
+		}
+		channelHandler->join();
+		while (true) {
+			cout << "please input message you want to send, or input \"quit\" "
+				<< " to leave groupChat, or input \"members\" to list members"
+				<< endl;
+			getline(std::cin, msg);
+			if (msg.compare("quit") == 0) {
+				channelHandler->leave();
+				return;
+			}
+			else if (msg.compare("members") == 0) {
+				channelHandler->getMembers();
+			}
+			else {
+				sendMessageToChannel(channelHandler, msg);
+			}
+		}
+	}
+	// Send peer message.
+	void sendMessageToPeer(std::string peerID, std::string msg) {
+		agora::rtm::IMessage* rtmMessage = rtmService_->createMessage();
+		rtmMessage->setText(msg.c_str());
+		int ret = rtmService_->sendMessageToPeer(peerID.c_str(),
+			rtmMessage);
+		rtmMessage->release();
+		if (ret) {
+			cout << "send message to peer failed! return code: " << ret
+				<< endl;
+		}
+	}
+	// Send channel message.
+	void sendMessageToChannel(agora::rtm::IChannel * channelHandler,
+		string &msg) {
+		agora::rtm::IMessage* rtmMessage = rtmService_->createMessage();
+		rtmMessage->setText(msg.c_str());
+		channelHandler->sendMessage(rtmMessage);
+		rtmMessage->release();
+	}
+private:
+	std::unique_ptr<agora::rtm::IRtmServiceEventHandler> eventHandler_;
+	std::unique_ptr<ChannelEventHandler> channelEvent_;
+	std::shared_ptr<agora::rtm::IRtmService> rtmService_;
+};
+
+int main(int argc, const char * argv[]) {
+	// Select the number of instances to create.
+	int count;
+	while (true) {
+		cout << "Please input the number which indicates how many RTM instances "
+			<< "will be created... Limit 3 instances for this demo" << endl;
+		string input;
+		getline(std::cin, input);
+		try {
+			count = std::stoi(input);
+		}
+		catch (...) {
+			cout << "invalid input" << endl;
+			continue;
+		}
+		if (count <= 0 || count > 3) {
+			cout << "valid range: 1~3" << endl;
+			continue;
+		}
+		break;
+	}
+	// Define feature list for you to choose.
+	std::vector<std::unique_ptr<Quickstart>> FunctionList;
+	std::vector<bool> loginStatus;
+	for (int i = 0; i < count; i++) {
+		std::unique_ptr<Quickstart> tmp;
+		tmp.reset(new Quickstart());
+		FunctionList.push_back(std::move(tmp));
+		loginStatus.push_back(false);
+	}
+	int index;
+
+	// Select the created RTM instance
+	while (true) {
+		cout << "Please input which RTM instance you want to use range[1,3]"
+			<< endl;
+		string input_idx;
+		getline(std::cin, input_idx);
+		try {
+			index = std::stoi(input_idx);
+		}
+		catch (...) {
+			cout << "invalid input" << endl;
+			continue;
+		}
+		if (index < 1 || index > count) {
+			cout << "invalid index range" << endl;
+			continue;
+		}
+
+		// One-to-one chat, group chat, or exit
+		while (true) {
+			if (!loginStatus[index - 1]) {
+				if (!FunctionList[index - 1]->login())
+					continue;
+				loginStatus[index - 1] = true;
+			}
+			cout << "1: peer to peer chat\n"
+				<< "2: group chat\n"
+				<< "3: logout"
+				<< endl;
+			cout << "please input your choice: " << endl;
+			string input_choice;
+			getline(std::cin, input_choice);
+			int choice = 0;
+			try {
+				choice = std::stoi(input_choice);
+			}
+			catch (...) {
+				cout << "invalid input" << endl;
+				continue;
+			}
+			if (choice == 1) {
+				cout << "please input your destination user id" << endl;
+				string dst;
+				getline(std::cin, dst);
+				FunctionList[index - 1]->p2pChat(dst);
+				continue;
+			}
+			else if (choice == 2) {
+				cout << "please input your channel id" << endl;
+				string channel;
+				getline(std::cin, channel);
+				FunctionList[index - 1]->groupChat(channel);
+				continue;
+			}
+			else if (choice == 3) {
+				FunctionList[index - 1]->logout();
+				loginStatus[index - 1] = false;
+				break;
+			}
+			else {
+				continue;
+			}
+		}
+
+		// Quit the program
+		cout << "Quit the program? yes/no" << endl;
+		string input_quit;
+		getline(std::cin, input_quit);
+		if (input_quit.compare("yes") == 0) {
+			break;
+		}
+	}
+
+	exit(0);
+}
+
+```
+
+## Test your app
+
+1. Press **&lt;Ctrl&gt; + shift + B** to generate the solution.
+2. Copy the `.dll` file in the SDK to the folder where the generated `.exe` file is located.
+3. Press **&lt;Ctrl&gt; + F5** to run the solution.
+
+![](https://web-cdn.agora.io/docs-files/1624266224141)
+
+## Considerations
+
+- The Agora <Vg k="SIG_SDK" /> supports creating multiple [IRtmService](https://docs.agora.io/en/Real-time-Messaging/API%20Reference/RTM_cpp/classagora_1_1rtm_1_1_i_rtm_service.html) instances that are independent of each other.
+
+-  To send and receive peer-to-peer or channel messages, ensure that you have successfully logged in the Agora <Vg k="SIG" /> (you have received [onLoginSuccess](https://docs.agora.io/en/Real-time-Messaging/API%20Reference/RTM_cpp/classagora_1_1rtm_1_1_i_rtm_service_event_handler.html#a8cf1b2be30172004f595484e0a194d76)).
+
+- To use any of the channel features, you must first call the [createChannel](https://docs.agora.io/en/Real-time-Messaging/API%20Reference/RTM_cpp/classagora_1_1rtm_1_1_i_rtm_service.html#a0196e60ee165f6c97f561cf71499d377) method to create a channel instance.
+- You can create multiple channel instances for each [IRtmService](https://docs.agora.io/en/Real-time-Messaging/API%20Reference/RTM_cpp/classagora_1_1rtm_1_1_i_rtm_service.html) instance, but you can only join a maximum of 20 channels at the same time. The `channelId` parameter needs to be channel-specific.
+
+- When you leave a channel and do not want to join it again, you can call the [release](https://docs.agora.io/en/Real-time-Messaging/API%20Reference/RTM_cpp/classagora_1_1rtm_1_1_i_channel.html#af1c6a2e044136c3a25fb8a663cf5e90b) method to release all resources used by the channel instance.
+
+- You cannot reuse a received [IMessage](https://docs.agora.io/en/Real-time-Messaging/API%20Reference/RTM_cpp/classagora_1_1rtm_1_1_i_message.html) instance.
+
+## Next steps
+
+Generating a token by hand is not helpful in a production context. [Authenticate Your Users with Tokens](https://docs.agora.io/en/Real-time-Messaging/rtm_token?platform=Windows) shows you how to start real-time messaging with a token that you retrieve from your server.
+
+## See also
+
+### Sample project
+
+Agora also provides an open-source [sample project](https://github.com/AgoraIO/RTM/tree/master/Agora-RTM-Tutorial-Windows) on GitHub for your reference.
+
+
+</PlatformWrapper>

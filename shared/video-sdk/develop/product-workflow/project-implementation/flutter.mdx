@@ -1,0 +1,139 @@
+<PlatformWrapper platform="flutter">
+
+### Implement the user interface
+
+In a real-world application, for each volume setting you want to control, you typically add a volume control UI element such as a <Link target="_blank" to="https://api.flutter.dev/flutter/material/Slider-class.html">Slider</Link> to the audio configuration panel. To enable the user to mute local or remote audio, you add a switch or a `Checkbox` to the interface for each user. In this example, you add a `Slider` and a `Checkbox` to the UI to test different volume settings. For screen sharing, you add a `Button` to start and stop sharing.
+
+To add the UI elements, in `/lib/main.dart`, add the following code to the `build` method after `ListView(... children: [`:
+
+```dart
+Row(
+    children: <Widget>[
+        Checkbox(
+            value: _isMuted,
+            onChanged: (_isMuted) => {onMuteChecked(_isMuted!)}
+        ),
+        const Text("Mute"),
+        Expanded(
+        child: Slider(
+            min: 0,
+            max: 100,
+            value: volume.toDouble(),
+            onChanged: (value) => {onVolumeChanged(value)},
+        ),
+        ),
+    ],
+),
+ElevatedButton(
+    child: Text(
+        _isScreenShared ? "Stop sharing screen" : "Share screen"),
+    onPressed: () => {shareScreen()},
+),
+```
+
+### Implement volume control and screen sharing logic
+
+To implement these features in your <Vpl k="CLIENT" />, take the following steps:
+
+1. **Declare the variables you need**
+
+    To read, store and apply workflow settings, in `/lib/main.dart`, add the following declarations to the `_MyAppState` class:
+
+    ```dart
+    int volume = 50;
+    bool _isMuted = false;
+    bool _isScreenShared = false;
+    ```
+
+1. **Adjust or mute the volume**
+
+    You use the `onChanged` callbacks of the UI elements to handle the volume change actions taken by the user. In `_MyAppState` class, add the following methods:
+
+    ```dart
+    onMuteChecked(bool value) {
+        setState(() {
+            _isMuted = value;
+            agoraEngine.muteAllRemoteAudioStreams(_isMuted);
+        });
+    }
+
+    onVolumeChanged(double newValue) {
+        setState(() {
+            volume = newValue.toInt();
+            agoraEngine.adjustRecordingSignalVolume(volume);
+        });
+    }
+    ```
+
+1. **Start or stop screen sharing**
+
+    When a user presses the screen sharing button, you call a method to start screen sharing. When the user presses the button again, you call the method to stop screen capture. To do this, add the following method to the `_MyAppState` class:
+
+    ```dart
+    Future<void> shareScreen() async {
+        setState(() {
+        _isScreenShared = !_isScreenShared;
+        });
+
+        if (_isScreenShared) {
+            agoraEngine.startScreenCaptureByScreenRect(
+                screenRect:  const Rectangle(x:0,y:0, width:640, height:400),
+                regionRect:  const Rectangle(),
+                captureParams: const ScreenCaptureParameters(
+                    captureMouseCursor: true,
+                    frameRate: 30,
+                )
+            );
+        } else {
+            await agoraEngine.stopScreenCapture();
+        }
+
+        // Set and update channel media options
+        ChannelMediaOptions options = ChannelMediaOptions(
+            publishScreenTrack: _isScreenShared,
+            publishCameraTrack: !_isScreenShared,
+        );
+
+        agoraEngine.updateChannelMediaOptions(options);
+    }
+    ```
+
+    ---
+    **Note**
+
+    The Flutter screen sharing methods used in this example currently work only on the Windows platform. You need a custom implementation to enable screen sharing on other platforms.
+    ---
+
+1. **Show screen sharing preview**
+
+    When a user starts screen sharing, the <Vpl k="CLIENT" /> switches to showing screen preview in the local video container. To do this, you update the code in the `_localPreview` widget. In `_MyAppState_` class, **replace** the `_localPreview` method with the following:
+
+    ```dart
+    Widget _localPreview() {
+        // Display local video or screen sharing preview
+        if (_isJoined) {
+            if (!_isScreenShared) {
+                return AgoraVideoView(
+                controller: VideoViewController(
+                    rtcEngine: agoraEngine,
+                    canvas: const VideoCanvas(uid: 0),
+                ),
+                );
+            } else {
+                return AgoraVideoView(
+                    controller: VideoViewController(
+                    rtcEngine: agoraEngine,
+                    canvas: const VideoCanvas(
+                        uid: 0,
+                        sourceType: VideoSourceType.videoSourceScreen,
+                    ),
+                    ));
+            }   
+        } else {
+            return const Text('Join a channel', 
+                textAlign: TextAlign.center,
+        );
+        }
+    }
+    ```
+</PlatformWrapper>

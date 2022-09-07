@@ -5,7 +5,7 @@ const data = {
     SDK: 'Video SDK',
     PRODUCT: 'Video Calling',
     BETA_API_FOLDER: 'video-call-4.x-beta',
-    IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS_Beta'
+    IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS'
   },
 
   'voice-calling': {
@@ -20,7 +20,7 @@ const data = {
     PATH: 'interactive-live-streaming',
     SDK: 'Video SDK',
     PRODUCT: 'Interactive Live Streaming',
-    IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS_Beta'
+    IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS'
 
   },
 

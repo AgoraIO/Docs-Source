@@ -37,18 +37,28 @@ In your project, import the relevant libraries and declare the required variable
     private uint destUid = 100; // User ID that the user uses in the destination channel.
     private string sourceChannelToken = "<access token for the source channel>"; // Generate with the _channelName and remoteUid = 0.
     private bool mediaRelaying = false;
-    [SerializeField] private TMP_Text channelRelayBtnText;
+    private TMP_Text channelRelayBtnText;
+    ```
+
+2.  **Add the required UI library**
+
+    To import the required Uinty UI library, in `Assets/Agora-RTC-Plugin/Agora-Unity-RTC-SDK/Code/JoinChannelVideo.cs`, add the following to the list of namespace declarations:
+
+    ``` csharp
+    using TMPro;
     ```
 
 2.  **Access the channel relay button**
 
-    To programmatically access the UI button, add the following at the end of `SetupUI` method:
+    To programmatically access the channel media relay button, add the following at the end of `SetupUI` method:
 
     ``` csharp
     // Access the channel relay button.
     go = GameObject.Find("StartChannelMediaRelay");
+    go.GetComponent<Button>().onClick.AddListener(channelRelay);
     // Access the label of the channel relay button.
     channelRelayBtnText = go.GetComponentInChildren<TMP_Text>(true);
+    channelRelayBtnText.text = "Relay Media";
     ```
 
 #### Implement channel media relay
@@ -63,20 +73,29 @@ When a user presses the button, the <Vpl k="CLIENT" /> starts relaying media fro
 public void channelRelay() {
     if (mediaRelaying) {
         RtcEngine.StopChannelMediaRelay();
+        mediaRelaying = false;
     } else {
         // Configure the source channel information.
-        ChannelMediaInfo srcChannelInfo = new ChannelMediaInfo(_channelName, sourceChannelToken, remoteUid);
         ChannelMediaRelayConfiguration mediaRelayConfiguration = new ChannelMediaRelayConfiguration();
-        // Sets the source channel information.
-        mediaRelayConfiguration.srcInfo = srcChannelInfo;
-
-        // Configure the destination channel information.
-        ChannelMediaInfo destChannelInfo = new ChannelMediaInfo(destChannelName, destChannelToken, destUid);
-        ChannelMediaInfo[] destChannelInfoList = new ChannelMediaInfo[] { destChannelInfo };
-        mediaRelayConfiguration.destInfos = destChannelInfoList;
-
+        // Setup the source channel information.
+        mediaRelayConfiguration.srcInfo = new ChannelMediaInfo
+            {
+                channelName = _channelName,
+                uid = 0,
+                token = sourceChannelToken
+            };
+        // Setup the destination channel information.
+        mediaRelayConfiguration.destInfos =  new ChannelMediaInfo[1];
+            mediaRelayConfiguration.destInfos[0] = new ChannelMediaInfo
+            {
+                channelName = destChannelName,
+                uid = 0,
+                token = destChannelToken
+            };
+            mediaRelayConfiguration.destCount = 1;
         // Start relaying media streams across channels
         RtcEngine.StartChannelMediaRelay(mediaRelayConfiguration);
+        mediaRelaying = true;
     }
 }
 ```
@@ -84,54 +103,30 @@ public void channelRelay() {
 2.  **Monitor the channel media relay state**
 
 To receive the state change notifications sent during media relay, you add a method to the `UserEventHandler`. Your <Vpl k="CLIENT" /> responds to connection and failure events in the `onChannelMediaRelayStateChanged` event handler. In `Assets/Agora-RTC-Plugin/Agora-Unity-RTC-SDK/Code/JoinChannelVideo.cs`:
-    1. Add the following lines to the declarations of `UserEventHandler` class:
-    ``` csharp
-    [SerializeField] private readonly TMP_Text _channelRelayBtnText;
-    private bool _mediaRelaying;
-    ```
-
-    2. Replace
-
-    ``` csharp
-    internal UserEventHandler(JoinChannelVideo videoSample)
-    {
-        _videoSample = videoSample;
-    }
-    ```
-
-    with
-
-    ``` csharp
-    internal UserEventHandler(JoinChannelVideo videoSample, [SerializeField] TMP_Text channelRelayBtnText, bool mediaRelaying)
-    {
-        _videoSample = videoSample;
-        _channelRelayBtnText = channelRelayBtnText;
-        _mediaRelaying = mediaRelaying;
-    }
-    ```
 
     3. Add the following method after `OnUserOffline`:
 
     ``` csharp
-    public void onChannelMediaRelayStateChanged(int state, int code) {
-        // This example shows toast messages when the relay state changes,
-        // a production level app needs to handle state change properly.
-        switch (state) {
-            case 1: // RELAY_STATE_CONNECTING:
-                Debug.Log("Channel media relay connecting.");
-                channelRelayBtnText.text = "Connecting...";
-                break;
-            case 2: // RELAY_STATE_RUNNING:
-                mediaRelaying = true;
-                Debug.Log("Channel media relay running.");
-                channelRelayBtnText.text = "Stop Channel Media Relay";
-                break;
-            case 3: // RELAY_STATE_FAILURE:
-                mediaRelaying = false;
-                Debug.Log("Channel media relay failure. Error code: " + code);
-                channelRelayBtnText.text = "Start Channel Media Relay";
-                break;
+    public override void OnChannelMediaRelayStateChanged(int state, int code) {
+    // This example shows toast messages when the relay state changes,
+    // a production level app needs to handle state change properly.
+    switch (state) {
+        case 1: // RELAY_STATE_CONNECTING:
+            Debug.Log("Channel media relay connecting.");
+            _videoSample.channelRelayBtnText.text = "Connecting...";
+            break;
+        case 2: // RELAY_STATE_RUNNING:
+            _videoSample.mediaRelaying = true;
+            Debug.Log("Channel media relay running.");
+            _videoSample.channelRelayBtnText.text = "Stop Channel Media Relay";
+            break;
+        case 3: // RELAY_STATE_FAILURE:
+            _videoSample.mediaRelaying = false;
+            Debug.Log("Channel media relay failure. Error code: " + code);
+            _videoSample.channelRelayBtnText.text = "Start Channel Media Relay";
+            break;
         }
+        _videoSample.channelRelayBtnText.fontSize = 14;
     }
     ```
 
@@ -167,7 +162,7 @@ In this example, you use a single `Button` to join and leave a second channel. A
 
     1. Right-click **Sample Scene**, then click **UI** > **Button - TextMeshPro**. A button appears in the **Scene** Canvas.
 
-    2. In **Inspector**, rename **Button** to **JoinSecondChannel**, then change the following coordinates:
+    2. In **Inspector**, rename **Button** to **multiChannel**, then change the following coordinates:
 
     * **Pos X** - -350
     * **Pos Y** - 172
@@ -186,22 +181,19 @@ private string secondChannelName = "<name of the second channel>";
 private uint secondChannelUid = 100; // Uid for the second channel
 private string secondChannelToken = "<access token for the second channel>";
 private bool isSecondChannelJoined = false; // Track connection state of the second channel
+private TMP_Text multiChannelBtnText;
 ```
 
-2.  **Enable the user to join another channel**
+1.  **Access the multiple channel button in your code**
 
-    1.  In the `Start` method of the `JoinChannelVideo` class, add the following lines after `SetupVideoSDKEngine();`:
-
-    ``` csharp
-    GameObject go = GameObject.Find("JoinSecondChannel");
-    go.SetActive(false);
-    ```
-
-    2.  Enable this button when a user joins the initial channel. Add the following line to the `Join` method after `RtcEngine.JoinChannel(_token, _channelName);`:
+    To programmatically access the button, add the following at the end of `SetupUI` method:
 
     ``` csharp
-    GameObject go = GameObject.Find("JoinSecondChannel");
-    go.SetActive(true);
+    // Access the channel relay button.
+    go = GameObject.Find("multiChannel");
+    go.GetComponent<Button>().onClick.AddListener(joinSecondChannel);
+    multiChannelBtnText = go.GetComponentInChildren<TMP_Text>(true);
+    multiChannelBtnText.text = "Join Second Channel";
     ```
 
 #### Implement joining multiple channels
@@ -227,7 +219,7 @@ switch to the multi-user interface, do the following:
 
 2.  **Join a second channel**
 
-When a user presses the button, the <Vpl k="CLIENT" /> joins a second channel. If the <Vpl k="CLIENT" /> is already connected to a second channel, it leaves the channel. To do this, add the following method to the `JoinChannelVideo` class.
+When a user presses the button, the <Vpl k="CLIENT" /> joins a second channel. If the <Vpl k="CLIENT" /> is already connected to a second channel, it leaves the channel. To implement this workflow, add the following method to the `JoinChannelVideo` class.
 
 ``` csharp
 public void joinSecondChannel()
@@ -268,25 +260,18 @@ public void joinSecondChannel()
 3.  **Receive callbacks from the second channel**
 
 The `IRtcEngineEventHandler` implements channel callbacks. To add the event handlers for the second channel, perform the following steps:
-        1. Replace the content in the `OnJoinChannelSuccess` function with this code:
+        1. Add the following to `OnJoinChannelSuccess` callback:
         ``` csharp
         Debug.Log("onJoinChannelSuccess channel " + _videoSample.secondChannelName + " uid " + _videoSample.remoteUid);
-        GameObject go = GameObject.Find("JoinSecondChannel");
-        go = GameObject.Find("JoinSecondChannel");
-        TMP_Text secondChannelButton = go.GetComponentInChildren<TMP_Text>(true);
-        secondChannelButton.text = "Leave Second Channel";
+        _videoSample.multiChannelBtnText.text = "Leave Second Channel";
         ```
 
-        2. Add the following method to the `UserEventHandler` class:
+        2. Add the following callback function to the `UserEventHandler` class:
         ``` csharp
         public override void OnLeaveChannel(RtcConnection connection, RtcStats stats)
         {
             _videoSample.isSecondChannelJoined = false;
-            Debug.Log("Left the channel " + _videoSample.secondChannelName);
-            GameObject go = GameObject.Find("JoinSecondChannel");
-            go = GameObject.Find("JoinSecondChannel");
-            TMP_Text secondChannelButton = go.GetComponentInChildren<TMP_Text>(true);
-            secondChannelButton.text = "Join Second Channel";
+            _videoSample.multiChannelBtnText.text = "Join Second Channel";
         }
         ```
 

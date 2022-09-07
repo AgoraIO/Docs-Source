@@ -107,10 +107,10 @@ export const AGORA_PLATFORM_FOLDER = 'Agora%20Platform';
 export const API_REF_FOLDER = 'API%20Reference';
 export const API_REF_WEB = 'https://docs.agora.io/en/Video/API%20Reference/web_ng';
 
-export const APP_LINK = `${AGORA_DOCS_URL}/${AGORA_PLATFORM_FOLDER}/get_appid_token#get-the-app-id[App ID]`;
+export const APP_LINK = "https://docs.agora.io/en/Agora%20Platform/get_appid_token#get-the-app-id";
 
 export const APP_CERTIFICATE_LINK =
-  'xref:{rootdir}/reference/manage-agora-account.adoc#_get_the_app_certificate[App Certificate]';
+  "https://docs.agora.io/en/Agora%20Platform/get_appid_token#get-the-app-certificate";
 
 export const DEMO_BASIC_VIDEO_CALL_URL =
   'https://webdemo.agora.io/agora-websdk-api-example-4.x/basicVideoCall/index.html';
@@ -126,7 +126,7 @@ export const AGORA_DYNAMIC_KEY_CODE_BASE_URL =
 export const ANDROID_UIKIT_VERSION = '4.0.1';
 export const ANDROID_UIKIT_SDK = 'com.github.AgoraIO-Community.Android-UIKit:final';
 
-export const WEB_UIKIT = 'Agora React Web UIKit';
+export const WEB_UIKIT = 'Agora React Web UI Kit';
 
 export const IOS_MI_PACKAGE_VERSION = '4.0.0-rc.1';
 export const IOS_PACKAGE = 'NAME: AgoraRtcEngine_iOS';

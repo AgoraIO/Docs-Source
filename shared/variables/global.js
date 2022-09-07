@@ -107,10 +107,10 @@ export const AGORA_PLATFORM_FOLDER = 'Agora%20Platform';
 export const API_REF_FOLDER = 'API%20Reference';
 export const API_REF_WEB = 'https://docs.agora.io/en/Video/API%20Reference/web_ng';
 
-export const APP_LINK = `${AGORA_DOCS_URL}/${AGORA_PLATFORM_FOLDER}/get_appid_token#get-the-app-id[App ID]`;
+export const APP_LINK = "https://docs.agora.io/en/Agora%20Platform/get_appid_token#get-the-app-id";
 
 export const APP_CERTIFICATE_LINK =
-  'xref:{rootdir}/reference/manage-agora-account.adoc#_get_the_app_certificate[App Certificate]';
+  "https://docs.agora.io/en/Agora%20Platform/get_appid_token#get-the-app-certificate";
 
 export const DEMO_BASIC_VIDEO_CALL_URL =
   'https://webdemo.agora.io/agora-websdk-api-example-4.x/basicVideoCall/index.html';

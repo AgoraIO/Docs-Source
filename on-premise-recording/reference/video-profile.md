@@ -6,13 +6,13 @@ description: >
   How to set the video profile in composite recording mode.
 ---
 
-In composite recording mode, you can set the video profile (resolution, frame rate, and bitrate) for the output video stream. Agora recommends setting the video profile according to the values listed in the [video profile table](#profile_table). For Cloud Recording, use `transcodingConfig` to set the video profile. For On-premise Recording, use `mixResolution` to set the video profile.
+In composite recording mode, you can set the video profile (resolution, frame rate, and bitrate) for the output video stream. Agora recommends setting the video profile according to the values listed in the [video profile table](#video-profile-table). For Cloud Recording, use `transcodingConfig` to set the video profile. For On-premise Recording, use `mixResolution` to set the video profile.
 
 <div class="alert note">In individual recording mode, the recorded video keeps the original video profile.</div>
 
 ## Basic guidelines
 
-- Agora recommends setting the recording resolution lower than the [aggregate resolution](/en/cloud-recording/billing_cloud_recording?platform=RESTful#video-aggregate-resolution) of the original video streams, otherwise the recorded video may be blurry.
+- Agora recommends setting the recording resolution lower than the [aggregate resolution](./billing#aggregate-video-resolution) of the original video streams, otherwise the recorded video may be blurry.
 - The resolution you set in the video profile is that of the video canvas, and its aspect ratio does not need to be identical to any source video stream. The aspect ratio of each user region in the output video depends on the aspect ratio of the canvas and the video layout. See [Related articles](#relateddocs).
 - Agora only supports the following frame rates: 1 fps, 7 fps, 10 fps, 15 fps, 24 fps, 30 fps, and 60 fps. The default value is 15 fps. If you set other frame rates, the SDK uses the default value.
 - The base bitrate in the video profile table applies to the communication profile. The live-broadcast profile generally requires a higher bitrate to ensure better video quality. Set the bitrate of the live-broadcast profile as twice the base bitrate.
@@ -66,5 +66,5 @@ Suppose your target resolution is 300 * 240 with a frame rate of 30 fps. The clo
 
 ## <a name="relateddocs"></a>Related articles
 
-- Cloud Recording: [Set Video Layout](https://docs.agora.io/en/cloud-recording/cloud_recording_layout?platform=Linux)
-- On-premise Recording: [Set Video Layout](https://docs.agora.io/en/Recording/recording_layout?platform=Linux)
+- Cloud Recording: [Set Video Layout](../../cloud-recording/develop/layout).
+- On-premise Recording: [Set Video Layout](../develop/layout).

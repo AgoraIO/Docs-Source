@@ -18,7 +18,7 @@ Agora calculates the billing of all projects under your [Agora account](https://
 
 Billing for the on-premise recording service begins once you use the Agora On-premise Recording SDK to record and save audio calls, group video calls, or interactive live video streaming made via the Agora RTC SDK on your server. 
 
-On the first day of each month, Agora sends you the bill via email, and five days later deducts the payment from your account. For details, see [Billing, fee deduction, and account suspension](https://docs.agora.io/en/faq/billing_account).
+On the first day of each month, Agora sends you the bill via email, and five days later deducts the payment from your account. For details, see [Billing, fee deduction, and account suspension](../../video-calling/reference/billing-policies).
 
 
 <div class="alert note">Agora gives each Agora account 10,000 free-of-charge minutes each month. For more information on the deduction sequence and applicable products, see<a href="https://docs.agora.io/en/faq/billing_free"> Agora's free-of-charge policy for the first 10,000 minutes</a>.</div>
@@ -416,7 +416,7 @@ At the end of each month, Agora adds up the usage duration (in seconds) of audio
 
 ### Video resolution in the dual-stream scenario
 
-When the user being recorded enables [dual-stream mode](https://docs.agora.io/en/Agora%20Platform/terms?platform=All%20Platforms#a-name-dualadual-stream-mode), the recording service can receive only one stream at a time:
+When the user being recorded enables [dual-stream mode](../../video-calling/reference/glossary#dual-stream-mode), the recording service can receive only one stream at a time:
 
 - If the recording server records the high-quality video stream, the aggregate video resolution is calculated based on the resolution of the high-quality video.
 - If the recording server records the low-quality video stream, the aggregate video resolution is calculated based on the resolution of the video received by the server.

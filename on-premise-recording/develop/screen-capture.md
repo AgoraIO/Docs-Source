@@ -10,7 +10,7 @@ description: >
 
 This page shows how to capture screenshots by the command line. With screenshots, you can analyze and monitor the video contents to ensure that the contents are permissible.
 
-Before proceeding, ensure that you have compiled the Agora Recorder Demo and know how to record a call by the command line. For more information, see [Record by Command Line](./recording_cmd_cpp).
+Before proceeding, ensure that you have compiled the Agora Recorder Demo and know how to record a call by the command line. For more information, see [Record by Command Line](./get-started/record-cmd).
 
 ## Implementation
 

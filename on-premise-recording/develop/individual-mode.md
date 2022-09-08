@@ -15,7 +15,7 @@ The On-premise Recording SDK supports two recording modes:
 
 This page shows how to record audio and/or video in **individual recording mode** by the command line.
 
-Before proceeding, ensure that you have compiled the Agora Recorder Demo and know how to record a call by the command line. For more information, see [Record by Command Line](https://docs-preview.agoralab.co/en/Recording/recording_cmd_cpp). You must select either individual recording mode or composite recording mode when you start the recording. You cannot switch between the two modes after a recording starts. 
+Before proceeding, ensure that you have compiled the Agora Recorder Demo and know how to record a call by the command line. For more information, see [Record by Command Line](../get-started/record-cmd). You must select either individual recording mode or composite recording mode when you start the recording. You cannot switch between the two modes after a recording starts. 
 
 See [Differences between individual recording mode and composite recording mode](https://docs.agora.io/en/faq/recording_mode) to decide which mode you should use.
 
@@ -53,6 +53,6 @@ The following example shows how to record only video (no audio) in a communicati
 
 ## Considerations
 
-- If you want to merge each UID's audio and video files into one file, you can use our [Transcoding Script](./recording_merge_files).
+- If you want to merge each UID's audio and video files into one file, you can use our [Transcoding Script](./transcoding-scripts).
 - In individual recording mode, file splitting may occur under certain conditions. For more information, see [Why is the recording file split?](https://docs.agora.io/en/faq/record_split)
 - If you choose to record only video (no audio) or record both audio and video but a Web user in the channel does not send any video stream, a black video file will be generated for this user.

@@ -15,7 +15,7 @@ The On-premise Recording SDK supports two recording modes:
 
 This page shows how to record audio and/or video in **composite recording mode** by the command line.
 
-Before proceeding, ensure that you have compiled the Agora Recorder Demo and know how to record a call by the command line. For more information, see [Record by Command Line](https://docs-preview.agoralab.co/en/Recording/recording_cmd_cpp). You must select either individual recording mode or composite recording mode when you start the recording. You cannot switch between the two modes after a recording starts. 
+Before proceeding, ensure that you have compiled the Agora Recorder Demo and know how to record a call by the command line. For more information, see [Record by Command Line](../get-started/record-cmd). You must select either individual recording mode or composite recording mode when you start the recording. You cannot switch between the two modes after a recording starts. 
 
 See [Differences between individual recording mode and composite recording mode](https://docs.agora.io/en/faq/recording_mode) to decide which mode you should use.
 
@@ -52,11 +52,11 @@ You can set the `audioProfile` parameter as the following values:
 
 #### Video profile
 
-You can set the `mixResolution` parameter, including the width, height, frame rate, and bitrate. The default setting is `360,640,15,500.` We recommend you set the video profile according to the [Video Profile Table](/en/Recording/recording_video_profile?platform=Linux#a-nameprofile_tableavideo-profile-table).
+You can set the `mixResolution` parameter, including the width, height, frame rate, and bitrate. The default setting is `360,640,15,500.` We recommend you set the video profile according to the [Video Profile Table](../reference/video-profile#video-profile-table).
 
 ### Set video layout
 
-In composite recording mode, you can use the `layoutMode` parameter to set the video layout and arrange the size and position of the region for each user. The default value is 0 (Floating Layout). For more information, see [Set Video Layout](./recording_layout).
+In composite recording mode, you can use the `layoutMode` parameter to set the video layout and arrange the size and position of the region for each user. The default value is 0 (Floating Layout). For more information, see [Set Video Layout](./layout).
 
 ## Example
 

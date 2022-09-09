@@ -1,0 +1,207 @@
+### API reference
+
+The classes used to create and encapsulate filters are:
+
+- [`IAudioFilter`](#iaudiofilter): Implement receiving, processing, and delivering audio data.
+- [`IExtensionProvider`](#iextensionprovider): encapsulate your `IAudioFilter` implementation into an extension.
+
+#### IAudioFilter
+
+Implement receiving, processing, and delivering audio data.
+Methods include:
+    - [`adaptAudioFrame`](#adaptaudioframe)
+    - [`setEnabled`](#setenabled)
+    - [`isEnabled`](#isenabled)
+    - [`setProperty`](#setproperty)
+    - [`getProperty`](#getproperty)
+    - [`getName`](#getname)
+    - [`getPreferredSampleRate`](#getpreferredsampleRate)(Optional)
+    - [`getPreferredChannelNumbers`](#getpreferredchannelnumbers)(Optional)
+
+#### adaptAudioFrame
+
+Adapts the audio frame. This is the core method of the `IAudioFilter` interface. By calling this method, the SDK processes audio frames from `inAudioFrame` and returns the adapted frames with `adaptedFrame`. This method supports audio data in the PCM format only.
+
+```objc
+virtual bool adaptAudioFrame(const media::base::AudioPcmFrame& inAudioFrame,
+                             media::base::AudioPcmFrame& adaptedFrame) = 0;
+```
+
+| Parameter    | Description                                                  |
+| :----------------- | :----------------------------------------------------------- |
+| `inAudioFrame`               | An input parameter. The pointer to the audio frames to be processed. |
+| `adaptedFrame` | An output parameter. The pointer to the processed audio frames. |
+
+#### setEnabled
+Enables or disables the audio filter.
+
+```objc
+virtual void setEnabled(bool enable) {}
+```
+
+| Parameter | Description                                                  |
+| :----------------- | :----------------------------------------------------------- |
+| `enable`               | Whether to enable the audio filter：<li>true: Enable the audio filter.</li><li>false: (Default) Disable the audio filter.</li> |
+
+
+#### isEnabled
+
+Checks whether the audio filter is enabled.
+
+```objc
+virtual bool isEnabled() { return true; }
+```
+
+**Returns**
+Whether the audio filter is enabled:
+- true: The audio filter is enabled.
+- false: (Default) The audio filter is disabled.
+
+#### setProperty
+
+Sets the property of the audio filter. When an app client calls `setExtensionProperty,` the SDK triggers this callback. In the callback, you need to return the property of the audio filter.
+
+```objc
+size_t setProperty(const char* key, const void* buf, size_t buf_size)
+```
+
+
+| Parameter | Description                                                  |
+| :------- | :----------------------------------------------------------- |
+| `key`      | The key of the property.                                              |
+| `buf`      | The buffer of the property in the JSON format. You can use the open source `nlohmann/json` library for the serialization and deserialization between the C++ struct and the JSON string.  |
+| `buf_size` | The size of the buffer.   |
+
+#### getProperty
+Gets the property of the audio filter. When the app client calls `getExtensionProperty`, the SDK calls this method to get the property of the audio filter.
+
+```objc
+size_t getProperty(const char* key, char* property, size_t buf_size)
+```
+
+
+| Parameter | Description                                                  |
+| :------- | :--------------------------- |
+| `key`      | The key of the property.         |
+| `property` | The pointer to the property.                |
+| `buf_size` | The size of the buffer.  |
+
+#### getName
+
+Retrieves the vendor name. You need to set the `VENDOR_NAME` in the return value of this method.
+
+```objc
+virtual const char * getName() const = 0;
+```
+
+#### getPreferredSampleRate
+
+Retrieves the preferred sample rate of the audio filter.
+
+This method is optional. If you specify a sample rate in the return value of this method, the SDK resamples the audio data accordingly before sending it to the audio filter.
+
+```java
+virtual int getPreferredSampleRate()  { return 0; };
+```
+
+#### getPreferredChannelNumbers
+
+Retrieves the preferred number of channels of the audio filter.
+
+This method is optional. If you specify a number in the return value of this method, the SDK resamples the audio data accordingly before sending it to the audio filter.
+
+```java
+virtual int getPreferredChannelNumbers()  { return 0; };
+```
+
+
+#### IExtensionProvider
+
+Encapsulate your `IAudioFilter` implementation into an extension.
+
+Methods include:
+- [`enumerateExtensions`](#enumerateextensions)
+- [ `createAudioFilter`](#createaudiofilter)
+- [`setExtensionControl`](#setextensioncontrol)
+
+
+#### enumerateExtensions
+
+Enumerates your extensions that can be encapsulated. The SDK triggers this callback when loading the extension. In the callback, you need to return information about all of your extensions that can be encapsulated.
+```java
+virtual void enumerateExtensions(ExtensionMetaInfo* extension_list,
+                                 int& extension_count) {
+    (void) extension_list;
+    extension_count = 0;
+}
+```
+
+| Parameter | Description                  |
+| :--------------- | :----------------------------------- |
+| `extension_list` | Extension information, including extension type and name. For details, see the definition of ExtensionMetaInfo. |
+| `extension_count`  | The total number of the extensions that can be encapsulated.              |
+
+The definition of ExtensionExtensionMetaInfo is as follows:
+
+```java
+// EXTENSION_TYPE represents where the extension is located in the media transmission pipeline
+enum EXTENSION_TYPE {
+    // Audio processing filter
+    AUDIO_FILTER,
+    // Video preprocessing filter
+    VIDEO_PRE_PROCESSING_FILTER,
+    // Video postprocessing filter
+    VIDEO_POST_PROCESSING_FILTER,
+    // Reserved for future use
+    AUDIO_SINK,
+    // Reserved for future use
+    VIDEO_SINK,
+    // Reserved for future use
+    UNKNOWN,
+};
+
+// Extension information, including extension type and name
+struct ExtensionMetaInfo {
+    EXTENSION_TYPE type;
+    const char* extension_name;
+};
+```
+
+If you specify `AUDIO_FILTER` as EXTENSION_TYPE, after the customer creates the `IExtensionProvider` object when initializing `RtcEngine`, the SDK calls the `createAudioFilter` method, and you need to return the `IAudioFilter` instance in this method.
+
+#### createAudioFilter
+
+Creates an audio filter. You need to pass the `IAudioFilter` instance in this method.
+
+```
+virtual agora_refptr<IAudioFilter> createAudioFilter()
+```
+
+After creating an audio filter object, the extension processes the input audio frames with methods in `IAudioFilter`.
+
+#### setExtensionControl
+
+Sets the extension control.
+
+```java
+virtual void setExtensionControl(IExtensionControl* control)
+```
+
+After calling this method, you need to maintain the `IExtensionControl` object returned in this method. The `IExtensionControl` object manages the interaction between the extension and the SDK by triggering callbacks and sending logs. For example, if you have called `fireEvent` in `IExtensionControl`:
+
+```
+void ByteDanceProcessor::dataCallback(const char* data){
+    if (control_ != nullptr) {
+        control_->fireEvent(id_, "beauty", data);
+    }
+}
+```
+
+And if the app registers the `IMediaExtensionObserver` class when initializing `RtcEngine`, the SDK triggers the following callback on the app client:
+
+```
+@Override
+public void onEvent(String vendor, String key, String value) {
+...
+}
+```

@@ -1,6 +1,6 @@
 ---
 title: "Test Your Extension"
-sidebar_position: 1
+sidebar_position: 8
 type: docs
 description:
   The necessary steps you should take to test your extension.
@@ -55,4 +55,4 @@ To test if everything works properly with your extension in the Marketplace, do 
 
 ## Next steps
 
-Now you are ready to submit your extension for final review by Agora. For details, see [Publish Your Extension](./publish_extension).
+Now you are ready to submit your extension for final review by Agora. For details, see [Publish Your Extension](./publish-extension).

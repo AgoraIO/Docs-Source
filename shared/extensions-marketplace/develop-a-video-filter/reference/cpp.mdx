@@ -1,7 +1,25 @@
-<PlatformWrapper platform="android">
+### API reference
 
+The classes used to create and encapsulate filters are:
 
+- [IExtensionVideoFilter](#iextensionvideofilter): Implement receiving, processing, and delivering video data.
+- [`IExtensionProvider`](#iextensionprovider): encapsulate your `IExtensionVideoFilter` implementation into an extension.
 
+#### IExtensionVideoFilter
+
+Implement receiving, processing, and delivering video data.
+
+Methods include:
+
+- [`getProcessMode`](#getprocessmode)
+- [`start`](#start)
+- [`stop`](#stop)
+- [`getVideoFormatWanted`](#getvideoformatwanted)
+- [`adaptVideoFrame`](#adaptvideoframe)
+- [`pendVideoFrame`](#pendvideoframe)
+- [`deliverVideoFrame`](#delivervideoframe)
+- [`setProperty`](#setproperty)
+- [`getProperty`](#getproperty)
 
 
 #### getProcessMode
@@ -19,7 +37,7 @@ virtual void getProcessMode(ProcessMode& mode, bool& independent_thread) = 0;
 | independent_thread | Whether to create an independent thread for the extension:<li>true: Create an independent thread for the extension, so that the SDK sends all the callbacks to the extension in the created thread.</li><li>false: Do not create an independent thread for the extension. In this case, the SDK sends all the callbacks to the extension in its original video processing thread.</li> |
 
 You can set the value of `mode` and `independent_thread` as follows:
-- If your extension uses complicated YUV algorithm, Agora recommends setting `mode` to `Async` and `independent_thread` to `false;` if your extension does not use complicated YUV algorithm, Agora recommends setting `mode` to S`ync` and `independent_thread` to `false`. 
+- If your extension uses complicated YUV algorithm, Agora recommends setting `mode` to `Async` and `independent_thread` to `false;` if your extension does not use complicated YUV algorithm, Agora recommends setting `mode` to S`ync` and `independent_thread` to `false`.
 - If your extension uses OpenGL for data processing, Agora recommends setting `mode` to `Sync` and `independent_thread` to `true`.
 
 
@@ -91,7 +109,7 @@ virtual void getVideoFormatWanted(VideoFrameData::Type& type, RawPixelBuffer::Fo
 
 #### adaptVideoFrame
 
-Adapts the video frame. In synchronous mode (mode is set to `Sync)`, the SDK and extension transfer video frames through this method. By calling this method, the SDK sends video frames to the extension with `in,` and the extension returns the processed frames with `out`. 
+Adapts the video frame. In synchronous mode (mode is set to `Sync)`, the SDK and extension transfer video frames through this method. By calling this method, the SDK sends video frames to the extension with `in,` and the extension returns the processed frames with `out`.
 
 ```
 virtual ProcessResult adaptVideoFrame(agora::agora_refptr<IVideoFrame> in, agora::agora_refptr<IVideoFrame>& out) {
@@ -166,136 +184,12 @@ int ExtensionVideoFilter::getProperty(const char *key, void *buf, size_t buf_siz
 | property  | The pointer to the property. |
 | buf_size  | The size of the buffer.      |
 
-#### Sample code
 
-The following code sample shows how to use these APIs together to implement a video filter:
+#### IExtensionProvider
 
-```
-#include "ExtensionVideoFilter.h"
-#include "../logutils.h"
-#include <sstream>
+Encapsulate your `IExtensionVideoFilter` implementation into an extension.
 
-namespace agora {
-    namespace extension {
-
-        ExtensionVideoFilter::ExtensionVideoFilter(agora_refptr<ByteDanceProcessor> byteDanceProcessor):threadPool_(1) {
-            byteDanceProcessor_ = byteDanceProcessor;
-        }
-
-        ExtensionVideoFilter::~ExtensionVideoFilter() {
-            byteDanceProcessor_->releaseOpenGL();
-        }
-
-
-        // Set how the SDK communicates with your video filter extension.
-        void ExtensionVideoFilter::getProcessMode(ProcessMode& mode, bool& independent_thread) {
-            mode = ProcessMode::kSync;
-            independent_thread = false;
-            mode_ = mode;
-        }
-
-
-        // Set the type and format of the video frame sent to your extension.
-        void ExtensionVideoFilter::getVideoFormatWanted(rtc::VideoFrameData::Type& type,
-                                                        rtc::RawPixelBuffer::Format& format) {
-            type = rtc::VideoFrameData::Type::kRawPixels;
-            format = rtc::RawPixelBuffer::Format::kI420;
-        }
-
-        // Save the Control object and initialize OpenGL.
-        int ExtensionVideoFilter::start(agora::agora_refptr<Control> control) {
-            PRINTF_INFO("ExtensionVideoFilter::start");
-            if (!byteDanceProcessor_) {
-                return -1;
-            }
-            if (control) {
-                control_ = control;
-                byteDanceProcessor_->setExtensionControl(control);
-            }
-            if (mode_ == ProcessMode::kAsync){
-                invoker_id = threadPool_.RegisterInvoker("thread_videofilter");
-                auto res = threadPool_.PostTaskWithRes(invoker_id, [byteDanceProcessor=byteDanceProcessor_] {
-                     return byteDanceProcessor->initOpenGL();
-                });
-                isInitOpenGL = res.get();
-            } else {
-                isInitOpenGL = byteDanceProcessor_->initOpenGL();
-            }
-            return 0;
-        }
-
-        // Release OpenGL.
-        int ExtensionVideoFilter::stop() {
-            PRINTF_INFO("ExtensionVideoFilter::stop");
-            if (byteDanceProcessor_) {
-                byteDanceProcessor_->releaseOpenGL();
-                isInitOpenGL = false;
-            }
-            return 0;
-        }
-
-
-       // When mode is set to Async,  the SDK and extension transfer video frames through pendVideoFrame and deliverVideoFrame.
-       rtc::IExtensionVideoFilter::ProcessResult ExtensionVideoFilter::pendVideoFrame(agora::agora_refptr<rtc::IVideoFrame> frame) {
-            if (!frame || !isInitOpenGL) {
-                return kBypass;
-            }
-
-            bool isAsyncMode = (mode_ == ProcessMode::kAsync);
-            if (isAsyncMode && byteDanceProcessor_ && control_ && invoker_id >= 0) {
-                threadPool_.PostTask(invoker_id, [videoFrame=frame, byteDanceProcessor=byteDanceProcessor_, control=control_] {
-                    rtc::VideoFrameData srcData;
-                    videoFrame->getVideoFrameData(srcData);
-                    byteDanceProcessor->processFrame(srcData);
-                    control->deliverVideoFrame(videoFrame);
-                });
-                return kSuccess;
-            }
-            return kBypass;
-        }
-
-        // When mode is set to Sync,  the SDK and extension transfer video frames through adaptVideoFrame.
-        rtc::IExtensionVideoFilter::ProcessResult ExtensionVideoFilter::adaptVideoFrame(agora::agora_refptr<rtc::IVideoFrame> src,
-                                                                                        agora::agora_refptr<rtc::IVideoFrame>& dst) {
-            if (!isInitOpenGL) {
-                return kBypass;
-            }
-            bool isSyncMode = (mode_ == ProcessMode::kSync);
-            if (isSyncMode && byteDanceProcessor_) {
-                rtc::VideoFrameData srcData;
-                src->getVideoFrameData(srcData);
-                byteDanceProcessor_->processFrame(srcData);
-                dst = src;
-                return kSuccess;
-            }
-            return kBypass;
-        }
-
-
-        // Set the property of the video filter.
-        int ExtensionVideoFilter::setProperty(const char *key, const void *buf,
-                                              size_t buf_size) {
-            PRINTF_INFO("setProperty  %s  %s", key, buf);
-            std::string stringParameter((char*)buf);
-            byteDanceProcessor_->setParameters(stringParameter);
-            return 0;
-        }
- 
-        // Get the property of the video filter.
-        int ExtensionVideoFilter::getProperty(const char *key, void *buf, size_t buf_size) {
-            return -1;
-        }
-    }
-}
-```
-
-
-
-
-### Encapsulate into an extension
-
-
-To encapsulate the video filter into an extension, you need to implement the `IExtensionProvider` interface. You can find the interface in the `NGIAgoraExtensionProvider.h` file. The following methods from this interface must be implemented:
+Methods include:
 
 - [`enumerateExtensions`](#enumerateextensions)
 - [ `createVideoFilter`](#createvideofilter)
@@ -316,7 +210,7 @@ virtual void enumerateExtensions(ExtensionMetaInfo* extension_list,
 | `extension_list` | Extension information, including extension type and name. For details, see the definition of ExtensionMetaInfo. |
 | `extension_count`  | The total number of the extensions that can be encapsulated.              |
 
-The definition of ExtensionExtensionMetaInfo is as follows: 
+The definition of ExtensionExtensionMetaInfo is as follows:
 
 ```objc
 // EXTENSION_TYPE represents where the extension is located in the media transmission pipeline
@@ -356,99 +250,3 @@ virtual agora_refptr < IExtensionVideoFilter > createVideoFilter(const char * na
 ```
 
 After the `IExtensionVideoFilter` instance is created, the extension processes video frames with methods in the `IExtensionVideoFilter` class.
-
-#### Sample code
-The following code sample shows how to use these APIs to encapsulate the video filter:
-
-
-```
-#include "ExtensionProvider.h"
-#include "../logutils.h"
-#include "VideoProcessor.h"
-#include "plugin_source_code/JniHelper.h"
-
-namespace agora {
-    namespace extension {
-        ExtensionProvider::ExtensionProvider() {
-            PRINTF_INFO("ExtensionProvider create");
-            byteDanceProcessor_ = new agora::RefCountedObject<ByteDanceProcessor>();
-            audioProcessor_ = new agora::RefCountedObject<AdjustVolumeAudioProcessor>();
-        }
-
-        ExtensionProvider::~ExtensionProvider() {
-            PRINTF_INFO("ExtensionProvider destroy");
-            byteDanceProcessor_.reset();
-            audioProcessor_.reset();
-        }
-
-        // Enumerate your extensions that can be encapsulated
-        void ExtensionProvider::enumerateExtensions(ExtensionMetaInfo* extension_list,
-                                                    int& extension_count) {
-            extension_count = 1;
-            ExtensionMetaInfo i;
-            i.type = EXTENSION_TYPE::VIDEO_PRE_PROCESSING_FILTER;
-            i.extension_name = agora::extension::VIDEO_FILTER_NAME;
-            extension_list[0] = i;
-        }
-
-        // Create a video filter
-        agora_refptr<agora::rtc::IExtensionVideoFilter> ExtensionProvider::createVideoFilter(const char* name) {
-            PRINTF_INFO("ExtensionProvider::createVideoFilter %s", name);
-            auto videoFilter = new agora::RefCountedObject<agora::extension::ExtensionVideoFilter>(byteDanceProcessor_);
-            return videoFilter;
-        }
-
-        void ExtensionProvider::setExtensionControl(rtc::IExtensionControl* control){
-        }
-    }
-}
-```
-
-
-
-
-## Package the video filter extension
-
-
-After encapsulating the filter into an extension, you need to register and package it into a `.aar` or `.so` file, and submit it together with a file that contains the extension name, vendor name and filter name to Agora.
-### Register the extension
-
-
-
-
-
-Register the extension with the macro `REGISTER_AGORA_EXTENSION_PROVIDER`, which is in the `AgoraExtensionProviderEntry.h` file.
-
-Use this macro at the entrance of the extension implementation. When the SDK loads the extension, this macro automatically registers it to the SDK. For example:
-
-```objc
-REGISTER_AGORA_EXTENSION_PROVIDER(ByteDance, agora::extension::ExtensionProvider);
-```
-
-
-### Link the `libagora-rtc-sdk-jni.so` file
-
-In `CMakeLists.txt`, specify the path to save the `libagora-rtc-sdk-jni.so` file in the downloaded SDK package according to the following table:
-
-| File | Path | 
-| ---------------- | ---------------- |
-| 64-bit `libagora-rtc-sdk-jni.so`      | `AgoraWithByteDanceAndroid/agora-bytedance/src/main/agoraLibs/arm64-v8a`     |
-| 32-bit `libagora-rtc-sdk-jni.so` | `AgoraWithByteDanceAndroid/agora-bytedance/src/main/agoraLibs/arm64-v7a` |
-
-### Provide extension information
-
-Create a `.java` or `.md` file to provide the following information:
-
-- `EXTENSION_NAME`: The name of the target link library used in `CMakeLists.txt`. For example, for a `.so` file named `libagora-bytedance.so`, the `EXTENSION_NAME` should be `agora-bytedance`.
-- `EXTENSION_VENDOR_NAME`: The name of the extension provider, which is used for registering in the `agora-bytedance.cpp` file.
-- `EXTENSION_FILTER_NAME`: The name of the filter, which is defined in `ExtensionProvider.h`.
-
-
-
-
-
-
-
-
-
-</PlatformWrapper>

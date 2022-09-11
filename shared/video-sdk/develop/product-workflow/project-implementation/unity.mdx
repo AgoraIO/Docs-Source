@@ -1,0 +1,188 @@
+<PlatformWrapper platform="unity">
+
+### Implement the user interface
+
+In a real-world application, for each volume setting you want to control, you typically add a volume control UI element such as a <Link target="_blank" to="https://docs.unity3d.com/2018.3/Documentation/ScriptReference/UI.Slider.html">Slider</Link> to the audio configuration panel. To enable the user to mute local or remote audio, you add <Link to ="https://docs.unity3d.com/2018.3/Documentation/ScriptReference/UI.Toggle.html">Toggle</Link> to the interface for each user. In this example, you add a `Button` and a `Toggle` to the UI to test different volume settings. For screen sharing, you add a `Button` to start and stop sharing. To implement this UI, take the following steps:
+
+   1. Right-click **Sample Scene**, then click **Game Object** > **UI** > **Button - TextMeshPro**. A button appears in the **Scene** Canvas.
+
+    2. In **Inspector**, rename **Button** to `shareScreen`, and then change the following coordinates:
+
+        * **Pos X** - 350
+        * **Pos Y** - 172
+
+    3. Right-click **Sample Scene**, then click **Game Object** > **UI** > **Slider**. A Slider appears in the **Scene** Canvas.
+
+    4. In **Inspector**, rename **Slider** to `mediaProgressBar`, and then change the following coordinates:
+    
+        * **Pos X** - 0
+        * **Pos Y** - 142
+
+    5. Right-click **Canvas**, then click **UI** > **Toggle**. A toggle button appears in the scene canvas.
+
+    6. In **Inspector**, rename **Toggle** to `Mute`, then change **Pos Y** to `30`.
+
+### Handle the system logic
+
+1. **Add the required library**
+
+    To import the required Uinty UI library, in `Assets/Agora-RTC-Plugin/Agora-Unity-RTC-SDK/Code/JoinChannelVideo.cs`, add the following to the namespace declarations:
+
+    ``` csharp
+    using TMPro;
+    ```
+
+### Implement volume control and screen sharing logic
+
+To implement these features in your <Vpl k="CLIENT" />, take the following steps:
+
+1. **Declare the variables you need**
+
+    To read, store and apply workflow settings, in `Assets/Agora-RTC-Plugin/Agora-Unity-RTC-SDK/Code/JoinChannelVideo.cs`, add the following declarations to the `JoinChannelVideo` class:
+
+    ```csharp
+    // Volume Control
+    private Slider volumeSlider;
+    // Screen sharing
+    private bool sharingScreen = false;
+    private TMP_Text shareScreenBtnText;
+    ```
+
+1. **Access the UI elements**
+
+   To setup event listener for the screen sharing button and access the slider, in `JoinChannelVideo` class, add the following at the end of `SetupUI` method: 
+
+    ```csharp
+    // Access the button from the UI.
+    go = GameObject.Find("shareScreen");
+    // Add a listener to the button and invokes shareScreen when the button is pressed.
+    go.GetComponent<Button>().onClick.AddListener(shareScreen);
+    // Access the text sub-item of screen sharing button to change the button text.
+    shareScreenBtnText = go.GetComponentInChildren<TextMeshProUGUI>(true);
+    shareScreenBtnText.text = "Share Screen";
+    shareScreenBtnText.fontSize = 14;
+    // Access the slider from the UI
+    go = GameObject.Find("mediaProgressBar");
+    volumeSlider = go.GetComponent<Slider>();
+    // Specify a maximum value for slider.
+    go.GetComponent<Slider>().maxValue = 100;
+    // Add a listener to the slider and invokes changeVolume when the value changes.
+    go.GetComponent<Slider>().onValueChanged.AddListener(delegate {changeVolume ((int)volumeSlider.value);});
+    // Access the Mute toggle from the UI.
+    go = GameObject.Find("Mute");
+    Toggle muteToggle = go.GetComponent<Toggle>();
+    muteToggle.isOn = false;
+    // Invoke muteRemoteAudio when user check or uncheck the toggle button.
+    muteToggle.onValueChanged.AddListener((value) =>
+    {
+        muteRemoteAudio(value);
+    });
+    ```
+   
+1. **Adjust the recorded audio volume**
+
+   When you drag the slider left or right, your <Vpl k = "CLIENT"/> calls `changeVolume` method. The method reads the slider value and calls `AdjustRecordingSignalVolume` to adjust the recording signal volume. To implement this logic, add the following method to `JoinChannelVideo` class.
+
+    ```csharp
+    private void changeVolume(int volume)
+    {
+        // Adjust the recorded signal volume.
+        RtcEngine.AdjustRecordingSignalVolume(volume);
+    }
+    ```
+
+3. **Implement the logic to mute and unmute the remote user**
+
+   When the user taps the mute toggle button, your <Vpl k="CLIENT" /> calls `muteRemoteAudioStream` and mute the remote user. To implement this workflow, add the following to `JoinChannelVideo` class:
+
+    ```csharp
+    private void muteRemoteAudio(bool value)
+    {
+        // Pass the uid of the remote user you want to mute.
+        RtcEngine.MuteRemoteAudioStream(System.Convert.ToUInt32(remoteUid), value);
+    }
+    ```
+4.  **Configure <Vg k="ENGINE" /> to publish the screen sharing track**
+
+    You use `ChannelMediaOptions` and the `UpdateChannelMediaOptions` method to specify the type of stream to publish. To switch between publishing screen and camera and microphone streams, add the following method to the `JoinChannelVideo` class:
+
+    ```csharp
+        private void updateChannelPublishOptions(bool publishMediaPlayer){
+        ChannelMediaOptions channelOptions = new ChannelMediaOptions();
+        channelOptions.publishScreenTrack.SetValue(publishMediaPlayer);
+        channelOptions.publishAudioTrack.SetValue(true);
+        channelOptions.publishSecondaryScreenTrack.SetValue(publishMediaPlayer);
+        channelOptions.publishCameraTrack.SetValue(!publishMediaPlayer);
+        RtcEngine.UpdateChannelMediaOptions(channelOptions);
+    }
+    ```
+
+4.  **Display the screen stream locally**
+
+    Access the `LocalView` game object from the UI and update its video surface to setup a view for the screen sharing track. Then, call `SetForUser` to display the screen track locally. To implement this logic, add the following method in the `JoinChannelVideo` class:
+    
+    ```csharp
+    private void setupLocalVideo(bool isScreenSharing) {
+        if (isScreenSharing) {
+          GameObject go = GameObject.Find("LocalView");
+          go.transform.Rotate(-180.0f, 0.0f, 180.0f);
+          // Update the VideoSurface component of the local view.
+          LocalView = go.AddComponent<VideoSurface>();
+          // Render the screen sharing track on the local view.
+          LocalView.SetForUser(0, "", VIDEO_SOURCE_TYPE.VIDEO_SOURCE_SCREEN_PRIMARY);
+            
+        } else {
+            GameObject go = GameObject.Find("LocalView");
+            go.transform.Rotate(180.0f, 0.0f, 180.0f);
+            // Update the VideoSurface component of the local view.
+            LocalView = go.AddComponent<VideoSurface>();
+            // Render the local video track on the local view.
+            LocalView.SetForUser(0, "", VIDEO_SOURCE_TYPE.VIDEO_SOURCE_CAMERA_PRIMARY);
+        }
+    }
+    ```
+1. **Start or stop screen sharing**
+
+    When the user presses **Share Screen**, you call `GetScreenCaptureSources` to get a list of shareable screens and windows. You use this list to get the `sourceId` of the screen you want to share. Then you call `StartScreenCaptureByWindowId` and pass the `sourceId` and the `Rectangle` class object to start screen sharing. The Rectangle object specifies the part of the screen you want to share. To share the whole screen, pass an empty object. To implement this workflow, add the following method to the `JoinChannelVideo` class:
+
+    ```csharp
+    public void shareScreen() 
+    {
+        if (!sharingScreen)
+        {
+            // The target size of the screen or window thumbnail (the width and height are in pixels).
+            SIZE t = new SIZE(360,240);
+            // The target size of the icon corresponding to the application program (the width and height are in pixels)
+            SIZE s = new SIZE(360,240);
+            // Get a list of shareable screens and windows
+            var info = RtcEngine.GetScreenCaptureSources(t, s, true);
+            // Get the first source id to share the whole screen.
+            ulong dispId = info[0].sourceId;
+            // To share a part of the screen, specify the screen width and size using the Rectangle class.
+            RtcEngine.StartScreenCaptureByWindowId(System.Convert.ToUInt32(dispId), new Rectangle(),
+                    default(ScreenCaptureParameters));
+            // Publish the screen track and unpublish the local video track.
+            updateChannelPublishOptions(true);
+            // Display the screen track in the local view.
+            setupLocalVideo(true);
+            // Change the screen sharing button text.
+            shareScreenBtnText.text = "Stop Sharing";
+            // Update the screen sharing state.
+            sharingScreen = true;
+        }          
+        else 
+        { 
+            // Stop sharing.
+            RtcEngine.StopScreenCapture();
+            // Publish the local video track when you stop sharing your screen.
+            updateChannelPublishOptions(false);
+            // Display the local video in the local view.
+            setupLocalVideo(false);
+            // Update the screen sharing state.
+            sharingScreen = false;
+            // Change to the default text of the button when you stop sharing your screen.
+            shareScreenBtnText.text = "Share Screen";
+        }
+    }
+    ```
+</PlatformWrapper>

@@ -6,6 +6,7 @@ const data = {
     PRODUCT: 'Video Calling',
     BETA_API_FOLDER: 'video-call-4.x-beta',
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS'
+
   },
 
   'voice-calling': {

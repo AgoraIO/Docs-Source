@@ -48,6 +48,12 @@ const data = {
     NAME: 'Flutter',
     PATH: 'flutter',
     CLIENT: 'app'
+  },
+
+  'windows': {
+    NAME: 'Windows',
+    PATH: 'windows',
+    CLIENT: 'app'
   }
 };
 

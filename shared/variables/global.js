@@ -10,7 +10,7 @@ export const API_REF_WEB_ROOT = `${API_REF_ROOT}/web/4.13.0`;
 export const API_REF_ANDROID_ROOT  = `${API_REF_ROOT}/java_ng/API`;
 export const API_REF_IOS_ROOT = `${API_REF_ROOT}/ios_ng/API`;
 export const API_REF_ELECTRON_ROOT  = `${API_REF_ROOT}/electron/4.0.0-beta.2/API`;
-export const API_REF_ELECTRON_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/electron//API`;
+export const API_REF_ELECTRON_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/electron/4.0.0-beta.2/API`;
 export const API_REF_WEB_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/web/4.13.0`;
 export const API_REF_ROOT_VOICE = 'https://docs.agora.io/en/voice-call-4.x-beta/API%20Reference';
 

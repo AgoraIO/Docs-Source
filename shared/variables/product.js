@@ -44,6 +44,13 @@ const data = {
       PATH: 'signalling',
       SDK: 'Signalling SDK',
       PRODUCT: 'Signalling'
+  },
+
+  'server-gateway': {
+      NAME: 'Server Gateway',
+      PATH: 'server-gateway',
+      SDK: 'Server Gateway SDK',
+      PRODUCT: 'Server Gateway'
   }
 };
 

@@ -14,6 +14,7 @@ export const API_REF_RN_ROOT  = `${API_REF_ROOT}/rn_ng/API`;
 export const API_REF_ROOT_VOICE = `${URL_ROOT}/voice-call-4.x-beta/API%20Reference`;
 export const API_REF_RN_ROOT_VOICE = `${API_REF_ROOT_VOICE}/rn_ng/API`;
 export const API_REF_FLUTTER_ROOT = `${API_REF_ROOT}/flutter/4.0.0-beta.2/API`;
+export const API_REF_FLUTTER_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/flutter/4.0.0-beta.2/API`;
 export const API_REF_UNITY_ROOT = `${API_REF_ROOT}/unity/4.0.0.beta-2/API`;
 export const API_REF_UNITY_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/unity/4.0.0.beta-2/API`;
 export const API_REF_ELECTRON_ROOT  = `${API_REF_ROOT}/electron_ng/API`;

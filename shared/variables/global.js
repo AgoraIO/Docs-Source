@@ -3,12 +3,23 @@ export const URL_ROOT = 'https://docs.agora.io/en';
 export const AGORA_BACKEND = `${COMPANY} SD-RTN`;
 export const CLIENT = platform => (platform === 'unity' ? 'game' : 'app');
 
-export const API_REF_ROOT = 'https://docs.agora.io/en/video-call-4.x-beta/API%20Reference';
+export const API_REF_ROOT = 'https://agora-api-reference.vercel.app/video-sdk';
+export const API_REF_ROOT_VOICE_SDK = 'https://agora-api-reference.vercel.app/voice-sdk';
 export const API_REF_OLD = 'https://docs.agora.io/en/Video/API%20Reference';
 export const API_REF_WEB_ROOT = `${API_REF_OLD}/web_ng`;
 export const API_REF_ANDROID_ROOT  = `${API_REF_ROOT}/java_ng/API`;
-export const API_REF_IOS_ROOT = `${API_REF_ROOT}/ios_ng/API`;
-export const API_REF_FLUTTER_ROOT = `${API_REF_ROOT}/flutter_ng/API`;
+export const API_REF_IOS_ROOT = `${API_REF_ROOT}/ios/4.0.0-beta.2/API`;
+export const API_REF_IOS_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/ios/4.0.0-beta.2/API`;
+export const API_REF_MACOS_ROOT = `${API_REF_ROOT}/macos/4.0.0-beta.2/API`;
+export const API_REF_IOS_MAC_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/macos/4.0.0-beta.2/API`;
+export const API_REF_RN_ROOT  = `${API_REF_ROOT}/rn_ng/API`;
+export const API_REF_ROOT_VOICE = `${URL_ROOT}/voice-call-4.x-beta/API%20Reference`;
+export const API_REF_RN_ROOT_VOICE = `${API_REF_ROOT_VOICE}/rn_ng/API`;
+export const API_REF_FLUTTER_ROOT = `${API_REF_ROOT}/flutter/4.0.0-beta.2/API`;
+export const API_REF_FLUTTER_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/flutter/4.0.0-beta.2/API`;
+export const API_REF_UNITY_ROOT = `${API_REF_ROOT}/unity/4.0.0.beta-2/API`;
+export const API_REF_UNITY_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/unity/4.0.0.beta-2/API`;
+export const API_REF_ELECTRON_ROOT  = `${API_REF_ROOT}/electron_ng/API`;
 
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
@@ -56,6 +67,8 @@ export const AA = `${COMPANY} Analytics`;
 export const WHITE = 'Interactive Whiteboard';
 export const EM = `${RTEE} Marketplace`;
 export const MS = 'Media Services';
+export const MPUSH = 'Media Push';
+export const MPULL = 'Media Pull';
 export const REC = 'Recording';
 export const MOD = 'Moderation';
 export const CP = 'Cloud Proxy';
@@ -67,12 +80,13 @@ export const CREC = 'Cloud Recording';
 export const UCS = 'Use Cases';
 
 export const AB = 'App Builder';
-export const UIK = 'UIKit';
+export const UIK = 'UI Kit';
+export const vUIK = `Video ${UIK}`;
 export const FC = 'Flexible Classroom';
 
 export const WEB = 'Web';
 export const IOS = 'iOS';
-export const MAC = 'MacOS';
+export const MAC = 'macOS';
 export const AND = 'Android';
 export const WIN = 'Windows';
 
@@ -98,10 +112,10 @@ export const AGORA_PLATFORM_FOLDER = 'Agora%20Platform';
 export const API_REF_FOLDER = 'API%20Reference';
 export const API_REF_WEB = 'https://docs.agora.io/en/Video/API%20Reference/web_ng';
 
-export const APP_LINK = `${AGORA_DOCS_URL}/${AGORA_PLATFORM_FOLDER}/get_appid_token#get-the-app-id[App ID]`;
+export const APP_LINK = "https://agoradocs.vercel.app/video-calling/reference/manage-agora-account/#get-the-app-id";
 
 export const APP_CERTIFICATE_LINK =
-  'xref:{rootdir}/reference/manage-agora-account.adoc#_get_the_app_certificate[App Certificate]';
+    "https://agoradocs.vercel.app/video-calling/reference/manage-agora-account/#get-the-app-certificate";
 
 export const DEMO_BASIC_VIDEO_CALL_URL =
   'https://webdemo.agora.io/agora-websdk-api-example-4.x/basicVideoCall/index.html';
@@ -117,8 +131,16 @@ export const AGORA_DYNAMIC_KEY_CODE_BASE_URL =
 export const ANDROID_UIKIT_VERSION = '4.0.1';
 export const ANDROID_UIKIT_SDK = 'com.github.AgoraIO-Community.Android-UIKit:final';
 
-export const WEB_UIKIT = 'Agora React Web UIKit';
+export const WEB_UIKIT = 'Agora React Web UI Kit';
 
-export const IOS_MI_PACKAGE_VERSION = '4.0.0-beta.1';
-export const IOS_PACKAGE = 'NAME: AgoraRtcEngine_iOS_Beta';
+export const IOS_MI_PACKAGE_VERSION = '4.0.0-rc.1';
+export const IOS_PACKAGE = 'NAME: AgoraRtcEngine_iOS';
 export const IOS_VOICE_PACKAGE = 'AgoraRtcEngine_iOS_Voice_Beta';
+
+export const UIKIT_GH_HUB = 'https://github.com/AgoraIO-Community/.github/wiki/Agora-Video-UIKit'
+export const UIKIT_PACKAGE_IOS = 'https://github.com/AgoraIO-Community/VideoUIKit-iOS'
+export const UIKIT_PACKAGE_ANDROID = 'https://github.com/AgoraIO-Community/Android-UIKit'
+export const UIKIT_PACKAGE_MACOS = 'https://github.com/AgoraIO-Community/macOS-UIKit'
+export const UIKIT_PACKAGE_FLUTTER = 'https://github.com/AgoraIO-Community/Flutter-UIKit'
+export const UIKIT_PACKAGE_RN = 'https://github.com/AgoraIO-Community/ReactNative-UIKit'
+export const UIKIT_PACKAGE_REACT_WEB = 'https://github.com/AgoraIO-Community/Web-React-UIKit'

@@ -14,7 +14,15 @@ const data = {
   'ios': {
     NAME: 'iOS',
     PATH: 'ios',
-    CLIENT: 'app'
+    CLIENT: 'app',
+    PACKAGE_NAME: 'AgoraRtcEngine_iOS'
+  },
+
+  'macos': {
+    NAME: 'macOS',
+    PATH: 'macos',
+    CLIENT: 'app',
+    PACKAGE_NAME: 'AgoraRtcEngine_macOS'
   },
 
   'react-native': {
@@ -22,6 +30,13 @@ const data = {
     PATH: 'react-native',
     CLIENT: 'app'
   },
+
+  'electron': {
+    NAME: 'Electron',
+    PATH: 'electron',
+    CLIENT: 'app'
+  },
+
   
   'unity': {
     NAME: 'Unity',
@@ -32,6 +47,12 @@ const data = {
   'flutter': {
     NAME: 'Flutter',
     PATH: 'flutter',
+    CLIENT: 'app'
+  },
+
+  'windows': {
+    NAME: 'Windows',
+    PATH: 'windows',
     CLIENT: 'app'
   }
 };

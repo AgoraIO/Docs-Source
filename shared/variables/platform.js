@@ -44,6 +44,11 @@ const data = {
     CLIENT: 'game'
   },
 
+  'windows': {
+    NAME: 'Windows',
+    PATH: 'windows',
+    CLIENT: 'app'
+  },
   'flutter': {
     NAME: 'Flutter',
     PATH: 'flutter',

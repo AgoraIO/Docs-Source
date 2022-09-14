@@ -1,0 +1,95 @@
+
+- `IAudioFilter`: Implement receiving, processing, and delivering audio data.
+- `IExtensionProvider`: encapsulate your `IAudioFilter` implementation into an extension.
+
+
+### Develop an audio filter
+
+
+Use the `IAudioFilter` interface to implement an audio filter. You can find the interface in the `NGIAgoraMediaNode.h` file. You need to implement this interface first, and you must implement at least the following methods from this interface:
+
+- [`adaptAudioFrame`](#adaptaudioframe)
+- [`setEnabled`](#setenabled)
+- [`isEnabled`](#isenabled)
+- [`setProperty`](#setproperty)
+- [`getProperty`](#getproperty)
+- [`getName`](#getname)
+- [`getPreferredSampleRate`](#getpreferredsampleRate)(Optional)
+- [`getPreferredChannelNumbers`](#getpreferredchannelnumbers)(Optional)
+
+The following code sample shows how to use these methods together to implement an audio filter extension:
+
+``` cpp
+// After receiving the audio frames to be processed, call adaptAudioFrame to process the audio frames.
+bool ExtensionAudioFilter::adaptAudioFrame(const media::base::AudioPcmFrame &inAudioPcmFrame,
+                                           media::base::AudioPcmFrame &adaptedPcmFrame) {
+    return audioProcess_->processFrame(inAudioPcmFrame, adaptedPcmFrame) == 0;
+}
+
+// Call setProperty to set the property of the audio filter.
+int ExtensionAudioFilter::setProperty(const char* key, const void* buf, int buf_size) {
+    std::string str_volume = "100";
+    if (std::string(key) == "volume") {
+        str_volume = std::string(static_cast<const char*>(buf), buf_size);
+    }
+
+    int int volume_ = atoi(str_volume.c_str());
+    audioProcessor_->setVolume(int_volume_);
+    return ERR_OK;
+}
+
+// Call getProperty to get the property of the audio filter.
+int ExtensionAudioFilter::getProperty(const char* key, void* buf, int buf_size) const override {return ERR_OK; }
+
+// Call setEnabled to enable the audio filter.
+void ExtensionAudioFilter::setEnabled(bool enable) override { enabled_ = enable; }
+// Call isEnabled to check whether the audio filter is enabled.
+bool ExtensionAudioFilter::isEnabled() const override {return enabled_; }
+
+// Set the vendor name in the return value of getName.
+const char* getName() const override { return filterName_.c_str(); }
+
+// (Optional) Specify the audio sample rate in the return value of getPreferredSampleRate
+const char* ExtensionAudioFilter::getPreferredSampleRate() override { return 48000; }
+
+// (Optional) Specify the number of audio channels in the return value of getPreferredChannelNumbers
+int ExtensionAudioFilter::getPreferredChannelNumbers() override { return 2; };
+```
+
+### Encapsulate the filter into an extension
+
+To encapsulate the audio filter into an extension, you need to implement the `IExtensionProvider` interface. You can find the interface in the `NGIAgoraExtensionProvider.h` file. The following methods from this interface must be implemented:
+
+- [`enumerateExtensions`](#enumerateextensions)
+- [ `createAudioFilter`](#createaudiofilter)
+- [`setExtensionControl`](#setextensioncontrol)
+
+The following code sample shows how to use these methods to encapsulate the audio filter:
+
+``` cpp
+void ExtensionProvider::enumerateExtensions(ExtensionMetaInfo* extension_list,
+                                            int& extension_count) {
+    extension_count = 2;
+    //Declare a Video Filter, and IExtensionProvider::createVideoFilter will be called
+    ExtensionMetaInfo i;
+    i.type = EXTENSION_TYPE::VIDEO_PRE_PROCESSING_FILTER;
+    i.extension_name = agora::extension::VIDEO_FILTER_NAME;
+    extension_list[0] = i;
+
+    //Declare an Audio Filter, and IExtensionProvider::createAudioFilter will be called
+    ExtensionMetaInfo j;
+    j.type = EXTENSION_TYPE::AUDIO_FILTER;
+    j.extension_name = agora::extension::AUDIO_FILTER_NAME;
+    extension_list[1] = j;
+}
+
+agora_refptr<agora::rtc::IAudioFilter> ExtensionProvider::createAudioFilter(const char* name) {
+    PRINTF_INFO("ExtensionProvider::createAudioFilter %s", name);
+    auto audioFilter = new agora::RefCountedObject<agora::extension::ExtensionAudioFilter>(name, audioProcessor_);
+    return audioFilter;
+}
+
+void ExtensionAudioProvider::setExtensionControl(rtc::IExtensionControl* control){
+    audioProcessor_->setExtensionControl(control);
+}
+```

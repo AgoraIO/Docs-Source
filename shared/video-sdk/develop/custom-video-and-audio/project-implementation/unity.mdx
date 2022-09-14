@@ -161,18 +161,20 @@ To push audio from a custom source to a channel, take the following steps:
     In `/app/java/com.example.<projectname>/MainActivity`, add the following declarations to the `MainActivity` class:
 
     ```java
-    // Audio file parameters
-    private static final String AUDIO_FILE = "applause.wav"; // raw audio file
-    private static final Integer SAMPLE_RATE = 44100;
-    private static final Integer SAMPLE_NUM_OF_CHANNEL = 2;
-    private static final Integer BITS_PER_SAMPLE = 16;
-    private static final Integer SAMPLES = 441;
-    private static final Integer BUFFER_SIZE = SAMPLES * BITS_PER_SAMPLE / 8 * SAMPLE_NUM_OF_CHANNEL;
-    private static final Integer PUSH_INTERVAL = SAMPLES * 1000 / SAMPLE_RATE;
-
-    private InputStream inputStream;
-    private Thread pushingTask = new Thread(new PushingTask());
-    private boolean pushing = false;
+    // Please do not change this value because Unity re-samples the sample rate to 48000.
+    private const int SAMPLE_RATE = 48000;
+    private const int SAMPLE_NUM_OF_CHANNEL = 2;
+    private const int BYTES_PER_SAMPLE = 16;
+    private const int SAMPLES = 441;
+    private const int BUFFER_SIZE = SAMPLES * BYTES_PER_SAMPLE / 8 * SAMPLE_NUM_OF_CHANNEL;
+    private const int PUSH_INTERVAL = SAMPLES * 1000 / SAMPLE_RATE;
+    private const int PUSH_FREQ_PER_SEC = 100;
+    private RingBuffer<byte> _audioBuffer;
+    private bool _startConvertSignal = false;
+    private Thread _pushAudioFrameThread;
+    private System.Object _pushAudioFrameThreadSignal = new System.Object();
+    private int _count;
+    private bool _startSignal = false;
     ```
 
 1. **Add a raw audio file to the project**
@@ -183,80 +185,88 @@ To push audio from a custom source to a channel, take the following steps:
 
     When a user presses **Join**, you set the `ChannelMediaOptions` to disable the microphone audio track and enable the custom audio track. You also enable custom audio local playback and set the external audio source. To do this, add the following lines to the `joinChannel(View view)` method in the `MainActivity` class after `options.clientRoleType = Constants.CLIENT_ROLE_BROADCASTER;`:
 
-    ```java
-    options.publishMicrophoneTrack = false; // Disable publishing microphone audio
-    options.publishCustomAudioTrack = true; // Enable publishing custom audio
-    options.enableAudioRecordingOrPlayout = true;
+    ```csharp
+    private void setExternalVideoSource()
+    {
+        options.publishMicrophoneTrack = false; // Disable publishing microphone audio
+        options.publishCustomAudioTrack = true; // Enable publishing custom audio
+        options.enableAudioRecordingOrPlayout = true;
+        RtcEngine.SetExternalAudioSource(true, SAMPLE_RATE, SAMPLE_NUM_OF_CHANNEL, 1);
 
-    RtcEngine.enableCustomAudioLocalPlayback(0, true);
-    RtcEngine.SetExternalAudioSource(true, SAMPLE_RATE, SAMPLE_NUM_OF_CHANNEL, 1);
+    }
     ```
 
 1. **Open the audio file**
 
-    When the <Vpl k="CLIENT" /> starts, you open the audio file. To do this, add the following lines at the bottom of the `onCreate` method:
+    When the <Vpl k="CLIENT" /> starts, you open the audio file. To implement this workflow, add the following lines at the bottom of the `SetupVideoSDKEngine` method:
 
-    ```java
-    try {
-        inputStream = this.getResources().getAssets().open(AUDIO_FILE);
-    } catch (IOException e) {
-        e.printStackTrace();
-    }
+    ```csharp
+    setExternalVideoSource();
     ```
 
 1. **Start the task to push audio frames**
 
     When a user successfully joins a channel, you start the task that pushes audio frames. To do this, add the following lines at the bottom of the `onJoinChannelSuccess` callback in the `MainActivity` class:
 
-    ```java
-    pushing = true;
-    pushingTask.start();
-    ```
+    ```csharp
+    private void PushAudioFrameThread()
+    {
+        var bytesPerSample = 2;
+        var type = AUDIO_FRAME_TYPE.FRAME_TYPE_PCM16;
+        var channels = CHANNEL;
+        var samples = SAMPLE_RATE / PUSH_FREQ_PER_SEC;
+        var samplesPerSec = SAMPLE_RATE;
+        var buffer = new byte[samples * bytesPerSample * CHANNEL];
+        var freq = 1000 / PUSH_FREQ_PER_SEC;
+        var tic = DateTime.Now;
+        IntPtr audioFrameBuffer = Marshal.AllocHGlobal(buffer.Length);
+        var audioFrame = new AudioFrame
+        {
+            bytesPerSample = BYTES_PER_SAMPLE.TWO_BYTES_PER_SAMPLE,
+            type = type,
+            samplesPerChannel = samples,
+            samplesPerSec = samplesPerSec,
+            channels = channels,
+            buffer = (UInt64)audioFrameBuffer,
+            bufferPtr = audioFrameBuffer,
+            RawBuffer = buffer,
+            renderTimeMs = freq
+        };
+        while (true)
+        {
+            lock (_pushAudioFrameThreadSignal)
+            {
+                if (RtcEngine == null)
+                {
+                    break;
+                }
+                var toc = DateTime.Now;
 
-1. **Read the input stream into a buffer**
-
-    You read data from the input stream into a buffer. To do this, add the following method to the `MainActivity` class:
-
-    ```java
-    private byte[] readBuffer() {
-        int byteSize = BUFFER_SIZE;
-        byte[] buffer = new byte[byteSize];
-        try {
-            if (inputStream.read(buffer) < 0) {
-                inputStream.reset();
-                return readBuffer();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return buffer;
-    }
-    ```
-
-1. **Push the audio frames**
-
-    You push the data in the buffer as an audio frame using a separate process. To do this, define the following `Runnable` class in the `MainActivity` class:
-
-    ```java
-    class PushingTask implements Runnable {
-        long number = 0;
-
-        @Override
-        public void run() {
-            Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO);
-            while (pushing) {
-                long before = System.currentTimeMillis();
-                agoraEngine.pushExternalAudioFrame(readBuffer(), 0);
-                long now = System.currentTimeMillis();
-                long consuming = now - before;
-                if(consuming < PUSH_INTERVAL){
-                    try {
-                        Thread.sleep(PUSH_INTERVAL - consuming);
-                    } catch (InterruptedException e) {
+                if ((toc - tic).Milliseconds >= freq)
+                {
+                    lock (_audioBuffer)
+                    {
+                        if (_audioBuffer.Size > samples * bytesPerSample * CHANNEL)
+                        {
+                            for (var j = 0; j < samples * bytesPerSample * CHANNEL; j++)
+                            {
+                                buffer[j] = _audioBuffer.Get();
+                            }
+                            Marshal.Copy(buffer, 0, audioFrame.bufferPtr, buffer.Length);
+                            var ret = RtcEngine.PushAudioFrame(MEDIA_SOURCE_TYPE.AUDIO_PLAYOUT_SOURCE, audioFrame);
+                            Debug.Log("PushAudioFrame returns: " + ret);
+                            tic = toc;
+                        }
+                        else
+                        {
+                            tic = tic.AddMilliseconds(1);
+                        }
                     }
                 }
             }
+            Thread.Sleep(1);
         }
+         Marshal.FreeHGlobal(audioFrameBuffer);
     }
     ```
 

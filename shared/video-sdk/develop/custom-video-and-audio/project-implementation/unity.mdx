@@ -4,218 +4,108 @@
 
 In the following code example, you create the basic framework required to push video frames from a custom source. Depending on the type of your source, you add your own code to this framework that converts the source data to `VideoFrame` data. To create the basic framework, take the following steps:
 
-1. **Import the required <Vg k="COMPANY" /> and Android libraries**
-
-    You use the Android `TextureView` and `SurfaceTexture` objects for rendering custom video. The video data from the `SurfaceTexture` is converted to a `VideoFrame` before it is pushed to the channel. To use these libraries in your <Vpl k="CLIENT" />, add the following statements after the last `import` statement in `/app/java/com.example.<projectname>/MainActivity`.
-
-    ```java
-    import io.agora.base.VideoFrame;
-    import android.graphics.SurfaceTexture;
-    import android.view.TextureView;
-    import androidx.annotation.NonNull;
-    ```
-
 1. **Define variables to process and push video data**
 
-    In `/app/java/com.example.<projectname>/MainActivity`, add the following declarations to the `MainActivity` class:
+    In `Assets/Agora-RTC-Plugin/Agora-Unity-RTC-SDK/Code/JoinChannelVideo`, add the following declarations to the `JoinChannelVideo` class:
 
-    ```java
-    private bool mTextureDestroyed = false;
-    private bool mPreviewing = false;
-    private const int SAMPLE_RATE = 48000;
-            private RingBuffer<byte> _audioBuffer;
-                        private Thread _pushAudioFrameThread;
-
-
+    ```csharp
+    private Texture2D _texture;
+    private Rect _rect;
+    private WebCamTexture _webCameraTexture;
+    public RawImage RawImage;
+    public Vector2 CameraSize = new Vector2(480, 480);
+    public int CameraFPS = 15;
     ```
 
-1. **Enable publishing the custom audio track**
+1. **Setup external video source**
 
-    When a user presses **Join**, you configure `ChannelMediaOptions` to enable publishing of the captured video from a custom source. You set the external video source, and set up a `TextureView` for the custom video preview. To do this: 
+   Call `SetExternalVideoSource` to setup an external video source in your <Vpl k= "CLIENT"/>. Add the followong method to `JoinChannelVideo` class:
 
-    1. Add the following lines to the `joinChannel(View view)` method in the `MainActivity` class after `ChannelMediaOptions options = new ChannelMediaOptions();`:
+   ```csharp
+    private void SetExternalVideoSource()
+    {
+        var ret = RtcEngine.SetExternalVideoSource(true, false, EXTERNAL_VIDEO_SOURCE_TYPE.VIDEO_FRAME, new SenderOptions());
+        Debug.Log("SetExternalVideoSource returns:" + ret);
+    }
+   ```
+   To call this method before joining a channel, in the `JoinChannelVideo` class, add the following line at the end of the `Start` method:
 
-        ```java
-        // Enable publishing of the captured video from a custom source
-        options.publishCustomVideoTrack = true;
-        // Configure the external video source.
-        agoraEngine.setExternalVideoSource(true, true, Constants.ExternalVideoSourceType.VIDEO_FRAME);
-        // Check whether texture encoding is supported
-        showMessage(agoraEngine.isTextureEncodeSupported() ? "Texture encoding is supported" : 
-                "Texture encoding is not supported");
-                // Set up a preview TextureView for the custom video
-        setupCustomLocalVideoPreview();
-        // Show the preview TextureView
-        previewTextureView.setVisibility(View.VISIBLE);
-        ```
+   ```csharp
+   SetExternalVideoSource();
+   ```
 
-    1. In the `joinChannel(View view)` method, *remove* the following lines:
+1. **Enable external video device**
 
-        ```java
-        setupLocalVideo();
-        localSurfaceView.setVisibility(View.VISIBLE);
-        ```
+   To get video frames from the external video source, get the list of available video WebCams, select the firt video source from the list, set the selected source texture, play the selected source to start recieving local video frames. To implement this logic, add the following to `JoinChannelVideo` class:
 
-1. **Set up a TextureView for the custom video**
-
-    Create a new `TextureView` object, and add a `SurfaceTextureListener` to it. The listener triggers the `onSurfaceTextureAvailable` callback when a `SurfaceTexture` becomes available. You add the `TextureView` to the `FrameLayout` container to display it in the UI. To do this, add the following method to the `MainActivity` class:
-
-    ```java
-    private void setupCustomLocalVideoPreview() {
-        // Create TextureView
-        previewTextureView = new TextureView(getBaseContext());
-        // Add a SurfaceTextureListener
-        previewTextureView.setSurfaceTextureListener(surfaceTextureListener);
-        // Add the TextureView to the local video FrameLayout
-        FrameLayout container = findViewById(R.id.local_video_view_container);
-        container.addView(previewTextureView,320,240);
+    ```csharp
+    private void InitCameraDevice()
+    {
+        WebCamDevice[] devices = WebCamTexture.devices;
+        _webCameraTexture = new WebCamTexture(devices[0].name, (int)CameraSize.x, (int)CameraSize.y, CameraFPS);
+        _webCameraTexture.Play();
     }
     ```
+    To call this method before joining a channel, in the `JoinChannelVideo` class, add the following line at the end of the `Start` method:
 
-1. **Define the `SurfaceTextureListener`**
-
-    When a `SurfaceTexture` becomes available, you create a `previewSurfaceTexture` and set its `onFrameAvailableListener` listener. You set up and configure your custom video source, set its `SurfaceTexture` to the `previewSurfaceTexture`, and start the preview. To do this, add the following definition of the `surfaceTextureListener` to the `MainActivity` class:
-
-    ```java
-    private final TextureView.SurfaceTextureListener surfaceTextureListener = new TextureView.SurfaceTextureListener(){
-        @Override
-        public void onSurfaceTextureAvailable(@NonNull SurfaceTexture surface, int width, int height) {
-            // Invoked when a TextureView's SurfaceTexture is ready for use.
-
-            if (mPreviewing) {
-                // Already previewing custom video
-                return;
-            }
-
-            showMessage("Surface Texture Available");
-            mTextureDestroyed = false;
-
-            // Set up previewSurfaceTexture
-            previewSurfaceTexture = new SurfaceTexture(true);
-            previewSurfaceTexture.setOnFrameAvailableListener(onFrameAvailableListener);
-
-            // Add code here to set up and configure the custom video source 
-            // Add code here to set SurfaceTexture of the custom video source to previewSurfaceTexture
-            
-            // Start preview
-            mPreviewing = true;
-        }
-
-        @Override
-        public void onSurfaceTextureSizeChanged(@NonNull SurfaceTexture surface, int width, int height) {
-        }
-
-        @Override
-        public boolean onSurfaceTextureDestroyed(@NonNull SurfaceTexture surface) {
-            mTextureDestroyed = true;
-            return false;
-        }
-
-        @Override
-        public void onSurfaceTextureUpdated(@NonNull SurfaceTexture surface) {
-
-        }
-    };
+    ```csharp
+    InitCameraDevice();
     ```
 
-1. **Push the video frames**
+1. **Publish custom video track**
 
-    The `onFrameAvailableListener` callback is triggered when a new video frame is available. In the callback, you convert the `SurfaceTexture` data to a <Vg k="VSDK" /> `VideoFrame` and push the frame to the channel.
-    To do this, add the following `OnFrameAvailableListener` to the `MainActivity` class:
+   You use `ChannelMediaOptions` to stop publish the local video track and start publishing the custom video track. Create an instance of `ChannelMediaOptions` and set `publishVideoTrack` to `false` and `customVideoTrack` to `true`, then update the channel media options in your channel by calling `updateChannelMediaOptions`. To impelement this logic, add the following at the end of the `Join` method:
 
-    ```java
-    private final SurfaceTexture.OnFrameAvailableListener onFrameAvailableListener = new SurfaceTexture.OnFrameAvailableListener() {
-        @Override
-        public void onFrameAvailable(SurfaceTexture surfaceTexture) {
-            // Callback to notify that a new stream video frame is available.
-            
-            if (isJoined) {
-                // Configure the external video frames and send them to the SDK
-                VideoFrame videoFrame = null;
-
-                // Add code here to convert the surfaceTexture data to a VideoFrame object
-
-                // Send VideoFrame to the SDK
-                agoraEngine.pushExternalVideoFrame(videoFrame);
-            }
-        }
-    };
-    ```
+   ```csharp
+   options.publishCameraTrack.SetValue(false); // Disable publishing camera track.
+   options.publishCustomVideoTrack.SetValue(true); // Enable publishing custom video track.
+   RtcEngine.UpdateChannelMediaOptions(options);// Update channel media option to play the custom video track.
+   ```
 
 ### Implement a custom audio source
 
 To push audio from a custom source to a channel, take the following steps:
 
-1. **Import the required Android and Java libraries**
-
-    You use an `InputStream` to read the contents of the custom audio source. The <Vpl k="CLIENT" /> starts a separate `Process` to read and push the audio data. To use these libraries in your <Vpl k="CLIENT" />, add the following statements after the last `import` statement in `/app/java/com.example.<projectname>/MainActivity`.
-
-    ```java
-    import android.os.Process;
-    import java.io.InputStream;
-    import java.io.IOException;
-    ```
-
 1. **Define variables to manage and push the audio stream**
 
-    In `/app/java/com.example.<projectname>/MainActivity`, add the following declarations to the `MainActivity` class:
+    In `Assets/Agora-RTC-Plugin/Agora-Unity-RTC-SDK/Code/JoinChannelVideo`, add the following declarations to the `JoinChannelVideo` class:
 
     ```java
     // Please do not change this value because Unity re-samples the sample rate to 48000.
-    private const int SAMPLE_RATE = 48000;
-    private const int SAMPLE_NUM_OF_CHANNEL = 2;
-    private const int BYTES_PER_SAMPLE = 16;
-    private const int SAMPLES = 441;
-    private const int BUFFER_SIZE = SAMPLES * BYTES_PER_SAMPLE / 8 * SAMPLE_NUM_OF_CHANNEL;
-    private const int PUSH_INTERVAL = SAMPLES * 1000 / SAMPLE_RATE;
-    private const int PUSH_FREQ_PER_SEC = 100;
-    private RingBuffer<byte> _audioBuffer;
+    private const int SAMPLE_RATE = 44100;
+    private const string AUDIO_FILE = @"applause.wav";
+    private const int PUSH_FREQ_PER_SEC = 441 * 1000 / SAMPLE_RATE;
     private bool _startConvertSignal = false;
     private Thread _pushAudioFrameThread;
     private System.Object _pushAudioFrameThreadSignal = new System.Object();
-    private int _count;
     private bool _startSignal = false;
     ```
 
 1. **Add a raw audio file to the project**
 
-    In this example, you use an audio file as the source of your custom audio data. To add the audio file to your Android project, create a folder `app\src\main\assets` and add a sample audio file in `*.wav` or `*.raw` format to this folder. Update the value of the `AUDIO_FILE` variable to show the audio file name. Also make sure that the values of the audio file parameters in your code match the audio file you placed in the assets folder.
+    In this example, you use an audio file as the source of your custom audio data. To add the audio file to your Unity project, add a sample audio file in `*.wav` or `*.raw` format to `Assets/Agora-RTC-Plugin/Agora-Unity-RTC-SDK/Code` folder. Update the value of the `AUDIO_FILE` variable to show the audio file name. Also make sure that the values of the audio file parameters in your code match the audio file you placed in the folder.
 
 1. **Enable publishing the custom audio track**
 
-    When a user presses **Join**, you set the `ChannelMediaOptions` to disable the microphone audio track and enable the custom audio track. You also enable custom audio local playback and set the external audio source. To do this, add the following lines to the `joinChannel(View view)` method in the `MainActivity` class after `options.clientRoleType = Constants.CLIENT_ROLE_BROADCASTER;`:
+    When the user presses **Join**, you set the `ChannelMediaOptions` to disable the microphone audio track and enable the custom audio track. You also enable custom audio local playback and set the external audio source. To implement this workflow, add the following lines at the end of `SetupVideoSDKEngine` method in the `JoinChannelVideo`:
 
     ```csharp
-    private void setExternalVideoSource()
-    {
-        options.publishMicrophoneTrack = false; // Disable publishing microphone audio
-        options.publishCustomAudioTrack = true; // Enable publishing custom audio
-        options.enableAudioRecordingOrPlayout = true;
-        RtcEngine.SetExternalAudioSource(true, SAMPLE_RATE, SAMPLE_NUM_OF_CHANNEL, 1);
-
-    }
+    options.publishAudioTrack.SetValue(false); // Disable publishing microphone audio
+    options.publishCustomAudioTrack.SetValue(true); // Enable publishing custom audio
+    options.enableAudioRecordingOrPlayout.SetValue(true);
+    var nRet = RtcEngine.SetExternalAudioSource(true, SAMPLE_RATE, CHANNEL, 1);
     ```
 
-1. **Open the audio file**
+1. **Implement audio frame pushing logic**
 
-    When the <Vpl k="CLIENT" /> starts, you open the audio file. To implement this workflow, add the following lines at the bottom of the `SetupVideoSDKEngine` method:
-
-    ```csharp
-    setExternalVideoSource();
-    ```
-
-1. **Start the task to push audio frames**
-
-    When a user successfully joins a channel, you start the task that pushes audio frames. To do this, add the following lines at the bottom of the `onJoinChannelSuccess` callback in the `MainActivity` class:
-
+    When a user successfully joins a channel, you setup an instance of `AudioFrame`, set its audio parameter, and push the created audio frame to the channel by calling `PushAudioFrame`. To implement this workflow, add the following method to `JoinChannelVideo` class:
     ```csharp
     private void PushAudioFrameThread()
     {
+        FileStream stream = new FileStream(AUDIO_FILE,FileMode.Open, FileAccess.Read);
         var bytesPerSample = 2;
         var type = AUDIO_FRAME_TYPE.FRAME_TYPE_PCM16;
-        var channels = CHANNEL;
         var samples = SAMPLE_RATE / PUSH_FREQ_PER_SEC;
-        var samplesPerSec = SAMPLE_RATE;
         var buffer = new byte[samples * bytesPerSample * CHANNEL];
         var freq = 1000 / PUSH_FREQ_PER_SEC;
         var tic = DateTime.Now;
@@ -225,13 +115,15 @@ To push audio from a custom source to a channel, take the following steps:
             bytesPerSample = BYTES_PER_SAMPLE.TWO_BYTES_PER_SAMPLE,
             type = type,
             samplesPerChannel = samples,
-            samplesPerSec = samplesPerSec,
-            channels = channels,
+            samplesPerSec = SAMPLE_RATE,
+            channels = CHANNEL,
             buffer = (UInt64)audioFrameBuffer,
             bufferPtr = audioFrameBuffer,
             RawBuffer = buffer,
             renderTimeMs = freq
         };
+        int n = stream.Read(buffer, 0, buffer.Length);
+        Debug.Log("Bytes read: " + n);
         while (true)
         {
             lock (_pushAudioFrameThreadSignal)
@@ -241,45 +133,45 @@ To push audio from a custom source to a channel, take the following steps:
                     break;
                 }
                 var toc = DateTime.Now;
-
                 if ((toc - tic).Milliseconds >= freq)
                 {
-                    lock (_audioBuffer)
+                    lock (buffer)
                     {
-                        if (_audioBuffer.Size > samples * bytesPerSample * CHANNEL)
-                        {
-                            for (var j = 0; j < samples * bytesPerSample * CHANNEL; j++)
-                            {
-                                buffer[j] = _audioBuffer.Get();
-                            }
-                            Marshal.Copy(buffer, 0, audioFrame.bufferPtr, buffer.Length);
-                            var ret = RtcEngine.PushAudioFrame(MEDIA_SOURCE_TYPE.AUDIO_PLAYOUT_SOURCE, audioFrame);
-                            Debug.Log("PushAudioFrame returns: " + ret);
-                            tic = toc;
-                        }
-                        else
-                        {
-                            tic = tic.AddMilliseconds(1);
-                        }
+                        Marshal.Copy(buffer, 0, audioFrame.bufferPtr, buffer.Length);
+                        var ret = RtcEngine.PushAudioFrame(MEDIA_SOURCE_TYPE.AUDIO_PLAYOUT_SOURCE, audioFrame);
+                        Debug.Log("PushAudioFrame returns: " + ret);
+                        tic = toc;
                     }
                 }
+                else
+                {
+                    Thread.Sleep(1);
+                }
             }
-            Thread.Sleep(1);
         }
-         Marshal.FreeHGlobal(audioFrameBuffer);
+        Marshal.FreeHGlobal(audioFrameBuffer);
     }
     ```
-
-1. **Close the audio file**
-
-    When the <Vpl k="CLIENT" /> is closed, you close the audio file. To do this, add the following lines at the bottom of the `onDestroy` method:
-
-    ```java
-    try {
-        inputStream.close();
-    } catch (IOException e) {
-        e.printStackTrace();
+1. **Add multi-threading to audio frame pushing logic to avoid congestion**
+   
+   Call `PushAudioFrameThread` in a thread after you join a channel to avoid congestion problem in your <Vpl k= "CLIENT"/>. To implement this logic, add the following to `JoinChannelVideo` class: 
+   ```csharp   
+    private void StartPushAudioFrame()
+    {
+        _startConvertSignal = true;
+        _pushAudioFrameThreadSignal = true;
+        _pushAudioFrameThread = new Thread(PushAudioFrameThread);
+        _pushAudioFrameThread.Start();
     }
-    ```
+   ```
+
+2. **Update channel media options and start the audio frame pushing task**
+
+   Use the `ChannelMediaOptions` object you created in the `SetupVideoSDK` method to publish the custom audio track.  Call `StartPushAudioFrame` after you Join a channel to start pushing the local audio frames. To implement this workflow, in `JoinChannelVideo` class, add the following at the end of the `Join` method:
+
+   ```csharp
+   RtcEngine.UpdateChannelMediaOptions(options);
+   StartPushAudioFrame();
+   ```
 
 </PlatformWrapper>

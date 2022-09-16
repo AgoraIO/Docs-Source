@@ -19,7 +19,7 @@ In the following code example, you push an image to the video track using the ba
 
 1. **Import the required dart libraries**
 
-    To import dart libraries required for converting an image to a video frame, add the following statements after the last `import` statement in `/lib/main.dart`:
+    To convert an image to a video frame, import the necessary dart libraries. Add the following statements after the last `import` statement in `/lib/main.dart`:
 
     ```dart
     import 'dart:typed_data';
@@ -96,134 +96,62 @@ In the following code example, you push an image to the video track using the ba
     }
     ```
 
+1. **Add an image file**
+
+    Create a folder named `assets` in the root folder of your project. Add an image file to this folder. Your <Vpl k="CLIENT" /> loads this file and pushes it as a video frame.
+
 ### Implement a custom audio source
 
-To push audio from a custom source to a channel, take the following steps:
+In the following code example, you create the basic framework required to push audio frames from a custom source. Depending on the type of your source, you add your own code to this framework that converts the source data to an `AudioFrame`. To create the basic framework, take the following steps:
 
-1. **Import the required Android and Java libraries**
+1. **Update the user interface**
 
-    You use an `InputStream` to read the contents of the custom audio source. The <Vpl k="CLIENT" /> starts a separate `Process` to read and push the audio data. To use these libraries in your <Vpl k="CLIENT" />, add the following statements after the last `import` statement in `/app/java/com.example.<projectname>/MainActivity`.
+    To enable a user to start pushing audio frames, add a button to the user interface.
+
+    Open `/lib/main.dart` and add the following lines after `ListView(...children: [` in the `build` method:
 
     ```dart
-    import android.os.Process;
-    import java.io.InputStream;
-    import java.io.IOException;
+    ElevatedButton(
+        onPressed:_isJoined ? () => {_pushAudioFrame()} : null,
+        child: const Text("Push Audio Frame"),
+    ),
     ```
 
-1. **Define variables to manage and push the audio stream**
+1. **Load the buffer and push the audio frame**
 
-    In `/app/java/com.example.<projectname>/MainActivity`, add the following declarations to the `MainActivity` class:
-
-    ```dart
-    // Audio file parameters
-    private static final String AUDIO_FILE = "applause.wav"; // raw audio file
-    private static final Integer SAMPLE_RATE = 44100;
-    private static final Integer SAMPLE_NUM_OF_CHANNEL = 2;
-    private static final Integer BITS_PER_SAMPLE = 16;
-    private static final Integer SAMPLES = 441;
-    private static final Integer BUFFER_SIZE = SAMPLES * BITS_PER_SAMPLE / 8 * SAMPLE_NUM_OF_CHANNEL;
-    private static final Integer PUSH_INTERVAL = SAMPLES * 1000 / SAMPLE_RATE;
-
-    private InputStream inputStream;
-    private Thread pushingTask = new Thread(new PushingTask());
-    private boolean pushing = false;
-    ```
-
-1. **Add a raw audio file to the project**
-
-    In this example, you use an audio file as the source of your custom audio data. To add the audio file to your Android project, create a folder `app\src\main\assets` and add a sample audio file in `*.wav` or `*.raw` format to this folder. Update the value of the `AUDIO_FILE` variable to show the audio file name. Also make sure that the values of the audio file parameters in your code match the audio file you placed in the assets folder.
-
-1. **Enable publishing the custom video track**
-
-    When a user presses **Join**, you set the `ChannelMediaOptions` to disable the microphone audio track and enable the custom audio track. You also enable custom audio local playback and set the external audio source. To do this, add the following lines to the `joinChannel(View view)` method in the `MainActivity` class after `options.clientRoleType = Constants.CLIENT_ROLE_BROADCASTER;`:
+    In `_MyAppState` class, add the following method:
 
     ```dart
-    options.publishMicrophoneTrack = false; // Disable publishing microphone audio
-    options.publishCustomAudioTrack = true; // Enable publishing custom audio
-    options.enableAudioRecordingOrPlayout = true;
+    Future<void> _pushAudioFrame() async {
+        Uint8List buffer;
+        // Add code to read the input stream into a buffer
 
-    agoraEngine.enableCustomAudioLocalPlayback(0, true);
-    agoraEngine.setExternalAudioSource(true, SAMPLE_RATE, SAMPLE_NUM_OF_CHANNEL, 2, false, true);
-    ```
+        // Create an audio frame from the buffer
+        AudioFrame audioFrame = const AudioFrame(
+            type: AudioFrameType.frameTypePcm16,
+            buffer: buffer, // data buffer of the audio frame.
+            samplesPerChannel: 5, // number of samples per channel
+            channels: 2, // use 1 for mono, 2 for stereo
+            bytesPerSample: 2,
+            samplesPerSec: 44100,
+            renderTimeMs: 5000
+        );
 
-1. **Open the audio file**
-
-    When the <Vpl k="CLIENT" /> starts, you open the audio file. To do this, add the following lines at the bottom of the `onCreate` method:
-
-    ```dart
-    try {
-        inputStream = this.getResources().getAssets().open(AUDIO_FILE);
-    } catch (IOException e) {
-        e.printStackTrace();
+        await agoraEngine.getMediaEngine().pushAudioFrame(
+            frame: audioFrame, type:
+            MediaSourceType.audioPlayoutSource
+        );
     }
     ```
 
-1. **Start the task to push audio frames**
+1. **Enable publishing the custom audio track**
 
-    When a user successfully joins a channel, you start the task that pushes audio frames. To do this, add the following lines at the bottom of the `onJoinChannelSuccess` callback in the `MainActivity` class:
-
-    ```dart
-    pushing = true;
-    pushingTask.start();
-    ```
-
-1. **Read the input stream into a buffer**
-
-    You read data from the input stream into a buffer. To do this, add the following method to the `MainActivity` class:
+     To allow publishing of audio from a custom source, you call the `setExternalAudioSource` method of the `MediaEngine`. To do this, in `setupVideoSDKEngine`, add the following lines after the call to `agoraEngine.initialize`:
 
     ```dart
-    private byte[] readBuffer() {
-        int byteSize = BUFFER_SIZE;
-        byte[] buffer = new byte[byteSize];
-        try {
-            if (inputStream.read(buffer) < 0) {
-                inputStream.reset();
-                return readBuffer();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return buffer;
-    }
-    ```
-
-1. **Push the audio frames**
-
-    You push the data in the buffer as an audio frame using a separate process. To do this, define the following `Runnable` class in the `MainActivity` class:
-
-    ```dart
-    class PushingTask implements Runnable {
-        long number = 0;
-
-        @Override
-        public void run() {
-            Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO);
-            while (pushing) {
-                long before = System.currentTimeMillis();
-                agoraEngine.pushExternalAudioFrame(readBuffer(), 0);
-                long now = System.currentTimeMillis();
-                long consuming = now - before;
-                if(consuming < PUSH_INTERVAL){
-                    try {
-                        Thread.sleep(PUSH_INTERVAL - consuming);
-                    } catch (InterruptedException e) {
-                    }
-                }
-            }
-        }
-    }
-    ```
-
-1. **Close the audio file**
-
-    When the <Vpl k="CLIENT" /> is closed, you close the audio file. To do this, add the following lines at the bottom of the `onDestroy` method:
-
-    ```dart
-    try {
-        inputStream.close();
-    } catch (IOException e) {
-        e.printStackTrace();
-    }
+    await agoraEngine
+        .getMediaEngine()
+        .setExternalAudioSource(enabled: true, channels: 2, sampleRate: 44100);
     ```
 
 </PlatformWrapper>

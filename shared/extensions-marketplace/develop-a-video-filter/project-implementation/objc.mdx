@@ -1,0 +1,231 @@
+
+To build a video filter extension, you use the following APIs:
+- `IExtensionVideoFilter`: This interface implements the function of receiving, processing, and delivering video data.
+- `IExtensionProvider`: This interface encapsulates the functions in `IExtensionVideoFilter` into an extension.
+
+### Develop a video filter
+
+To implement a video filter, you need to implement the `IExtensionVideoFilter` class. You can find the class in the `NGIAgoraMediaNode.h` file. `IExtensionVideoFilter` contains the following methods:
+
+- [`getProcessMode`](#getprocessmode)
+- [`start`](#start)
+- [`stop`](#stop)
+- [`getVideoFormatWanted`](#getvideoformatwanted)
+- [`adaptVideoFrame`](#adaptvideoframe)
+- [`pendVideoFrame`](#pendvideoframe)
+- [`deliverVideoFrame`](#delivervideoframe)
+- [`setProperty`](#setproperty)
+- [`getProperty`](#getproperty)
+
+
+The following code sample shows how to use these APIs together to implement a video filter:
+
+```
+#include "BDVideoFilterCpp.h"
+#include "BDVideoFilterCpp.h"
+
+namespace agora {
+    namespace rtc {
+        BDVideoFilterCpp::BDVideoFilterCpp(): mode_(ProcessMode::kSync), opengl_released_(false) {
+
+        }
+
+        BDVideoFilterCpp::~BDVideoFilterCpp() {
+            releaseOpenGL();
+            opengl_released_ = true;
+            delete processor_;
+            processor_ = nullptr;
+        }
+
+        // Set how the SDK communicates with your video filter extension.
+        void BDVideoFilterCpp::getProcessMode(ProcessMode & mode, bool & isolated) {
+            mode = ProcessMode::kSync;
+            isolated = false;
+            mode_ = mode;
+        }
+
+        // Save the Control object and initialize OpenGL.
+        int BDVideoFilterCpp::start(agora::agora_refptr < Control > control) {
+            if (control) {
+                control_ = control;
+            }
+
+            processor_ = new ByteDance::Extension::BDProcessorCpp(control_);
+            initOpenGL();
+            makeCurrent();
+            return 0;
+        }
+
+        // Release OpenGL.
+        int BDVideoFilterCpp::stop() {
+            releaseOpenGL();
+            opengl_released_ = true;
+            return 0;
+        }
+
+        // Set the type and format of the video frame sent to your extension.
+        void BDVideoFilterCpp::getVideoFormatWanted(VideoFrameData::Type & type,
+            RawPixelBuffer::Format & format) {
+            type = VideoFrameData::Type::kRawPixels;
+            format = RawPixelBuffer::Format::kI420;
+        }
+
+        // When mode is set to Async,  the SDK and extension transfer video frames through pendVideoFrame and deliverVideoFrame.
+        IExtensionVideoFilter::ProcessResult BDVideoFilterCpp::pendVideoFrame(agora::agora_refptr < IVideoFrame > frame) {
+            @autoreleasepool {
+                if (!frame) {
+                    return kBypass;
+                }
+
+                bool isAsyncMode = (mode_ == ProcessMode::kAsync);
+                if (isAsyncMode) {
+                    if (processor_ && control_) {
+                        VideoFrameData data;
+                        frame -> getVideoFrameData(data);
+                        processor_ -> processFrame(data);
+
+                        auto dst = control_ -> getMemoryPool() -> createVideoFrame(data);
+                        control_ -> deliverVideoFrame(dst);
+                        return kSuccess;
+                    }
+                    return kBypass;
+                }
+                return kBypass;
+            }
+        }
+
+        // When mode is set to Sync,  the SDK and extension transfer video frames through adaptVideoFrame.
+        IExtensionVideoFilter::ProcessResult BDVideoFilterCpp::adaptVideoFrame(agora::agora_refptr < IVideoFrame > src,
+            agora::agora_refptr < IVideoFrame > & dst) {
+            @autoreleasepool {
+                bool isSyncMode = (mode_ == ProcessMode::kSync);
+                if (isSyncMode) {
+                    if (processor_ && control_) {
+                        VideoFrameData srcData;
+                        src -> getVideoFrameData(srcData);
+                        processor_ -> processFrame(srcData);
+                        dst = control_ -> getMemoryPool() -> createVideoFrame(srcData);
+                        return kSuccess;
+                    }
+
+                    return kBypass;
+                }
+                return kBypass;
+            }
+        }
+
+        // Set the property of the video filter.
+        int BDVideoFilterCpp::setProperty(const char * key,
+            const void * buf, size_t buf_size) {
+            @autoreleasepool {
+                if (!buf || !key || * key == 0) {
+                    return -1;
+                }
+                if (!processor_) {
+                    return -1;
+                }
+                std::string param((char * ) buf);
+                processor_ -> setParameters(param);
+                return 0;
+            }
+        }
+
+        // Get the property of the video filter.
+        int BDVideoFilterCpp::getProperty(const char * key, void * buf, size_t buf_size) {
+            return -1;
+        }
+
+        void BDVideoFilterCpp::initOpenGL() {
+            if (_context == nil) {
+                _context = [
+                    [EAGLContext alloc] initWithAPI: kEAGLRenderingAPIOpenGLES2
+                ];
+            }
+            [EAGLContext setCurrentContext: _context];
+        }
+
+        void BDVideoFilterCpp::releaseOpenGL() {
+            [EAGLContext setCurrentContext: nil];
+            _context = nil;
+        }
+
+        void BDVideoFilterCpp::makeCurrent() {
+            EAGLContext * prev = [EAGLContext currentContext];
+            if (prev != _context) {
+                [EAGLContext setCurrentContext: _context];
+            }
+        }
+
+    }
+}
+```
+
+
+### Encapsulate the filter into an extension
+
+To encapsulate the video filter into an extension, you need to implement the `IExtensionProvider` interface. You can find the interface in the `NGIAgoraExtensionProvider.h` file. The following methods from this interface must be implemented:
+
+- [`enumerateExtensions`](#enumerateextensions)
+- [ `createVideoFilter`](#createvideofilter)
+
+The following code sample shows how to use these APIs to encapsulate the video filter:
+
+```
+#import "BDVideoFilterProviderCpp.h"
+#include "BDVideoFilterCpp.h"
+#include <AgoraRtcKit/AgoraRefCountedObject.h>
+#include <AgoraRtcKit/NGIAgoraExtensionControl.h>
+#include <AgoraRtcKit/AgoraExtensionProviderEntry.h>
+
+// Register your video filter extension
+REGISTER_AGORA_EXTENSION_PROVIDER(ByteDance, agora::rtc::BDVideoFilterProviderCpp);
+
+namespace agora {
+    namespace rtc {
+        BDVideoFilterProviderCpp::BDVideoFilterProviderCpp(): control_(nullptr) {
+
+        }
+
+        BDVideoFilterProviderCpp::~BDVideoFilterProviderCpp() {
+            control_ = nullptr;
+        }
+
+        // Enumerate your extensions
+        void BDVideoFilterProviderCpp::enumerateExtensions(ExtensionMetaInfo * extension_list,
+            int & extension_count) {
+            extension_count = 1;
+            ExtensionMetaInfo i;
+            i.type = EXTENSION_TYPE::VIDEO_PRE_PROCESSING_FILTER;
+            i.extension_name = "Beauty";
+            extension_list[0] = i;
+        }
+
+        // Create a video filter
+        agora_refptr < IExtensionVideoFilter > BDVideoFilterProviderCpp::createVideoFilter(const char * name) {
+            return new RefCountedObject < BDVideoFilterCpp > ();
+        }
+
+        int BDVideoFilterProviderCpp::log(int level,
+            const char * message) {
+            if (!control_) {
+                return -1;
+            }
+
+            return control_ -> log(static_cast < commons::LOG_LEVEL > (level), message);
+        }
+
+        int BDVideoFilterProviderCpp::fireEvent(const char * provider_name,
+            const char * ext_name,
+                const char * event_key,
+                    const char * event_json_str) {
+            if (!control_) {
+                return -1;
+            }
+            return control_ -> fireEvent(provider_name, ext_name, event_key, event_json_str);
+        }
+
+    }
+}
+```
+
+

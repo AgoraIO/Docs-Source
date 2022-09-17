@@ -16,10 +16,10 @@ The following figure shows the basic process of implementing the recording featu
 
 ## Start the recording
 
-Whether you initiate the recording on the client or server, call [Set the recording state](/en/agora-class/agora_class_restful_api?platform=RESTful#set-the-recording-state). When calling this method, pay attention to the following parameters:
+Whether you initiate the recording on the client or server, call [Set the recording state](../reference/classroom-api#set-the-recording-state). When calling this method, pay attention to the following parameters:
 
-- `mode`: Set this parameter as `web` to enable [web page recording](/en/Agora%20Platform/webpage_recording).
-- `rootUrl`: The root address of the web page to be recorded. The Flexible Classroom cloud service automatically gets the full address of the web page to be recorded by appending `roomUuid`, `roomType`, and other parameters after the root address. You need to extract this information from the URL and pass it in when calling the [launch](/en/agora-class/agora_class_api_ref_web?platform=Web#launch) method.
+- `mode`: Set this parameter as `web` to enable [web page recording](../../cloud-recording/develop/webpage-mode).
+- `rootUrl`: The root address of the web page to be recorded. The Flexible Classroom cloud service automatically gets the full address of the web page to be recorded by appending `roomUuid`, `roomType`, and other parameters after the root address. You need to extract this information from the URL and pass it in when calling the [launch](../reference/classroom-sdk#launch) method.
 - `retryTimeout`: The amount of time (seconds) that the Flexible Classroom cloud service waits between attempts to begin recording. The Flexible Classroom cloud service retries a maximum of two times.
 
 Sample code:
@@ -35,7 +35,7 @@ Sample code:
 }
 ```
 
-After setting `retryTimeout`, when calling the [launch](/en/agora-class/agora_class_api_ref_web?platform=Web#launch) method, you need to set the `listener` parameter to listen for the `1` event, which represents that the page has been loaded. When this event is triggered, you need to call the following method to inform the Flexible Classroom cloud service. If the Flexible Classroom cloud service does not receive this notification within `retryTimeout`, it retries the recording.
+After setting `retryTimeout`, when calling the [launch](../reference/classroom-sdk#launch) method, you need to set the `listener` parameter to listen for the `1` event, which represents that the page has been loaded. When this event is triggered, you need to call the following method to inform the Flexible Classroom cloud service. If the Flexible Classroom cloud service does not receive this notification within `retryTimeout`, it retries the recording.
 
 - Prototype
 
@@ -82,7 +82,7 @@ AgoraEduSDK.launch(document.querySelector(`#${this.elem.id}`), {
 
 ## Get the recording state
 
-After starting the recording, the Flexible Classroom cloud service generates an event to indicate the [recording state change](/en/agora-class/agora_class_restful_api_event?platform=RESTful#the-recording-state-changes). You can get the recording state by calling [Query a specified event](/en/agora-class/agora_class_restful_api?platform=RESTful#query-a-specified-event) or [Get classroom events](/en/agora-class/agora_class_restful_api?platform=RESTful#get-classroom-events). Pay attention to the `reason` field in the recording state change event:
+After starting the recording, the Flexible Classroom cloud service generates an event to indicate the [recording state change](../reference/classroom-api#the-recording-state-changes). You can get the recording state by calling [Query a specified event](../reference/classroom-api#query-a-specified-event) or [Get classroom events](../reference/classroom-api#get-classroom-events). Pay attention to the `reason` field in the recording state change event:
 
 - `1`: Start the recording normally.
 - `2`: Stop the recording normally.
@@ -90,13 +90,13 @@ After starting the recording, the Flexible Classroom cloud service generates an 
 - `4`: Time out. Wait for retry.
 - `5`: Exit the recording when the number of retries reaches the upper limit.
 
-The clients also receive callbacks that indicate the recording state change in [room properties](/en/agora-class/edu_context_api_ref_web_room?platform=RESTful#roomproperties). You can further implement your own logic based on the recording state change.
+You can further implement your own logic based on the recording state change.
 
 ## Remove the white screen at the beginning of the recorded file
 
 It takes a while for the recording server to load the web page, but the file slicing begins before the loading finishes. As a result, there may be a period of white screen at the beginning of the recorded file. To remove the white screen, do the following:
 
-1. Before the class starts, call [Set the recording state](/en/agora-class/agora_class_restful_api?platform=RESTful#set-the-recording-state), and set `onhold` as `true`. The Flexible Classroom cloud service pauses the recording immediately after the recording task is initiated. The recording server opens and renders the web page, but does not generate a slice file. The following sample code shows this logic:
+1. Before the class starts, call [Set the recording state](../reference/classroom-api#set-the-recording-state), and set `onhold` as `true`. The Flexible Classroom cloud service pauses the recording immediately after the recording task is initiated. The recording server opens and renders the web page, but does not generate a slice file. The following sample code shows this logic:
 
    ```json
    {
@@ -108,7 +108,7 @@ It takes a while for the recording server to load the web page, but the file sli
    }
    ```
 
-2. At least 60 seconds later, call [Update the recording configurations](/en/agora-class/agora_class_restful_api?platform=RESTful#update-the-recording-configurations) and set the `onhold` parameter as `false` to start the recording and file slicing. The following sample code shows this logic:
+2. At least 60 seconds later, call [Update the recording configurations](../reference/classroom-api#update-the-recording-configurations) and set the `onhold` parameter as `false` to start the recording and file slicing. The following sample code shows this logic:
 
    ```json
    {
@@ -120,7 +120,7 @@ It takes a while for the recording server to load the web page, but the file sli
 
 ## Improve the video clarity when the recorded content is a shared screen
 
-In scenarios where the recorded content is a shared screen or whiteboard, if you have high requirements for video clarity, you can set the following parameters when calling [Set the recording state](/en/agora-class/agora_class_restful_api?platform=RESTful#set-the-recording-state):
+In scenarios where the recorded content is a shared screen or whiteboard, if you have high requirements for video clarity, you can set the following parameters when calling [Set the recording state](../reference/classroom-api#set-the-recording-state):
 
 - Set `videoWidth` as 1920.
 - Set `videoHeight` as 1080.

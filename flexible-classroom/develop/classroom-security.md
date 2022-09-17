@@ -20,7 +20,7 @@ Agora Flexible Classroom is designed and built with multiple protection measures
 
 ## Classroom separation
 
-Agora creates independent and isolated classrooms for audio, video, or messaging data transmission with the room ID specified by the app developer. All classrooms are logically separated and only authenticated users from the same Agora [App ID](https://docs.agora.io/en/Agora%20Platform/term_appid) can join the same classroom.
+Agora creates independent and isolated classrooms for audio, video, or messaging data transmission with the room ID specified by the app developer. All classrooms are logically separated and only authenticated users from the same Agora [App ID](../reference/glossary#app-id) can join the same classroom.
 
 ## Token authentication
 
@@ -28,14 +28,14 @@ Agora Flexible Classroom uses the RTM token for end user authentication. The RTM
 
 The app developer can enable token authentication (App Certificate) in [Agora Console](https://console.agora.io/). When enabled, all user’s request to join a classroom must be done with a valid RTM token.
 
-- For more information on how to enable RTM token authentication, see [Use an RTM token for authentication](https://docs.agora.io/en/Real-time-Messaging/rtm_token?platform=Web#a-name--tokenause-an-rtm-token-for-authentication).
-- For how to generate an RTM token on the app backend, see [Generate an RTM Token](https://docs.agora.io/en/Real-time-Messaging/token_server_rtm).
+- For more information on how to enable RTM token authentication, see [Use an RTM token for authentication](../../signaling/develop/authentication).
+- For how to generate an RTM token on the app backend, see [Generate an RTM Token](../../signaling/develop/authentication).
 
 ## Data encryption and storage
 
 To guarantee data confidentiality during transmission, Agora Flexible Classroom uses the TLS (Transport Layer Security) and Secure Sockets Layer (SSL) encryption protocols.
 
-Agora Flexible Classroom does not store any of your business data or user data except for caching them for transmission purpose. The cached data will be released an hour after the classroom ends. Agora Flexible Classroom supports uploading files and real-time recording in a classroom. The uploaded class files and recorded files are stored in the third-party cloud storage designated by the app developer. These features are disabled by default. Only after the app developer enables these features and specifies a third-party cloud storage in Agora Console, can authenticated users access the services and the stored resources. For details, see [Configure the Flexible Classroom in Agora Console](https://docs.agora.io/en/agora-class/agora_class_prep?platform=Web#4-configure-the-flexible-classroom-in-agora-console).
+Agora Flexible Classroom does not store any of your business data or user data except for caching them for transmission purpose. The cached data will be released an hour after the classroom ends. Agora Flexible Classroom supports uploading files and real-time recording in a classroom. The uploaded class files and recorded files are stored in the third-party cloud storage designated by the app developer. These features are disabled by default. Only after the app developer enables these features and specifies a third-party cloud storage in Agora Console, can authenticated users access the services and the stored resources. 
 
 ## Network geofencing 
 
@@ -58,10 +58,10 @@ With network geofencing enabled, data transfer will be restricted to the service
 
 Use this list to quickly check what measures you have or have not taken to best protect the security of your app and users:
 
-1. [Enable token authentication](https://docs.agora.io/en/Real-time-Messaging/rtm_token?platform=Web#use-an-rtm-token-for-authentication) in [Agora Console](https://console.agora.io/).
+1. Enable token authentication in [Agora Console](https://console.agora.io/).
 2. Disable **No certificate** in your project management page. Once it is done your app authenticates users with tokens only.
    ![img](https://web-cdn.agora.io/docs-files/1614134532547)
-3. [Deploy an RTM token server](https://docs.agora.io/en/Real-time-Messaging/token_server_rtm) in your backend services.
+3. [Deploy an RTM token server](../../signaling/develop/authentication) in your backend services.
 4. Protect the token server and only allow the app backend server to connect to the token server.
 5. For additional security, you can also do the following:
    - Set the classroom ID to a one-time random string managed by your app.

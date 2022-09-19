@@ -1,6 +1,96 @@
 import Source from './swift.mdx';
 
-<PlatformWrapper platform="ios">
+4.  **Retrieve a token from the server**
+
+    Use a GET request to retrieve an authentication token for a specific channel from the token server, then decode the return parameters to obtain the token.
+
+    In `ViewController` class, add the following `fetchToken` method:
+
+    ``` swift
+    func fetchToken() -> Bool {
+        // Construct the endpoint URL
+        channelName = channelTextField.text ?? ""
+        if channelName.isEmpty {
+            showMessage(title: "Channel", text: "Please set a channel to join")
+            return false
+        }
+        guard let tokenServerURL = URL(string: "\(serverUrl)/rtc/\(channelName)/\(userRole.rawValue)/uid/\(userID)/?expiry=\(tokenExpireTime)") else {
+            return false
+        }
+        /// Semaphore waits for the request to complete, before returning the token.
+        let semaphore = DispatchSemaphore(value: 0)
+        var request = URLRequest(url: tokenServerURL, timeoutInterval: 10)
+        request.httpMethod = "GET"
+
+        // Construct the GET request
+        let task = URLSession.shared.dataTask(with: request) { data, response, err in
+            defer {
+                // Signal that the request has completed
+                semaphore.signal()
+            }
+            guard let data = data else {
+                // No data, no token
+                return
+            }
+            let responseJSON = try? JSONSerialization.jsonObject(with: data, options: [])
+            if let responseDict = responseJSON as? [String: Any], let tokenToReturn = responseDict["rtcToken"] as? String {
+                // Key "rtcToken" found in response, assigning to tokenToReturn
+                self.token = tokenToReturn
+            }
+        }
+
+        task.resume()
+
+        // Waiting for signal found inside the GET request handler
+        semaphore.wait()
+        return true
+    }
+    ```
+
+5.  **Join a channel using the token**
+
+    Use the retrieved token to either join a channel or to renew an expiring token.
+
+    In `ViewController`, replace the following `joinChannel` code:
+
+    ``` swift
+    // Join the channel with a temp token. Pass in your token and channel name here
+    let result = agoraEngine.joinChannel(
+        byToken: token, channelId: channelName, uid: 0, mediaOptions: option,
+        joinSuccess: { (channel, uid, elapsed) in }
+    )
+    // Check if joining the channel was successful and set joined Bool accordingly
+    if result == 0 {
+        joined = true
+        showMessage(title: "Success", text: "Successfully joined the channel as \(self.userRole)")
+    }
+    ```
+
+    With:
+
+    ``` swift
+    if !fetchToken() {
+        return
+    }
+    // If already joined to a channel, renew the expiring token. If not, join a channel passing fetched token saved in token variable.
+    if joined {
+        agoraEngine.renewToken(token)
+    } else {
+        let result = agoraEngine.joinChannel(
+            byToken: self.token, channelId: self.channelName, uid: 0, mediaOptions: option,
+            joinSuccess: { (channel, uid, elapsed) in }
+        )
+        // Check if joining the channel was successful and set joined Bool accordingly
+        if (result == 0) {
+            joined = true
+            showMessage(title: "Success", text: "Successfully joined the channel as \(self.userRole)")
+        }
+    }
+    ```
+
+6.  **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
+
+    A token expires after the `expireTime` specified in the call to the token server or after 24 hours, if `expireTime` is not specified. The `tokenPrivilegeWillExpire` event handler receives a callback when the current token is about to expire. Your event handler retrieves a fresh token and persists the connection with <Vg k="AGORA_BACKEND" />.
 
     <Source />
 

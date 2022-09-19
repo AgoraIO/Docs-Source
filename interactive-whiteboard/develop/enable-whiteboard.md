@@ -11,7 +11,7 @@ To use Agora Interactive Whiteboard, you need to enable and configure the whiteb
 ## Prerequisites
 
 Before enabling the whiteboard feature, ensure that you meet the following requirements:
-- A valid Agora account. If you have a Netless account, you must complete the account migration first. See [Migrate from Netless to Agora](/en/whiteboard/netless_migration).
+- A valid Agora account. If you have a Netless account, you must complete the account migration first. See [Migrate from Netless to Agora](../develop/migration-guide).
 - Active Agora projects. If you have not created a project, see <a href="https://docs.agora.io/en/Agora%20Platform/manage_projects?platform=All%20Platforms">Manage Projects</a >.
 
 ## Enable the whiteboard service
@@ -57,11 +57,11 @@ Unexpected exposure of the security credentials can cause severe security proble
 
 ## Enable whiteboard server-side features
 
-Agora Interactive Whiteboard sets up [five data centers](https://docs.agora.io/en/whiteboard/whiteboard_security_practices?platform=Web#network-geofencing) and each data center provides the following server-side features: 
+Agora Interactive Whiteboard sets up [five data centers](../reference/security#network-geofencing) and each data center provides the following server-side features: 
 
 - File conversion, including **Docs to Picture** and **Docs to web**. 
-After enabling the file conversion feature, you can call the [RESTful APIs](/en/whiteboard/whiteboard_file_conversion) to launch a file conversion task or query the conversion progress.
-Agora charges for the file-conversion feature. See [Pricing](/en/whiteboard/billing_whiteboard).
+After enabling the file conversion feature, you can call the [RESTful APIs](../reference/whiteboard-api/file-conversion) to launch a file conversion task or query the conversion progress.
+Agora charges for the file-conversion feature. See [Pricing](reference/pricing).
 - **Screenshot**. After enabling the screenshot feature, you can call the [RESTful APIs](/en/whiteboard/whiteboard_screenshot) to take screenshots.
 
 Follow these steps to enable one or more features and configure the storage settings:
@@ -70,7 +70,7 @@ Follow these steps to enable one or more features and configure the storage sett
 
 2. On the **Edit Project** page, find **Whiteboard**, and click **Config**.
 
-3. Under **Services**, select a data center, and click **Config**. The data center must be the same as the one you fill in the `region` field when calling the [Create a room](https://docs.agora.io/en/whiteboard/whiteboard_room_management?platform=RESTful#create-a-room-post) API; otherwise, the service configurations do not take effect.
+3. Under **Services**, select a data center, and click **Config**. The data center must be the same as the one you fill in the `region` field when calling the [Create a room](../reference/whiteboard-api/room-management#create-a-room-post) API; otherwise, the service configurations do not take effect.
   ![](https://web-cdn.agora.io/docs-files/1658998783322)
 
 
@@ -101,7 +101,5 @@ Follow these steps to enable one or more features and configure the storage sett
 
 ## Reference
 After enabling the whiteboard service, you can refer to the following documents to use its functions:
-- [Join a Whiteboard Room for Web](https://docs.agora.io/en/whiteboard/join_whiteboard_room_web?platform=Web)
-- [Join a Whiteboard Room for Android](https://docs.agora.io/en/whiteboard/join_whiteboard_room_android?platform=Android)
-- [Join a Whiteboard Room for iOS](https://docs.agora.io/en/whiteboard/join_whiteboard_room_ios?platform=iOS)
-- [File Conversion Overview](https://docs.agora.io/en/whiteboard/file_conversion_overview?platform=RESTful)
+- [Join a whiteboard room](../get-started/get-started-sdk)
+- [File Conversion Overview](../reference/whiteboard-api/file-conversion)

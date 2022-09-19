@@ -113,7 +113,7 @@ Agora rounds up the total cost to two decimal places.
     Yes. Usage calculation for the whiteboard service depends on the presence of active long-lived connections. To avoid additional costs, Agora recommends that you:
 
     - Call `disconnect()` to cut off a user's connection when the user leaves the room, and ensure that you receive the `onPhaseChanged(disconnected)` callback.
-    - Call the <a href="https://docs.agora.io/en/whiteboard/whiteboard_room_management?platform=RESTful#disableroom">Interactive Whiteboard RESTful API </a > on your app server to move all users out of the room when live streaming ends.
+    - Call the <a href="https://docs.agora.io../reference/whiteboard-api/room-management#disableroom">Interactive Whiteboard RESTful API </a > on your app server to move all users out of the room when live streaming ends.
 
 
 - Does billing begin when a room is created?

@@ -1,162 +1,102 @@
 <PlatformWrapper platform="ios">
 
-This section introduces how to implement message delivery and read receipts in your chat app.
+### Retrieve conversations
 
-### Message delievery receipts
+Call `getAllConversations` to retrieve all the conversations on the local device:
 
-To send a message delievery receipt, take the following steps:
+```objc
+NSArray *conversations = [[AgoraChatClient sharedClient].chatManager getAllConversations];
+```
 
-1. The message sender sets `enableDeliveryAck` in `AgoraChatOptions` as `YES` before sending the message:
+### Retrieve messages in the specified conversation
 
-    ```objc
-    options.enableDeliveryAck = YES;
-    ```
+Refer to the following code sample to retrieve the messages in the specified conversation:
 
-2. Once the recipient receives the message, the SDK triggers `messageDidDeliver` on the message sender's client, notifying the message sender that the message has been delivered to the recipent.
+```objc
+// Retrieves the conversation ID
+AgoraConversation *conversation = [[AgoraChatClient sharedClient].chatManager getConversation:conversationId type:type createIfNotExist:YES];
+// Only one message is loaded during SDK initialization. Call loadMessagesStartFromId to retrieve more messages.
+NSArray<AgoraChatMessage *> *messages = [conversation loadMessagesStartFromId:startMsgId count:count searchDirection:MessageSearchDirectionUp];
+```
 
-    ```objc
-    - (void)messagesDidDeliver:(NSArray *)aMessages
-    {
+### Retrieve the count of unread messages in the specified conversation
 
-    }
+Refer to the following code example to retrieve the count of unread messages:
 
-    [[AgoraChatClient sharedClient].chatManager removeDelegate:self];
-    ```
+```objc
+// Retrieves the ID of the specified conversation.
+AgoraConversation *conversation = [[AgoraChatClient sharedClient].chatManager getConversation:conversationId type:type createIfNotExist:YES];
+// Retrieves the count of unread messages.
+NSInteger unreadCount = conversation.unreadMessagesCount;
+```
 
-### Conversation and message read receipts
 
-In both one-to-one chats and group chats, you can use message read receipts to notify the message sender that the message has been read. To minimize the method call for message read receipts, the SDK also supports conversation read receipts in one-to-one chats. 
+### Retrieve the count of unread messages in all conversations
 
-#### One-to-one chats
+Refer to the following code example to retrieve the count of all unread messages:
 
-In one-to-one chats, the SDK supports sending both the conversation read receipts and message read receipts. Agora recommends using conversation read receipts if the new message arrives when the message recipient has not entered the conversation UI. 
+```objc
+NSArray *conversations = [[AgoraChatClient sharedClient].chatManager getAllConversations];
+NSInteger unreadCount = 0;
+for (AgoraConversation *conversation in conversations) {
+  unreadCount += conversation.unreadMessagesCount;
+}
+```
 
-- Conversation read receipts
 
- Follow the steps to implement conversation read receipts in one-to-one chats.
+### Mark unread messages as read
 
- 1. When a user enters the conversation UI, check whether the conversation contains unread messages. If yes, call `ackConversationRead` to send a conversation read receipt.
+Refer to the following code example to mark the specified messages as read:
 
-    ```objc
-    [[AgoraChatClient sharedClient].chatManager ackConversationRead:conversationId completion:nil];
-    ```
-    
+```objc
+AgoraConversation *conversation = [[AgoraChatClient sharedClient].chatManager getConversation:conversationId type:type createIfNotExist:YES];
+// Marks all messages of the specified conversation as read.
+[conversation markAllMessagesAsRead:nil];
+// Marks the specified message as read.
+[onversation markMessageAsReadWithId:messageId error:nil];
+```
 
- 2. The message sender listens for message events and receives the conversation read receipt in `onConversationRead`.
+### Delete conversations and historical messages
 
-    ```objc
-    - (void)onConversationRead:(NSString *)from to:(NSString *)to
-    {
-        // Add handling logics, for example, for refreshing the UI
-    }
-    ```
+You can delete conversations on both the local device and the server.
 
- <div class="alert note">In scenarios where a user is logged in multiple devices, if the user sends a conversation read receipt from one device, the server sets the count of unread messages in the conversation as 0, and all the other devices receive <code>onConversationRead</code>.</div>
+To delete them on the local device, call `deleteConversation` and `removeMessage`:
 
-- Message read receipts
+```objc
+// Deletes the specified conversation. To keep the historical messages, set isDeleteMessages as NO.
+[[AgoraChatClient sharedClient].chatManager deleteConversation:conversationId isDeleteMessages:YES completion:nil];
+// Deletes the specified conversation.
+NSArray *conversations = @{@"conversationID1",@"conversationID2"};
+[[AgoraChatClient sharedClient].chatManager deleteConversations:conversations isDeleteMessages:YES completion:nil];
+// Deletes the specified message of the current conversation.
+AgoraConversation *conversation = [[AgoraChatClient sharedClient].chatManager getConversation:conversationId type:type createIfNotExist:YES];
+[conversation deleteMessageWithId:.messageId error:nil];
+```
 
- To implement the message read receipt, take the following steps:
+### Search for messages using keywords
 
- 1. Send a conversation read receipt when the recipient enters the conversation.
+Call `loadMessagesWithKeyword` to search for messages by keywords, timestamp, and message sender:
 
-    ```objc
-    [[AgoraChatClient sharedClient].chatManager sendMessageReadAck:messageId toUser:conversationId completion:nil];
-    ```
+```objc
+NSArray<AgoraChatMessage *> *messages = [conversation loadMessagesWithKeyword:keyword timestamp:0 count:50 fromUser:nil searchDirection:MessageSearchDirectionDown];
+```
 
- 2. When a new message arrives, send the message read receipt and add proper handling logics for the different message types.
+### Import messages
 
-    ```objc
-    // Occurs when the message is received.
-    - (void)messagesDidReceive:(NSArray *)aMessages
-    {
-        for (AgoraChatMessage *message in aMessages) {
-            // Sends a message read receipt
-            [self sendReadAckForMessage:message];
-        }
-    }
+Call `importMessages` to import multiple messages to the specified conversation. This applies to scenarios where chat users want to formard messages from another conversation.
 
-    - (void)sendReadAckForMessage:(AgoraChatMessage *)aMessage
-    {
-        // The received message
-        if (aMessage.direction == AgoraChatMessageDirectionSend || aMessage.isReadAcked || aMessage.chatType != AgoraChatTypeChat)
-            return;
-    
-        MessageBody *body = aMessage.body;
-        // For audio, video, and file messages, send them after the user clicks the file.
-        if (body.type == MessageBodyTypeFile || body.type == MessageBodyTypeVoice || body.type == MessageBodyTypeImage)
-            return;
-            
-        [[AgoraChatClient sharedClient].chatManager sendMessageReadAck:aMessage.messageId toUser:aMessage.conversationId completion:nil];
-    }
-    ```
+```objc
+[[AgoraChatClient sharedClient].chatManager importMessages:messages completion:nil];
+```
 
- 3. The message sender listens for the message receipt:
+### Insert messages
 
-    ```objc
-    // Occurs when the message read receipt is received
-    - (void)messagesDidRead:(NSArray *)aMessages
-    {
-        for (AgoraChatMessage *message in aMessages) {
-            // Adds handling logics
-        }
-    }
-    ```
+If you want to insert a message to the current conversation without actually sending the message, construct the message body and call `insertMessage`. This can be used to send notification messages such as "XXX recalls a message", "XXX joins the chat group", and "Typing ...".
 
-#### Chat groups
-
-In group chats, you can use message read receipts to notify the group owner or admins that the chat group message has been read. Ensure that each group member that has read the message should send a message read receipt.
-
-Follow the steps to implement chat message read receipts.
-
-1. For chat group messages, the group owner and admins can set to require the message read receipt when sending the message.
-
-    ```objc
-    AgoraChatMessage *message = [[AgoraChatMessage alloc] initWithConversationID:to from:from to:to body:aBody ext:aExt];
-    message.isNeedGroupAck = YES;
-    ```
-
-2. After the group member reads the chat group message, call `sendGroupMessageReadAck` from the group member's client to send a message read receipt:
-
-    ```objc
-    - (void)sendGroupMessageReadAck:(AgoraChatMessage *)msg
-    {
-        if (msg.isNeedGroupAck && !msg.isReadAcked) {
-            [[AgoraChatClient sharedClient].chatManager sendGroupMessageReadAck:msg.messageId toGroup:msg.conversationId content:@"123" completion:^(AgoraChatError *error) {
-                if (error) {
-                
-                }
-            }];
-        }
-    }
-    ```
-
-3. The message sender listens for the message read receipt.
-
-    ```objc
-    // Occurs when the group message is received.
-    - (void)groupMessageDidRead:(AgoraChatMessage *)aMessage groupAcks:(NSArray *)aGroupAcks
-    {
-        for (AgoraChatGroupMessageAck *messageAck in aGroupAcks) {
-            //receive group message read ack
-        }
-    } 
-    ```
-
-4. The message sender can get the detailed informaiton of the read receipt using `asyncFetchGroupMessageAcksFromServer`.
-
-    ```objc
-    /**
-    * Fetches the details of the group chat message read receipt.
-    *
-    *  @param  aMessageId           The message ID
-    *  @param  aGroupId             The chat group ID
-    *  @param  aGroupAckId          The ID of the group message receipt
-    *  @param  aPageSize            The number of messages retrieved
-    *  @param  aCompletionBlock     The completion callback
-    */
-    [[AgoraChatClient sharedClient].chatManager asyncFetchGroupMessageAcksFromServer:messageId groupId:groupId startGroupAckId:nil pageSize:pageSize completion:^(AgoraChatCursorResult *aResult, AgoraChatError *error, int totalCount) {
-        // Add subsequent logics, for example, refreshing the UI
-    }];
-    ```
+```objc
+// Inserts a message to the specified conversation.
+AgoraConversation *conversation = [[AgoraChatClient sharedClient].chatManager getConversation:conversationId type:type createIfNotExist:YES];
+[conversation insertMessage:message error:nil];
+```
 
 </PlatformWrapper>

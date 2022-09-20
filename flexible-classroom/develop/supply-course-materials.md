@@ -34,8 +34,8 @@ If you want to upload the courseware to third-party cloud storage or to your own
 
 To upload courseware during a class, do the following steps:
 
-1. In Agora Console, configure a third-party cloud storage service for storing files uploaded in a classroom. For details, see [how to configure the whiteboard feature](../develop/configure-flexible-classroom#configure-the-whiteboard-feature).
-2. In Agora Console, enable the file-conversion feature of the Agora Interactive Whiteboard service and add a storage configuration for storing the converted files. For details, see [configure the whiteboard feature](../develop/configure-flexible-classroom#configure-the-whiteboard-feature).
+1. In Agora Console, configure a third-party cloud storage service for storing files uploaded in a classroom. For details, see [how to configure the whiteboard feature](../get-started/enable-flexible-classroom#configure-classroom-storage-and-recording).
+2. In Agora Console, enable the file-conversion feature of the Agora Interactive Whiteboard service and add a storage configuration for storing the converted files. For details, see [configure the whiteboard feature](..get-started/enable-flexible-classroom#configure-classroom-storage-and-recording).
 
 ## Considerations
 

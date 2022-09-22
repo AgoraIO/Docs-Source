@@ -6,7 +6,7 @@ description: >
     Call the Interactive Whiteboard RESTful API to generate tokens.
 ---
 
-Agora Interactive Whiteboard uses different types of tokens for user authentication. For details, see [Interactive Whiteboard Token overview](/en/whiteboard/whiteboard_token_overview).
+Agora Interactive Whiteboard uses different types of tokens for user authentication. For details, see [Interactive Whiteboard Token overview](../develop/authentication-workflow).
 
 
 This article introduces how to call the interactive whiteboard RESTful API to generate tokens.
@@ -35,7 +35,7 @@ Pass in the following parameters in the request header:
 | `accessKey`       | string    | Required          | The Access Key (AK), which can be obtained in Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project). |
 | `secretAccessKey` | string    | Required          | The Secret Key (SK), which can be obtained in Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project). |
 | `lifespan`        | integer   | Required          | The token validity period (milliseconds). If you set it to `0`, the token is permanently valid. |
-| `role`            | string    | Required          | The token role:<li>`admin`</li><li>`writer`</li><li>`reader`</li>See [Token Overview](/en/whiteboard/whiteboard_token_overview?platform=RESTful#introduction). |
+| `role`            | string    | Required          | The token role:<li>`admin`</li><li>`writer`</li><li>`reader`</li>See [Token Overview](../develop/authentication-workflow). |
 
 ### Request example
 
@@ -102,7 +102,7 @@ The following parameters are required in the URL:
 | :--------- | :-------- | :---------------- | :----------------------------------------------------------- |
 | `ak`       | string    | Optional          | The Access Key (AK), which can be obtained in Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project). |
 | `lifespan` | integer   | Required          | The token validity period (milliseconds). If you set it to `0`, the token is permanently valid. |
-| `role`     | string    | Required          | The token role:<li>`admin`</li><li>`writer`</li><li>`reader`</li>See [Token Overview](/en/whiteboard/whiteboard_token_overview?platform=RESTful#introduction). |
+| `role`     | string    | Required          | The token role:<li>`admin`</li><li>`writer`</li><li>`reader`</li>See [Token Overview](../develop/authentication-workflow). |
 
 ### Request example
 
@@ -168,7 +168,7 @@ The following parameters are required in the URL:
 | :--------- | :-------- | :---------------- | :----------------------------------------------------------- |
 | `ak`       | string    | Optional          | The Access Key (AK), which can be obtained in Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project). |
 | `lifespan` | integer   | Required          | The token validity period (milliseconds). If you set it to `0`, the token is permanently valid. |
-| `role`     | string    | Required          | The token role:<li>`admin`</li><li>`writer`</li><li>`reader`</li>See [Token Overview](/en/whiteboard/whiteboard_token_overview?platform=RESTful#introduction). |
+| `role`     | string    | Required          | The token role:<li>`admin`</li><li>`writer`</li><li>`reader`</li>See [Token Overview](../develop/authentication-workflow). |
 
 ### Request example
 

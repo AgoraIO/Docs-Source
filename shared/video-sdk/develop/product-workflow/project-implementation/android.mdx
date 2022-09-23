@@ -86,9 +86,9 @@ To implement these features in your <Vpl k="CLIENT" />, take the following steps
     private int remoteUid = 0; // Stores the uid of the remote user
 
     // Screen sharing
-    private int PROJECTION_REQ_CODE = 345; // A unique id
-    private int DEFAULT_SHARE_FRAME_RATE = 10; 
-    private boolean sharingScreen = false;
+    private final int DEFAULT_SHARE_FRAME_RATE = 10;
+    private boolean isSharingScreen = false;
+    private Intent fgServiceIntent;
     ```
 
 1. **Store the `uid` of the remote user**
@@ -133,72 +133,90 @@ To implement these features in your <Vpl k="CLIENT" />, take the following steps
 
 1. **Start or stop screen sharing**
 
-    When a user presses the screen sharing button, you create an `Intent` based on Android `MediaProjection`, and pass the `Intent` to the native Android method `startActivityForResult` to request capturing of screen data. When the user presses the button again, you stop screen sharing. To do this, add the following method to the `MainActivity` class:
+    When a user presses the start screen sharing button, you create an `Intent` to start a foreground service. You pass `ScreenCaptureParameters` to the `startScreenCapture` method and set up the local preview. To start publishing the screen sharing data to the channel, you call `updateMediaPublishOptions`. When a user ends screen sharing, you call `stopScreenCapture`. To do this, add the following method to the `MainActivity` class:
 
     ```java
     public void shareScreen(View view) {
         Button sharingButton = (Button) view;
 
-        if (!sharingScreen){ // Start sharing
-            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
+        if (!isSharingScreen) { // Start sharing
             // Ensure that your Android version is Lollipop or higher.
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    Intent fgServiceIntent = new Intent(this, MainActivity.class);
+                    fgServiceIntent = new Intent(this, MainActivity.class);
                     startForegroundService(fgServiceIntent);
-
-                    // Instantiate a MediaProjectionManager object
-                    MediaProjectionManager mpm = (MediaProjectionManager)
-                            getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-                    // Create an intent
-                    Intent intent = mpm.createScreenCaptureIntent();
-                    // Start screen capturing
-                    startActivityForResult(intent, PROJECTION_REQ_CODE);
-                    sharingButton.setText("Stop Screen Sharing");
                 }
-            }           
+                // Get the screen metrics
+                DisplayMetrics metrics = new DisplayMetrics();
+                getWindowManager().getDefaultDisplay().getMetrics(metrics);
+
+                // Set screen capture parameters
+                ScreenCaptureParameters screenCaptureParameters = new ScreenCaptureParameters();
+                screenCaptureParameters.captureVideo = true;
+                screenCaptureParameters.videoCaptureParameters.width = metrics.widthPixels;
+                screenCaptureParameters.videoCaptureParameters.height = metrics.heightPixels;
+                screenCaptureParameters.videoCaptureParameters.framerate = DEFAULT_SHARE_FRAME_RATE;
+                screenCaptureParameters.captureAudio = true;
+                screenCaptureParameters.audioCaptureParameters.captureSignalVolume = 50;
+
+                // Start screen sharing
+                agoraEngine.startScreenCapture(screenCaptureParameters);
+                isSharingScreen = true;
+                startScreenSharePreview();
+                // Update channel media options to publish the screen sharing video stream
+                updateMediaPublishOptions(true);
+                sharingButton.setText("Stop Screen Sharing");
+            }
         } else { // Stop sharing
             agoraEngine.stopScreenCapture();
-
-            ChannelMediaOptions mediaOptions = new ChannelMediaOptions();
-            mediaOptions.publishCameraTrack = true;
-            mediaOptions.publishScreenTrack = false;
-            agoraEngine.updateChannelMediaOptions(mediaOptions);
-
-            sharingScreen = false;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                if (fgServiceIntent!=null) stopService(fgServiceIntent);
+            }
+            isSharingScreen = false;
             sharingButton.setText("Start Screen Sharing");
+
+            // Restore camera and microphone publishing
+            updateMediaPublishOptions(false);
+            setupLocalVideo();
         }
     }
     ```
+1. **Set up local screen sharing preview**
 
-1. **Start publishing screen capture data**
+    To show the screen sharing preview in the local video container, add the following method to the `MainActivity` class:
 
-    In the `onActivityResult` callback, you get the screen data. Pass it as a parameter in the `startScreenCapture` method to start screen sharing. Set `ChannelMediaOptions` to start publishing the screen track and stop publishing the camera track. You call `updateChannelMediaOptions` to apply the changes. To do this, add the following method to the `MainActivity` class:
-
-    ```java
-    @Override
-    // Listen for onActivityResult.
-    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (requestCode == PROJECTION_REQ_CODE && resultCode == RESULT_OK) { // Sharing permission granted
-            // Get the screen metrics
-            DisplayMetrics metrics = new DisplayMetrics();
-            getWindowManager().getDefaultDisplay().getMetrics(metrics);
-
-            // Set capture parameters
-            ScreenCaptureParameters parameters = new ScreenCaptureParameters();
-            parameters.setFrameRate(DEFAULT_SHARE_FRAME_RATE);
-
-            // Start screen sharing
-            agoraEngine.startScreenCapture(data, parameters);
-            sharingScreen = true;
-
-            // Update channel media options to publish the screen sharing video stream
-            ChannelMediaOptions mediaOptions = new ChannelMediaOptions();
-            mediaOptions.publishCameraTrack = false;
-            mediaOptions.publishScreenTrack = true;
-            agoraEngine.updateChannelMediaOptions(mediaOptions);
+    ``` java
+    private void startScreenSharePreview() {
+        // Create render view by RtcEngine
+        FrameLayout container = findViewById(R.id.local_video_view_container);
+        SurfaceView surfaceView = new SurfaceView(getBaseContext());
+        if (container.getChildCount() > 0) {
+            container.removeAllViews();
         }
+        // Add to the local container
+        container.addView(surfaceView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        // Setup local video to render your local camera preview
+        agoraEngine.setupLocalVideo(new VideoCanvas(surfaceView, Constants.RENDER_MODE_FIT,
+                Constants.VIDEO_MIRROR_MODE_DISABLED,
+                Constants.VIDEO_SOURCE_SCREEN_PRIMARY,
+                0));
+
+        agoraEngine.startPreview(Constants.VideoSourceType.VIDEO_SOURCE_SCREEN_PRIMARY);
+    }
+    ```
+
+1. **Switch between publishing camera feed and screen sharing**
+
+    Add the following method to the `MainActivity` class to update publishing options when starting or stopping screen sharing:
+
+    ``` java
+    void updateMediaPublishOptions(boolean publishScreen) {
+        ChannelMediaOptions mediaOptions = new ChannelMediaOptions();
+        mediaOptions.publishCameraTrack = !publishScreen;
+        mediaOptions.publishMicrophoneTrack = !publishScreen;
+        mediaOptions.publishScreenCaptureVideo = publishScreen;
+        mediaOptions.publishScreenCaptureAudio = publishScreen;
+        agoraEngine.updateChannelMediaOptions(mediaOptions);
     }
     ```
 </PlatformWrapper>

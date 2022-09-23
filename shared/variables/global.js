@@ -19,7 +19,9 @@ export const API_REF_ROOT_VOICE = `${URL_ROOT}/voice-call-4.x-beta/API%20Referen
 export const API_REF_FLUTTER_ROOT = `${API_REF_ROOT}/flutter_ng/API`;
 export const API_REF_UNITY_ROOT = `${API_REF_ROOT}/unity/4.0.0.beta-2/API`;
 export const API_REF_UNITY_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/unity/4.0.0.beta-2/API`;
-export const API_REF_ELECTRON_ROOT  = `${API_REF_ROOT}/electron_ng/API`;
+export const API_REF_ELECTRON_ROOT  = `${API_REF_ROOT}/electron/4.0.0-beta.2/API`;
+export const API_REF_ELECTRON_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/electron/4.0.0-beta.2/API`;
+
 
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
@@ -83,6 +85,14 @@ export const AB = 'App Builder';
 export const UIK = 'UI Kit';
 export const vUIK = `Video ${UIK}`;
 export const FC = 'Flexible Classroom';
+
+export const FC_VERSION = '2.6.x'
+export const FC_API_REF_ROOT = 'https://agora-api-reference.vercel.app/flexible-classroom-sdk/';
+export const FC_API_REF_ANDROID_ROOT = `${FC_API_REF_ROOT}/android/${FC_VERSION}/API`;
+export const FC_API_REF_IOS_ROOT = `${FC_API_REF_ROOT}/ios/${FC_VERSION}/API`;
+export const FC_API_REF_WEB_ROOT = `${FC_API_REF_ROOT}/web/${FC_VERSION}`;
+export const FC_API_REF_ELECTRON_ROOT = `${FC_API_REF_ROOT}/electron/${FC_VERSION}`;
+
 
 export const WEB = 'Web';
 export const IOS = 'iOS';

@@ -6,9 +6,9 @@ description: >
   Deprecated methods for converting files. 
 ---
 
-Agora Interactive Whiteboard supports file conversion from PPT and PPTX files into dynamic HTML web pages. The generated web pages can be accessed directly or presented on the whiteboard.
+Interactive Whiteboard supports file conversion from PPT and PPTX files into dynamic HTML web pages. The generated web pages can be accessed directly or presented on the whiteboard.
 
-<div class="alert note">Agora Interactive Whiteboard released a new version of file conversion service on July 27, 2022, that greatly improves conversion speed, content parsing, and stability.  The new version also adds the ability to integrate with third-party whiteboard SDKs. Agora strongly recommends you use the new version of file conversion. See <a href="/en/whiteboard/whiteboard_file_conversion?platform=RESTful">File conversion RESTful API reference</a>. </div>
+<div class="alert note">Interactive Whiteboard released a new version of file conversion service on July 27, 2022, that greatly improves conversion speed, content parsing, and stability.  The new version also adds the ability to integrate with third-party whiteboard SDKs. Agora strongly recommends you use the new version of file conversion. See <a href="../reference/whiteboard-api/file-conversion">File conversion RESTful API reference</a>. </div>
 
 ## Introduction
 
@@ -22,7 +22,7 @@ Compared with the old version, the new file conversion adopts an engine develope
 - **Faster conversion speed**.  The conversion speed of the new version is increased by 200% to 400%.
 - **Stronger content parsing**.  The new file conversion supports parsing content that the old version cannot, including additional animations, filters, and other effects.  The new version can parse all normal PPTX content. 
 - **Improved stability**.  The new file conversion fixes multiple issues in the old version that could cause conversion failures.  
-- **New features**.  Users can now pause on-going conversion tasks or adjust task priorities. 
+- **New features**.  Users can now pause ongoing conversion tasks or adjust task priorities. 
 
 The new file conversion currently has several limitations, however: 
 
@@ -30,7 +30,7 @@ The new file conversion currently has several limitations, however:
 2. The new file conversion currently does **not** support conversion from documents to images.  If you want to convert documents to images, see [Old File Conversion RESTful API Reference](/en/whiteboard/file_conversion_overview_old?platform=RESTful). 
 3. The new file conversion currently does **not** support generating resource packages. However, because the resources path is fixed, users can download resources by themselves. 
 
-<div class="alert info">Although Agora Interactive Whiteboard continues to maintain the old version of file conversion, some issues could arise due to inherent limits in the architectural design.  Agora recommends you choose an appropriate time to switch to the new file conversion.  If you need support for the old version of file conversion, see the following resources: <li><a href="/en/whiteboard/file_conversion_overview_old?platform=RESTful">Old File Conversion Overview</a></li><li><a href="/en/whiteboard/whiteboard_file_conversion_old?platform=RESTful">Old File Conversion API Reference</a></li></div>
+<div class="alert info">Although Interactive Whiteboard continues to maintain the old version of file conversion, some issues could arise due to inherent limits in the architectural design.  Agora recommends you choose an appropriate time to switch to the new file conversion.  If you need support for the old version of file conversion, see the following resources: <li><a href="/en/whiteboard/file_conversion_overview_old?platform=RESTful">Old File Conversion Overview</a></li><li><a href="/en/whiteboard/whiteboard_file_conversion_old?platform=RESTful">Old File Conversion API Reference</a></li></div>
 
 
 ### Considerations
@@ -42,11 +42,11 @@ When using the new version of file conversion, you need to pay attention to the 
 
 - A generated web page can be rendered into canvas pages via Fastboard SDK (coming soon), [@netless/slide](https://www.npmjs.com/package/@netless/slide), or [@netless/projector-plugin](https://github.com/netless-io/projector-plugin). The differences between these three rendering solutions are as follows: 
 
-   - Fastboard SDK is the rendering plan designed for multi-window scenarios in Agora Interactive Whiteboard. Fastboard SDK is coming soon. 
+   - Fastboard SDK is the rendering plan designed for multi-window scenarios in Interactive Whiteboard. Fastboard SDK is coming soon. 
 
    - @netless/slide is a stand-alone document conversion and rendering dependency that does not include such things as whiteboards or state synchronization.  Adopting this solution requires you to write extra codes to synchronize states. It is designed for scenarios where PPT is used alone in whiteboard apps. 
 
-   - @netless/projector-plugin is a plug-in for Whiteboard SDK that supports state synchronization, but it only works in single-window scenarios.
+   - @netless/projector-plugin is a plug-in for Interactive Whiteboard SDK that supports state synchronization, but it only works in single-window scenarios.
 
 
 ## Prerequisites
@@ -65,7 +65,7 @@ Refer to the following steps:
 
 2. On the **Edit Project** page, find **Whiteboard**, and click **Config**.
 
-3. Under **Services**, select a data center, and click **Config**. The data center must be the same as the one you fill in the `region` field when calling the [Create a room](https://docs.agora.io../reference/whiteboard-api/room-management#create-a-room-post) API; otherwise, the service configurations do not take effect.
+3. Under **Services**, select a data center, and click **Config**. The data center must be the same as the one you fill in the `region` field when calling the [Create a room](../reference/whiteboard-api/room-management#create-a-room-post) API; otherwise, the service configurations do not take effect.
   ![](https://web-cdn.agora.io/docs-files/1658998783322)
 
 
@@ -97,17 +97,17 @@ Refer to the following steps:
    	 </ul>
    </div>
 
-7. Click **Save**, read the pop-up prompt carefully, and click **Confirm**.
+6. Click **Save**, read the pop-up prompt carefully, and click **Confirm**.
 
 ### Upload the source file
 
-Before you launch a file-conversion task, you must upload the source file to a third-party cloud storage space or your Nginx server. This produces a URL address for the file. Make sure that the whiteboard service can access the file via this URL address.
+Before you launch a file-conversion task, you must upload the source file to a third-party cloud storage space or your Nginx server. This produces a URL address for the file. Make sure that the Interactive Whiteboard can access the file via this URL address.
 
 ## Start file conversion
 
-File conversion is implemented by Agora's server for the whiteboard service. When an app client requests to convert a file, your app server needs to call the Interactive Whiteboard RESTful API to send the request to the Agora server. The full process is illustrated in the following diagram:![](https://web-cdn.agora.io/docs-files/1618477596512)
+File conversion is implemented by Agora's server for Interactive Whiteboard service. When an app client requests to convert a file, your app server needs to call the Interactive Whiteboard RESTful API to send the request to the Agora server. The full process is illustrated in the following diagram:![](https://web-cdn.agora.io/docs-files/1618477596512)
 
 
-> - To call the RESTful API to start a file-conversion task, pass in the URL address of the source file and other parameters. See [Start file conversion](/en/whiteboard/whiteboard_file_conversion?platform=RESTful#start-file-conversion). 
-> - To query the progress of a file-conversion task, pass in the corresponding task UUID and Task Token. See [Query file-conversion progress](/en/whiteboard/whiteboard_file_conversion?platform=RESTful#query-the-progress-of-a-file-conversion-task).
-> - Agora recommends that you design an algorithm to regularly query the conversion progress so that your data is up to date.
+> - To call the RESTful API to start a file-conversion task, pass in the URL address of the source file and other parameters. See [Start file conversion](../reference/whiteboard-api/file-conversion#start-file-conversion). 
+> - To query the progress of a file-conversion task, pass in the corresponding task UUID and Task Token. See [Query file-conversion progress](../reference/whiteboard-api/file-conversion#query-the-progress-of-a-file-conversion-task).
+> - Agora recommends that you design an algorithm to regularly query the conversion progress so that your data is up-to-date.

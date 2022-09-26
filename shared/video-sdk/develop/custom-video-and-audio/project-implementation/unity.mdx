@@ -1,0 +1,197 @@
+<PlatformWrapper platform="unity">
+
+### Implement a custom video source
+
+In the following code example, you create the basic framework required to push video frames from a custom source. Depending on the type of your source, you add your own code to this framework that converts the source data to `VideoFrame` data. To create the basic framework, take the following steps:
+
+1. **Define variables to process and push video data**
+
+    In `Assets/Agora-RTC-Plugin/Agora-Unity-RTC-SDK/Code/JoinChannelVideo`, add the following declarations to the `JoinChannelVideo` class:
+
+    ```csharp
+    private Texture2D _texture;
+    private Rect _rect;
+    private WebCamTexture _webCameraTexture;
+    public RawImage RawImage;
+    public Vector2 CameraSize = new Vector2(480, 480);
+    public int CameraFPS = 15;
+    public ChannelMediaOptions options = new ChannelMediaOptions();
+    ```
+
+1. **Setup external video source**
+
+   Call `SetExternalVideoSource` to setup an external video source in your <Vpl k= "CLIENT"/>. Add the followong method to `JoinChannelVideo` class:
+
+   ```csharp
+    private void SetExternalVideoSource()
+    {
+        var ret = RtcEngine.SetExternalVideoSource(true, false, EXTERNAL_VIDEO_SOURCE_TYPE.VIDEO_FRAME, new SenderOptions());
+        Debug.Log("SetExternalVideoSource returns:" + ret);
+    }
+   ```
+   To call this method before joining a channel, in the `JoinChannelVideo` class, add the following line at the end of the `Start` method:
+
+   ```csharp
+   SetExternalVideoSource();
+   ```
+
+1. **Enable external video device**
+
+   To get video frames from the external video source, get the list of available video WebCams, select the first video source from the list, set the selected source texture, play the selected source to start receiving local video frames. To implement this logic, add the following to `JoinChannelVideo` class:
+
+    ```csharp
+    private void InitCameraDevice()
+    {
+        WebCamDevice[] devices = WebCamTexture.devices;
+        _webCameraTexture = new WebCamTexture(devices[0].name, (int)CameraSize.x, (int)CameraSize.y, CameraFPS);
+        _webCameraTexture.Play();
+    }
+    ```
+    To call this method before joining a channel, in the `JoinChannelVideo` class, add the following line at the end of the `Start` method:
+
+    ```csharp
+    InitCameraDevice();
+    ```
+
+1. **Publish custom video track**
+
+   You use `ChannelMediaOptions` to stop publishing the local video track and start publishing the custom video track. Create an instance of `ChannelMediaOptions` and set `publishVideoTrack` to `false` and `customVideoTrack` to `true`, then update the channel media options in your channel by calling `updateChannelMediaOptions`. To impelement this logic, add the following at the end of the `Join` method:
+
+   ```csharp
+   options.publishCameraTrack.SetValue(false); // Disable publishing camera track.
+   options.publishCustomVideoTrack.SetValue(true); // Enable publishing custom video track.
+   RtcEngine.UpdateChannelMediaOptions(options);// Update channel media option to play the custom video track.
+   ```
+1. **Diplay the custom video track locally**
+
+   To display the custom video track in th local view of your <Vpl k = "CLIENT"/>, in the `JoinChannelVideo` class, locate the `Join` method and replace `LocalView.SetForUser(0, "", VIDEO_SOURCE_TYPE.VIDEO_SOURCE_CAMERA);` with the following:
+
+   ```csharp
+    LocalView.SetForUser(0, "", VIDEO_SOURCE_TYPE.VIDEO_SOURCE_CUSTOM);
+   ```
+
+### Implement a custom audio source
+
+To push audio from a custom source to a channel, take the following steps:
+
+1. **Define variables to manage and push the audio stream**
+
+    In `Assets/Agora-RTC-Plugin/Agora-Unity-RTC-SDK/Code/JoinChannelVideo`, add the following declarations to the `JoinChannelVideo` class:
+
+    ```csharp
+    // Please do not change this value because Unity re-samples the sample rate to 48000.
+    private const int SAMPLE_RATE = 44100;
+    private const string AUDIO_FILE = @"applause.wav";
+    private const int PUSH_FREQ_PER_SEC = 441 * 1000 / SAMPLE_RATE;
+    private bool _startConvertSignal = false;
+    private Thread _pushAudioFrameThread;
+    private System.Object _pushAudioFrameThreadSignal = new System.Object();
+    private bool _startSignal = false;
+    private const int CHANNEL = 1;
+    ```
+
+1. **Add the required libraries**
+
+   In the `JoinChannelVideo` class, add the following to namespace declarations:
+
+   ```csharp
+   using System.Threading;
+   using System.IO;
+   using System;
+   using System.Runtime.InteropServices;
+   ```
+
+1. **Add a raw audio file to the project**
+
+    In this example, you use an audio file as the source of your custom audio data. To add the audio file to your Unity project, add a sample audio file in `*.wav` or `*.raw` format to `Assets/Agora-RTC-Plugin/Agora-Unity-RTC-SDK/Code` folder. Update the value of the `AUDIO_FILE` variable to show the audio file name. Also make sure that the values of the audio file parameters in your code match the audio file you placed in the folder.
+
+1. **Enable publishing the custom audio track**
+
+    When the user presses **Join**, you set the `ChannelMediaOptions` to disable the microphone audio track and enable the custom audio track. You also enable custom audio local playback and set the external audio source. To implement this workflow, add the following lines at the end of `SetupVideoSDKEngine` method in the `JoinChannelVideo`:
+
+    ```csharp
+    options.publishAudioTrack.SetValue(false); // Disable publishing microphone audio
+    options.publishCustomAudioTrack.SetValue(true); // Enable publishing custom audio
+    options.enableAudioRecordingOrPlayout.SetValue(true);
+    var nRet = RtcEngine.SetExternalAudioSource(true, SAMPLE_RATE, CHANNEL, 1);
+    ```
+
+1. **Implement audio frame pushing logic**
+
+    When a user successfully joins a channel, you setup an instance of `AudioFrame`, set its audio parameter, and push the created audio frame to the channel by calling `PushAudioFrame`. To implement this workflow, add the following method to `JoinChannelVideo` class:
+    ```csharp
+    private void PushAudioFrameThread()
+    {
+        FileStream stream = new FileStream(AUDIO_FILE,FileMode.Open, FileAccess.Read);
+        var bytesPerSample = 2;
+        var type = AUDIO_FRAME_TYPE.FRAME_TYPE_PCM16;
+        var samples = SAMPLE_RATE / PUSH_FREQ_PER_SEC;
+        var buffer = new byte[samples * bytesPerSample * CHANNEL];
+        var freq = 1000 / PUSH_FREQ_PER_SEC;
+        var tic = DateTime.Now;
+        IntPtr audioFrameBuffer = Marshal.AllocHGlobal(buffer.Length);
+        var audioFrame = new AudioFrame
+        {
+            bytesPerSample = BYTES_PER_SAMPLE.TWO_BYTES_PER_SAMPLE,
+            type = type,
+            samplesPerChannel = samples,
+            samplesPerSec = SAMPLE_RATE,
+            channels = CHANNEL,
+            buffer = (UInt64)audioFrameBuffer,
+            bufferPtr = audioFrameBuffer,
+            RawBuffer = buffer,
+            renderTimeMs = freq
+        };
+        int n = stream.Read(buffer, 0, buffer.Length);
+        Debug.Log("Bytes read: " + n);
+        while (true)
+        {
+            lock (_pushAudioFrameThreadSignal)
+            {
+                if (RtcEngine == null)
+                {
+                    break;
+                }
+                var toc = DateTime.Now;
+                if ((toc - tic).Milliseconds >= freq)
+                {
+                    lock (buffer)
+                    {
+                        Marshal.Copy(buffer, 0, audioFrame.bufferPtr, buffer.Length);
+                        var ret = RtcEngine.PushAudioFrame(MEDIA_SOURCE_TYPE.AUDIO_PLAYOUT_SOURCE, audioFrame);
+                        Debug.Log("PushAudioFrame returns: " + ret);
+                        tic = toc;
+                    }
+                }
+                else
+                {
+                    Thread.Sleep(1);
+                }
+            }
+        }
+        Marshal.FreeHGlobal(audioFrameBuffer);
+    }
+    ```
+1. **Add multi-threading to audio frame pushing logic to avoid congestion**
+   
+   Call `PushAudioFrameThread` in a thread after you join a channel to avoid congestion problem in your <Vpl k= "CLIENT"/>. To implement this logic, add the following to `JoinChannelVideo` class: 
+   ```csharp   
+    private void StartPushAudioFrame()
+    {
+        _startConvertSignal = true;
+        _pushAudioFrameThreadSignal = true;
+        _pushAudioFrameThread = new Thread(PushAudioFrameThread);
+        _pushAudioFrameThread.Start();
+    }
+   ```
+
+2. **Update channel media options and start the audio frame pushing task**
+
+   Use the `ChannelMediaOptions` object you created in the `SetupVideoSDK` method to publish the custom audio track.  Call `StartPushAudioFrame` after you Join a channel to start pushing the local audio frames. To implement this workflow, in `JoinChannelVideo` class, add the following at the end of the `Join` method:
+
+   ```csharp
+   RtcEngine.UpdateChannelMediaOptions(options);
+   StartPushAudioFrame();
+   ```
+
+</PlatformWrapper>

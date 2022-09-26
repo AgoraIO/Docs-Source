@@ -203,9 +203,9 @@ curl --location --request POST
 
 ### Parameter settings
 
-- If the `uid`parameter in the request body is the same as the user ID in the channel, or if a non-integer user ID is used, the recording fails. For details, see the notes on the `uid`parameter in the section [Get a cloud recording resource](#acquire).
-- When the`start` request returns 200, it means only that the RESTful API request is successful. To ensure that the recording starts successfully and goes on normally, you also need to call query to query the recording status. Errors such as uUnreasonable `transcodingConfig` parameter settings, incorrect third-party cloud storage information, or incorrect token information cause the `query` method to return 404. See [Why do I get a 404 error when I call query after successfully starting a cloud recording? ](../reference/common-errors#errors).
-- Set `maxIdleTime` reasonably according to your actual business needs. Within the time range set by`maxIdleTime`, even if the channel is idle, the recording continues and billing is generated.
+- If the `uid` parameter in the request body is the same as the user ID in the channel, or if a non-integer user ID is used, the recording fails. For details, see the notes on the `uid` parameter in the section [Get a cloud recording resource](#acquire).
+- When the `start` request returns 200, it means only that the RESTful API request is successful. To ensure that the recording starts successfully and goes on normally, you also need to call query to query the recording status. Errors such as uUnreasonable `transcodingConfig` parameter settings, incorrect third-party cloud storage information, or incorrect token information cause the `query` method to return 404. See [Why do I get a 404 error when I call query after successfully starting a cloud recording? ](../reference/common-errors#errors).
+- Set `maxIdleTime` reasonably according to your actual business needs. Within the time range set by `maxIdleTime`, even if the channel is idle, the recording continues and billing is generated.
 
 ### API call
 
@@ -220,7 +220,7 @@ After the recording starts, the Agora server splits the recorded content into mu
 
 ### Token authentication
 
-To ensure communication security, in a formal production environment, you need to generate tokens on your app server. See [Authenticate Your Users with Token](../reference/restful-authentication).
+To ensure communication security, in a formal production environment, you need to generate tokens on your app server. See [Authenticate Your Users with Token](../develop/authentication-workflow).
 
 ## See also
 

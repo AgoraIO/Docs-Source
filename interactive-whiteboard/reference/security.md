@@ -17,9 +17,9 @@ Securing access to your services and resources starts with identity and access c
 
 Refer to the following guides for detailed information on <Vg k="WHITE" /> tokens:
 
-- [<Vg k="WHITE" /> token overview](../develop/authentication-workflow): Describes the different types of whiteboard tokens and their uses, the various methods of generating a token, and token safety precautions.
-- [Generate token using an app server](../develop/generate-token-app-server): Introduces how to generate tokens at your app server using code samples.
-- [Generate token using REST](../develop/generate-token-rest): Describes the RESTful APIs for generating whiteboard tokens.
+- [<Vg k="WHITE" /> Token Overview](../develop/authentication-workflow): Describes the different types of whiteboard tokens and their uses, the various methods of generating a token, and token safety precautions.
+- [Generate Token Using an App Server](../develop/generate-token-app-server): Introduces how to generate tokens at your app server using code samples.
+- [Generate Token Using REST](../develop/generate-token-rest): Describes the RESTful APIs for generating whiteboard tokens.
 
 ## Data encryption and storage
 
@@ -32,7 +32,7 @@ Data centers hosting <Vg k="WHITE" /> are maintained by certified and industry-l
 Refer to the following articles for more information on file conversion and taking screenshots:
 
 - [Enable <Vg k="WHITE" />](../develop/enable-whiteboard): The **Enable whiteboard server-side features** section describes how to configure the third-party storage space.
-- [File conversion overview](../reference/whiteboard-api/file-conversion): The **Start file conversion** section describes the basic workflow for converting a file.
+- [File Conversion Overview](../reference/whiteboard-api/file-conversion): The **Start file conversion** section describes the basic workflow for converting a file.
 
 ## Network geofencing
 
@@ -52,10 +52,10 @@ Now <Vg k="WHITE" /> sets up five data centers and each data center provides ser
 
 Refer to the following API references for more information:
 
-- [RESTful APIs](../reference/whiteboard-api/overview) 
-- [Web SDK APIs](https://docs.agora.io/en/whiteboard/API%20Reference/whiteboard_web/index.html)
-- [Android SDK APIs](https://docs.agora.io/en/whiteboard/API%20Reference/whiteboard_java/index.html)
-- [iOS SDK APIs](https://docs.agora.io/en/whiteboard/API%20Reference/whiteboard_oc/index.html)
+- [RESTful APIs](../reference/whiteboard-api/overview)   
+- <Link to="{{Global.API_REF_WEB_WHITE}}/index.html">Web SDK APIs</Link>
+- <Link to="{{Global.API_REF_ANDROID_WHITE}}/index.html">Android SDK APIs</Link>
+- <Link to="{{Global.API_REF_IOS_WHITE}}/docs/headers/Agora-Interactive-Whiteboard-Objective-C-Overview.html">iOS SDK APIs</Link>
 
 
 With network geofencing enabled, data transfer is restricted to the service areas that your specified data center covers. However, this does not prohibit users located in different areas from communicating with each other, as long as they join the same whiteboard room. For example, when a teacher creates a whiteboard room that is geofenced in Europe, students located in India can join the room through the global accelerator and interact with the teacher. If the students join a whiteboard room that is geofenced in India, then they cannot communicate with the teacher in Europe, because no data is allowed to be transmitted across data centers. 

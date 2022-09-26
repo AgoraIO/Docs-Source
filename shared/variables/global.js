@@ -20,6 +20,10 @@ export const API_REF_FLUTTER_ROOT = `${API_REF_ROOT}/flutter_ng/API`;
 export const API_REF_UNITY_ROOT = `${API_REF_ROOT}/unity/4.0.0.beta-2/API`;
 export const API_REF_UNITY_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/unity/4.0.0.beta-2/API`;
 export const API_REF_ELECTRON_ROOT  = `${API_REF_ROOT}/electron_ng/API`;
+export const API_REF_ROOT_WHITE = 'https://agora-api-reference.vercel.app/interactive-whiteboard-sdk';
+export const API_REF_ANDROID_WHITE = `${API_REF_ROOT_WHITE}/android/2.15.0`;
+export const API_REF_IOS_WHITE = `${API_REF_ROOT_WHITE}/ios/2.15.0`;
+export const API_REF_WEB_WHITE = `${API_REF_ROOT_WHITE}/web/2.15.2`;
 
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';

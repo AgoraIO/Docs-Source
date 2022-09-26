@@ -22,11 +22,11 @@ The `Content-Type` field in all HTTP request headers is `application/json`. All 
 
 The Interactive Whiteboard RESTful API provides the following features:
 
-- [Token generation](/en/whiteboard/generate_whiteboard_token?platform=RESTful)
-- [Room management](/en/whiteboard/whiteboard_room_management)
-- [Screenshot management](/en/whiteboard/whiteboard_screenshot)
-- [Scene management](/en/whiteboard/whiteboard_scene_management)
-- [File conversion](/en/whiteboard/whiteboard_file_conversion)
+- [Token generation](../../develop/generate-token-rest)
+- [Room management](../../reference/whiteboard-api/room-management)
+- [Screenshot management](../../reference/whiteboard-api/screenshots)
+- [Scene management](../../reference/whiteboard-api/scene-management)
+- [File conversion](../../reference/whiteboard-api/file-conversion)
 
 ## Status codes
 

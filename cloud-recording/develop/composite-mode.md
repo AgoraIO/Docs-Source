@@ -9,6 +9,8 @@ For more information, see [Get stared](../get-started/getstarted).
 
 ## Overview
 
+This guide includes the key steps in using the Cloud Recording RESTful API to make a composite recording.
+
 Agora Cloud Recording supports three recording modes:
 
 - Individual recording

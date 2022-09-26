@@ -145,7 +145,7 @@ export const TOKEN_GENERATE_URL = `https://docs.agora.io/en/Agora%20Platform/get
 export const AGORA_DYNAMIC_KEY_CODE_BASE_URL =
   'https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey';
 
-export const ANDROID_UIKIT_VERSION = '4.0.1';
+export const ANDROID_UIKIT_VERSION = 'v4.0.1-rc3';
 export const ANDROID_UIKIT_SDK = 'com.github.AgoraIO-Community.Android-UIKit:final';
 
 export const WEB_UIKIT = 'Agora React Web UI Kit';

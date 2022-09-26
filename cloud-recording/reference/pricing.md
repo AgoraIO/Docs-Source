@@ -48,13 +48,13 @@ If you create a recording instance and record multiple audio and video streams a
 
 The unit pricing for audio and video is as follows:
 
-| Service Type      | Category                                  | Pricing ($US/1,000 minutes)  |
-| :-----------------| :-----------------------------------------|:-----------------------------|
-| Recording Audio   | N/A                                       | 1.49                            |
-| Recording Audio   | High-Definition (HD)<sup>①</sup>          | 5.99                             |
-| Recording Audio   | Full High-Definition (Full HD)<sup>①</sup>| 13.49                             |
-| Recording Audio   | 2K<sup>①</sup>                            | 23.99                             |
-| Recording Audio   | 2K+<sup>①</sup>                           | 53.99                             |
+| Service Type    | Category                                  | Pricing ($US/1,000 minutes)  |
+|:----------------| :-----------------------------------------|:-----------------------------|
+| Recording Audio | N/A                                       | 1.49                            |
+| Recording Video | High-Definition (HD)<sup>①</sup>          | 5.99                             |
+| Recording Video | Full High-Definition (Full HD)<sup>①</sup>| 13.49                             |
+| Recording Video | 2K<sup>①</sup>                            | 23.99                             |
+| Recording Video | 2K+<sup>①</sup>                           | 53.99                             |
 
 >① Agora determines video category based on aggregate video resolution, which is the sum of resolutions of all the video streams a user subscribes to at the same time. For details, see <a href="#aggregate">Aggregate video resolution</a>.
 

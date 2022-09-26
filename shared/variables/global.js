@@ -90,7 +90,7 @@ export const UCS = 'Use Cases';
 
 export const AB = 'App Builder';
 export const UIK = 'UI Kit';
-export const vUIK = `Video ${UIK}`;
+export const vUIK = `${UIK}`;
 export const FC = 'Flexible Classroom';
 
 export const FC_VERSION = '2.6.x'

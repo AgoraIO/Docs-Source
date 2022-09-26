@@ -220,7 +220,7 @@ After the recording starts, the Agora server splits the recorded content into mu
 
 ### Token authentication
 
-To ensure communication security, in a formal production environment, you need to generate tokens on your app server. See [Authenticate Your Users with Token](../reference/restful-authentication).
+To ensure communication security, in a formal production environment, you need to generate tokens on your app server. See [Authenticate Your Users with Token](../develop/authentication-workflow).
 
 ## See also
 

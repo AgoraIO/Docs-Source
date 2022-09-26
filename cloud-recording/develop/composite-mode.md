@@ -5,11 +5,6 @@ type: docs
 description: >
    Use the Cloud Recording RESTful API to make a composite recording.
 ---
-For more information, see [Get stared](../get-started/getstarted).
-
-## Overview
-
-This guide includes the key steps in using the Cloud Recording RESTful API to make a composite recording.
 
 Agora Cloud Recording supports three recording modes:
 
@@ -24,6 +19,8 @@ For example, if a channel has two users, and you choose to record both audio and
 ![](https://web-cdn.agora.io/docs-files/1619530186898)
 
 The recording service generates one M3U8 file and multiple TS files. If you set `avFileType` as `["hls","mp4"]` when calling the [`start`](../reference/rest-api/start) method, the recording service also generates MP4 files, which include the audio and video of all users in the channel.
+
+This guide explains how to implement composite recording using Cloud Recording REST API.
 
 ## Implementation
 

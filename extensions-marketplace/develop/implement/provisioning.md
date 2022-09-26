@@ -1,6 +1,6 @@
 ---
-title: "Provisioning API"
-weight: 1
+title: "Provision your extension"
+weight: 5
 type: docs
 description: >
     Provide the URLs to Agora in order to receive extension activation and deactivation information.  

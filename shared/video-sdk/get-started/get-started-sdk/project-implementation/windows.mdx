@@ -8,8 +8,180 @@ To create the user interface (UI) for the video call in your project, add the fo
 - The exit button
 
 
-When you use the UI setting of the [sample project](https://github.com/AgoraIO/API-Examples/tree/4.0.0-beta/windows/APIExample, you can see the following interface:
+When you use the UI setting of the [sample project](https://github.com/AgoraIO/API-Examples/tree/master/windows/APIExample), you can see the following interface:
 
-   ![](https://web-cdn.agora.io/docs-files/1568792708592)
+![](https://web-cdn.agora.io/docs-files/1568792708592)
+
+### Implement the  <Vpd k="PRODUCT" /> logic
+
+1. Initialize IRtcEngine
+
+   Create and initialize the `IRtcEngine` object before calling any other Agora APIs.
+
+   Call the `createAgoraRtcEngine` method and the `initialize` method, and pass in the App ID to initialize the `IRtcEngine` object.
+
+   You can also listen for callback events, such as when the local user joins or leaves the channel.
+
+   ```cpp
+   // Create Rtc engine.
+   m_lpAgoraEngine = createAgoraRtcEngine();
+   RtcEngineContext ctx;
+
+   // Add the register events and callbacks.
+   ctx.eventHandler = &m_engineEventHandler;
+
+   // Input your App ID.Fill the App ID of your project generated on Agora Console.
+   ctx.appId = "Your App ID";
+
+   // Initialize the IRtcEngine object.
+   m_lpAgoraEngine->initialize(ctx);
+   ```
+
+   ```cpp
+   // Inherit the events and callbacks of IRtcEngineEventHandler.
+   class CAGEngineEventHandler :
+       public IRtcEngineEventHandler
+   {
+   public:
+       CAGEngineEventHandler();
+       ~CAGEngineEventHandler();
+       void setMainWnd(HWND wnd);
+       HWND GetMsgReceiver() {return m_hMainWnd;};
+
+       // Listen for the onJoinChannelSuccess callback.
+       // This callback occurs when the local user successfully joins the channel.
+       virtual void onJoinChannelSuccess(const char* channel, uid_t uid, int elapsed);
+
+       // Listen for the onLeaveChannel callback.
+       // This callback occurs when the local user successfully leaves the channel.
+       virtual void onLeaveChannel(const RtcStats& stat);
+
+       // Listen for the onUserJoined callback.
+       // This callback occurs when the remote host successfully joins the channel.
+       // After receiving this callback, immediately call setupRemoteVideo to set the remote video view.
+       virtual void onUserJoined(uid_t uid, int elapsed) override;
+
+       // Listen for the onUserOffline callback.
+       // This callback occurs when the remote host leaves the channel or drops offline.
+       virtual void onUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason);
+   private:
+       HWND m_hMainWnd;
+   };
+   ```
+
+
+
+3. Set the local video view
+
+   After setting the channel profile and client role, set the local video view before joining the channel so that the host can see the local video in the video call. Follow these steps to configure the local video view:
+
+   ```cpp
+   // Enable the video module.
+   m_lpAgoraEngine->enableVideo();
+   // Start local preview.
+   m_lprtcEngine->startPreview();
+
+   // Set the local video view.
+   VideoCanvas vc;
+   vc.uid = 0;
+   vc.view = hVideoWnd;
+   vc.renderMode = RENDER_MODE_TYPE::RENDER_MODE_HIDDEN;
+   m_lpAgoraEngine->setupLocalVideo(vc);
+   ```
+
+
+
+4. Join the channel
+
+   Set channel profile and client role and join the channel by a temp token.
+
+   ```cpp
+   ChannelMediaOptions options;
+   // For a video call scenario, set the channel profile as BROADCASTING.
+   options.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
+   // Set both clients as the BROADCASTER.
+   options.clientRoleType = CLIENT_ROLE_BROADCASTER;
+
+   // Join channel with a temp token that you generate on Agora Console.
+   BOOL CAgoraObject::JoinChannel("Your token", LPCTSTR lpChannelName, 0, options)
+   {
+       int nRet = 0;
+       LPCSTR lpStreamInfo = "{\"owner\":true,\"width\":640,\"height\":480,\"bitrate\":500}";
+   #ifdef UNICODE
+       CHAR szChannelName[128];
+       ::WideCharToMultiByte(CP_ACP, 0, lpChannelName, -1, szChannelName, 128, NULL, NULL);
+          if (nRet == 0)
+           m_strChannelName = lpChannelName;
+       return nRet == 0 ? TRUE : FALSE;
+   }
+   ```
+
+
+
+5. Set the remote video view
+
+   Call the `setupRemoteVideo` method after joining the channel.
+
+   Shortly after a remote host joins the channel, the SDK gets the host's user ID in the `onUserJoined` callback. Call the `setupRemoteVideo` method in the callback and pass in the `uid` to set the video view of the host.
+
+   ```cpp
+   // Listen for the onUserJoined callback.
+   // After receiving this callback, immediately call setupRemoteVideo to set the remote video view.
+   void CAGEngineEventHandler::onUserJoined(uid_t uid, int elapsed)
+   {
+   	LPAGE_USER_JOINED lpData = new AGE_USER_JOINED;
+
+   	lpData->uid = uid;
+   	lpData->elapsed = elapsed;
+
+   	if(m_hMainWnd != NULL)
+   		::PostMessage(m_hMainWnd, WM_MSGID(EID_USER_JOINED), (WPARAM)lpData, 0);
+   }
+   ```
+
+   ```cpp
+   VideoCanvas canvas;
+   canvas.renderMode = RENDER_MODE_FIT;
+   POSITION pos = m_listWndInfo.GetHeadPosition();
+   ......
+   AGVIDEO_WNDINFO &agvWndInfo = m_listWndInfo.GetNext(pos);
+   canvas.uid = agvWndInfo.nUID;
+   canvas.view = m_wndVideo[nIndex].GetSafeHwnd();
+   agvWndInfo.nIndex = nIndex;
+
+   // Set the remote video view.
+   CAgoraObject::GetEngine()->setupRemoteVideo(canvas);
+   ```
+
+
+
+6. Leave the channel
+
+   Call the `leaveChannel` method to leave the current channel according to your scenario, for example, when the video call ends, when you need to close the app, or when your app runs in the background.
+
+   ```cpp
+   BOOL CAgoraObject::LeaveCahnnel()
+   {
+       m_lpAgoraEngine->stopPreview();
+       // Leave the current channel.
+       int nRet = m_lpAgoraEngine->leaveChannel();
+       m_nSelfUID = 0;
+       return nRet == 0 ? TRUE : FALSE;
+   }
+
+   void CAgoraObject::CloseAgoraObject()
+   {
+       if(m_lpAgoraEngine != NULL)
+           // Release the IRtcEngine object.
+           m_lpAgoraEngine->release();
+       if(m_lpAgoraObject != NULL)
+           delete m_lpAgoraObject;
+       m_lpAgoraEngine = NULL;
+       m_lpAgoraObject = NULL;
+   }
+   ```
+
+    
+
 
 </PlatformWrapper>

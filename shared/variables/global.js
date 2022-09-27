@@ -54,6 +54,8 @@ export const VSDK = 'Video SDK';
 export const VSDK_RELEASE = '4.x';
 export const VSDK_PREVIOUS_RELEASE = '3.7.x';
 export const VSDK_RELEASE_FOLDER = 'video-call-4.x-beta';
+export const VSDK_FLUTTER_RELEASE = '6.0.0-rc.2';
+export const VSDK_FLUTTER_PREVIOUS_RELEASE = '5.x';
 
 export const AV = 'Audio/Video';
 export const AV_URL = `${URL_ROOT}/video`;

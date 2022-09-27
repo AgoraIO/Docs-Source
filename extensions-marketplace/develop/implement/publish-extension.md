@@ -1,6 +1,6 @@
 ---
 title: "Publish your extension"
-sidebar_position: 7
+sidebar_position: 8
 type: docs
 description:
   Publish your extension in the Marketplace.
@@ -12,7 +12,7 @@ Your extension is distributed to app developers through the [Extensions Marketpl
 
 ## Prerequisites
 
-Before publishing your extension, eusure that you have tested your extension following the procedure in [Test Your Extension](./test_extension).
+Before publishing your extension, ensure that you have tested your extension following the procedure in [Test Your Extension](./test_extension).
 
 ## Apply for Agora review
 

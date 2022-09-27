@@ -28,6 +28,10 @@ export const API_REF_ELECTRON_ROOT_VOICE_SDK  = `${API_REF_ROOT_VOICE_SDK}/elect
 export const API_REF_CPP_ROOT  = `${API_REF_ROOT}/cpp/${VSDK_RELEASE_API}/API`;
 export const API_REF_CPP_ROOT_VOICE_SDK  = `${API_REF_ROOT_VOICE_SDK}/cpp/${VSDK_RELEASE_API}/API`;
 export const API_REF_WINDOWS_CSHARP_ROOT  = `${API_REF_ROOT}/windows-csharp/3.6.2/API`;
+export const API_REF_ROOT_WHITE = 'https://agora-api-reference.vercel.app/interactive-whiteboard-sdk';
+export const API_REF_ANDROID_WHITE = `${API_REF_ROOT_WHITE}/android/2.x`;
+export const API_REF_IOS_WHITE = `${API_REF_ROOT_WHITE}/ios/2.x`;
+export const API_REF_WEB_WHITE = `${API_REF_ROOT_WHITE}/web/2.x`;
 
 
 export const CONSOLE = `${COMPANY} Console`;
@@ -58,7 +62,7 @@ export const VSDK_RELEASE_FOLDER = 'video-call-4.x-beta';
 export const AV = 'Audio/Video';
 export const AV_URL = `${URL_ROOT}/video`;
 
-export const MESS = 'Signalling';
+export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
 export const SIG = `${MESS}`;
 export const CHAT = `Chat`;
@@ -74,6 +78,9 @@ export const TEMPL = 'Templates';
 export const RTEE = 'Extensions';
 export const AA = `${COMPANY} Analytics`;
 export const WHITE = 'Interactive Whiteboard';
+export const WHITE_SDK = `${WHITE} SDK`
+export const FAST = 'Fastboard';
+export const FAST_SDK = `${FAST} SDK`
 export const EM = `${RTEE} Marketplace`;
 export const MS = 'Media Services';
 export const MPUSH = 'Media Push';
@@ -145,7 +152,7 @@ export const TOKEN_GENERATE_URL = `https://docs.agora.io/en/Agora%20Platform/get
 export const AGORA_DYNAMIC_KEY_CODE_BASE_URL =
   'https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey';
 
-export const ANDROID_UIKIT_VERSION = 'v4.0.1-rc3';
+export const ANDROID_UIKIT_VERSION = '4.0.1';
 export const ANDROID_UIKIT_SDK = 'com.github.AgoraIO-Community.Android-UIKit:final';
 
 export const WEB_UIKIT = 'Agora React Web UI Kit';

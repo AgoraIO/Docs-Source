@@ -1,6 +1,6 @@
 ---
-title: "Usage and billing API"
-weight: 2
+title: "Provide usage data to Agora"
+weight: 6
 type: docs
 description: >
     Agora calls this API regularly to get the usage and billing information of a specified user

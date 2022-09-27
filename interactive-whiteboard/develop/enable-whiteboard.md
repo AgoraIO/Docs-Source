@@ -12,7 +12,7 @@ To use Agora Interactive Whiteboard, you need to enable and configure the whiteb
 
 Before enabling the whiteboard feature, ensure that you meet the following requirements:
 - A valid Agora account. If you have a Netless account, you must complete the account migration first. See [Migrate from Netless to Agora](../develop/migration-guide).
-- Active Agora projects. If you have not created a project, see <a href="https://docs.agora.io/en/Agora%20Platform/manage_projects?platform=All%20Platforms">Manage Projects</a >.
+- Active Agora projects. If you have not created a project, see [Manage Projects](../reference/manage-agora-account#create-and-manage-projects).
 
 ## Enable the whiteboard service
 
@@ -35,8 +35,8 @@ Follow these steps to enable the whiteboard service in Agora Console:
 Agora Console assigns the following security credentials to each whiteboard project:
 
 - **AppIdentifier**: The unique App Identifier, which is required for initializing the whiteboard SDK.
-- **AK** and **SK**: A pair of access keys, which you can use to generate whiteboard tokens.  See [Generate a Token at App Server](/en/whiteboard/generate_whiteboard_token_at_app_server).
-- **sdkToken**: An [SDK Token (a dynamic key)](/en/whiteboard/whiteboard_token_overview) for test purpose. In a production environment, you need to generate an SDK token at your app server either by using the [code samples](/en/whiteboard/generate_whiteboard_token_at_app_server) or calling the [RESTful API](/en/whiteboard/generate_whiteboard_token). 
+- **AK** and **SK**: A pair of access keys, which you can use to generate whiteboard tokens.  See [Generate a Token at App Server](../develop/generate-token-app-server).
+- **sdkToken**: An [SDK Token (a dynamic key)](../develop/authentication-workflow) for test purpose. In a production environment, you need to generate an SDK token at your app server either by using the [code samples](../develop/generate-token-app-server) or calling the [RESTful API](../get-started/get-started-sdk). 
 
 To get the security credentials, do the following steps:
 
@@ -61,8 +61,8 @@ Agora Interactive Whiteboard sets up [five data centers](../reference/security#n
 
 - File conversion, including **Docs to Picture** and **Docs to web**. 
 After enabling the file conversion feature, you can call the [RESTful APIs](../reference/whiteboard-api/file-conversion) to launch a file conversion task or query the conversion progress.
-Agora charges for the file-conversion feature. See [Pricing](reference/pricing).
-- **Screenshot**. After enabling the screenshot feature, you can call the [RESTful APIs](/en/whiteboard/whiteboard_screenshot) to take screenshots.
+Agora charges for the file-conversion feature. See [Pricing](../reference/pricing).
+- **Screenshot**. After enabling the screenshot feature, you can call the [RESTful APIs](../reference/whiteboard-api/screenshots) to take screenshots.
 
 Follow these steps to enable one or more features and configure the storage settings:
 
@@ -77,10 +77,7 @@ Follow these steps to enable one or more features and configure the storage sett
 4. On the **Services configuration** page, select **Enabled** for **Docs to Picture**, **Docs to web**, or **Screenshot**.
      ![](https://web-cdn.agora.io/docs-files/1637660984577)
 
-
-
-
-
+   
 
 5. Set up the storage space:
 - Click the arrowhead to the right of **Storage**, and select a previously configured storage space in the drop-down list.

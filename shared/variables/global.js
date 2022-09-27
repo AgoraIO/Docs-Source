@@ -74,6 +74,13 @@ export const TEMPL = 'Templates';
 export const RTEE = 'Extensions';
 export const AA = `${COMPANY} Analytics`;
 export const WHITE = 'Interactive Whiteboard';
+
+export const WHITE_VERSION = '2.x'
+export const WHITE_API_REF_ROOT = `https://agora-api-reference.vercel.app/interactive-whiteboard-sdk/`
+export const WHITE_API_REF_WEB = `${WHITE_API_REF_ROOT}/web/${WHITE_VERSION}/`;
+export const WHITE_API_REF_ANDROID = `${WHITE_API_REF_ROOT}/android/${WHITE_VERSION}/`;
+export const WHITE_API_REF_IOS = `${WHITE_API_REF_ROOT}/ios/${WHITE_VERSION}/`;
+
 export const EM = `${RTEE} Marketplace`;
 export const MS = 'Media Services';
 export const MPUSH = 'Media Push';

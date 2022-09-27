@@ -133,7 +133,7 @@ If you generate the Room Token by adding code on the app server, the access keys
 
 To generate a Task Token, you need to pass in the Task UUID, the unique identifier of a file-conversion task, so that the Task Token is linked with the task.
 
-To get a Task UUID, call the [Interactive Whiteboard RESTful API](../reference/whiteboard-api/file-conversion#start-file-conversion-post) to start a file-conversion task. You can get the Task UUID in the response body if the request succeeds.
+To get a Task UUID, call the [Interactive Whiteboard RESTful API](../reference/whiteboard-api/file-conversion#start-file-conversion) to start a file-conversion task. You can get the Task UUID in the response body if the request succeeds.
 
 ## Use a Token
 

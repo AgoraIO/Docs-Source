@@ -160,7 +160,7 @@ The following parameters are required in the URL:
 
 | Parameter | Data type | Required/Optional | Description                                                  |
 | :-------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `uuid`    | string    | Required          | The task UUID, which is the unique identifier of a file-conversion task. You can get it by calling the [RESTful API to start a file-conversion task](../reference/whiteboard-api/file-conversion#start-file-conversion-post) or the [RESTful API to query the task progress](../reference/whiteboard-api/file-conversion#query-file-conversion-progress-get). |
+| `uuid`    | string    | Required          | The task UUID, which is the unique identifier of a file-conversion task. You can get it by calling the [RESTful API to start a file-conversion task](../reference/whiteboard-api/file-conversion#start-file-conversion) or the [RESTful API to query the task progress](../reference/whiteboard-api/file-conversion#query-the-progress-of-a-file-conversion-task). |
 
 ### Request body
 

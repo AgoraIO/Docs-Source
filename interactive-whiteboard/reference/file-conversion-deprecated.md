@@ -1,6 +1,6 @@
 ---
-title: 'File Conversion:deprecated '
-sidebar_position: 7
+title: 'File Conversion:deprecated'
+sidebar_position: 9
 type: docs
 description: >
   Deprecated methods for converting files. 

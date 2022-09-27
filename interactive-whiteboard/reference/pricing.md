@@ -52,7 +52,7 @@ For each user, Agora calculates the usage duration from the user joining a room 
 
 Agora calculates the usage amount by the number of images and web pages successfully converted from source files.
 
-<div class="alert note"><ul><li>The cost of converting a file to web pages is five times the cost of converting it to images. When charging for file conversion to web pages, Agora multiplies the number of generated web pages by five in order to use a consistent unit price for the file conversion feature.</li><li>Agora does not charge for a failed file conversion task. You can call the <a href="../reference/whiteboard-api/file-conversion#query-the-progress-of-a-file-conversion-task">Query file conversion progress </a > API to get the result of a file conversion task.</li><li>The file conversion feature can also be charged by QPS. See  <a href="/en/whiteboard/qps_based_pricing?platform=Web">QPS-based Pricing</a >.</li></ul></div>
+<div class="alert note"><ul><li>The cost of converting a file to web pages is five times the cost of converting it to images. When charging for file conversion to web pages, Agora multiplies the number of generated web pages by five in order to use a consistent unit price for the file conversion feature.</li><li>Agora does not charge for a failed file conversion task. You can call the <a href="../reference/whiteboard-api/file-conversion#query-the-progress-of-a-file-conversion-task">Query file conversion progress </a > API to get the result of a file conversion task.</li><li>The file conversion feature can also be charged by QPS. See  <a href="./qps-based-pricing">QPS-based Pricing</a >.</li></ul></div>
 
 ### Free-of-charge usage
 
@@ -71,7 +71,7 @@ You can check your usage of <Vg k="WHITE" /> in <Vg k="CONSOLE" />. Perform the 
 
 1. Log in to [<Vg k="CONSOLE" />](https://console.agora.io/) and click the **Products & Usage** button on the left navigation panel.
 
-2. Click the arrowhead ![img](https://web-cdn.agora.io/docs-files/1607311735894) in the top left corner, and select the project you want to check in the drop-down box.
+2. Click the arrowhead in the top left corner, and select the project you want to check in the drop-down box.
 
 3. Click **Duration** under **Whiteboard**, select a time frame, and check the usage duration.
  ![](https://web-cdn.agora.io/docs-files/1620288770652)

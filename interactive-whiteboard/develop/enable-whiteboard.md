@@ -102,4 +102,4 @@ Follow these steps to enable one or more features and configure the storage sett
 ## Reference
 After enabling the <Vg k="WHITE" />, you can refer to the following documents to use its functions:
 - [Join a whiteboard room](../get-started/get-started-sdk)
-- [File Conversion Overview](../reference/whiteboard-api/file-conversion)
+- [File conversion overview](../reference/whiteboard-api/file-conversion)

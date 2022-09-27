@@ -28,6 +28,10 @@ export const API_REF_ELECTRON_ROOT_VOICE_SDK  = `${API_REF_ROOT_VOICE_SDK}/elect
 export const API_REF_CPP_ROOT  = `${API_REF_ROOT}/cpp/${VSDK_RELEASE_API}/API`;
 export const API_REF_CPP_ROOT_VOICE_SDK  = `${API_REF_ROOT_VOICE_SDK}/cpp/${VSDK_RELEASE_API}/API`;
 export const API_REF_WINDOWS_CSHARP_ROOT  = `${API_REF_ROOT}/windows-csharp/3.6.2/API`;
+export const API_REF_ROOT_WHITE = 'https://agora-api-reference.vercel.app/interactive-whiteboard-sdk';
+export const API_REF_ANDROID_WHITE = `${API_REF_ROOT_WHITE}/android/2.x`;
+export const API_REF_IOS_WHITE = `${API_REF_ROOT_WHITE}/ios/2.x`;
+export const API_REF_WEB_WHITE = `${API_REF_ROOT_WHITE}/web/2.x`;
 
 
 export const CONSOLE = `${COMPANY} Console`;

@@ -8,6 +8,11 @@ description:  >
 
 After successfully joining an <Vg k="WHITE" /> room, you can use the default tool to write and draw on the whiteboard. The <Vg k="WHITE_SDK" /> provides rich basic editing tools, such as pencil, arrow, straight line, eraser, and various shapes. In addition, the <Vg k="WHITE_SDK" /> supports modifying the font size, stroke width, and stroke color.
 
+<PlatformWrapper notAllowed="web">
+This feature is for web only.
+</PlatformWrapper>
+<PlatformWrapper platform="web">
+
 This page describes using whiteboard tools in the following ways:
 
 - Directly set the whiteboard tool in the code. This method applies when you need only a simple editing tool.
@@ -16,7 +21,7 @@ This page describes using whiteboard tools in the following ways:
 <a name="tech"></a>
 ## Understand the tech
 
-The <Vg k="WHITE_SDK" /> provides the <Link to="{{Global.API_REF_WEB_WHITE}}/interfaces/room.html#setmemberstate">`setMemberState`</Link> method for setting the whiteboard tools used in the current whiteboard room. By modifying the [`MemberState`](https://docs.agora.io/en/whiteboard/API%20Reference/whiteboard_web/globals.html#memberstate) properties of the current room, you can switch tools, select shapes, and change the font size, stroke width, and color.
+The <Vg k="WHITE_SDK" /> provides the <Link to="{{Global.API_REF_WEB_WHITE}}/interfaces/room.html#setmemberstate">`setMemberState`</Link> method for setting the whiteboard tools used in the current whiteboard room. By modifying the <Link to="{{Global.API_REF_WEB_WHITE}}/interfaces/room.html#memberstate">`MemberState`</Link> properties of the current room, you can switch tools, select shapes, and change the font size, stroke width, and color.
 
 The `MemberState` type contains the following properties:
 
@@ -180,3 +185,5 @@ In addition to the basic editing tools listed in the <a href="#tech">Understand 
 | <Link to="{{Global.API_REF_WEB_WHITE}}/interfaces/room.html#disabledeviceinputs">disabledeviceinputs</Link> | Disables the whiteboard from responding to users' operations. |
 
 These methods, which are also members of the `Room` interface, also do not have user interfaces provided by the SDK. You can implement these functions by designing a UI and calling the corresponding methods according to your business needs. 
+
+</PlatformWrapper>

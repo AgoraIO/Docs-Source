@@ -1,6 +1,6 @@
 ---
 title: "Provide usage data to Agora"
-weight: 6
+sidebar_position: 6
 type: docs
 description: >
     Agora calls this API regularly to get the usage and billing information of a specified user
@@ -25,7 +25,7 @@ After a user adds an extension in their Agora projects, Agora sends this request
 ### HTTP request
 
 **URL**
-``` 
+```
 GET https://{host}/usage?fromTs={ts}&toTs={ts}&pageNum={pageNum}&apiKey={apiKey}&signature={signature}
 ```
 
@@ -57,7 +57,7 @@ The response body contains the following fields:
 
 **Request header**
 
-``` 
+```
 GET https://api.agora.io/usage?fromTs=1619913600&toTs=1619917200&pageNum=1&apiKey=pz*************gd&signature=SF*************3D HTTP/1.1
 ```
 
@@ -88,7 +88,7 @@ After a user adds an extension in their Agora projects, Agora sends this request
 
 ### HTTP request
 **URL**
-``` 
+```
 GET https://{host}/bill?fromTs={ts}&toTs={ts}&pageNum={pageNum}&apiKey={apiKey}&signature={signature}
 ```
 
@@ -120,7 +120,7 @@ The response body contains the following fields:
 
 **Request header**
 
-``` 
+```
 GET https://api.agora.io/usage?fromTs=1619913600&toTs=1619917200&pageNum=1&apiKey=pz*************gd&signature=SF*************3D HTTP/1.1
 ```
 
@@ -154,7 +154,7 @@ Agora calls this API to retrieve the license information of a specified user, in
 ### HTTP request
 
 **URL**
-``` 
+```
 GET https://{host}/customers/{customerId}/license?apiKey={apiKey}&signature={signature}
 ```
 
@@ -184,7 +184,7 @@ The response body contains the following fields:
 
 **Request header**
 
-``` 
+```
 GET https://api.agora.io/customers/1234567/license?apiKey=pz*************gd&signature=SF*************3D HTTP/1.1
 ```
 

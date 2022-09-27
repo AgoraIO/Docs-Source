@@ -60,7 +60,7 @@ export const VSDK_FLUTTER_PREVIOUS_RELEASE = '5.x';
 export const AV = 'Audio/Video';
 export const AV_URL = `${URL_ROOT}/video`;
 
-export const MESS = 'Signalling';
+export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
 export const SIG = `${MESS}`;
 export const CHAT = `Chat`;
@@ -92,7 +92,7 @@ export const UCS = 'Use Cases';
 
 export const AB = 'App Builder';
 export const UIK = 'UI Kit';
-export const vUIK = `Video ${UIK}`;
+export const vUIK = `${UIK}`;
 export const FC = 'Flexible Classroom';
 
 export const FC_VERSION = '2.6.x'

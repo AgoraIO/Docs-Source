@@ -1,0 +1,259 @@
+<PlatformWrapper platform="web">
+
+The Fastboard SDK is the latest generation of the whiteboard SDK launched by Agora to help developers quickly build whiteboard applications. The Fastboard SDK simplifies the APIs of the Whiteboard SDK [`white-web-sdk`](https://docs.agora.io/en/whiteboard/downloads)) and adds UI implementations. These improvements enable you to join a room with just a few lines of code and instantly experience real-time interactive collaboration using a variety of rich editing tools. In addition, the Fastboard SDK integrates [window-manager](https://github.com/netless-io/window-manager) and extensions from [netless-app](https://github.com/netless-io/netless-app), which allows developers to easily use extensions to extend the functionality of their whiteboard applications and enrich their users' collaboration experience.
+
+This page introduces how to quickly join a whiteboard room and experience the interactive whiteboard features using the Fastboard SDK.
+
+## Understand the tech
+
+The following figure shows the workflow to join an Agora Interactive Whiteboard room:
+
+![](https://web-cdn.agora.io/docs-files/1656645087226)
+
+When an app client requests to join an interactive whiteboard room, the app client and your app server interact with the Agora Interactive Whiteboard server in the following steps：
+
+1. The app server sends a request with the SDK token to the Agora Interactive Whiteboard server to create a whiteboard room.
+
+2. The Agora Interactive Whiteboard server returns the room UUID to the app server when a room is created successfully.
+
+3. The app server generates a room token using the returned room UUID and sends the room token and UUID to the app client.
+
+4. The app client calls `createFastboard` of the Fastboard SDK to create a `FastboardApp` instance and join the interactive whiteboard room.
+
+## Prerequsites
+
+Before proceeding, make sure you meet the following requirements:
+
+- A web browser that meets the minimum version requirements in [SDK options](/en/whiteboard/product_whiteboard#sdk-options).
+- A valid [Agora account](../reference/manage-agora-account#create-an-agora-account).
+
+- An Agora project with the whiteboard service enabled. Get the App Identifier and SDK token from Agora Console. See [Enable and Configure Interactive Whiteboard Service](../develop/enable-whiteboard).
+
+## Implementations on your app server
+
+Before an app client can join an interactive whiteboard room, your app server needs to call the Agora Restful APIs to create a room, get the room UUID, generate a room token, and pass the room UUID and room token to the app client.
+
+
+<a name="createroom"></a>
+### Create a whiteboard room
+
+Call [/v5/rooms (POST)](../reference/whiteboard-api/room-management#create-a-room-post) on your app server to create a room.
+
+You can use the following Node.js script as a request example:
+    ```javascript
+    var request = require("request");
+    var options = {
+        "method": "POST",
+        "url": "https://api.netless.link/v5/rooms",
+        "headers": {
+        "token": "Your SDK Token",
+        "Content-Type": "application/json",
+        "region": "us-sv"
+        },
+        body: JSON.stringify({
+            "isRecord": false
+        })
+    };
+    request(options, function (error, response) {
+        if (error) throw new Error(error);
+        console.log(response.body);
+    });
+    ```
+
+If the request is successful, Agora's server for the whiteboard service returns information about the created room, including `uuid`, which is the unique identifier of the room. You need to pass in this parameter when an app client joins the room.
+
+The followings is a response example:
+    ``` json
+    {
+        "uuid": "4a50xxxxxx796b", // The room UUID
+        "teamUUID": "RMmLxxxxxx15aw",
+        "appUUID": "i54xxxxxx1AQ",
+        "isBan": false,
+        "createdAt": "2021-01-18T06:56:29.432Z",
+        "limit": 0
+    }
+    ```
+
+<a name="roomtoken"></a>
+### Generate a room token
+
+After creating a room and getting the uuid of the room, your app server needs to generate a room token and send it to the app client. When an app client joins a room, Agora's server uses the room token for authentication.
+
+To generate a room token on your app server, you can use one of the following methods:
+
+- Use code. See [Generate a Token from your app server](../develop/generate-token-app-server). (Recommended)
+
+- Call the Interactive Whiteboard RESTful API. See [Generate a room token (POST)](../develop/generate-token-rest#generate-a-room-token-post).
+
+You can use the following Node.js script as a request example:
+    ``` javascript
+    var request = require('request');
+    var options = {
+        "method": "POST",
+        // Replace <Room UUID> with the uuid of your room
+        "url": "https://api.netless.link/v5/tokens/rooms/<Room UUID>",
+        "headers": {
+        "token": "Your SDK Token",
+        "Content-Type": "application/json",
+        "region": "us-sv"
+        },
+        body: JSON.stringify({"lifespan":3600000,"role":"admin"})
+
+    };
+    request(options, function (error, response) {
+        if (error) throw new Error(error);
+        console.log(response.body);
+    });
+    ```
+
+If the request is successful, Agora's server returns a room token. The following is a response example:
+    ```
+    "NETLESSROOM_YWs9XXXXXXXXXXXZWNhNjk" // Room token
+    ```
+## Implementations on the app client
+
+The following sections show how to use the Agora Fastboard SDK to join a whiteboard room from your Web app.
+
+### Create a basic Web application
+
+Create a new directory named `fastboard_quickstart`. For a minimal Web app client, create the following files in the directory :
+
+- `package.json`: Install and manage the dependencies of your project. To create the `package.json` file, you can navigate to the `fastboard_quickstart` directory on the command line and run `npm init`.
+
+- `index.html`: The visual interface with the user.
+
+- `main.js`: The programmable interface to implement the client logic.
+
+### Add dependencies
+
+1. In the project root directory, run the following line to install the latest version of the Fastboard SDK and other dependencies:
+    ```
+        npm add @netless/fastboard @netless/window-manager white-web-sdk
+    ```
+The meaning of each field is as follows:
+
+- `@netless/fastboard`: The Fastboard SDK.
+
+- `@netless/window-manager`: The window management plugin for implementing and managing a whiteboard application with multiple windows.
+
+- `white-web-sdk`: The Whiteboard SDK for Web, which provides the core functionality of the interactive whiteboard.
+
+In `package.json`, add the latest version of the Fastboard SDK and its version number to the `dependencies` field:
+
+To run and package the project, you need to specify the build tool. This quickstart uses [Vite](https://vitejs.dev/). In `package.json`, add `vite` to the `devDependencies` field, and define the command line for running the project in the scripts field:
+    ``` json
+    {
+    "name": "fastboard_quickstart",
+    "private": true,
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite --open"
+        },
+    "dependencies": {
+        "@netless/fastboard": "latest",
+        "@netless/window-manager": "latest",
+        "white-web-sdk": "latest"
+        },
+    "devDependencies": {
+        "vite": "latest"
+        }
+    }
+    ```
+### Create the user interface (UI)
+In `index.html`, add the following code to include the app logic in the UI:
+    ``` html
+    <!DOCTYPE html>
+    <html lang="en">
+
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Vite App</title>
+    </head>
+
+    <body>
+        <div id="app" style="width: 600px; height: 400px; border: 1px solid;"></div>
+        <script type="module" src="/main.js"></script>
+    </body>
+
+    </html>
+    ```
+Make sure you set the width and height for the HTML element that mounts the whiteboard; otherwise, the whiteboard can be invisible.
+
+
+
+
+### Join the whiteboard room
+
+To join the Interactive Whiteboard room, do the following:
+
+1. Call `createFastboard` to create a `FastboardApp` instance and join the whiteboard room.
+
+2. Call `mount` to mount the `FastboardApp` instance to the HTML element.
+
+When calling `createFastboard`, you must pass in the following parameters:
+
+- SDK configuration parameters in `sdkConfig`:
+
+    - `appIdentifier`: The App Identifier of the whiteboard project in Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).
+
+    - `region`: The data center, which must be the same as the data center you chose when creating the room.
+
+- Room configuration parameters in `joinRoom`:
+
+    - `uid`: The unique identifier of a user in string format. The maximum length is 1,024 bytes.
+
+    - `uuid`: The room UUID, the unique identifier of a whiteboard room. See <a href="#createroom">Create a room</a>.
+
+    - `roomToken`: The room token used for authentication. The room token must be generated using the room UUID above. See <a href="#roomtoken">Generate a room token</a>.
+
+Open `main.js` and add the following code:
+    ``` javascript
+    import { createFastboard, mount } from "@netless/fastboard";
+
+    let app;
+    async function mountFastboard(div) {
+        app = await createFastboard({
+            sdkConfig: {
+                appIdentifier: "Your App Identifier",
+                region: "cn-hz",
+            },
+            joinRoom: {
+                uid: "User ID",
+                uuid: "Room UUID",
+                roomToken: "Room Token",
+            },
+            managerConfig: {
+                cursor: true,
+            },
+        });
+        window.app = app;
+        return mount(app, div);
+    }
+
+    mountFastboard(document.getElementById("app"));
+    ```
+## Test your app
+
+1. To install dependencies, run the following command:
+    ```
+        npm install
+    ```
+2. To run the project, run the following command:
+    ```
+        npm run dev
+    ```
+
+A local web server automatically opens in your browser. You see the following page:
+
+![](https://web-cdn.agora.io/docs-files/1656644353113)
+
+You can select the pencil, text, or shape tools on the left toolbar to write and draw on the whiteboard. You can click the ![](https://web-cdn.agora.io/docs-files/1656644427145) icon at the bottom of the toolbar to experience the rich plugins. When the current page is full, you can click the ![](https://web-cdn.agora.io/docs-files/1656644443536) icon at the bottom right to add a new page, and use the arrows to switch pages.
+
+<div class = "alert note">Running the web app through a local server (localhost) is for testing purposes only. In production, ensure that you use the HTTPS protocol when deploying your project.</div>
+
+## Next steps
+
+After experiencing the basic whiteboard functionality, you can call APIs of the Fastboard SDK to insert images, audio and video, and documents to the whiteboard.
+
+</PlatformWrapper>

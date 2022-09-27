@@ -30,7 +30,6 @@ Before recording, call the [`acquire`](../reference/rest-api/acquire) method to 
     ```html
     https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
     ```
-- 
 - `Content-type`: `application/json;charset=utf-8`
 - `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
 - Request body:

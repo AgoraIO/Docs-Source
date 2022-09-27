@@ -3,27 +3,32 @@ export const URL_ROOT = 'https://docs.agora.io/en';
 export const AGORA_BACKEND = `${COMPANY} SD-RTN`;
 export const CLIENT = platform => (platform === 'unity' ? 'game' : 'app');
 
+export const VSDK_RELEASE_API = '4.0.0-beta.2'
+export const VSDK_UNITY_FLUTTER_RN_RELEASE_API = '4.0.0.beta-2'
+export const VSDK_WEB_RELEASE_API = '4.13.0'
 export const API_REF_ROOT = 'https://agora-api-reference.vercel.app/video-sdk';
 export const API_REF_ROOT_VOICE_SDK = 'https://agora-api-reference.vercel.app/voice-sdk';
 export const API_REF_OLD = 'https://docs.agora.io/en/Video/API%20Reference';
-export const API_REF_ANDROID_ROOT  = `${API_REF_ROOT}/android/4.0.0-beta.2/API`;
-export const API_REF_ANDROID_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/android/4.0.0-beta.2/API`;
-export const API_REF_WEB_ROOT = `${API_REF_ROOT}/web/4.13.0`;
-export const API_REF_IOS_ROOT = `${API_REF_ROOT}/ios/4.0.0-beta.2/API`;
-export const API_REF_IOS_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/ios/4.0.0-beta.2/API`;
-export const API_REF_RN_ROOT  = `${API_REF_ROOT}/react-native/4.0.0-beta.2/API`;
-export const API_REF_RN_ROOT_VOICE = `${API_REF_ROOT_VOICE_SDK}/react-native/4.0.0-beta.2/API`;
-export const API_REF_MACOS_ROOT = `${API_REF_ROOT}/macos/4.0.0-beta.2/API`;
-export const API_REF_IOS_MAC_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/macos/4.0.0-beta.2/API`;
-export const API_REF_ROOT_VOICE = `${URL_ROOT}/voice-call-4.x-beta/API%20Reference`;
-export const API_REF_FLUTTER_ROOT = `${API_REF_ROOT}/flutter_ng/API`;
-export const API_REF_UNITY_ROOT = `${API_REF_ROOT}/unity/4.0.0.beta-2/API`;
-export const API_REF_UNITY_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/unity/4.0.0.beta-2/API`;
-export const API_REF_ELECTRON_ROOT  = `${API_REF_ROOT}/electron_ng/API`;
-export const API_REF_ROOT_WHITE = 'https://agora-api-reference.vercel.app/interactive-whiteboard-sdk';
-export const API_REF_ANDROID_WHITE = `${API_REF_ROOT_WHITE}/android/2.15.0`;
-export const API_REF_IOS_WHITE = `${API_REF_ROOT_WHITE}/ios/2.15.0`;
-export const API_REF_WEB_WHITE = `${API_REF_ROOT_WHITE}/web/2.15.2`;
+export const API_REF_ANDROID_ROOT  = `${API_REF_ROOT}/android/${VSDK_RELEASE_API}/API`;
+export const API_REF_ANDROID_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/android/${VSDK_RELEASE_API}/API`;
+export const API_REF_WEB_ROOT = `${API_REF_ROOT}/web/${VSDK_WEB_RELEASE_API}`;
+export const API_REF_WEB_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/web/${VSDK_WEB_RELEASE_API}`;
+export const API_REF_IOS_ROOT = `${API_REF_ROOT}/ios/${VSDK_RELEASE_API}/API`;
+export const API_REF_IOS_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/ios/${VSDK_RELEASE_API}/API`;
+export const API_REF_RN_ROOT  = `${API_REF_ROOT}/react-native/${VSDK_RELEASE_API}/API`;
+export const API_REF_RN_ROOT_VOICE = `${API_REF_ROOT_VOICE_SDK}/react-native/${VSDK_RELEASE_API}/API`;
+export const API_REF_MACOS_ROOT = `${API_REF_ROOT}/macos/${VSDK_RELEASE_API}/API`;
+export const API_REF_MAC_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/macos/${VSDK_RELEASE_API}/API`;
+export const API_REF_FLUTTER_ROOT = `${API_REF_ROOT}/flutter/${VSDK_RELEASE_API}/API`;
+export const API_REF_FLUTTER_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/flutter/${VSDK_RELEASE_API}/API`;
+export const API_REF_UNITY_ROOT = `${API_REF_ROOT}/unity/${VSDK_UNITY_FLUTTER_RN_RELEASE_API}/API`;
+export const API_REF_UNITY_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/unity/${VSDK_UNITY_FLUTTER_RN_RELEASE_API}/API`;
+export const API_REF_ELECTRON_ROOT  = `${API_REF_ROOT}/electron/${VSDK_RELEASE_API}/API`;
+export const API_REF_ELECTRON_ROOT_VOICE_SDK  = `${API_REF_ROOT_VOICE_SDK}/electron/${VSDK_RELEASE_API}/API`;
+export const API_REF_CPP_ROOT  = `${API_REF_ROOT}/cpp/${VSDK_RELEASE_API}/API`;
+export const API_REF_CPP_ROOT_VOICE_SDK  = `${API_REF_ROOT_VOICE_SDK}/cpp/${VSDK_RELEASE_API}/API`;
+export const API_REF_WINDOWS_CSHARP_ROOT  = `${API_REF_ROOT}/windows-csharp/3.6.2/API`;
+
 
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
@@ -53,7 +58,7 @@ export const VSDK_RELEASE_FOLDER = 'video-call-4.x-beta';
 export const AV = 'Audio/Video';
 export const AV_URL = `${URL_ROOT}/video`;
 
-export const MESS = 'Signalling';
+export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
 export const SIG = `${MESS}`;
 export const CHAT = `Chat`;
@@ -88,7 +93,7 @@ export const UCS = 'Use Cases';
 
 export const AB = 'App Builder';
 export const UIK = 'UI Kit';
-export const vUIK = `Video ${UIK}`;
+export const vUIK = `${UIK}`;
 export const FC = 'Flexible Classroom';
 
 export const FC_VERSION = '2.6.x'

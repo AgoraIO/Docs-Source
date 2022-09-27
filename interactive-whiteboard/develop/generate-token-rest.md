@@ -6,14 +6,14 @@ description: >
     Call the Interactive Whiteboard RESTful API to generate tokens.
 ---
 
-Agora Interactive Whiteboard uses different types of tokens for user authentication. For details, see [Interactive Whiteboard Token overview](/en/whiteboard/whiteboard_token_overview).
+<Vg k="WHITE" /> uses different types of tokens for user authentication. For details, see [<Vg k="WHITE" /> Token overview](./authentication-workflow).
 
 
-This article introduces how to call the interactive whiteboard RESTful API to generate tokens.
+This article introduces how to call the <Vg k="WHITE" /> RESTful API to generate tokens.
 
-## Generate an SDK token (POST)
+## Generate an SDK Token (POST)
 
-Call this API to generate an SDK token.
+Call this API to generate an SDK Token.
 
 ### Prototype
 
@@ -32,10 +32,10 @@ Pass in the following parameters in the request header:
 
 | Parameter         | Data type | Required/Optional | Description                                                  |
 | :---------------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `accessKey`       | string    | Required          | The Access Key (AK), which can be obtained in Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project). |
-| `secretAccessKey` | string    | Required          | The Secret Key (SK), which can be obtained in Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project). |
+| `accessKey`       | string    | Required          | The Access Key (AK), which can be obtained in <Vg k="CONSOLE" />. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project). |
+| `secretAccessKey` | string    | Required          | The Secret Key (SK), which can be obtained in <Vg k="CONSOLE" />. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project). |
 | `lifespan`        | integer   | Required          | The token validity period (milliseconds). If you set it to `0`, the token is permanently valid. |
-| `role`            | string    | Required          | The token role:<li>`admin`</li><li>`writer`</li><li>`reader`</li>See [Token Overview](/en/whiteboard/whiteboard_token_overview?platform=RESTful#introduction). |
+| `role`            | string    | Required          | The token role:<li>`admin`</li><li>`writer`</li><li>`reader`</li>See [Token Overview](./authentication-workflow). |
 
 ### Request example
 
@@ -70,9 +70,9 @@ The following is a response example for a successful request:
 
 If the status code is not `201`, the request fails. The response body includes a `message` field that describes the reason for the failure.
 
-## Generate a room token (POST)
+## Generate a Room Token (POST)
 
-Call this API to generate a room token.
+Call this API to generate a Room Token.
 
 ### Prototype
 
@@ -83,10 +83,10 @@ Call this API to generate a room token.
 
 Pass in the following parameters in the request header:
 
-| Parameter | Data type | Required/Optional | Description                                                  |
-| :-------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `token`   | string    | Required          | The SDK token, which can be obtained through one of the following methods:<li>Get a test-purpose SDK token from Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](#generate-an-sdk-token-post).</li><li>Write code on your app server. See [Generate a token from your app server](../develop/generate-token-app-server).</li> |
-| `region`  | string    | Required         | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`gb-lon`: London, England, which provides services to Europe.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li> |
+| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| :-------- | :-------- | :---------------- |:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `token`   | string    | Required          | The SDK Token, which can be obtained through one of the following methods:<li>Get a test-purpose SDK token from Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](#generate-an-sdk-token-post).</li><li>Write code on your app server. See [Generate a token from your app server](../develop/generate-token-app-server).</li> |
+| `region`  | string    | Required         | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`gb-lon`: London, England, which provides services to Europe.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li>   |
 
 ### Request path
 
@@ -102,7 +102,7 @@ The following parameters are required in the URL:
 | :--------- | :-------- | :---------------- | :----------------------------------------------------------- |
 | `ak`       | string    | Optional          | The Access Key (AK), which can be obtained in Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project). |
 | `lifespan` | integer   | Required          | The token validity period (milliseconds). If you set it to `0`, the token is permanently valid. |
-| `role`     | string    | Required          | The token role:<li>`admin`</li><li>`writer`</li><li>`reader`</li>See [Token Overview](/en/whiteboard/whiteboard_token_overview?platform=RESTful#introduction). |
+| `role`     | string    | Required          | The token role:<li>`admin`</li><li>`writer`</li><li>`reader`</li>See [Token Overview](./authentication-workflow). |
 
 ### Request example
 
@@ -136,9 +136,9 @@ If the status code is `201`, the request is successful. The response returns the
 
 If the status code is not `201`, the request fails. The response body includes a `message` field that describes the reason for the failure.
 
-## Generate a task token (POST)
+## Generate a Task Token (POST)
 
-Call this API to generate a task token.
+Call this API to generate a Task Token.
 
 ### Prototype
 
@@ -149,10 +149,10 @@ Call this API to generate a task token.
 
 Pass in the following parameters in the request header:
 
-| Parameter | Data type | Required/Optional | Description                                                  |
-| :-------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `token`   | string    | Required          | The SDK token, which can be obtained through one of the following methods:<li>Get a test-purpose SDK token from Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](#generate-an-sdk-token-post).</li><li>Write code on your app server. See [Generate a token from your app server](../develop/generate-token-app-server).</li> |
-| `region`  | string    | Required         | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`gb-lon`: London, England, which provides services to Europe.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li> |
+| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| :-------- | :-------- | :---------------- |:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `token`   | string    | Required          | The SDK Token, which can be obtained through one of the following methods:<li>Get a test-purpose SDK Token from <Vg k="CONSOLE" />. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](#generate-an-sdk-token-post).</li><li>Write code on your app server. See [Generate a token from your app server](../develop/generate-token-app-server).</li> |
+| `region`  | string    | Required         | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`gb-lon`: London, England, which provides services to Europe.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li>   |
 
 ### Request path
 
@@ -166,9 +166,9 @@ The following parameters are required in the URL:
 
 | Parameter  | Data type | Required/Optional | Description                                                  |
 | :--------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `ak`       | string    | Optional          | The Access Key (AK), which can be obtained in Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project). |
+| `ak`       | string    | Optional          | The Access Key (AK), which can be obtained in <Vg k="CONSOLE" />. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project). |
 | `lifespan` | integer   | Required          | The token validity period (milliseconds). If you set it to `0`, the token is permanently valid. |
-| `role`     | string    | Required          | The token role:<li>`admin`</li><li>`writer`</li><li>`reader`</li>See [Token Overview](/en/whiteboard/whiteboard_token_overview?platform=RESTful#introduction). |
+| `role`     | string    | Required          | The token role:<li>`admin`</li><li>`writer`</li><li>`reader`</li>See [Token Overview](./authentication-workflow). |
 
 ### Request example
 

@@ -21,16 +21,16 @@ Pass in the following parameters in the request header:
 
 | Parameter | Data type | Required/Optional | Description                                                  |
 | :-------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `token`   | string    | Required          | An SDK token or room token with the `writer` or `admin` role. To get an SDK token, you can:<li>Get a test-purpose SDK token from Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](/en/whiteboard/generate_whiteboard_token?platform=RESTful#generate-an-sdk-token-post).</li><li>Use code samples. See [Generate a token from your app server](../develop/generate-token-app-server).</li>To get a room token, you can:<li>Call the RESTful API. See [Generate a Room Token](/en/whiteboard/generate_whiteboard_token?platform=RESTful#generate-a-room-token-post).</li><li>Use code samples. See [Generate a token from your app server](../develop/generate-token-app-server).</li>  |
+| `token`   | string    | Required          | An SDK token or room token with the `writer` or `admin` role. To get an SDK token, you can:<li>Get a test-purpose SDK token from Agora Console. See [Get security credentials for your whiteboard project](../../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](../../develop/generate-token-rest).</li><li>Use code samples. See [Generate a token from your app server](../../develop/generate-token-app-server).</li>To get a room token, you can:<li>Call the RESTful API. See [Generate a Room Token](../../develop/generate-token-rest#generate-a-room-token-post).</li><li>Use code samples. See [Generate a token from your app server](../../develop/generate-token-app-server).</li>  |
 | `region`  | string    | Required          | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`gb-lon`: London, England, which provides services to Europe.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li> |
 
 ### Request path
 
 The following parameters are required in the URL:
 
-| Parameter | Data type | Required/Optional | Description                                                  |
-| :-------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `uuid`    | string    | Required          | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](../reference/whiteboard-api/room-management#create-a-room-post) or calling the [RESTful API to get room information](../reference/whiteboard-api/room-management#get-room-information-get). |
+| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                             |
+| :-------- | :-------- | :---------------- |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `uuid`    | string    | Required          | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](./room-management#create-a-room-post) or calling the [RESTful API to get room information](./room-management#get-room-information-get). |
 
 ### Query parameters
 
@@ -52,7 +52,7 @@ Content-Type: application/json
 
 ### HTTP response
 
-For details about all possible response status codes, see the [status code table](../reference/whiteboard-api/overview#status-codes).
+For details about all possible response status codes, see the [status code table](./overview#status-codes).
 
 If the status code is `200`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -84,18 +84,18 @@ Call this API to add a scene.
 
 Pass in the following parameters in the request header:
 
-| Parameter | Data type | Required/Optional | Description                                                  |
-| :-------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `token`   | string    | Required          | An SDK token or room token with the `writer` or `admin` role. To get an SDK Token, you can:<li>Get a test-purpose SDK token from Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](/en/whiteboard/generate_whiteboard_token?platform=RESTful#generate-an-sdk-token-post).</li><li>Use code samples. See [Generate a token from your app server](../develop/generate-token-app-server).</li>To get a room token, you can:<li>Call the RESTful API. See [Generate a room token](/en/whiteboard/generate_whiteboard_token?platform=RESTful#generate-a-room-token-post).</li><li>Use code samples. See [Generate a token from your app server](../develop/generate-token-app-server).</li>  |
-| `region`  | string    | Required          | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`gb-lon`: London, England, which provides services to Europe.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li> |
+| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| :-------- | :-------- | :---------------- |:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `token`   | string    | Required          | An SDK token or room token with the `writer` or `admin` role. To get an SDK Token, you can:<li>Get a test-purpose SDK token from Agora Console. See [Get security credentials for your whiteboard project](../../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](../../develop/generate-token-rest).</li><li>Use code samples. See [Generate a token from your app server](../../develop/generate-token-app-server).</li>To get a room token, you can:<li>Call the RESTful API. See [Generate a room token](../../develop/generate-token-rest#generate-a-room-token-post).</li><li>Use code samples. See [Generate a token from your app server](../../develop/generate-token-app-server).</li> |
+| `region`  | string    | Required          | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`gb-lon`: London, England, which provides services to Europe.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li>                                                                                                                                                                                                                                                                                         |
 
 ### Request path
 
 The following parameters are required in the URL:
 
-| Parameter | Data type | Required/Optional | Description                                                  |
-| :-------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `uuid`    | string    | Required          | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](../reference/whiteboard-api/room-management#create-a-room-post) or calling the [RESTful API to get room information](../reference/whiteboard-api/room-management#get-room-information-get). |
+| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                             |
+| :-------- | :-------- | :---------------- |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `uuid`    | string    | Required          | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](./room-management#create-a-room-post) or calling the [RESTful API to get room information](./room-management#get-room-information-get). |
 
 
 ### Request Body
@@ -140,7 +140,7 @@ token: NETLESSSDK_YWs9QlxxxxxA0NzA5ZGM2MjRi
 
 ### HTTP response
 
-For details about all possible response status codes, see the [status code table](../reference/whiteboard-api/overview#status-codes).
+For details about all possible response status codes, see the [status code table](./overview#status-codes).
 
 If the status code is `201`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -171,16 +171,16 @@ Pass in the following parameters in the request header:
 
 | Parameter | Data type | Required/Optional | Description                                                  |
 | :-------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `token`   | string    | Required          | An SDK token or room token with the `admin` role. To get an SDK token, you can:<li>Get a test-purpose SDK token from Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](/en/whiteboard/generate_whiteboard_token?platform=RESTful#generate-an-sdk-token-post).</li><li>Use code samples. See [Generate a token from your app server](../develop/generate-token-app-server).</li>To get a room token, you can:<li>Call the RESTful API. See [Generate a room token](/en/whiteboard/generate_whiteboard_token?platform=RESTful#generate-a-room-token-post).</li><li>Use code samples. See [Generate a token from your app server](../develop/generate-token-app-server).</li>  |
+| `token`   | string    | Required          | An SDK token or room token with the `admin` role. To get an SDK token, you can:<li>Get a test-purpose SDK token from Agora Console. See [Get security credentials for your whiteboard project](../../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](../../develop/generate-token-rest).</li><li>Use code samples. See [Generate a token from your app server](../../develop/generate-token-app-server).</li>To get a room token, you can:<li>Call the RESTful API. See [Generate a room token](../../develop/generate-token-rest#generate-a-room-token-post).</li><li>Use code samples. See [Generate a token from your app server](../../develop/generate-token-app-server).</li>  |
 | `region`  | string    | Required          | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`gb-lon`: London, England, which provides services to Europe.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li> |
 
 ### Request path
 
 The following parameters are required in the URL:
 
-| Parameter | Data type | Required/Optional | Description                                                  |
-| :-------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `uuid`    | string    | Required          | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](../reference/whiteboard-api/room-management#create-a-room-post) or calling the [RESTful API to get room information](../reference/whiteboard-api/room-management#get-room-information-get). |
+| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                             |
+| :-------- | :-------- | :---------------- |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `uuid`    | string    | Required          | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](./room-management#create-a-room-post) or calling the [RESTful API to get room information](./room-management#get-room-information-get). |
 
 ### Request body
 
@@ -204,7 +204,7 @@ token: NETLESSSDK_YWs9TxxxxxYjc0
 
 ### HTTP response
 
-For details about all possible response status codes, see the [status code table](../reference/whiteboard-api/overview#status-codes).
+For details about all possible response status codes, see the [status code table](./overview#status-codes).
 
 
 If the status code is `201`, the request is successful. The response returns the status code and corresponding parameters.

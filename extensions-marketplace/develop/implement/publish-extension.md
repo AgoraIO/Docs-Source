@@ -1,6 +1,6 @@
 ---
 title: "Publish your extension"
-sidebar_position: 4
+sidebar_position: 7
 type: docs
 description:
   Publish your extension in the Marketplace.

@@ -52,10 +52,9 @@ Agora Interactive Whiteboard has implemented network geofencing in each server-s
 
 Refer to the following API references for more information:
 
-- [RESTful APIs](https://docs.agora.io../reference/whiteboard-api/overview) 
-- [Web SDK APIs](https://docs.agora.io/en/whiteboard/API%20Reference/whiteboard_web/index.html)
-- [Android SDK APIs](https://docs.agora.io/en/whiteboard/API%20Reference/whiteboard_java/index.html)
-- [iOS SDK APIs](https://docs.agora.io/en/whiteboard/API%20Reference/whiteboard_oc/index.html)
+- [RESTful APIs](../../reference/whiteboard-api/overview) 
+- [Interactive Whiteboard SDKs](../../../api-reference?platform=all)
+
 
 
 With network geofencing enabled, data transfer is restricted to the service areas that your specified data center covers. However, this does not prohibit users located in different areas from communicating with each other, as long as they join the same whiteboard room. For example, when a teacher creates a whiteboard room that is geofenced in Europe, students located in India can join the room through the global accelerator and interact with the teacher. If the students join a whiteboard room that is geofenced in India, then they cannot communicate with the teacher in Europe, because no data is allowed to be transmitted across data centers. 

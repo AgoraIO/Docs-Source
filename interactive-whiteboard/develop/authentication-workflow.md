@@ -66,13 +66,13 @@ A Task Token is linked with a file-conversion task under a whiteboard project in
 
 You can generate a token for the whiteboard service through one of the following methods:
 
-- Use [Agora Console](https://console.agora.io/). See [Get security credentials for your whiteboard project](https://docs.agora.io/en/whiteboard/enable_whiteboard#get-security-credentials-for-your-whiteboard-project).
+- Use [Agora Console](https://console.agora.io/). See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).
 
 This method can only generate a permanent <code>admin</code> SDK Token. Do not send this token to your app clients; otherwise, there may be a risk of exposure.
 
-- Call the the Interactive Whiteboard RESTful API from your app server. See [Generate a token using RESTful API](/en/whiteboard/generate_whiteboard_token).
+- Call the the Interactive Whiteboard RESTful API from your app server. See [Generate a token using RESTful API](../develop/generate-token-rest).
 
-- Use the open-source [netless-token](https://github.com/netless-io/netless-token) repository. See [Generate a token at your app server](https://docs.agora.io/en/whiteboard/generate_whiteboard_token_at_app_server). (Recommended) 
+- Use the open-source [netless-token](https://github.com/netless-io/netless-token) repository. See [Generate a token at your app server](../develop/generate-token-app-server). (Recommended) 
 
 When generating a token, pass in the following parameters:
 

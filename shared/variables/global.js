@@ -58,7 +58,7 @@ export const VSDK_RELEASE_FOLDER = 'video-call-4.x-beta';
 export const AV = 'Audio/Video';
 export const AV_URL = `${URL_ROOT}/video`;
 
-export const MESS = 'Signalling';
+export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
 export const SIG = `${MESS}`;
 export const CHAT = `Chat`;

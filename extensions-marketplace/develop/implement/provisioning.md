@@ -1,12 +1,12 @@
 ---
 title: "Provision your extension"
-weight: 5
+sidebar_position: 5
 type: docs
 description: >
-    Provide the URLs to Agora in order to receive extension activation and deactivation information.  
+    Provide the URLs to Agora in order to receive extension activation and deactivation information.
 ---
 
-When your extension is activated or deactivated on Agora Console, Agora passes relevant information to you so that you can take corresponding actions. For this purpose, you need to implement the provisioning API and provide the URLs to Agora. 
+When your extension is activated or deactivated on Agora Console, Agora passes relevant information to you so that you can take corresponding actions. For this purpose, you need to implement the provisioning API and provide the URLs to Agora.
 
 This page provides a detailed description of the provisioning API.
 
@@ -16,7 +16,7 @@ Before implementing the provisioning API, ensure that your server meets the foll
 - Able to handle at least 100 requests per second.
 - Follows the standards of HTTP request and response.
 
-Agora waits for 500 millseconds after sending a request to your server. If there is no response, Agora resends the request for a maximum of two times.
+Agora waits for 500 milliseconds after sending a request to your server. If there is no response, Agora resends the request for a maximum of two times.
 
 ## Create an account
 
@@ -25,7 +25,7 @@ When a user activates your extension, Agora calls this method to pass the basic 
 ### HTTP request
 
 **URL**
-``` 
+```
 POST https://{host}/customers/new
 ```
 
@@ -36,7 +36,7 @@ The request body contains the following fields:
 | :-------------- | :------- | :----- | :---------- | :----------------------------------------------------------- |
 | `planId`        | Required      | String | 16          | The billing plan that the user selects.                      |
 | `customerName`  | Optional       | String | 32          | The company name of the user.                                |
-| `customerId`    | Required      | Int    | N/A         | The account ID of the user on Agora Console.                 |
+| `customerId`    | Required      | String    | N/A         | The account ID of the user on Agora Console.                 |
 | `customerEmail` | Optional       | String | 32          | The email address of the user.                               |
 | `customerPhone` | Optional       | String | 32          | The phone number of the user.                                |
 | `apiKey`        | Required      | String | 32          | The API key, used for authentication between you and Agora. You need to generate your own API key and provide it to Agora. |
@@ -57,7 +57,7 @@ The response body contains the following fields:
 {
     "planId": "ABC",
     "customerName": "AgoraCustomerA",
-    "customerId": 12345678910,
+    "customerId": "12345678910",
     "customerEmail": "AgoraCustomerA",
     "customerPhone": "12345678910",
     "apiKey": "pz**************************gd",
@@ -81,13 +81,13 @@ When a user enables your extension for an Agora project, Agora calls this method
 ### HTTP request
 
 **URL**
-``` 
+```
 POST https://{host}/customers/{customerId}/projects/new
-``` 
+```
 
 **Path parameter**
 
-`customerId`: Int. The account ID of the user on Agora Console.
+`customerId`: String. The account ID of the user on Agora Console.
 
 **Request body**
 The request body contains the following fields:
@@ -137,12 +137,12 @@ Once the user deactivates your extension on Agora Console, Agora calls this meth
 
 ### HTTP request
 **URL**
-``` 
+```
 PUT http://{host}/customers/{customerId}/deactivate
 ```
 
 **Path parameter**
-`customerId`: Int. The ID of the user on Agora Console.
+`customerId`: String. The ID of the user on Agora Console.
 
 **Request body**
 The request body contains the following fields:
@@ -187,7 +187,7 @@ Once the user disables your extension for an Agora project, Agora calls this met
 
 ### HTTP request
 **URL**
-``` 
+```
 PUT http://{host}//customers/{customerId}/projects/{projectId}/deactivate
 ```
 
@@ -195,7 +195,7 @@ PUT http://{host}//customers/{customerId}/projects/{projectId}/deactivate
 
 | Parameter  | Type    | Description                                              |
 | :----------- | :------- | :------------------------------------------------------- |
-| `customerId` | Int | The account ID of the user on Agora Console.             |
+| `customerId` | String | The account ID of the user on Agora Console.             |
 | `projectId`  | Int | The ID of the project for which the user wants to disable your extension. |
 
 **Request body**

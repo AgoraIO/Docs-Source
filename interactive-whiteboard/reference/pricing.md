@@ -52,7 +52,7 @@ For each user, Agora calculates the usage duration from the user joining a room 
 
 Agora calculates the usage amount by the number of images and web pages successfully converted from source files.
 
-<div class="alert note"><ul><li>The cost of converting a file to web pages is five times the cost of converting it to images. When charging for file conversion to web pages, Agora multiplies the number of generated web pages by five in order to use a consistent unit price for the file conversion feature.</li><li>Agora does not charge for a failed file conversion task. You can call the <a href="/en/whiteboard/whiteboard_file_conversion?platform=RESTful#query-the-progress-of-a-file-conversion-task">Query file conversion progress </a > API to get the result of a file conversion task.</li><li>The file conversion feature can also be charged by QPS. See  <a href="/en/whiteboard/qps_based_pricing?platform=Web">QPS-based Pricing</a >.</li></ul></div>
+<div class="alert note"><ul><li>The cost of converting a file to web pages is five times the cost of converting it to images. When charging for file conversion to web pages, Agora multiplies the number of generated web pages by five in order to use a consistent unit price for the file conversion feature.</li><li>Agora does not charge for a failed file conversion task. You can call the <a href="/interactive-whiteboard/reference/whiteboard-api/file-conversion#query-the-progress-of-a-file-conversion-task">Query file conversion progress </a > API to get the result of a file conversion task.</li><li>The file conversion feature can also be charged by QPS. See  <a href="/interactive-whiteboard/reference/qps_pricing">QPS-based Pricing</a >.</li></ul></div>
 
 ### Free-of-charge usage
 

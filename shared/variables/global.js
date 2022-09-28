@@ -85,6 +85,13 @@ export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/referenc
 
 
 export const CHAT = `Chat`;
+export const CHAT_RELEASE_API = `1.x`;
+export const API_REF_ROOT_CHAT_SDK = `${API_ROOT}/chat-sdk`;
+export const CHAT_SDK_API_ANDROID  = `${API_REF_ROOT_CHAT_SDK}/android/${CHAT_RELEASE_API}`;
+export const CHAT_SDK_API_WEB  = `${API_REF_ROOT_CHAT_SDK}/web/${CHAT_RELEASE_API}`;
+
+
+
 export const PS = 'Pub-Sub';
 export const PUSH = 'Push Notifications';
 
@@ -110,7 +117,20 @@ export const CP = 'Cloud Proxy';
 export const RTMPC = 'RTMP Converter';
 export const TRANS = 'Transcoding';
 export const OPREC = 'On-premise Recording';
+export const OPREC_RELEASE_API = `3.x`;
+export const API_REF_ROOT_OPREC_SDK = `${API_ROOT}/on-premise-recording-sdk`;
+export const OPREC_SDK_API_CPP  = `${API_REF_ROOT_OPREC_SDK}/linux-cpp/${OPREC_RELEASE_API}`;
+export const OPREC_SDK_API_JAVA  = `${API_REF_ROOT_OPREC_SDK}/linux-java/${OPREC_RELEASE_API}`;
+
+
 export const CREC = 'Cloud Recording';
+
+export const CGATE = 'Cloud Gateway';
+
+export const CGATE_RELEASE_API = `3.x`;
+export const API_REF_ROOT_CGATE_SDK = `${API_ROOT}/on-premise-recording-sdk`;
+export const CGATE_SDK_API_CPP  = `${API_REF_ROOT_CGATE_SDK}/linux-cpp/${CGATE_RELEASE_API}`;
+export const CGATE_SDK_API_JAVA  = `${API_REF_ROOT_CGATE_SDK}/linux-java/${CGATE_RELEASE_API}`
 
 export const UCS = 'Use Cases';
 

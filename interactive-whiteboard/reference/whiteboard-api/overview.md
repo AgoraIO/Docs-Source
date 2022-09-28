@@ -6,7 +6,7 @@ description: >
     Basic information about the Interactive Whiteboard API.
 ---
 
-This article provides basic information about the Interactive Whiteboard RESTful API.
+This article provides basic information about the <Vg k="WHITE_SDK" /> RESTful API.
 
 ## Domain
 
@@ -20,13 +20,13 @@ The `Content-Type` field in all HTTP request headers is `application/json`. All 
 
 ## Core features
 
-The Interactive Whiteboard RESTful API provides the following features:
+The <Vg k="WHITE_SDK" /> RESTful API provides the following features:
 
 - [Token generation](../../develop/generate-token-rest)
-- [Room management](../../reference/whiteboard-api/room-management)
-- [Screenshot management](../../reference/whiteboard-api/screenshots)
-- [Scene management](../../reference/whiteboard-api/scene-management)
-- [File conversion](../../reference/whiteboard-api/file-conversion)
+- [Room management](./room-management)
+- [Screenshot management](./screenshots)
+- [Scene management](./scene-management)
+- [File conversion](./file-conversion)
 
 ## Status codes
 

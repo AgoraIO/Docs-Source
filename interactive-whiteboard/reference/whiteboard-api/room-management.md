@@ -23,7 +23,7 @@ Pass in the following parameters in the request header:
 
 | Parameter | Data type | Required/Optional | Description                                                  |
 | :-------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `token`   | string    | Required          | The SDK token, which can be obtained through one of the following methods:<li>Get a test-purpose SDK token from Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](../develop/generate-token-rest#generate-an-sdk-token-post).</li><li>Use code samples. See [Generate a token from your app server](../develop/generate-token-app-server).</li> |
+| `token`   | string    | Required          | The SDK token, which can be obtained through one of the following methods:<li>Get a test-purpose SDK token from <Vg k="CONSOLE" />. See [Get security credentials for your whiteboard project](../../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](../../develop/generate-token-rest).</li><li>Use code samples. See [Generate a token from your app server](../../develop/generate-token-app-server).</li> |
 | `region`  | string    | Required         | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`gb-lon`: London, England, which provides services to Europe.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li> |
 
 ### Request body
@@ -49,7 +49,7 @@ Content-Type: application/json
 
 ### HTTP response
 
-For details about all possible response status codes, see the [status code table](../reference/whiteboard-api/overview#status-codes).
+For details about all possible response status codes, see the [status code table](../../reference/whiteboard-api/overview#status-codes).
 
 If the status code is `201`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -74,7 +74,7 @@ If the status code is `201`, the request is successful. The response returns the
 | Parameter | Data type | Description                                                                                                                                      |
 | :---------- | :------ |:-------------------------------------------------------------------------------------------------------------------------------------------------|
 | `uuid` | string | The room UUID, which is the unique identifier of a room.                                                                                         |
-| `teamUUID` | string | The unique identifier of the Agora Console account that creates the whiteboard project.                                                          |
+| `teamUUID` | string | The unique identifier of the <Vg k="CONSOLE" /> account that creates the whiteboard project.                                                          |
 | `appUUID` | string | The unique identifier of the whiteboard project.                                                                                                 |
 | `isRecord` | boolean | Whether recording is enabled for the room:<li>`true`: Enabled.</li><li>`false`: Not enabled.</li>                                                     |
 | `isBan` | boolean | Whether the room is disabled:<li>`true`: Disabled.</li><li>`false`: Not disabled.</li>                                                           |
@@ -100,7 +100,7 @@ Pass in the following parameters in the request header:
 
 | Parameter | Data type | Required/Optional | Description                                                  |
 | :-------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `token`   | string    | Required          | A SDK token or room token with the `writer` or `admin` role. To get a SDK token, you can:<li>Get a test-purpose SDK token from Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard&#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](../develop/generate-token-rest#generate-an-sdk-token-post).</li><li>Use code samples. See [Generate a token from your app server](../develop/generate-token-app-server).</li> |
+| `token`   | string    | Required          | A SDK token or room token with the `writer` or `admin` role. To get a SDK token, you can:<li>Get a test-purpose SDK token from <Vg k="CONSOLE" />. See [Get security credentials for your whiteboard project](../../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](../../develop/generate-token-rest).</li><li>Use code samples. See [Generate a token from your app server](../../develop/generate-token-app-server).</li> |
 | `region`  | string    | Required         | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`gb-lon`: London, England, which provides services to Europe.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li> |
 
 ### Request path
@@ -124,7 +124,7 @@ token: NETLESSSDK_YWs9xxxxxxM2MjRi
 
 ### HTTP response
 
-For details about all possible response status codes, see the [status code table](../reference/whiteboard-api/overview#status-codes).
+For details about all possible response status codes, see the [status code table](../../reference/whiteboard-api/overview#status-codes).
 
 If the status code is `200`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -173,10 +173,10 @@ Call this API to get a list of rooms.
 
 Pass in the following parameters in the request header:
 
-| Parameter | Data type | Required/Optional | Description                                                  |
-| :-------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `token`   | string    | Required          | A SDK token or room token with the `writer` or `admin` role. To get a SDK token, you can:<li>Get a test-purpose SDK token from Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](../develop/generate-token-rest#generate-an-sdk-token-post).</li><li>Use code samples. See [Generate a token from your app server](../develop/generate-token-app-server).</li> |
-| `region`  | string    | Required          | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`gb-lon`: London, England, which provides services to Europe.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li> |
+| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| :-------- | :-------- | :---------------- |:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `token`   | string    | Required          | A SDK token or room token with the `writer` or `admin` role. To get a SDK token, you can:<li>Get a test-purpose SDK token from <Vg k="CONSOLE" />. See [Get security credentials for your whiteboard project](../../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](../../develop/generate-token-rest).</li><li>Use code samples. See [Generate a token from your app server](../../develop/generate-token-app-server).</li> |
+| `region`  | string    | Required          | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`gb-lon`: London, England, which provides services to Europe.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li>           |
 
 ### Query parameters
 
@@ -199,7 +199,7 @@ token: NETLESSSDK_YWs9QlxxxxxxM2MjRi
 
 ### HTTP response
 
-For details about all possible response status codes, see the [status code table](../reference/whiteboard-api/overview#status-codes).
+For details about all possible response status codes, see the [status code table](../../reference/whiteboard-api/overview#status-codes).
 
 If the status code is `200`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -235,7 +235,7 @@ If the status code is `200`, the request is successful. The response returns the
 | Parameter | Data type | Description |
 | :---------- | :------ | :----------------------------------------------------------- |
 | `uuid` | string | The room UUID, which is the unique identifier of a room. |
-| `teamUUID` | string | The unique identifier of the Agora Console account that creates the whiteboard project. |
+| `teamUUID` | string | The unique identifier of the <Vg k="CONSOLE" /> account that creates the whiteboard project. |
 | `appUUID` | string | The unique identifier of the whiteboard project. |
 | `isRecord` | boolean | Whether recording is enabled for the room:<li> `true`: Enabled.</li> <li>`false`: Not enabled.</li> |
 | `isBan` | boolean | Whether the room is disabled:<li>`true`: Disabled.</li><li>`false`: Not disabled.</li> |
@@ -263,7 +263,7 @@ Pass in the following parameters in the request header:
 
 | Parameter | Data type | Required/Optional | Description                                                  |
 | :-------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `token`   | string    | Required          | A SDK token or room token with the `admin` role. To get a SDK token, you can:<li>Get a test-purpose SDK token from Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](../develop/generate-token-rest#generate-an-sdk-token-post).</li><li>Use code samples. See [Generate a token from your app server](../develop/generate-token-app-server).</li> |
+| `token`   | string    | Required          | A SDK token or room token with the `admin` role. To get a SDK token, you can:<li>Get a test-purpose SDK token from <Vg k="CONSOLE" />. See [Get security credentials for your whiteboard project](../../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](../../develop/generate-token-rest).</li><li>Use code samples. See [Generate a token from your app server](../../develop/generate-token-app-server).</li> |
 | `region`  | string    | Required         | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`gb-lon`: London, England, which provides services to Europe.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li> |
 
 
@@ -297,7 +297,7 @@ token: NETLESSSDK_YWs9xxxxxx5ZGM2MjRi
 
 ### HTTP response
 
-For details about all possible response status codes, see the [status code table](../reference/whiteboard-api/overview#status-codes).
+For details about all possible response status codes, see the [status code table](../../reference/whiteboard-api/overview#status-codes).
 
 If the status code is `201`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -323,7 +323,7 @@ If the status code is `201`, the request is successful. The response returns the
 | :---------- | :------ | :----------------------------------------------------------- |
 | Parameter | Data type | Description |
 | `uuid` | string | The room UUID, which is the unique identifier of a room. |
-| `teamUUID` | string | The unique identifier of the Agora Console account that creates the whiteboard project. |
+| `teamUUID` | string | The unique identifier of the <Vg k="CONSOLE" /> account that creates the whiteboard project. |
 | `appUUID` | string | The unique identifier of the whiteboard project. |
 | `isRecord` | boolean | Whether recording is enabled for the room:<li> `true`: Enabled.</li><li>`false`: Not enabled.</li> |
 | `isBan` | boolean | Whether the room is disabled:<li>`true`: Disabled.</li><li>`false`: Not disabled.</li> |

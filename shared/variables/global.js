@@ -75,6 +75,7 @@ export const SIG_SDK_API_ANDROID = `${SIG_SDK_API_REF_ROOT}/android/${SIG_RELEAS
 export const SIG_SDK_API_WIN_CPP = `${SIG_SDK_API_REF_ROOT}/windows-cpp/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_LNX_CPP = `${SIG_SDK_API_REF_ROOT}/linux-cpp/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_LNX_JAVA = `${SIG_SDK_API_REF_ROOT}/linux-java/${SIG_RELEASE_API}`;
+export const SIG_SDK_API_CSHARP = `${SIG_SDK_API_REF_ROOT}/unity/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_IOS = `${SIG_SDK_API_REF_ROOT}/ios/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_MACOS = `${SIG_SDK_API_REF_ROOT}/macos/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_WEB = `${SIG_SDK_API_REF_ROOT}/web/${SIG_RELEASE_API}`;

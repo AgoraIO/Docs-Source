@@ -1,5 +1,5 @@
 ---
-title: 'Generate token using REST'
+title: 'Generate token using REST API'
 sidebar_position: 5
 type: docs
 description: >
@@ -44,7 +44,7 @@ POST /v5/tokens/teams
 Host: api.netless.link
 region: us-sv
 Content-Type: application/json
- 
+
 {
     "accessKey": "BUxxxxxxrc",
     "secretAccessKey": "CxxxxxxxauY3",
@@ -112,7 +112,7 @@ Host: api.netless.link
 token: NETLESSSDK_YWs9Qxxxxxx2MjRi
 region: us-sv
 Content-Type: application/json
- 
+
 {
     "lifespan": 3600000,
     "role": "admin"
@@ -160,7 +160,7 @@ The following parameters are required in the URL:
 
 | Parameter | Data type | Required/Optional | Description                                                  |
 | :-------- | :-------- | :---------------- | :----------------------------------------------------------- |
-| `uuid`    | string    | Required          | The task UUID, which is the unique identifier of a file-conversion task. You can get it by calling the [RESTful API to start a file-conversion task](../reference/whiteboard-api/file-conversion#start-file-conversion-post) or the [RESTful API to query the task progress](../reference/whiteboard-api/file-conversion#query-file-conversion-progress-get). |
+| `uuid`    | string    | Required          | The task UUID, which is the unique identifier of a file-conversion task. You can get it by calling the [RESTful API to start a file-conversion task](../reference/whiteboard-api/file-conversion#start-file-conversion) or the [RESTful API to query the task progress](../reference/whiteboard-api/file-conversion#query-the-progress-of-a-file-conversion-task). |
 
 ### Request body
 
@@ -178,7 +178,7 @@ Host: api.netless.link
 token: NETLESSSDK_YWs9QlxxxxxxM2MjRi
 region: us-sv
 Content-Type: application/json
- 
+
 {
     "lifespan": 600,
     "role": "admin"

@@ -38,8 +38,8 @@ export const API_REF_ROOT_WHITE = '${API_ROOT}/interactive-whiteboard-sdk';
 export const API_REF_ANDROID_WHITE = `${API_REF_ROOT_WHITE}/android/2.x`;
 export const API_REF_IOS_WHITE = `${API_REF_ROOT_WHITE}/ios/2.x`;
 export const API_REF_WEB_WHITE = `${API_REF_ROOT_WHITE}/web/2.x`;
-
-
+export const API_REF_WEB_ROOT_PREV_SDK = `${API_REF_ROOT}/web/3.x`;
+export const API_REF_FLUTTER_ROOT_PREV_SDK = `${API_REF_ROOT}/flutter/5.x/API`;
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
 

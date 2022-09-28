@@ -1,5 +1,5 @@
 ---
-title: 'Generate token using REST'
+title: 'Generate token using REST API'
 sidebar_position: 5
 type: docs
 description: >
@@ -44,7 +44,7 @@ POST /v5/tokens/teams
 Host: api.netless.link
 region: us-sv
 Content-Type: application/json
- 
+
 {
     "accessKey": "BUxxxxxxrc",
     "secretAccessKey": "CxxxxxxxauY3",
@@ -112,7 +112,7 @@ Host: api.netless.link
 token: NETLESSSDK_YWs9Qxxxxxx2MjRi
 region: us-sv
 Content-Type: application/json
- 
+
 {
     "lifespan": 3600000,
     "role": "admin"
@@ -178,7 +178,7 @@ Host: api.netless.link
 token: NETLESSSDK_YWs9QlxxxxxxM2MjRi
 region: us-sv
 Content-Type: application/json
- 
+
 {
     "lifespan": 600,
     "role": "admin"

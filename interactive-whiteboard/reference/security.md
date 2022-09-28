@@ -1,13 +1,13 @@
 ---
 title: Security
-sidebar_position: 7
+sidebar_position: 7.6
 description: >
     The security practices that Agora has implemented for Agora Interactive Whiteboard.
 ---
 
 Data security and user privacy are the top priorities for Agora. To provide safe and reliable services, Agora adopts industry-recognized security standards and security best practices at every layer for each product.
 
-<Vg k="WHITE" /> is a newly launched product that provides online whiteboard rooms where users can present ideas, share multimedia content, and collaborate on projects from multiple devices simultaneously. Starting in the product-design phase, Agora has assessed and prepared for the potential security threats associated with these functions and has implemented a variety of measures to secure the high availability of <Vg k="WHITE" /> as well as the confidentiality and integrity of your data. 
+<Vg k="WHITE" /> is a newly launched product that provides online whiteboard rooms where users can present ideas, share multimedia content, and collaborate on projects from multiple devices simultaneously. Starting in the product-design phase, Agora has assessed and prepared for the potential security threats associated with these functions and has implemented a variety of measures to secure the high availability of <Vg k="WHITE" /> as well as the confidentiality and integrity of your data.
 
 This page describes the security practices that Agora has implemented for <Vg k="WHITE" />.
 
@@ -19,7 +19,7 @@ Refer to the following guides for detailed information on <Vg k="WHITE" /> token
 
 - [<Vg k="WHITE" /> Token Overview](../develop/authentication-workflow): Describes the different types of whiteboard tokens and their uses, the various methods of generating a token, and token safety precautions.
 - [Generate Token Using an App Server](../develop/generate-token-app-server): Introduces how to generate tokens at your app server using code samples.
-- [Generate Token Using REST](../develop/generate-token-rest): Describes the RESTful APIs for generating whiteboard tokens.
+- [Generate Token Using REST API](../develop/generate-token-rest): Describes the RESTful APIs for generating whiteboard tokens.
 
 ## Data encryption and storage
 
@@ -27,7 +27,7 @@ Refer to the following guides for detailed information on <Vg k="WHITE" /> token
 
 Data centers hosting <Vg k="WHITE" /> are maintained by certified and industry-leading cloud service providers, offering state-of-the-art physical protection for the servers and infrastructure that comprise the Agora environment.
 
-<Vg k="WHITE" /> also offers server-side file conversion and screenshotting. Agora does not store any files or screenshots when users use these features. The transcoded files and the captured screenshots are stored in the third-party cloud storage designated by you. In addition, these features are disabled by default. Only after you enable the features and specify the storage space. the users authorized by you can access the services and the stored resources. 
+<Vg k="WHITE" /> also offers server-side file conversion and screenshotting. Agora does not store any files or screenshots when users use these features. The transcoded files and the captured screenshots are stored in the third-party cloud storage designated by you. In addition, these features are disabled by default. Only after you enable the features and specify the storage space. the users authorized by you can access the services and the stored resources.
 
 Refer to the following articles for more information on file conversion and taking screenshots:
 
@@ -48,17 +48,17 @@ Now <Vg k="WHITE" /> sets up five data centers and each data center provides ser
 | `gb-lon`    | London, England               | Europe                                   |
 | `cn-hz`     | Hangzhou, China               | Areas not covered by other data centers  |
 
-<Vg k="WHITE" /> has implemented network geofencing in each server-side RESTful API as well as all client-side whiteboard SDKs. This enables you to specify a data center whenever you create a whiteboard room or launch a file-conversion task by calling the RESTful APIs, or whenever you enable a user to join a whiteboard room by calling the methods provided by the SDKs. 
+<Vg k="WHITE" /> has implemented network geofencing in each server-side RESTful API as well as all client-side whiteboard SDKs. This enables you to specify a data center whenever you create a whiteboard room or launch a file-conversion task by calling the RESTful APIs, or whenever you enable a user to join a whiteboard room by calling the methods provided by the SDKs.
 
 Refer to the following API references for more information:
 
-- [RESTful APIs](../reference/whiteboard-api/overview)   
+- [RESTful APIs](../reference/whiteboard-api/overview)
 - <Link to="{{Global.API_REF_WEB_WHITE}}/index.html">Web SDK APIs</Link>
 - <Link to="{{Global.API_REF_ANDROID_WHITE}}/index.html">Android SDK APIs</Link>
 - <Link to="{{Global.API_REF_IOS_WHITE}}/docs/headers/Agora-Interactive-Whiteboard-Objective-C-Overview.html">iOS SDK APIs</Link>
 
 
-With network geofencing enabled, data transfer is restricted to the service areas that your specified data center covers. However, this does not prohibit users located in different areas from communicating with each other, as long as they join the same whiteboard room. For example, when a teacher creates a whiteboard room that is geofenced in Europe, students located in India can join the room through the global accelerator and interact with the teacher. If the students join a whiteboard room that is geofenced in India, then they cannot communicate with the teacher in Europe, because no data is allowed to be transmitted across data centers. 
+With network geofencing enabled, data transfer is restricted to the service areas that your specified data center covers. However, this does not prohibit users located in different areas from communicating with each other, as long as they join the same whiteboard room. For example, when a teacher creates a whiteboard room that is geofenced in Europe, students located in India can join the room through the global accelerator and interact with the teacher. If the students join a whiteboard room that is geofenced in India, then they cannot communicate with the teacher in Europe, because no data is allowed to be transmitted across data centers.
 
 ## Network redundancy
 

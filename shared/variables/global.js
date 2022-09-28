@@ -1,6 +1,6 @@
 
 export const COMPANY = 'Agora';
-export const URL_ROOT = 'https://agoradocs.vercel.app/';
+export const URL_ROOT = 'docs.agora.io/en';
 export const AGORA_BACKEND = `${COMPANY} SD-RTN`;
 export const CLIENT = platform => (platform === 'unity' ? 'game' : 'app');
 

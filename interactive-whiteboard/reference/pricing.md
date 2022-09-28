@@ -8,19 +8,19 @@ description: >
 
 export const toc = [{}]
 
-This page introduces the billing policy for the whiteboard service provided by Agora.
+This page introduces the billing policy for the <Vg k="WHITE" />.
 
-Your billing details may differ if you have signed a contract with Agora.If your scenario involves other Agora products or services, such as the RTC SDK, RTM SDK, or Cloud Recording, expect additional charges for these products or services. For details, see the billing policy for each Agora product or service.
+Your billing details may differ if you have signed a contract with Agora. If your scenario involves other Agora products or services, such as the RTC SDK, RTM SDK, or <Vg k="CREC" />, expect additional charges for these products or services. For details, see the billing policy for each Agora product or service.
 
 ## Overview
 
 
-Billing for the whiteboard service begins once you enable and implement the service in your project. Agora sends your bill and deducts the payment from your account on a monthly basis. For details, see [Billing, fee deduction, and account suspension](https://docs.agora.io/en/faq/billing_account).
+Billing for <Vg k="WHITE" /> begins once you enable and implement the service in your project. Agora sends your bill and deducts the payment from your account on a monthly basis. For details, see [Billing, fee deduction, and account suspension](/help/account-and-billing/billing_account). 
 
 ## Composition
 
 At the end of each month, Agora adds up the usage of each whiteboard feature in all projects under your [Agora account](https://console.agora.io/) and subtracts your monthly free usage allowances. Agora multiplies each resulting usage number by the corresponding price and adds up the cost of each feature to get the total cost for that month.
-Agora's whiteboard service provides the following features:
+<Vg k="WHITE" /> provides the following features:
 
 - Online whiteboard
 - File conversion, including file conversion to images and file conversion to web pages
@@ -67,11 +67,11 @@ Agora gives each whiteboard feature the following free-of-charge usage each mont
 
 ## Check your current usage
 
-You can check your usage of the whiteboard service on Agora Console. Perform the following steps:
+You can check your usage of <Vg k="WHITE" /> in <Vg k="CONSOLE" />. Perform the following steps:
 
-1. Log in to [Agora Console](https://console.agora.io/), and click the **Products & Usage** button on the left navigation panel.
+1. Log in to [<Vg k="CONSOLE" />](https://console.agora.io/) and click the **Products & Usage** button on the left navigation panel.
 
-2. Click the arrowhead ![img](https://web-cdn.agora.io/docs-files/1607311735894) in the top left corner, and select the project you want to check in the drop-down box.
+2. Click the arrowhead in the top left corner, and select the project you want to check in the drop-down box.
 
 3. Click **Duration** under **Whiteboard**, select a time frame, and check the usage duration.
  ![](https://web-cdn.agora.io/docs-files/1620288770652)
@@ -79,12 +79,12 @@ You can check your usage of the whiteboard service on Agora Console. Perform the
 
 - The time frame cannot exceed 12 months.
 - Only Agora accounts that are assigned with the role of Admin or Finance have access to the usage statistics.
-- The usage duration provided by Agora Console is for reference only. Your actual billing may differ.
+- The usage duration provided by <Vg k="CONSOLE" /> is for reference only. Your actual billing may differ.
 
 
 ## Examples
 
-This section shows how to calculate your monthly usage of the whiteboard service, as well as the total cost based on the corresponding unit price.
+This section shows how to calculate your monthly usage of <Vg k="WHITE" />, as well as the total cost based on the corresponding unit price.
 
 ### Scenario description
 
@@ -110,7 +110,7 @@ Agora rounds up the total cost to two decimal places.
 
 - Will usage calculation continue if live streaming has ended but users are still in the room?
 
-    Yes. Usage calculation for the whiteboard service depends on the presence of active long-lived connections. To avoid additional costs, Agora recommends that you:
+    Yes. Usage calculation for <Vg k="WHITE" /> depends on the presence of active long-lived connections. To avoid additional costs, Agora recommends that you:
 
     - Call `disconnect()` to cut off a user's connection when the user leaves the room, and ensure that you receive the `onPhaseChanged(disconnected)` callback.
     - Call the <a href="/interactive-whiteboard/reference/whiteboard-api/room-management#disableroom">Interactive Whiteboard RESTful API </a > on your app server to move all users out of the room when live streaming ends.

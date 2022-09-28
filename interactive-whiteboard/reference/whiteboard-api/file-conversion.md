@@ -6,7 +6,7 @@ description: >
     Basic information about the Interactive Whiteboard API.
 ---
 
-Agora Interactive Whiteboard supports file conversion from PPT, PPTX, DOC, DOCX, and PDF files into static images, as well as from PPT/PPTX files into dynamic HTML web pages. The generated images and web pages can be presented on the whiteboard. See [File Conversion Overview](/interactive-whiteboard/reference/file-conversion-overview).
+<Vg k="WHITE" /> supports file conversion from PPT, PPTX, DOC, DOCX, and PDF files into static images, as well as from PPT/PPTX files into dynamic HTML web pages. The generated images and web pages can be presented on the whiteboard. See [File Conversion Overview](/interactive-whiteboard/reference/file-conversion-overview).
 
 <div class="alert info">This page applies to the new version of file conversion. For the main differences between the old and new versions, see <a href="/interactive-whiteboard/reference/file-conversion-overview#version-comparison">Version comparison</a>. If you use the old file conversion, see <a href="/interactive-whiteboard/reference/whiteboard-api/file-conversion-deprecated">Old File Conversion RESTful API Reference</a>. </div>
 
@@ -28,7 +28,7 @@ Pass in the following parameters in the request header:
 
 | Parameter | Category | Required/Optional | Description |
 | :------- | :----- | :------- | :----------------------------------------------------------- |
-| `token` | string | Required | A `writer` or `admin` SDK token. You can obtain a token using one of the following methods:<li>Get an SDK token for testing purposes from Agora Console. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See[ Generate an SDK token](/interactive-whiteboard/develop/generate-token-rest#generate-an-sdk-token-post).</li><li>Write code on your app server. See Generate a [token from your app server](../develop/generate-token-app-server).</li> |
+| `token` | string | Required | A `writer` or `admin` SDK token. You can obtain a token using one of the following methods:<li>Get an SDK token for testing purposes from <Vg k="CONSOLE" />. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See[ Generate an SDK token](/interactive-whiteboard/develop/generate-token-rest#generate-an-sdk-token-post).</li><li>Write code on your app server. See Generate a [token from your app server](../develop/generate-token-app-server).</li> |
 | `region` | string | Required | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li> |
 
 

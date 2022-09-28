@@ -25,7 +25,7 @@ const data = {
 
   },
 
-  'analytics': {
+  'agora-analytics': {
       NAME: 'Agora Analytics',
       PATH: 'agora-analytics',
       SDK: 'Agora Analytics',

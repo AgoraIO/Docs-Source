@@ -5,6 +5,7 @@ export const AGORA_BACKEND = `${COMPANY} SD-RTN`;
 export const CLIENT = platform => (platform === 'unity' ? 'game' : 'app');
 
 export const VSDK_RELEASE_API = '4.x'
+export const VSDK_PREVIOUS_RELEASE_API = '3.x'
 export const VSDK_FLUTTER_RELEASE_API = '6.x'
 export const VSDK_UNITY_FLUTTER_RN_RELEASE_API = '4.0.0.beta-2'
 export const VSDK_WEB_RELEASE_API = '4.13.0'
@@ -16,6 +17,7 @@ export const API_REF_ROOT_VOICE_SDK = '${API_ROOT}/voice-sdk';
 export const API_REF_ANDROID_ROOT  = `${API_REF_ROOT}/android/${VSDK_RELEASE_API}/API`;
 export const API_REF_ANDROID_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/android/${VSDK_RELEASE_API}/API`;
 export const API_REF_WEB_ROOT = `${API_REF_ROOT}/web/${VSDK_RELEASE_API}`;
+export const API_REF_WEB_PREVIOUS_ROOT = `${API_REF_ROOT}/web/${VSDK_PREVIOUS_RELEASE_API}`;
 export const API_REF_WEB_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/web/${VSDK_RELEASE_API}`;
 export const API_REF_IOS_ROOT = `${API_REF_ROOT}/ios/${VSDK_RELEASE_API}/API`;
 export const API_REF_IOS_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/ios/${VSDK_RELEASE_API}/API`;
@@ -118,7 +120,7 @@ export const vUIK = `${UIK}`;
 export const FC = 'Flexible Classroom';
 
 export const FC_VERSION = '2.6.x'
-export const FC_API_REF_ROOT = 'https://agora-api-reference.vercel.app/flexible-classroom-sdk/';
+export const FC_API_REF_ROOT = `${API_ROOT}/flexible-classroom-sdk/`;
 export const FC_API_REF_ANDROID_ROOT = `${FC_API_REF_ROOT}/android/${FC_VERSION}/API`;
 export const FC_API_REF_IOS_ROOT = `${FC_API_REF_ROOT}/ios/${FC_VERSION}/API`;
 export const FC_API_REF_WEB_ROOT = `${FC_API_REF_ROOT}/web/${FC_VERSION}`;

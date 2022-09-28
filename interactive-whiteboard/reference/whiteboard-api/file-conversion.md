@@ -213,7 +213,7 @@ token: NETLESSSDK_YWs9QxxxxxxMjRi
 
 ### HTTP response
 
-For the details of all the possible response status codes, see the [status code table](./overview#status-codes).
+For the details of all the possible response status codes, see the [status code table](/interactive-whiteboard/reference/whiteboard-api/overview#status-codes).
 
 If the status code is `200`, the request is successful. The response returns the status code and corresponding parameters.
 

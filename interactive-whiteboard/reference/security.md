@@ -31,7 +31,7 @@ Agora Interactive Whiteboard also offers server-side file conversion and screens
 
 Refer to the following articles for more information on file conversion and taking screenshots:
 
-- [Enable and Configure Interactive Whiteboard Service](https://docs.agora.io../develop/enable-whiteboard): The **Enable whiteboard server-side features** section describes how to configure the third-party storage space.
+- [Enable and Configure Interactive Whiteboard Service](/interactive-whiteboard/develop/enable-whiteboard): The **Enable whiteboard server-side features** section describes how to configure the third-party storage space.
 - [File Conversion Overview](../reference/whiteboard-api/file-conversion): The **Start file conversion** section describes the basic workflow for converting a file.
 
 ## Network geofencing

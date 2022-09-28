@@ -98,7 +98,7 @@ Unexpected exposure of these access keys can cause severe security problems. To 
 
 ### Set token role
 
-A token can be assigned to an `admin`, `writer`, or `reader` role. The permissions granted by each token role are described in <a href="#tokenoverview">Introduction</a>.
+A token can be assigned to an `admin`, `writer`, or `reader` role. The permissions granted by each token role are described in <a href="/interactive-whiteboard/develop/authentication-workflow#sdk-token">Introduction</a>.
 
 
 To enhance security, Agora recommends the following precautions:

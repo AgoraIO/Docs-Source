@@ -1,6 +1,6 @@
 ---
 title: "Use whiteboard tools"
-sidebar_position: 9
+sidebar_position: 5.5
 type: docs
 description:  >
       Add whiteboard tools via code or as a toolbar.
@@ -61,14 +61,14 @@ Add the following code to the `joinWhiteboard.js` file:
 
 ```javascript
 whiteWebSdk.joinRoom(joinRoomParams).then(function(room) {
-  
+
     room.bindHtmlElement(document.getElementById("whiteboard"));
-  
+
     // Use the rectangle tool and set the stroke width and color.
     room.setMemberState({currentApplianceName: "rectangle", strokeColor: [255,182,193], strokeWidth: 12,});
-  
+
 }).catch(function(err) {
-      
+
     console.error(err);
 });
 ```
@@ -79,14 +79,14 @@ To change the whiteboard tool, you can modify the newly added code as follows:
 
 ```javascript
 whiteWebSdk.joinRoom(joinRoomParams).then(function(room) {
-  
+
     room.bindHtmlElement(document.getElementById("whiteboard"));
-  
+
     // Use the pentagram shape tool and set the stroke width and color.
     room.setMemberState({currentApplianceName: "shape", shapeType: "pentagram", strokeColor: [255,90,193], strokeWidth: 20,});
-  
+
 }).catch(function(err) {
-  
+
     console.error(err);
 });
 ```
@@ -103,22 +103,22 @@ This section extends the [Join the Whiteboard Room](../get-started/get-started-u
 
 ```javascript
 ...
- 
+
 whiteWebSdk.joinRoom(joinRoomParams).then(function(room) {
-  
+
     room.bindHtmlElement(document.getElementById("whiteboard"));
-  
+
     // Define a toolbar and buttons.
     var toolbar = document.getElementById("toolbar");
     var toolNames = ["clicker","selector","rectangle","eraser","text","arrow","ellipse","hand","laserPointer","shape","straight"];
-  
+
     for(var idx in toolNames){
         var toolName = toolNames[idx];
         var btn = document.createElement("BUTTON");
         btn.setAttribute("id","btn"+toolName);
         var t=document.createTextNode(toolName);
         btn.appendChild(t);
-  
+
         // Listen for the event of clicking a button.
         btn.addEventListener("click", function(obj){
             var ele = obj.target;
@@ -133,9 +133,9 @@ whiteWebSdk.joinRoom(joinRoomParams).then(function(room) {
         toolbar.appendChild(btn);
         console.log(btn.getAttribute("id"));
     }
-  
+
 }).catch(function(err) {
-  
+
     console.error(err);
 });
 ```
@@ -148,7 +148,7 @@ whiteWebSdk.joinRoom(joinRoomParams).then(function(room) {
     <head>
         <script src="https://sdk.netless.link/white-web-sdk/2.12.20.js"></script>
         <script src="./joinWhiteboard.js"></script>
-  
+
     </head>
     <body>
         <div id="whiteboard" style="width: 100%; height: 100vh;">
@@ -184,6 +184,6 @@ In addition to the basic editing tools listed in the <a href="#tech">Understand 
 | <Link to="{{Global.API_REF_WEB_WHITE}}/interfaces/room.html#disableeraseimage">disableeraseimage</Link>     | Disables the eraser from erasing images on the whiteboard.   |
 | <Link to="{{Global.API_REF_WEB_WHITE}}/interfaces/room.html#disabledeviceinputs">disabledeviceinputs</Link> | Disables the whiteboard from responding to users' operations. |
 
-These methods, which are also members of the `Room` interface, also do not have user interfaces provided by the SDK. You can implement these functions by designing a UI and calling the corresponding methods according to your business needs. 
+These methods, which are also members of the `Room` interface, also do not have user interfaces provided by the SDK. You can implement these functions by designing a UI and calling the corresponding methods according to your business needs.
 
 </PlatformWrapper>

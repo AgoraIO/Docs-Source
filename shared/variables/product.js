@@ -31,6 +31,11 @@ const data = {
       SDK: 'Agora Analytics',
       PRODUCT: 'Agora Analytics'
   },
+    'extensions-marketplace': {
+        NAME: 'Extensions Marketplace',
+        PATH: 'extensions-marketplace',
+        PRODUCT: 'Extensions Marketplace'
+    },
 
   'cloud-recording': {
       NAME: 'Cloud Recording',
@@ -39,10 +44,10 @@ const data = {
       PRODUCT: 'Cloud Recording'
   },
 
-  'signalling': {
-      NAME: 'Signalling',
-      PATH: 'signalling',
-      SDK: 'Signalling SDK',
+  'signaling': {
+      NAME: 'Signaling',
+      PATH: 'signaling',
+      SDK: 'Signaling SDK',
       PRODUCT: 'Signalling'
   },
 

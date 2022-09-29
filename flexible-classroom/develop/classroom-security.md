@@ -28,8 +28,8 @@ Agora Flexible Classroom uses the RTM token for end user authentication. The RTM
 
 The app developer can enable token authentication (App Certificate) in [Agora Console](https://console.agora.io/). When enabled, all user’s request to join a classroom must be done with a valid RTM token.
 
-- For more information on how to enable RTM token authentication, see [Use an RTM token for authentication](../../signaling/develop/authentication).
-- For how to generate an RTM token on the app backend, see [Generate an RTM Token](../../signaling/develop/authentication).
+- For more information on how to enable RTM token authentication, see [Use an RTM token for authentication](../../signaling/develop/authentication-workflow).
+- For how to generate an RTM token on the app backend, see [Generate an RTM Token](../../signaling/develop/authentication-workflow).
 
 ## Data encryption and storage
 
@@ -61,7 +61,7 @@ Use this list to quickly check what measures you have or have not taken to best 
 1. Enable token authentication in [Agora Console](https://console.agora.io/).
 2. Disable **No certificate** in your project management page. Once it is done your app authenticates users with tokens only.
    ![img](https://web-cdn.agora.io/docs-files/1614134532547)
-3. [Deploy an RTM token server](../../signaling/develop/authentication) in your backend services.
+3. [Deploy an RTM token server](../../signaling/develop/authentication-workflow) in your backend services.
 4. Protect the token server and only allow the app backend server to connect to the token server.
 5. For additional security, you can also do the following:
    - Set the classroom ID to a one-time random string managed by your app.

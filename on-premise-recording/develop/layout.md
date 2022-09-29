@@ -3,7 +3,7 @@ title: 'Set Video Layout'
 sidebar_position: 4
 type: docs
 description: >
-  How to set video layout according to your use case. 
+  How to set video layout according to your use case.
 ---
 
 ## Overview
@@ -73,12 +73,12 @@ In this layout, one large region is displayed on the left edge of the screen, an
 
 Therefore, when you recording, you must  set the `--maxResolutionUid` parameter to specify a uid, whose region is displayed on the left edge of the screen in a large size.
 
-This layout supports up to two columns of small regions on the right edge with eight regions per column. 
+This layout supports up to two columns of small regions on the right edge with eight regions per column.
 
-- In the following figures, "Large" refers to the large region, displaying the video of the specified user. 
+- In the following figures, "Large" refers to the large region, displaying the video of the specified user.
 	- If you do not specify a user or the specified user does not join the channel, the "Large" region shows the background color.
 	- If the aspect ratio of the specified user's video does not match that of the large region, the video is letterboxed to fit within the region, ensuring the completeness of the video.
-- The small regions are tiled in the order of the users joining the channel. 
+- The small regions are tiled in the order of the users joining the channel.
 	- If user 1 leaves the channel, user 2 takes over user 1's region, and so on.
 	- If the aspect ratio of a user's video does not match that of the user's region, the video is cropped to fit the region.
 - The region which is not occupied by any user shows the background color.
@@ -98,12 +98,11 @@ See the following pictures for the layouts with different number of users in the
 
 ## Customize the video layout
 
-If the predefined layout types do not meet your needs, you can call [`setVideoMixingLayout`](https://docs.agora.io/en/Recording/#api_irtcengine_20Reference/recording_cpp/classagora_1_1recording_1_1_i_recording_engine.html#a4ac28b9e2342729c1b54400a5abb1d90) to customize the video layout. You can set the size and position of each user's region on the canvas.
+If the predefined layout types do not meet your needs, you can call `setVideoMixingLayout` to customize the video layout. You can set the size and position of each user's region on the canvas.
 
 ### Implementation
 
-
-After joining the channel, configure the video layout settings in the <Link to= "{{global.OPREC_SDK_API_CPP}}/interfaces/structagora_1_1linuxsdk_1_1_video_mixing_layout.html">VideoMixingLayout</Link> class, and then call <Link to= "{{global.OPREC_SDK_API_CPP}}/interfaces/classagora_1_1recording_1_1_i_recording_engine.html#a4ac28b9e2342729c1b54400a5abb1d90">VideoMixingLayout</Link> to implement the customized video layout.
+After joining the channel, configure the video layout settings in the `VideoMixingLayout` class, and then call `setVideoMixingLayout` to implement the customized video layout.
 
 ![](https://web-cdn.agora.io/docs-files/1600078283568)
 
@@ -115,14 +114,14 @@ To configure the video layout settings, you need pass in the following parameter
 - `regionCount`: The number of the users (`COMMUNICATION` profile)/hosts (`LIVE_BROADCASTING` profile) in the channel.
 - `regions`: An array consisting of the configurations of the user regions. The configuration of a user region has the following parameters to be set:
   - `uid`: The UID of the user (`COMMUNICATION` profile)/host (`LIVE_BROADCASTING` profile) displaying the video in the region. You can get the UID of the user/host joining the channel in the `onUserJoined` callback. If this parameter is not specified, the configurations apply in the order of the users joining the channel.
-  - `x`: (Mandatory) The relative horizontal position of the top-left corner of the region. The value is between 0.0 (leftmost) and 1.0 (rightmost). 
-  - `y`: (Mandatory) The relative vertical position of the top-left corner of the region. The value is between 0.0 (top) and 1.0 (bottom). 
-  - `width`: (Mandatory) The relative width of the region. The value is between 0.0 and 1.0. 
-  - `height`: (Mandatory) The relative height of the region. The value is between 0.0 and 1.0. 
+  - `x`: (Mandatory) The relative horizontal position of the top-left corner of the region. The value is between 0.0 (leftmost) and 1.0 (rightmost).
+  - `y`: (Mandatory) The relative vertical position of the top-left corner of the region. The value is between 0.0 (top) and 1.0 (bottom).
+  - `width`: (Mandatory) The relative width of the region. The value is between 0.0 and 1.0.
+  - `height`: (Mandatory) The relative height of the region. The value is between 0.0 and 1.0.
   - `alpha`: The transparency of the image. The value is between 0.0 (transparent) and 1.0 (opaque). The default value is 1.0.
   - `renderMode`: The video display mode:
     - `RENDER_MODE_HIDDEN(0)`: (Default) Cropped mode.
-    - `RENDER_MODE_FIT(1)`: Fit mode. 
+    - `RENDER_MODE_FIT(1)`: Fit mode.
 
 As shown in the figure below, the upper left corner of the video canvas is the origin. The `x` and `y` parameters define the relative position of a user's region on the canvas, representing the horizontal and vertical distance between the upper left corner of the region and the origin respectively. The `width` and `height` parameters define the relative width and relative height of the region. The `x`, `y`, `width`, and `height` parameters are floats between 0.0 and 1.0. Ensure that `x` + `width` ≤ 1, and `y` + `height` ≤ 1.
 
@@ -130,30 +129,30 @@ As shown in the figure below, the upper left corner of the video canvas is the o
 
 ### Sample code
 
-This section provides sample code for a customized video layout of four users in composite recording mode. 
+This section provides sample code for a customized video layout of four users in composite recording mode.
 
 In this example, the first user joining the channel occupies the full canvas, while the other three users occupy small regions layered on top of the canvas, as shown in the figure below.
 ![](https://web-cdn.agora.io/docs-files/1600078341737)
 
-```
+```cpp
 // After creating an IRecordingEngine instance and joining the channel, set the width, height, and background color of the canvas as well as the number of user regions on the canvas.
 agora::linuxsdk::VideoMixingLayout layout;
 layout.canvasWidth = 720;
 layout.canvasHeight = 480;
 layout.backgroundColor = "#E7E6E6";
 layout.regionCount = 4;
- 
+
 // Configure the settings of each user region.
 agora::linuxsdk::VideoMixingLayout::Region * regionList = new agora::linuxsdk::VideoMixingLayout::Region[4];
-// Set the first user in the channel to occupy the full canvas.  
+// Set the first user in the channel to occupy the full canvas.
 regionList[0].uid = <uid0>;
 regionList[0].x = 0.f;
 regionList[0].y = 0.f;
 regionList[0].width = 1.f;
 regionList[0].height = 1.f;
 regionList[0].alpha = 1.f;
-regionList[0].renderMode = 0; 
- 
+regionList[0].renderMode = 0;
+
 // Set the other three users to occupy the small regions on top of the canvas, starting from the bottom left corner. The small regions are arranged in the order of the users joining the channel.
 // The width of each small region is 23.5% of the width of the canvas.
 // The height of each small region is the width of each small region × (canvas height/canvas width), that is, the aspect ratio of each small region is the same as the aspect ratio of the canvas.
@@ -165,7 +164,7 @@ float viewWidth = 0.235f;
 float viewHEdge = 0.012f;
 float viewHeight = viewWidth * (canvasHeight/canvasWidth);
 float viewVEdge = viewHEdge * (canvasHeight/canvasWidth);
- 
+
 for (size_t i = 1; i < 4; i++) {
 regionList[i].uid = <uidi>;
 float xIndex = static_cast<float>((i-1) % 4);

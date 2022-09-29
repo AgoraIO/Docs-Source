@@ -21,7 +21,10 @@ Depending on whether you record by command line or by APIs, set the parameter ac
 
 > The Agora RTC SDK for Web supports raw data in YUV format only, not in H.264 format.
 
-You can get the raw video data from the [`videoFrameReceived`](https://docs.agora.io/en/Recording/API%20Reference/recording_cpp/classagora_1_1recording_1_1_i_recording_engine_event_handler.html#ac1121a1af126872bbbe2cb2767c311d4) callback, and the raw audio data from [`audioFrameReceived`](https://docs.agora.io/en/Recording/API%20Reference/recording_cpp/classagora_1_1recording_1_1_i_recording_engine_event_handler.html#a0e14a008e6a8829d8e30ff71b1238f82).
+
+You can get the raw video data from the <Link to= "{{global.OPREC_SDK_API_CPP}}/interfaces/classagora_1_1recording_1_1_i_recording_engine_event_handler.html#ac1121a1af126872bbbe2cb2767c311d4">videoFrameReceived</Link> callback, and the raw audio data from <Link to= "{{global.OPREC_SDK_API_CPP}}/interfaces/classagora_1_1recording_1_1_i_recording_engine_event_handler.html#a0e14a008e6a8829d8e30ff71b1238f82">audioFrameReceived</Link>.
+
+
 
 ## Get raw audio and video data from a composite recording session
 
@@ -31,4 +34,4 @@ The Agora On-premise Recording SDK supports only raw audio data in composite rec
 | :------------- | :----------------------------- | :-------------------------- |
 | Raw audio data | `-- getAudioFrame 3`: PCM file | `decodeAudio = 3`：PCM file |
 
-You can get the raw audio data from the [`audioFrameReceived`](https://docs.agora.io/en/Recording/API%20Reference/recording_cpp/classagora_1_1recording_1_1_i_recording_engine_event_handler.html#a0e14a008e6a8829d8e30ff71b1238f82) callback.
+You can get the raw audio data from the <Link to= "{{global.OPREC_SDK_API_CPP}}/interfaces/classagora_1_1recording_1_1_i_recording_engine_event_handler.html#a0e14a008e6a8829d8e30ff71b1238f82">audioFrameReceived</Link> callback.

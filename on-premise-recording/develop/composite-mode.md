@@ -17,7 +17,7 @@ This page shows how to record audio and/or video in **composite recording mode**
 
 Before proceeding, ensure that you have compiled the Agora Recorder Demo and know how to record a call by the command line. For more information, see [Record by Command Line](../get-started/record-cmd). You must select either individual recording mode or composite recording mode when you start the recording. You cannot switch between the two modes after a recording starts. 
 
-See [Differences between individual recording mode and composite recording mode](https://docs.agora.io/en/faq/recording_mode) to decide which mode you should use.
+See [Differences between individual recording mode and composite recording mode](https://docs.agora.io/en/help/integration-issues/recording_mode) to decide which mode you should use.
 
 > For simplicity, we assume that every UID in the channel sends both audio and video streams. If a UID neither sends audio nor video, such as the audience in interactive streaming, there will be no file for this UID.
 

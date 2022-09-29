@@ -232,7 +232,7 @@ During the recording, you can call [`update`](../reference/rest-api/update) to u
 <a name="updateLayout"></a>
 ### Update video layout
 
-During the recording, you can call the [`updateLayout`](../reference/rest-api/rest#updateLayout) method to set or update the video layout. See [Set Video Layout](../develop/layout) for details.
+During the recording, you can call the [`updateLayout`](../reference/rest-api/update#updatelayout-update-the-video-mixing-layout) method to set or update the video layout. See [Set Video Layout](../develop/layout) for details.
 
 ### Sample project
 

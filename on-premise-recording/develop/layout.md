@@ -98,11 +98,11 @@ See the following pictures for the layouts with different number of users in the
 
 ## Customize the video layout
 
-If the predefined layout types do not meet your needs, you can call [`setVideoMixingLayout`](https://docs.agora.io/en/Recording/API%20Reference/recording_cpp/classagora_1_1recording_1_1_i_recording_engine.html#a4ac28b9e2342729c1b54400a5abb1d90) to customize the video layout. You can set the size and position of each user's region on the canvas.
+If the predefined layout types do not meet your needs, you can call `setVideoMixingLayout` to customize the video layout. You can set the size and position of each user's region on the canvas.
 
 ### Implementation
 
-After joining the channel, configure the video layout settings in the [`VideoMixingLayout`](https://docs.agora.io/en/Recording/API%20Reference/recording_cpp/structagora_1_1linuxsdk_1_1_video_mixing_layout.html) class, and then call [`setVideoMixingLayout`](https://docs.agora.io/en/Recording/API%20Reference/recording_cpp/classagora_1_1recording_1_1_i_recording_engine.html#a4ac28b9e2342729c1b54400a5abb1d90) to implement the customized video layout.
+After joining the channel, configure the video layout settings in the `VideoMixingLayout` class, and then call `setVideoMixingLayout` to implement the customized video layout.
 
 ![](https://web-cdn.agora.io/docs-files/1600078283568)
 
@@ -134,7 +134,7 @@ This section provides sample code for a customized video layout of four users in
 In this example, the first user joining the channel occupies the full canvas, while the other three users occupy small regions layered on top of the canvas, as shown in the figure below.
 ![](https://web-cdn.agora.io/docs-files/1600078341737)
 
-```
+```C++
 // After creating an IRecordingEngine instance and joining the channel, set the width, height, and background color of the canvas as well as the number of user regions on the canvas.
 agora::linuxsdk::VideoMixingLayout layout;
 layout.canvasWidth = 720;

@@ -7,7 +7,7 @@ description: >
 ---
 
 The transcoding tool includes the `video_convert.py` and `ffmpeg` modules. The Python script can merge the separated audio and video recorded files into one MPEG-4 file and the script relies on the `ffmpeg` transcoding tool. 
-You can get `ffmpeg` and `video_convert.py` in the tools folder in [On-premise Recording SDK](https://docs.agora.io/en/Recording/downloads). Decompress `ffmpeg`, and make sure it is in the same directory as `video_convert.py`. 
+You can get `ffmpeg` and `video_convert.py` in the tools folder in On-premise Recording SDK. Decompress `ffmpeg`, and make sure it is in the same directory as `video_convert.py`. 
 
 Execute python `video_convert.py` with the following usage:
 

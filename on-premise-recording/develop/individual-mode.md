@@ -17,7 +17,7 @@ This page shows how to record audio and/or video in **individual recording mode*
 
 Before proceeding, ensure that you have compiled the Agora Recorder Demo and know how to record a call by the command line. For more information, see [Record by Command Line](../get-started/record-cmd). You must select either individual recording mode or composite recording mode when you start the recording. You cannot switch between the two modes after a recording starts. 
 
-See [Differences between individual recording mode and composite recording mode](https://docs.agora.io/en/faq/recording_mode) to decide which mode you should use.
+See [Differences between individual recording mode and composite recording mode](https://docs.agora.io/en/help/integration-issues/recording_mode) to decide which mode you should use.
 
 > For simplicity, we assume that every UID in the channel sends both audio and video streams. If a UID neither sends audio nor video, such as the audience in interactive streaming, there will be no file for this UID.
 
@@ -38,7 +38,7 @@ The recording files and formats depend on your choice of recording audio, video,
 | Record only video (no audio) | Set `isVideoOnly` as 1 | <li>One video file in MP4 format for each UID that uses the Agora Native SDK</li><li>One video file in MP4 or WebM format for each UID that uses the Agora Web SDK</li> |
 | Record both audio and video  | The default setting   | <li>One audio file in AAC format and one video file in MP4 format for each UID that uses the Agora Native SDK</li><li>One audio file in AAC format and one video file in MP4 or WebM format for each UID that uses the Agora Web SDK</li> |
 
-The format of the recording video file on the Web client depends on its [`codec`](https://docs.agora.io/en/Video/API%20Reference/web/interfaces/agorartc.clientconfig.html#codec):
+The format of the recording video file on the Web client depends on its [`codec`](https://api-ref.agora.io/en/video-sdk/web/4.x/interfaces/clientconfig.html#codec):
 
 - If the codec is set as "vp8", the format is WebM.
 - If the codec is set as "h264", the format is MP4.

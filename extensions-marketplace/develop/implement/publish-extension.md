@@ -12,7 +12,7 @@ Your extension is distributed to app developers through the [Extensions Marketpl
 
 ## Prerequisites
 
-Before publishing your extension, ensure that you have tested your extension following the procedure in [Test Your Extension](./test_extension).
+Before publishing your extension, ensure that you have tested your extension.
 
 ## Apply for Agora review
 

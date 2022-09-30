@@ -98,20 +98,11 @@ See the following pictures for the layouts with different number of users in the
 
 ## Customize the video layout
 
-<<<<<<< HEAD
-If the predefined layout types do not meet your needs, you can call [`setVideoMixingLayout`](https://docs.agora.io/en/Recording/#api_irtcengine_20Reference/recording_cpp/classagora_1_1recording_1_1_i_recording_engine.html#a4ac28b9e2342729c1b54400a5abb1d90) to customize the video layout. You can set the size and position of each user's region on the canvas.
-
-### Implementation
-
-
-After joining the channel, configure the video layout settings in the <Link to= "{{global.OPREC_SDK_API_CPP}}/interfaces/structagora_1_1linuxsdk_1_1_video_mixing_layout.html">VideoMixingLayout</Link> class, and then call <Link to= "{{global.OPREC_SDK_API_CPP}}/interfaces/classagora_1_1recording_1_1_i_recording_engine.html#a4ac28b9e2342729c1b54400a5abb1d90">VideoMixingLayout</Link> to implement the customized video layout.
-=======
 If the predefined layout types do not meet your needs, you can call `setVideoMixingLayout` to customize the video layout. You can set the size and position of each user's region on the canvas.
 
 ### Implementation
 
 After joining the channel, configure the video layout settings in the `VideoMixingLayout` class, and then call `setVideoMixingLayout` to implement the customized video layout.
->>>>>>> main
 
 ![](https://web-cdn.agora.io/docs-files/1600078283568)
 

@@ -12,7 +12,7 @@ To use <Vg k="WHITE" />, you need to enable and configure it in [<Vg k="CONSOLE"
 
 Before enabling the whiteboard feature, ensure that you meet the following requirements:
 - A valid Agora account. If you have a Netless account, you must complete the account migration first. See [Migrate from Netless to Agora](../develop/migration-guide).
-- Active Agora projects. If you have not created a project, see <a href="https://docs.agora.io/en/Agora%20Platform/manage_projects?platform=All%20Platforms">Manage Projects</a >.
+- Active Agora projects. If you have not created a project, see [Manage projects](../reference/manage-agora-account/#create-and-manage-projects).
 
 ## Enable the <Vg k="WHITE" />
 

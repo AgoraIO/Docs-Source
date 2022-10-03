@@ -17,7 +17,7 @@ Cloud Recording does not support finishing two tasks in one recording session. F
 
 ## Prerequisites
 
-- Ensure that the cloud recording service has been activated. See [Quickstart](./rest#project-setup).
+- Ensure that the cloud recording service has been activated. See [Quickstart](../../get-started/getstarted#project-setup).
 - The RESTful APIs only support HTTPS. Before using the Agora RESTful API, you need to pass the [basic HTTP authentication](../restful-authentication).
 
 ## Data format

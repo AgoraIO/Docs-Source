@@ -10,12 +10,6 @@ description: >
 
 Agora Cloud Recording is an add-on service to record and save voice calls, video calls, and interactive streaming on your cloud storage. Compared with Agora On-premise Recording, Agora Cloud Recording is more efficient and convenient as it does not require deploying Linux servers.
 
-### Compatibility
-
-Agora Cloud Recording is compatible with the following SDKs:
-
-- Agora Native SDK v1.7.0 or later.
-- Agora Web SDK v1.12 or later.
 
 ## 2022.1.20
 #### New features

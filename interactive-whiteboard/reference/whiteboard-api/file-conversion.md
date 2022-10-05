@@ -6,11 +6,11 @@ description: >
     Basic information about the Interactive Whiteboard API.
 ---
 
-<Vg k="WHITE" /> supports file conversion from PPT, PPTX, DOC, DOCX, and PDF files into static images, as well as from PPT/PPTX files into dynamic HTML web pages. The generated images and web pages can be presented on the whiteboard. See [File Conversion Overview](/interactive-whiteboard/develop/file-conversion-overview).
+<Vg k="WHITE" /> supports file conversion from PPT, PPTX, DOC, DOCX, and PDF files into static images, as well as from PPT/PPTX files into dynamic HTML web pages. The generated images and web pages can be presented on the whiteboard. See [File Conversion Overview](../../develop/file-conversion-overview).
 
-<div class="alert info">This page applies to the new version of file conversion. For the main differences between the old and new versions, see [Version comparison](/interactive-whiteboard/develop/file-conversion-overview#version-comparison). If you use the old file conversion, see [Old File Conversion RESTful API Reference](/interactive-whiteboard/reference/whiteboard-api/file-conversion-deprecated). </div>
+<div class="alert info">This page applies to the new version of file conversion. For the main differences between the old and new versions, see [Version comparison](../../develop/file-conversion-overview#version-comparison). If you use the old file conversion, see [Old File Conversion RESTful API Reference](./file-conversion-deprecated). </div>
 
-<div class="alert note">Before calling the RESTful API for file conversion, ensure that you have done the following:<ul><li>You have enabled <b>Docs to Picture</b> or <b>Docs to Web</b> and configured storage settings in <a href="https://console.agora.io/">Agora Console</a>. See [Enable server-side supporting features](/interactive-whiteboard/develop/enable-whiteboard#enable-whiteboard-server-side-features).</li> <li>You have generated a URL address for the file you want to convert, and the address is publicly accessible.</li></ul></div>
+<div class="alert note">Before calling the RESTful API for file conversion, ensure that you have done the following:<ul><li>You have enabled <b>Docs to Picture</b> or <b>Docs to Web</b> and configured storage settings in <a href="https://console.agora.io/">Agora Console</a>. See [Enable server-side supporting features](../../develop/enable-whiteboard#enable-whiteboard-server-side-features).</li> <li>You have generated a URL address for the file you want to convert, and the address is publicly accessible.</li></ul></div>
 
 
 ## Start file conversion
@@ -26,25 +26,25 @@ Call this API to start a file-conversion task.
 
 Pass in the following parameters in the request header:
 
-| Parameter | Category | Required/Optional | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| :------- | :----- | :------- |:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `token` | string | Required | A `writer` or `admin` SDK token. You can obtain a token using one of the following methods:<li>Get an SDK token for testing purposes from <Vg k="CONSOLE" />. See [Get security credentials for your whiteboard project](../../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See[ Generate an SDK token](../../develop/generate-token-rest#generate-an-sdk-token-post).</li><li>Write code on your app server. See Generate a [token from your app server](../../develop/generate-token-app-server).</li>                             |
-| `region` | string | Required | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li>                                                                                                                                                                           |
+| Parameter | Category | Required/Optional | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| :------- | :----- | :------- |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `token` | string | Required | A `writer` or `admin` SDK token. You can obtain a token using one of the following methods:<li>Get an SDK token for testing purposes from <Vg k="CONSOLE" />. See [Get security credentials for your whiteboard project](../../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [ Generate an SDK token](../../develop/generate-token-rest#generate-an-sdk-token-post).</li><li>Write code on your app server. See Generate a [token from your app server](../../develop/generate-token-app-server).</li> |
+| `region` | string | Required | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li>                                                                                                                                                |
 
 
 ### Request Body
 
 The following parameters are required in the URL:
 
-| Parameter         | Category | Required/Optional | Description                                                  |
-| :---------------- | :------- | :---------------- | :----------------------------------------------------------- |
-| `resource`        | string   | Required          | The URL of the file you want to convert.                     |
-| `type`            | string   | Required          | The conversion type:<li>`dynamic`: Dynamic-file conversion, converting the file to web pages.</li><li>`static`: Static-file conversion, converting the file to images.</li> |
-| `preview`         | boolean  | Optional          | Whether to generate a preview of the generated files:<li>`true`: Generate a preview.</li><li>`false`: Do not generate a preview.</li> |
-| `scale`           | number   | Optional          | The scale factor of an image. The range is [0.1,3.0], and the default value is `1.2`. The higher the value, the clearer the generated image. This parameter only takes effect when `type` is set to `static`. |
-| `outputFormat`    | string   | Optional          | The format of the generated image:<li><code>png</code></li><li><code>jpg</code></li> <li><code>jpeg</code></li>The default value is <code>png</code>. This parameter only takes effect when `type` is set to `static`. |
-| `webhookEndpoint` | string   | Optional          | The address of the Webhook callback, generally the app server address, is used to receive information sent by the server, such as the progress of tasks. See <a href="/interactive-whiteboard/reference/whiteboard-api/?platform=RESTful#webhook-callback">Webhook callback</a>. |
-| `webhookRetry`    | number   | Optional          | The number of retries the system attempts when the Webhook callback fails. The default value is `3`, and the maximum is `10`. |
+| Parameter         | Category | Required/Optional | Description                                                                                                                                                                                                                                            |
+| :---------------- | :------- | :---------------- |:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `resource`        | string   | Required          | The URL of the file you want to convert.                                                                                                                                                                                                               |
+| `type`            | string   | Required          | The conversion type:<li>`dynamic`: Dynamic-file conversion, converting the file to web pages.</li><li>`static`: Static-file conversion, converting the file to images.</li>                                                                            |
+| `preview`         | boolean  | Optional          | Whether to generate a preview of the generated files:<li>`true`: Generate a preview.</li><li>`false`: Do not generate a preview.</li>                                                                                                                  |
+| `scale`           | number   | Optional          | The scale factor of an image. The range is [0.1,3.0], and the default value is `1.2`. The higher the value, the clearer the generated image. This parameter only takes effect when `type` is set to `static`.                                          |
+| `outputFormat`    | string   | Optional          | The format of the generated image:<li><code>png</code></li><li><code>jpg</code></li> <li><code>jpeg</code></li>The default value is <code>png</code>. This parameter only takes effect when `type` is set to `static`.                                 |
+| `webhookEndpoint` | string   | Optional          | The address of the Webhook callback, generally the app server address, is used to receive information sent by the server, such as the progress of tasks. See [webhook callback](#webhook-callback). |  
+| `webhookRetry`    | number   | Optional          | The number of retries the system attempts when the Webhook callback fails. The default value is `3`, and the maximum is `10`.                                                                                                                          |
 
 ### Request example
 
@@ -66,7 +66,7 @@ token: NETLESSSDK_YWs9QxxxxxxMjRi
 
 ### HTTP response
 
-For the details of all the possible response status codes, see the [status code table](/interactive-whiteboard/reference/whiteboard-api/overview#status-codes).
+For the details of all the possible response status codes, see the [status code table](./overview#status-codes).
 
 If the status code is `201`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -105,7 +105,7 @@ Pass in the following parameters in the request header:
 
 | Parameter | Category | Required/Optional | Description                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | :-------- | :------- | :---------------- |:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `token.`  | string   | Required          | The Task token. You can obtain a token using one of the following methods:<li>Call the RESTful API. See [Generate a task token](/interactive-whiteboard/develop/generate-token-rest#generate-a-task-token-post).</li><li>Write code on your app server. See [Generate a token from your app server](../../develop/generate-token-app-server).</li>                                                                           |
+| `token.`  | string   | Required          | The Task token. You can obtain a token using one of the following methods:<li>Call the RESTful API. See [Generate a task token](../../develop/generate-token-rest#generate-a-task-token-post).</li><li>Write code on your app server. See [Generate a token from your app server](../../develop/generate-token-app-server).</li>                                                                                             |
 | `region`  | string   | Required          | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li> |
 
 ### Request Path
@@ -128,7 +128,7 @@ token: NETLESSSDK_YWsxxxxxM2MjRi
 
 ### HTTP response
 
-For the details of all the possible response status codes, see the [status code table](/interactive-whiteboard/reference/whiteboard-api/overview#status-codes).
+For the details of all the possible response status codes, see the [status code table](./overview#status-codes).
 
 If the status code is `200`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -167,19 +167,19 @@ If the status code is `200`, the request is successful. The response returns the
 
 **Description of parameters in the response:**
 
-| Parameter             | Category | Description                                                  |
-| :-------------------- | :------- | :----------------------------------------------------------- |
-| `uuid`                | string   | The task UUID, which is the unique identifier of the file-conversion task. |
-| `status`              | string   | The status of the conversion task:<li>`Waiting`: Conversion is `waiting `to start.</li><li>`Converting`: Conversion is in progress.</li><li>`Finished`: Conversion has `finished`.</li><li>`Fail`: Conversion failed.</li> |
-| `type`                | string   | The conversion type:<li>`dynamic`: Dynamic-file conversion, converting the file to web pages.</li><li>`static`: Static-file conversion, converting the file to images.</li> |
-| `convertedPercentage` | number   | The progress of the conversion expressed as a percentage.    |
-| `prefix`              | string   | The prefix of the address of the generated file.             |
-| `pageCount`           | number   | The number of file pages. This value is not available when the conversion task fails. |
-| `previews`            | object   | The address of the preview. Each page corresponds to a preview address.  This parameter is only returned when `preview` is set to `true` and `type` is set to `dynamic` in the <a href="/interactive-whiteboard/reference/whiteboard-api/?platform=RESTful#request-body">request body</a> when starting the file conversion. This value is not available when the conversion task fails. |
-| `note`                | string   | Notes and comments extracted from the file. This parameter contains only the pages that have notes or comments. |
-| `images`              | object   | The address of the static conversion results. Each page corresponds to an image. This parameter is only returned when `type` is set to `static` in the <a href="/interactive-whiteboard/reference/whiteboard-api/?platform=RESTful#request-body">request body</a> when starting the file conversion. This value is not available when the conversion task fails. |
-| `errorCode`           | string   | The error code. This parameter is only returned when the conversion task fails.  For the details of all the possible error codes, see <a href="/interactive-whiteboard/reference/whiteboard-api/?platform=RESTful#request-body">Error code</a>. |
-| `errorMessage`        | string   | The error message corresponding to the error code, describing the cause of the error. This parameter is only returned when the conversion task fails. |
+| Parameter             | Category | Description                                                                                                                                                                                                                                                                                                 |
+| :-------------------- | :------- |:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `uuid`                | string   | The task UUID, which is the unique identifier of the file-conversion task.                                                                                                                                                                                                                                  |
+| `status`              | string   | The status of the conversion task:<li>`Waiting`: Conversion is `waiting `to start.</li><li>`Converting`: Conversion is in progress.</li><li>`Finished`: Conversion has `finished`.</li><li>`Fail`: Conversion failed.</li>                                                                                  |
+| `type`                | string   | The conversion type:<li>`dynamic`: Dynamic-file conversion, converting the file to web pages.</li><li>`static`: Static-file conversion, converting the file to images.</li>                                                                                                                                 |
+| `convertedPercentage` | number   | The progress of the conversion expressed as a percentage.                                                                                                                                                                                                                                                   |
+| `prefix`              | string   | The prefix of the address of the generated file.                                                                                                                                                                                                                                                            |
+| `pageCount`           | number   | The number of file pages. This value is not available when the conversion task fails.                                                                                                                                                                                                                       |
+| `previews`            | object   | The address of the preview. Each page corresponds to a preview address.  This parameter is only returned when `preview` is set to `true` and `type` is set to `dynamic` in the [request body](#request-body) when starting the file conversion. This value is not available when the conversion task fails. |
+| `note`                | string   | Notes and comments extracted from the file. This parameter contains only the pages that have notes or comments.                                                                                                                                                                                             |
+| `images`              | object   | The address of the static conversion results. Each page corresponds to an image. This parameter is only returned when `type` is set to `static` in the [request body](#request-body) when starting the file conversion. This value is not available when the conversion task fails.                         |
+| `errorCode`           | string   | The error code. This parameter is only returned when the conversion task fails.  For the details of all the possible error codes, see [error code](#request-body).                                                                                 |
+| `errorMessage`        | string   | The error message corresponding to the error code, describing the cause of the error. This parameter is only returned when the conversion task fails.                                                                                                                                                       |
 
 
 
@@ -196,10 +196,10 @@ Call this API to list all tasks that are waiting to be converted.
 
 Pass in the following parameters in the request header:
 
-| Parameter | Category | Required/Optional | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| :------- | :----- | :------- |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `token.` | string | Required | A `writer` or `admin` SDK token. You can obtain a token using one of the following methods:<li>Get an SDK token for testing purposes from Agora Console. See [Get security credentials for your whiteboard project](../../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See[ Generate an SDK token](/interactive-whiteboard/develop/generate-token-rest#generate-an-sdk-token-post).</li><li>Write code on your app server. See Generate a [token from your app server](../../develop/generate-token-app-server).</li> |
-| `region` | string | Required | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li>                                                                                                                                                            |
+| Parameter | Category | Required/Optional | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| :------- | :----- | :------- |:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `token.` | string | Required | A `writer` or `admin` SDK token. You can obtain a token using one of the following methods:<li>Get an SDK token for testing purposes from Agora Console. See [Get security credentials for your whiteboard project](../../develop/enable-whiteboard/#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [Generate an SDK token](../../develop/generate-token-rest#generate-an-sdk-token-post).</li><li>Write code on your app server. See Generate a [token from your app server](../../develop/generate-token-app-server).</li> |
+| `region` | string | Required | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li>                                                                                                                                           |
 
 ### Request example
 
@@ -213,7 +213,7 @@ token: NETLESSSDK_YWs9QxxxxxxMjRi
 
 ### HTTP response
 
-For the details of all the possible response status codes, see the [status code table](/interactive-whiteboard/reference/whiteboard-api/overview#status-codes).
+For the details of all the possible response status codes, see the [status code table](./overview#status-codes).
 
 If the status code is `200`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -257,7 +257,7 @@ Pass in the following parameters in the request header:
 
 | Parameter | Category | Required/Optional | Description                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | :-------- | :------- | :---------------- |:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `token`   | string   | Required          | An SDK token. You can obtain a token using one of the following methods:<li>Call the RESTful API. See [Generate an SDK token](../../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Write code on your app server. See [Generate a token from your app server](../../develop/generate-token-app-server).</li>                                                                       |
+| `token`   | string   | Required          | An SDK token. You can obtain a token using one of the following methods:<li>Call the RESTful API. See [ Generate an SDK token](../../develop/generate-token-rest#generate-an-sdk-token-post).</li><li>Write code on your app server. See [Generate a token from your app server](../../develop/generate-token-app-server).</li>                                                                       |
 | `region`  | string   | Required          | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li> |
 
 ### Request Path
@@ -280,7 +280,7 @@ token: NETLESSSDK_YWsxxxxxM2MjRi
 
 ### HTTP response
 
-For the details of all the possible response status codes, see the [status code table](/interactive-whiteboard/reference/whiteboard-api/overview#status-codes).
+For the details of all the possible response status codes, see the [status code table](./overview#status-codes).
 
 If the status code is `200`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -317,10 +317,10 @@ Call this API to move the specified conversion task in the waiting list to the f
 
 Pass in the following parameters in the request header:
 
-| Parameter | Category | Required/Optional | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| :------- | :----- | :------- |:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `token` | string | Required | A `writer` or `admin` SDK token. You can obtain a token using one of the following methods::<li>Get an SDK token for testing purposes from Agora Console. See [Get security credentials for your whiteboard project](../../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See[ Generate an SDK token](/interactive-whiteboard/develop/generate-token-rest#generate-an-sdk-token-post).</li><li>Write code on your app server. See Generate a [token from your app server](../../develop/generate-token-app-server).</li> |
-| `region` | string | Required | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li>                                                                                                                                                             |
+| Parameter | Category | Required/Optional | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| :------- | :----- | :------- |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `token` | string | Required | A `writer` or `admin` SDK token. You can obtain a token using one of the following methods::<li>Get an SDK token for testing purposes from Agora Console. See [Get security credentials for your whiteboard project](../../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).</li><li>Call the RESTful API. See [ Generate an SDK token](../../develop/generate-token-rest#generate-an-sdk-token-post).</li><li>Write code on your app server. See Generate a [token from your app server](../../develop/generate-token-app-server).</li> |
+| `region` | string | Required | Specifies a data center to process the request: <li>`us-sv`: Silicon Valley, US, which provides services to North America and South America.</li><li>`sg`: Singapore, which provides services to Singapore, East Asia, and Southeast Asia.</li><li>`in-mum`: Mumbai, India, which provides services to India.</li><li>`cn-hz`: Hangzhou, China, which provides services to the areas not covered by other data centers.</li>                                                                                                                                    |
 
 ### Request Body
 
@@ -354,7 +354,7 @@ token: NETLESSSDK_YWs9QxxxxxxMjRi
 
 ### HTTP response
 
-For the details of all the possible response status codes, see the [status code table](/interactive-whiteboard/reference/whiteboard-api/overview#status-codes).
+For the details of all the possible response status codes, see the [status code table](./overview#status-codes).
 
 If the status code is `200`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -380,13 +380,13 @@ If the status code is not `200`, the request fails. The response body includes a
 
 ## Webhook callback
 
-Call this callback to receive reports on the progress and operating status of file-conversion tasks from the server.  You can call this callback by passing in the relevant parameters in the <a href="/interactive-whiteboard/reference/whiteboard-api/?platform=RESTful#request-body">request body</a> when launching a file-conversion task. 
+Call this callback to receive reports on the progress and operating status of file-conversion tasks from the server.  You can call this callback by passing in the relevant parameters in the [request body](#request-body) when launching a file-conversion task. 
 
 <div class="alert note">The Webhook callback could be repeated multiple times. To ensure that the app server processes identical responses in the same manner, you need to apply idempotent processing. </div>
 
 ### HTTP response
 
-For the details of all the possible response status codes, see the [status code table](/interactive-whiteboard/reference/whiteboard-api/overview#status-codes).
+For the details of all the possible response status codes, see the [status code table](./overview#status-codes).
 
 If the status code is `200`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -429,15 +429,15 @@ If the status code is `200`, the request is successful. The response returns the
 
 | Parameter         | Category | Description                                                  |
 | :---------------- | :------- | :----------------------------------------------------------- |
-| `code`            | number   | The error code. When the task succeeds, the value is `0`.  For the details of all the possible error codes, see <a href="/interactive-whiteboard/reference/whiteboard-api/?platform=RESTful#request-body">Error code</a>. |
+| `code`            | number   | The error code. When the task succeeds, the value is `0`.  For the details of all the possible error codes, see [error code](#request-body). |
 | `message`         | string   | The error message corresponding to the error code, describing the cause of the error. |
 | `uuid`            | string   | The task UUID, which is the unique identifier of the file-conversion task. |
 | `taskType`        | string   | The type of the conversion task. Currently, only `dynamic_conversion` is available. |
 | `prefixUrl`       | string   | The prefix of the address of the generated file.             |
 | `pageCount`       | number   | The number of file pages. This parameter is not available when the conversion task fails. |
-| `previews`        | object   | The address of the preview. Each page corresponds to a preview address. This parameter is only returned when `preview` is set to `true` in the <a href="/interactive-whiteboard/reference/whiteboard-api/?platform=RESTful#request-body">request body</a> when starting the file conversion. This parameter is not available when the conversion task fails. |
+| `previews`        | object   | The address of the preview. Each page corresponds to a preview address. This parameter is only returned when `preview` is set to `true` in the [request body](#request-body) when starting the file conversion. This parameter is not available when the conversion task fails. |
 | `note`            | string   | Notes and comments extracted from the file. This parameter contains only the pages that have notes or comments. |
-| `images`          | object   | The address of the static conversion results. Each page corresponds to a picture. This parameter is only returned when `type` is set to `static` in the <a href="/interactive-whiteboard/reference/whiteboard-api/?platform=RESTful#request-body">request body</a> when starting the file conversion. This value is not available when the conversion task fails. |
+| `images`          | object   | The address of the static conversion results. Each page corresponds to a picture. This parameter is only returned when `type` is set to `static` in the [request body](#request-body) when starting the file conversion. This value is not available when the conversion task fails. |
 | `noticeTimestamp` | number   | The time when you receive the Webhook callback.              |
 
 

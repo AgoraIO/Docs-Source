@@ -52,7 +52,7 @@ For each user, Agora calculates the usage duration from the user joining a room 
 
 Agora calculates the usage amount by the number of images and web pages successfully converted from source files.
 
-<div class="alert note"><ul><li>The cost of converting a file to web pages is five times the cost of converting it to images. When charging for file conversion to web pages, Agora multiplies the number of generated web pages by five in order to use a consistent unit price for the file conversion feature.</li><li>Agora does not charge for a failed file conversion task. You can call the <a href="/interactive-whiteboard/reference/whiteboard-api/file-conversion#query-the-progress-of-a-file-conversion-task">Query file conversion progress </a > API to get the result of a file conversion task.</li><li>The file conversion feature can also be charged by QPS. See  <a href="/interactive-whiteboard/reference/qps_pricing">QPS-based Pricing</a >.</li></ul></div>
+<ul><li>The cost of converting a file to web pages is five times the cost of converting it to images. When charging for file conversion to web pages, Agora multiplies the number of generated web pages by five in order to use a consistent unit price for the file conversion feature.</li><li>Agora does not charge for a failed file conversion task. You can call the [Query file conversion progress](../reference/whiteboard-api/file-conversion#query-the-progress-of-a-file-conversion-task) API to get the result of a file conversion task.</li><li>The file conversion feature can also be charged by QPS. See [QPS-based Pricing](./qps-pricing).</li></ul>
 
 ### Free-of-charge usage
 
@@ -113,7 +113,7 @@ Agora rounds up the total cost to two decimal places.
     Yes. Usage calculation for <Vg k="WHITE" /> depends on the presence of active long-lived connections. To avoid additional costs, Agora recommends that you:
 
     - Call `disconnect()` to cut off a user's connection when the user leaves the room, and ensure that you receive the `onPhaseChanged(disconnected)` callback.
-    - Call the <a href="/interactive-whiteboard/reference/whiteboard-api/room-management#disableroom">Interactive Whiteboard RESTful API </a > on your app server to move all users out of the room when live streaming ends.
+    - Call the [Interactive Whiteboard RESTful API](../reference/whiteboard-api/room-management#disableroom)  on your app server to move all users out of the room when live streaming ends.
 
 
 - Does billing begin when a room is created?

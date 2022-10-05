@@ -6,9 +6,9 @@ description: >
   Deprecated methods for converting files. 
 ---
 
-Interactive Whiteboard supports file conversion from PPT and PPTX files into dynamic HTML web pages. The generated web pages can be accessed directly or presented on the whiteboard.
+<Vg k="WHITE" /> supports file conversion from PPT and PPTX files into dynamic HTML web pages. The generated web pages can be accessed directly or presented on the whiteboard.
 
-Agora Interactive Whiteboard released a new version of file conversion service on July 27, 2022, that greatly improves conversion speed, content parsing, and stability.  The new version also adds the ability to integrate with third-party whiteboard SDKs. Agora strongly recommends you use the new version of file conversion. See [File conversion RESTful API reference](../reference/whiteboard-api/file-conversion).
+<Vg k="WHITE" /> released a new version of file conversion service on July 27, 2022, that greatly improves conversion speed, content parsing, and stability.  The new version also adds the ability to integrate with third-party whiteboard SDKs. Agora strongly recommends you use the new version of file conversion. See [File conversion RESTful API reference](../reference/whiteboard-api/file-conversion).
 
 ## Introduction
 

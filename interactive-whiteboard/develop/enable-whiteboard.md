@@ -35,8 +35,8 @@ Follow these steps to enable the <Vg k="WHITE" /> in <Vg k="CONSOLE" />:
 <Vg k="CONSOLE" /> assigns the following security credentials to each whiteboard project:
 
 - **AppIdentifier**: The unique App Identifier, which is required for initializing the <Vg k="WHITE_SDK" />.
-- **AK** and **SK**: A pair of access keys, which you can use to generate whiteboard tokens. See [Generate a Token at App Server](../develop/generate-token-app-server).
-- **sdkToken**: An [SDK Token (a dynamic key)](./authentication-workflow) for test purposes. In a production environment, you need to generate an SDK Token at your app server either by using the [code samples](../develop/generate-token-app-server) or calling the [RESTful API](../develop/generate-token-rest). 
+- **AK** and **SK**: A pair of access keys, which you can use to generate whiteboard tokens. See [Generate a Token at App Server](./develop/generate-token-app-server).
+- **sdkToken**: An [SDK Token (a dynamic key)](./authentication-workflow) for test purposes. In a production environment, you need to generate an SDK Token at your app server either by using the [code samples](../develop/generate-token-app-server) or calling the [RESTful API](./develop/generate-token-rest). 
 
 To get the security credentials, do the following steps:
 
@@ -57,12 +57,12 @@ Unexpected exposure of the security credentials can cause severe security proble
 
 ## Enable whiteboard server-side features
 
-<Vg k="WHITE" /> sets up [five data centers](../reference/security#network-geofencing) and each data center provides the following server-side features: 
+<Vg k="WHITE" /> sets up [five data centers](./reference/security#network-geofencing) and each data center provides the following server-side features: 
 
 - File conversion, including **Docs to Picture** and **Docs to web**. 
-After enabling the file conversion feature, you can call the [RESTful APIs](../reference/whiteboard-api/file-conversion) to launch a file conversion task or query the conversion progress.
-Agora charges for the file-conversion feature. See [Pricing](../reference/pricing).
-- **Screenshot**. After enabling the screenshot feature, you can call the [RESTful APIs](../reference/whiteboard-api/screenshots) to take screenshots.
+After enabling the file conversion feature, you can call the [RESTful APIs](./reference/whiteboard-api/file-conversion) to launch a file conversion task or query the conversion progress.
+Agora charges for the file-conversion feature. See [Pricing](./reference/pricing).
+- **Screenshot**. After enabling the screenshot feature, you can call the [RESTful APIs](./reference/whiteboard-api/screenshots) to take screenshots.
 
 Follow these steps to enable one or more features and configure the storage settings:
 
@@ -70,7 +70,7 @@ Follow these steps to enable one or more features and configure the storage sett
 
 2. On the **Edit Project** page, find **Whiteboard** and click **Config**.
 
-3. Under **Services**, select a data center and click **Config**. The data center must be the same as the one you fill in the `region` field when calling the [Create a room](../reference/whiteboard-api/room-management#create-a-room-post) API; otherwise, the service configurations do not take effect.
+3. Under **Services**, select a data center and click **Config**. The data center must be the same as the one you fill in the `region` field when calling the [Create a room](./reference/whiteboard-api/room-management#create-a-room-post) API; otherwise, the service configurations do not take effect.
   ![](https://web-cdn.agora.io/docs-files/1658998783322)
 
 
@@ -101,5 +101,5 @@ Follow these steps to enable one or more features and configure the storage sett
 
 ## Reference
 After enabling the <Vg k="WHITE" />, you can refer to the following documents to use its functions:
-- [Join a whiteboard room](../get-started/get-started-sdk)
+- [Join a whiteboard room](./get-started/get-started-sdk)
 - [File conversion overview](../reference/whiteboard-api/file-conversion)

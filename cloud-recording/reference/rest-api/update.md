@@ -21,21 +21,21 @@ During a cloud recording, you can call this method to update the Cloud Recording
 
 The following parameters are required in the URL:
 
-| Parameter    | Type   | Description                                                  |
-| :----------- | :----- | :----------------------------------------------------------- |
-| `appid`      | String | The App ID in the channel to be recorded.                    |
-| `resourceid` | String | The resource ID requested by [`acquire`](./acquire). |
-| `sid`        | String | The recording ID created by [`start`](./start). |
+| Parameter    | Type   | Description                                                                                                                                        |
+| :----------- | :----- |:---------------------------------------------------------------------------------------------------------------------------------------------------|
+| `appid`      | String | The App ID in the channel to be recorded.                                                                                                          |
+| `resourceid` | String | The resource ID requested by [`acquire`](../rest-api/acquire).                                                                                     |
+| `sid`        | String | The recording ID created by [`start`](../rest-api/start).                                                                                          |
 | `mode`       | String | The recording mode. Supports individual mode (`individual`), composite mode (`mix`) and web page recording (`web`). Composite mode is the default. |
 
 
 The following parameters are required in the request body:
 
-| Parameter       | Type   | Description                                                  |
-| :-------------- | :----- | :----------------------------------------------------------- |
-| `cname`         | String | The name of the channel to be recorded.                      |
-| `uid`           | String | A string that contains the user ID of the recording client. Must be the same user ID used in the [`acquire`](./acquire) method. |
-| `clientRequest` | JSON   | A specific client request that includes the `streamSubscribe` parameter and `webRecordingConfig` parameter.<li>Use `streamSubscribe` to update the subscription list. This is only applicable to individual recording (`individual`) and composite recording (`mix`).</li><li>Use `webRecordingConfig` to update parameters of web page recording. This is only applicable to Web page recording (`web`).</li><li>Use `rtmpPublishConfig` to update parameters of pushing media stream to the CDN during a web page recording. This is only applicable to Web page recording (`web`).</li>|
+| Parameter       | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| :-------------- | :----- |:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `cname`         | String | The name of the channel to be recorded.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `uid`           | String | A string that contains the user ID of the recording client. Must be the same user ID used in the [`acquire`](../rest-api/acquire) method.                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `clientRequest` | JSON   | A specific client request that includes the `streamSubscribe` parameter and `webRecordingConfig` parameter.<li>Use `streamSubscribe` to update the subscription list. This is only applicable to individual recording (`individual`) and composite recording (`mix`).</li><li>Use `webRecordingConfig` to update parameters of web page recording. This is only applicable to Web page recording (`web`).</li><li>Use `rtmpPublishConfig` to update parameters of pushing media stream to the CDN during a web page recording. This is only applicable to Web page recording (`web`).</li> |
 
 `streamSubscribe` requires the following parameters:
 
@@ -118,7 +118,7 @@ https://api.agora.io/v1/apps/<appid>/cloud_recording/resourceid/<resourceid>/sid
         "rtmpPublishConfig": {
           "outputs": [
              {
-                "rtmpUrl": "rtmp://xxx",
+                "rtmpUrl": "rtmp://xxx"
              }
            ]
         }
@@ -159,20 +159,20 @@ This method call overrides the existing layout configurations. For example, if y
 
 The following parameters are required in the URL.
 
-| Parameter    | Type   | Description                                                  |
-| :----------- | :----- | :----------------------------------------------------------- |
-| `appid`      | String | The App ID used in the channel to be recorded.               |
-| `resourceid` | String | The resource ID requested by the [`acquire`](./acquire) method. |
-| `sid`        | String | The recording ID created by the [`start`](./start) method.    |
-| `mode`       | String | The recording mode. Supports composite mode (`mix`) only. |
+| Parameter    | Type   | Description                                                               |
+| :----------- | :----- |:--------------------------------------------------------------------------|
+| `appid`      | String | The App ID used in the channel to be recorded.                            |
+| `resourceid` | String | The resource ID requested by the [`acquire`](../rest-api/acquire) method. |
+| `sid`        | String | The recording ID created by the [`start`](../rest-api/start) method.      |
+| `mode`       | String | The recording mode. Supports composite mode (`mix`) only.                 |
 
 The following parameters are required in the request body.
 
-| Parameter       | Type   | Description                                                  |
-| :-------------- | :----- | :----------------------------------------------------------- |
-| `cname`         | String | The name of the channel to be recorded.                      |
-| `uid`           | String | A string that contains the user ID of the recording client. Must be the same `uid` used in the [`acquire`](./acquire) method. |
-| `clientRequest` | JSON   | A specific client request. See the following list for details. |
+| Parameter       | Type   | Description                                                                                                                             |
+| :-------------- | :----- |:----------------------------------------------------------------------------------------------------------------------------------------|
+| `cname`         | String | The name of the channel to be recorded.                                                                                                 |
+| `uid`           | String | A string that contains the user ID of the recording client. Must be the same `uid` used in the [`acquire`](../rest-api/acquire) method. |
+| `clientRequest` | JSON   | A specific client request. See the following list for details.                                                                          |
 
 `clientRequest` requires the following parameters:
 

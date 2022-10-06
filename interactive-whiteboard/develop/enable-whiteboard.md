@@ -36,7 +36,7 @@ Follow these steps to enable the <Vg k="WHITE" /> in <Vg k="CONSOLE" />:
 
 - **AppIdentifier**: The unique App Identifier, which is required for initializing the <Vg k="WHITE_SDK" />.
 - **AK** and **SK**: A pair of access keys, which you can use to generate whiteboard tokens. See [Generate a Token at App Server](../develop/generate-token-app-server).
-- **sdkToken**: An [SDK Token (a dynamic key)](./authentication-workflow) for test purposes. In a production environment, you need to generate an SDK Token at your app server either by using the [code samples](../develop/generate-token-app-server) or calling the [RESTful API](../develop/generate-token-rest). 
+- **sdkToken**: An [SDK Token (a dynamic key)](../develop/authentication-workflow) for test purposes. In a production environment, you need to generate an SDK Token at your app server either by using the [code samples](../develop/generate-token-app-server) or calling the [RESTful API](../develop/generate-token-rest). 
 
 To get the security credentials, do the following steps:
 

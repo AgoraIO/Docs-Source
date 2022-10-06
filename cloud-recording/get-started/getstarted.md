@@ -62,7 +62,7 @@ Now, you can use Agora Cloud Recording and see the usage statistics in the **Usa
 ## Implement the cloud recording
 
 The following figure shows the API call sequence of a cloud recording:
-Querying the recording status ([`query`](#query)), updating the subscription list ([`update`](#update)), and updating the video layout ([`updateLayout`](#updateLayout)) are optional and can be called multiple times, but they must be called during the recording process, that is, after the recording starts and before the recording ends.
+Querying the recording status ([`query`](#query)), updating the subscription list ([`update`](#update)), and updating the video layout ([`updateLayout`](#update-video-layout)) are optional and can be called multiple times, but they must be called during the recording process, that is, after the recording starts and before the recording ends.
 ![](https://web-cdn.agora.io/docs-files/1627527945942)
 
 ### Pass the basic HTTP authentication

@@ -124,7 +124,7 @@ export const OPREC_SDK_API_JAVA  = `${API_REF_ROOT_OPREC_SDK}/linux-java/${OPREC
 
 export const CREC = 'Cloud Recording';
 
-export const CGATE = 'Cloud Gateway';
+export const CGATE = 'Server Gateway';
 
 export const CGATE_RELEASE_API = `3.x`;
 export const API_REF_ROOT_CGATE_SDK = `${API_ROOT}/on-premise-recording-sdk`;

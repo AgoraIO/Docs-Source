@@ -88,4 +88,4 @@ To make your documentation publicly accessible through a URL, take the following
 2. [Import and build your documentation](https://docs.readthedocs.io/en/stable/intro/import-guide.html) using Read the Docs, which assigns a URL for your documentation.
 3. If you need to update your documentation, edit the source files and push the commit to your repository. The update is automatically published in your documentation.
 
-To ensure that users always get up-to-date content about your extension, provide your documentation URL to Agora before officially publishing your extension in the Gallery. For details, see [Publish Your Extension](./publish-extension).
+To ensure that users always get up-to-date content about your extension, provide your documentation URL to Agora before officially publishing your extension in the Gallery. For details, see [Publish Your Extension](publish-extension).

@@ -314,13 +314,13 @@ Web page recording mode is free to use by November 1, 2021. See [Pricing for Web
 - Ensure that your web application does not consume excessive CPU memory and network bandwidth and that your application is used legally.
 - If you enable the autoplay property for a video element in the recorded web page, the recording service can play the video without any user interaction. However, if you disable the autoplay property, the video cannot be played automatically, and the recording service cannot record the content of the video.
 - The recorded webpage should not be redirected to a different domain, and should avoid any other types of redirection. If the webpage requires login, complete the login first before the recording session starts.
-- You can use the [web page load timeout detection function](./webpage-load-timeout) to prevent the recorded content from being inconsistent with the expected content caused by the web page load timeout.
+- You can use the [web page load timeout detection function](/cloud-recording/develop/webpage-load-timeout) to prevent the recorded content from being inconsistent with the expected content caused by the web page load timeout.
 
 ### RESTful API requests
 
 - Recording starts approximately five seconds after you send a request. We recommend you send the request in advance to ensure that everything you want to record is captured.
 - Web page recording does not support the `update` and `updateLayout` methods.
-- If the URL you specify in the `start` method cannot be accessed, the recording service exits automatically after the `start` call. To ensure that the recording service starts successfully, see [Best Practices in Integrating Cloud Recording](./integration-best-practices#ensure-the-recording-service-starts-successfully).
+- If the URL you specify in the `start` method cannot be accessed, the recording service exits automatically after the `start` call. To ensure that the recording service starts successfully, see [Best Practices in Integrating Cloud Recording](/cloud-recording/develop/integration-best-practices#ensure-the-recording-service-starts-successfully).
 
 ### Other considerations
 

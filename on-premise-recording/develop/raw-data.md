@@ -8,7 +8,7 @@ description: >
 
 The Agora On-premise Recording SDK supports raw audio and video data in individual recording mode, and only raw audio data in composite recording mode.
 
-For details about configuring an on-premise recording in these modes, see [Individual Recording](./individual-mode) and [Composite Recording](./composite-mode).
+For details about configuring an on-premise recording in these modes, see [Individual Recording](../develop/individual-mode) and [Composite Recording](../develop/composite-mode).
 
 ## Get raw audio and video data from an individual recording session
 

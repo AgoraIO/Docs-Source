@@ -33,8 +33,8 @@ All requests are sent to the host: `api.agora.io`.
 
 Use the RESTful APIs in the following steps:
 
-1. Call the [`acquire`](./acquire) method to request a resource ID for cloud recording.
-2. Call the  [`start`](./start) method within five minutes after getting the resource ID to start the recording.
-3. Call the [`stop`](./stop) method to stop the recording.
+1. Call the [`acquire`](../rest-api/acquire) method to request a resource ID for cloud recording.
+2. Call the  [`start`](../rest-api/start) method within five minutes after getting the resource ID to start the recording.
+3. Call the [`stop`](../rest-api/stop) method to stop the recording.
 
-During the recording, you can call the [`query`](./query) method to check the recording status.
+During the recording, you can call the [`query`](../rest-api/query) method to check the recording status.

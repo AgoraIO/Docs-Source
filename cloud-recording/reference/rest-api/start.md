@@ -23,18 +23,18 @@ The HTTP method and endpoint of `start`:
 
 The following parameters are required in the URL.
 
-| Parameter    | Type   | Description                                                  |
-| :----------- | :----- | :----------------------------------------------------------- |
-| `appid`      | String | Your App ID.               |
-| `resourceid` | String | The resource ID requested by the [`acquire`](./acquire) method. |
-| `mode`       | String | One of the following three recording modes:<ul><li> Individual recording (`individual`): Records the audio and video of each user ID in separate files.</li><li> Composite recording (`mix`): (Default) Records the audio and video of multiple user IDs in a single file.</li><li>Web page recording (`web`): Records the content and audio on a specified web page in a single file.</li></ul>|
+| Parameter    | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                      |
+| :----------- | :----- |:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `appid`      | String | Your App ID.                                                                                                                                                                                                                                                                                                                                                                                     |
+| `resourceid` | String | The resource ID requested by the [`acquire`](../rest-api/acquire) method.                                                                                                                                                                                                                                                                                                                        |
+| `mode`       | String | One of the following three recording modes:<ul><li> Individual recording (`individual`): Records the audio and video of each user ID in separate files.</li><li> Composite recording (`mix`): (Default) Records the audio and video of multiple user IDs in a single file.</li><li>Web page recording (`web`): Records the content and audio on a specified web page in a single file.</li></ul> |
 
 The following parameters are required in the request body.
 
 | Parameter       | Type   | Description                                                  |
 | :-------------- | :----- | :----------------------------------------------------------- |
 | `cname`         | String | <ul><li> In web page recording mode, use `cname` to distinguish between recording sessions.</li><li> In other recording modes, use `cname` to set the name of the channel to be recorded. </li></ul>              |
-| `uid`           | String | A string containing the user ID of the recording client. Must be the same `uid` used in the [`acquire`](./acquire) method. |
+| `uid`           | String | A string containing the user ID of the recording client. Must be the same `uid` used in the [`acquire`](../rest-api/acquire) method. |
 | `clientRequest` | JSON   | A specific client request that requires the following parameters: <li>[`token`](../glossary#token): String. The dynamic key used for the channel to record. Ensure that you set this parameter if App Certificate is enabled for your application. See [Authenticate Your Users with Tokens](../../develop/authentication-workflow).</li><li>[`recordingConfig`](#recordingConfig): JSON. Configurations for subscribing to media streams.</li><li>[`recordingFileConfig`](#recordingFileConfig): JSON. Configurations for the recorded files.</li><li>[`snapshotConfig`](#snapshotConfig): JSON. Video screenshot configurations.</li><li>[`storageConfig`](#storageConfig): JSON. Third-party cloud storage configurations.</li><li>[`extensionServiceConfig`](#extensionServiceConfig): JSON. Configurations for third-party extension services. Currently supports ApsaraVideo for VoD and web page recording.</li> |
 
 ### Application configuration
@@ -78,7 +78,7 @@ The following parameters are required in the request body.
   - `7`: AES_128_GCM2. 128-bit AES encryption, GCM mode. Compared to AES_128_GCM encryption mode, AES_128_GCM2 encryption mode is more secure and requires you to set the secret and salt.
 - `8`: AES_256_GCM2. 256-bit AES encryption, GCM mode. Compared to AES_256_GCM encryption mode, AES_256_GCM2 encryption mode is more secure and requires you to set the secret and salt.
 - `secret`: (Optional) String. The decryption password when decryption mode is enabled. If `decryptionMode` is not `0`, you need to set this value.
-- `salt`: (Optional) Base64 encoding, 32-bit bytes. The decryption [salt](/video-calling/develop/media-stream-encryption.html#_understand_the_tech) that needs to be set for the GCM2 encryption mode. If `decryptionMode` is `7` or `8`, you need to set this value.
+- `salt`: (Optional) Base64 encoding, 32-bit bytes. The decryption [salt](/video-calling/develop/media-stream-encryption#_understand_the_tech) that needs to be set for the GCM2 encryption mode. If `decryptionMode` is `7` or `8`, you need to set this value.
 - `audioProfile`: (Optional) Number. The profile of the output audio stream, including the sample rate, bitrate, encoding mode, and the number of channels. You cannot set this parameter in individual recording mode.
   - `0`: (Default) Sample rate of 48 kHz, music encoding, mono, and a bitrate of up to 48 Kbps.
   - `1`: Sample rate of 48 kHz, music encoding, mono, and a bitrate of up to 128 Kbps.

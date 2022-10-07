@@ -54,7 +54,7 @@ The unit prices of the video categories are as follows:
 
 Agora provides the following preferential billing policies in conjunction with the web page recording service:
 
-- If the Agora Video SDK is used in the web page being recorded to realize real-time communications, and the user is subscribed to a channel with a high-definition (HD) [aggregate video resolution](./pricing#aggregate), Agora waives the the cost of the video <Vg k="VSDK" /> usage during the web page recording; only the web page recording fees apply. Real-time communication at higher aggregate resolutions does not receive this discount.
+- If the Agora Video SDK is used in the web page being recorded to realize real-time communications, and the user is subscribed to a channel with a high-definition (HD) [aggregate video resolution](../reference/pricing#aggregate), Agora waives the the cost of the video <Vg k="VSDK" /> usage during the web page recording; only the web page recording fees apply. Real-time communication at higher aggregate resolutions does not receive this discount.
 - Agora gives each Agora account 10,000 free-of-charge minutes each month, including web page recording. For the specific deduction order and scope of application, see [Agora's free-of-charge policy for the first 10,000 minutes](../reference/billing-policies#agoras-free-of-charge-policy-for-the-first-10000-minutes).
 
 ## Cost example 

@@ -6,7 +6,7 @@ description:
   Stop recording
 ---
 
-When a recording finishes, call the `stop` method to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the  [`acquire`](./acquire) method for a new resource ID.
+When a recording finishes, call the `stop` method to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the  [`acquire`](../rest-api/acquire) method for a new resource ID.
 
 - Method: POST
 - Endpoint: /v1/apps/\<appid\>/cloud_recording/resourceid/\<resourceid\>/sid/\<sid\>/mode/\<mode\>/stop
@@ -18,21 +18,21 @@ When a recording finishes, call the `stop` method to leave the channel and stop 
 
 The following parameters are required in the URL.
 
-| Parameter    | Type   | Description                                                  |
-| :----------- | :----- | :----------------------------------------------------------- |
-| `appid`      | String | Your App ID.               |
-| `resourceid` | String | The resource ID requested by the  [`acquire`](./acquire) method. |
-| `sid`        | String | The recording ID created by the [`start`](./start) method.    |
+| Parameter    | Type   | Description                                                                                                     |
+| :----------- | :----- |:----------------------------------------------------------------------------------------------------------------|
+| `appid`      | String | Your App ID.                                                                                                    |
+| `resourceid` | String | The resource ID requested by the  [`acquire`](../rest-api/acquire) method.                                      |
+| `sid`        | String | The recording ID created by the [`start`](../rest-api/start) method.                                            |
 | `mode`       | String | The recording mode. Supports individual mode (`individual`), composite mode (`mix`), and web page mode (`Web`). |
 
 The following parameters are required in the request body.
 
-| Parameter       | Type   | Description                                                  |
-| :-------------- | :----- | :----------------------------------------------------------- |
-| `cname`         | String | <ul><li>In web page recording mode, use `cname` to distinguish between recording sessions.</li><li>In other recording modes, use `cname` to set the name of the channel to be recorded.</li></ul>        |
-| `uid`           | String | A string that contains the user ID of the recording client. Must be the same `uid` used in the [`acquire`](./acquire) method. |
-| `clientRequest` | JSON   | A specific client request that is empty for this method.     |
-| `clientRequest.async_stop` | (Optional) bool   | Whether the `stop` method call is asynchronous.<li>Asynchronous. A response is received immediately after calling `stop`.</li><li>Synchronize. After calling `stop`, you need to wait for all recording files to be uploaded to the third-party cloud storage to receive a response.</li>   |
+| Parameter       | Type   | Description                                                                                                                                                                                                                                                                               |
+| :-------------- | :----- |:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `cname`         | String | <ul><li>In web page recording mode, use `cname` to distinguish between recording sessions.</li><li>In other recording modes, use `cname` to set the name of the channel to be recorded.</li></ul>                                                                                         |
+| `uid`           | String | A string that contains the user ID of the recording client. Must be the same `uid` used in the [`acquire`](../rest-api/acquire) method.                                                                                                                                                   |
+| `clientRequest` | JSON   | A specific client request that is empty for this method.                                                                                                                                                                                                                                  |
+| `clientRequest.async_stop` | (Optional) bool   | Whether the `stop` method call is asynchronous.<li>Asynchronous. A response is received immediately after calling `stop`.</li><li>Synchronize. After calling `stop`, you need to wait for all recording files to be uploaded to the third-party cloud storage to receive a response.</li> |
 
 ### Request example
 
@@ -95,7 +95,7 @@ If the returned HTTP status code is `200`, it means the request was successful, 
 - `code`: Number. [Status code](../common-errors#status-codes).
 - `resourceId`: String. The resource ID for cloud recording. The resource ID is valid for five minutes.
 - `sid`: String. The recording ID. The unique identification of the current recording.
-- `serverResponse`: JSON. The details about the recording status. The child elements in `serverResponse` vary according to your configurations in [`start`](./start). For example, if you configure `snapshotConfig` or `extensionServiceConfig` in `start`, then `stop` does not return `fileListMode`.
+- `serverResponse`: JSON. The details about the recording status. The child elements in `serverResponse` vary according to your configurations in [`start`](../rest-api/start). For example, if you configure `snapshotConfig` or `extensionServiceConfig` in `start`, then `stop` does not return `fileListMode`.
   - `fileListMode`: String. The data type of `fileList`.
     - `"string"`: `fileList` is a string. In composite mode, if you set `avFileType` as [`"hls"]`, `fileListMode` is `"string"`.
     - `"json"`: `fileList` is a JSONArray. In individual mode, or if you set `avFileType` as [`"hls","mp4"]` in composite recording mode, `fileListMode` is `"json"`.

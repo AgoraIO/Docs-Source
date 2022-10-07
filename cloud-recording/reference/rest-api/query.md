@@ -19,11 +19,11 @@ description: >
 
 The following parameters are required in the URL.
 
-| Parameter    | Type   | Description                                                  |
-| :----------- | :----- | :----------------------------------------------------------- |
-| `appid`      | String | Your App ID.               |
-| `resourceid` | String | The resource ID requested by the [`acquire`](./acquire) method. |
-| `sid`        | String | The recording ID created by the [`start`](./start) method.    |
+| Parameter    | Type   | Description                                                                                                                                                                                                         |
+| :----------- | :----- |:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `appid`      | String | Your App ID.                                                                                                                                                                                                        |
+| `resourceid` | String | The resource ID requested by the [`acquire`](../rest-api/acquire) method.                                                                                                                                           |
+| `sid`        | String | The recording ID created by the [`start`](../rest-api/start) method.                                                                                                                                                |
 | `mode`       | String | The recording mode. Supports [`Individual recording mode`](../../develop/individual-mode), [`Composite recording mode`](../../develop/composite-mode), and [`Web page recording mode`](../../develop/webpage-mode). |
 
 ## Request example
@@ -221,7 +221,7 @@ If the reliability of the status of a cloud recording is a high priority, Agora 
 
 ### Message Notification Service
 
-You can use the Message Notification Service as a complementary option to monitor the recording service status. You need to configure an HTTP/HTTPS server to receive event notifications. For details, see [Agora Cloud Recording RESTful API Callback Service](./rest-api-overview).
+You can use the Message Notification Service as a complementary option to monitor the recording service status. You need to configure an HTTP/HTTPS server to receive event notifications. For details, see [Agora Cloud Recording RESTful API Callback Service](../rest-api/rest-api-overview).
 
 - Pros: Real-time
 - Cons:

@@ -6,7 +6,7 @@ description: >
   Explains the layout types you can choose in a composite recording.
 ---
 
-This page explains the layout types you can choose in a composite recording. See [Composite Recording](./composite-mode) for more details about this recording mode
+This page explains the layout types you can choose in a composite recording. See [Composite Recording](../develop/composite-mode) for more details about this recording mode
 
 When there are multiple users sending streams in a channel, the Agora Cloud Recording Service mixes the streams of all the users into one stream. This is called **composite recording** mode. This page shows you how to set the video layout for composite recording.
 
@@ -290,4 +290,4 @@ The following figure shows the corresponding layout of the sample code:
   - `defaultUserBackgroundImage` (the default background image of user regions)
   - `backgroundImage` (the background image of the canvas)
   - `backgroundColor` (the background color of the canvas)
-- If a user leaves the channel in the middle of a call, the user region displays different contents in different circumstances. Refer to [Considerations](./composite-mode#considerations) in *Composite Recording* for details.
+- If a user leaves the channel in the middle of a call, the user region displays different contents in different circumstances. Refer to [Considerations](../develop/composite-mode#considerations) in *Composite Recording* for details.

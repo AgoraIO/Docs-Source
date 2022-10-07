@@ -138,7 +138,7 @@ export const UIK = 'UI Kit';
 export const vUIK = `${UIK}`;
 export const FC = 'Flexible Classroom';
 
-export const FC_VERSION = '2.6.x'
+export const FC_VERSION = '2.x' ;
 export const FC_API_REF_ROOT = `${API_ROOT}/flexible-classroom-sdk`;
 export const FC_API_REF_ANDROID_ROOT = `${FC_API_REF_ROOT}/android/${FC_VERSION}/API`;
 export const FC_API_REF_IOS_ROOT = `${FC_API_REF_ROOT}/ios/${FC_VERSION}/API`;

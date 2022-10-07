@@ -10,7 +10,7 @@ description: >
 
 External factors can cause problems with web page recording, including the following:
 
-- The page to be recorded cannot be accessed normally because the page fails to load or takes too long. In response to this problem, Agora provides a [web page load timeout detection function](./webpage-load-timeout).
+- The page to be recorded cannot be accessed normally because the page fails to load or takes too long. In response to this problem, Agora provides a [web page load timeout detection function](../develop/webpage-load-timeout).
 - The page to be recorded can be accessed normally, but the HTML elements in the page cannot be loaded correctly.
 - The page fails to load during the recording process because changed HTML elements do not load normally.
 - The audio or video in the page to be recorded cannot be played normally.

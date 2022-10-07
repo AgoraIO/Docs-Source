@@ -104,7 +104,7 @@ In order to ensure the validity and completeness of page recording, this version
 
 **Pause the page recording**
 
-This release adds the `onhold` parameter to the [`start`](../reference/rest-api/start#extension-service-configuration) and [`update`](../reference/rest-api/updateupdate-update-the-cloud-recording) methods, which is used to pause the recording when the web page recording starts or is in progress.
+This release adds the `onhold` parameter to the [`start`](../reference/rest-api/start#extension-service-configuration) and [`update`](../reference/rest-api/update#update-the-cloud-recording) methods, which is used to pause the recording when the web page recording starts or is in progress.
 
 **Capture screenshots and recording in a recording process**
 
@@ -299,7 +299,7 @@ Cloud Recording now supports taking screenshots of the video streams in individu
 
 ## 2019.12.16
 
-This release improved the availability of the cloud recording service. When a server is disconnected or when the process is killed, the cloud recording automatically switches to a new server to resume the service. See [Fault processing when a cloud recording server is disconnected or the process killed](./product-overview#features) for more information.
+This release improved the availability of the cloud recording service. When a server is disconnected or when the process is killed, the cloud recording automatically switches to a new server to resume the service. See [Fault processing when a cloud recording server is disconnected or the process killed](../overview/product-overview) for more information.
 
 **API Changes**
 

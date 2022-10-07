@@ -8,7 +8,7 @@ description: >
 
 ## Overview
 
-Agora Cloud Recording generates M3U8 files, TS/WebM files, and MP4 files after a recording. To process the recorded files, such as [merging the audio and video files](./merge-files), [convert recorded file format](./convert-format) or [synchronizing the playback](./playback) with other stream files, you need to know the naming conventions of the recorded files, how to parse the information in the M3U8 file, and when slicing occurs.
+Agora Cloud Recording generates M3U8 files, TS/WebM files, and MP4 files after a recording. To process the recorded files, such as [merging the audio and video files](../develop/merge-files), [convert recorded file format](../develop/convert-format) or [synchronizing the playback](../develop/playback) with other stream files, you need to know the naming conventions of the recorded files, how to parse the information in the M3U8 file, and when slicing occurs.
 
 ## Naming conventions
 
@@ -31,7 +31,7 @@ For example, in the file name `sid713476478245_cnameagora__uid_s_123__uid_e_vide
 
 ### Individual audio non-transcoding recording
 
-The naming conventions of [individual audio non-transcoding recording](./individual-nontranscoding) are as follows:
+The naming conventions of [individual audio non-transcoding recording](../develop/individual-nontranscoding) are as follows:
 
 The naming conventions of individual recording are as follows:
 
@@ -46,7 +46,7 @@ The naming conventions of individual recording are as follows:
 
 ### Individual audio non-transcoding recording and postpone audio mixing
 
-The naming conventions of [postpone audio mixing](./individual-nontranscoding#implement-an-postpone-audio-mixing) are as follows:
+The naming conventions of [postpone audio mixing](../develop/individual-nontranscoding#implement-an-postpone-audio-mixing) are as follows:
 
 - M3U8 file: `<sid>_<cname>__uid_s_<uid>__uid_e_<type>.m3u8`
 - TS file: `<sid>_<cname>__uid_s_<uid>__uid_e_<type>_utc.ts`

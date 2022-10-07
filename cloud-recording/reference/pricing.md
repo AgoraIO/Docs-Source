@@ -6,7 +6,7 @@ description: >
    Depending on the number of minutes you intend to record, estimate your monthly Cloud Recording cost.
 ---
 
-Web page recording is free to use by November 1, 2021. See [Pricing for Web Page Recording](./pricing-webpage-recording) for details.
+Web page recording is free to use by November 1, 2021. See [Pricing for Web Page Recording](../reference/pricing-webpage-recording) for details.
 
 Starting in April 2021, Agora further divided HD+ video into Full HD, 2K, and 2K+ video and set a more fine-grained pricing.
 

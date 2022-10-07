@@ -32,7 +32,7 @@ When the service detects that the server process is killed, the fault processing
   - The request is not valid JSON
 - `49`: Caused by repeated `stop` requests with the same resource ID and recording ID (sid).
 - `53`: The recording is already running. This error occurs when you use the same parameters to call `acquire` again and use the new resource ID in the `start` request. To start multiple recording instances, use a different user ID for each instance.
-- `62`: If you receive this error when calling `acquire`, the cloud recording service is not enabled. See [Enable Cloud Recording](./rest-api/rest) for details.
+- `62`: If you receive this error when calling `acquire`, the cloud recording service is not enabled. See [Enable Cloud Recording](../get-started/getstarted) for details.
 - `65`: Usually caused by network jitter. Retry with the same resource ID. Agora recommends that you use a backoff strategy, for example, retry after 3 and 6 seconds successively.
 - `109`: The authentication token for joining the <Vg k="VSDK" /> channel has expired. You need to get a new token.
 - `110`: The authentication token for joining the rtc channel is wrong. You need to confirm if you have got the right one.
@@ -53,7 +53,7 @@ When the service detects that the server process is killed, the fault processing
 - `"no Route matched with those values"`: A possible reason for this message is that you entered an incorrect HTTP method in your request, such as using GET when it should have been POST. Another possible reason is that you sent your request to a wrong URL.
 - `"Invalid authentication credentials"`: The following list contains possible reasons for this message. If the error persists after you correct the following issues, contact [support@agora.io](mailto:support@agora.io):
   - The Customer ID or Customer Certificate you entered is incorrect.
-  - The cloud recording service is not enabled. See [Enable Cloud Recording](./rest-api/rest) for details.
+  - The cloud recording service is not enabled. See [Enable Cloud Recording](../get-started/getstarted) for details.
   - HTTP header contains incorrect information. For example, `Basic` is missing in the `Authorization` field.
   - HTTP header contains incorrectly formatted content. For example, the capitalization is wrong or there is an unnecessary space in the `Content-type` field. The correct value is `application/json;charset=utf-8`.
 
@@ -64,7 +64,7 @@ When the service detects that the server process is killed, the fault processing
 | `200`  | The request is successful.                                   |
 | `201`  | The recording is already running. Do not repeat the `start` request with the same resource ID. |
 | `206`  | No user in the channel sent a stream during the recording process, or some of the recorded files are uploaded to the Agora Cloud Backup instead of the third-party cloud storage, or the recording process is not over yet. |
-| `400`  | The server cannot process the request due to malformed request syntax, or [the cloud recording service is not enabled](./rest-api/rest). |
+| `400`  | The server cannot process the request due to malformed request syntax, or [the cloud recording service is not enabled](../get-started/getstarted). |
 | `401`  | Unauthorized (incorrect Customer ID/Customer Secret).        |
 | `404`  | The requested resource could not be found.                   |
 | `500`  | Internal server error.                                       |

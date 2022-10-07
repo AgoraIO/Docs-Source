@@ -34,7 +34,7 @@ When the service detects that the server process is killed, the fault processing
 - `53`: The recording is already running. This error occurs when you use the same parameters to call `acquire` again and use the new resource ID in the `start` request. To start multiple recording instances, use a different user ID for each instance.
 - `62`: If you receive this error when calling `acquire`, the cloud recording service is not enabled. See [Enable Cloud Recording](../get-started/getstarted) for details.
 - `65`: Usually caused by network jitter. Retry with the same resource ID. Agora recommends that you use a backoff strategy, for example, retry after 3 and 6 seconds successively.
-- `109`: The authentication token for joining the RTC channel has expired. You need to get a new token.
+- `109`: The authentication token for joining the <Vg k="VSDK" /> channel has expired. You need to get a new token.
 - `110`: The authentication token for joining the rtc channel is wrong. You need to confirm if you have got the right one.
 - `432`: The parameter in the request is incorrect. Either the parameter is invalid, or the App ID, channel name, or user ID does not match the resource ID.
 - `433`: The resource ID has expired. You need to start recording within five minutes after getting a resource ID. Call acquire to get a new resource ID.

@@ -10,7 +10,7 @@ export const toc = [{}]
 
 This page introduces the billing policy for the <Vg k="WHITE" />.
 
-Your billing details may differ if you have signed a contract with Agora. If your scenario involves other Agora products or services, such as the RTC SDK, RTM SDK, or <Vg k="CREC" />, expect additional charges for these products or services. For details, see the billing policy for each Agora product or service.
+Your billing details may differ if you have signed a contract with Agora. If your scenario involves other Agora products or services, such as the <Vg k="VSDK" />, <Vg k="MESS_SDK" />, or <Vg k="CREC" />, expect additional charges for these products or services. For details, see the billing policy for each Agora product or service.
 
 ## Overview
 

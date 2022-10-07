@@ -50,7 +50,7 @@ The following parameters are required in the request body.
 
 `recordingConfig` is a JSON object for configuring how the Cloud Recording service subscribes to the media streams in the channel. `recordingConfig` has the following fields:
 
-- `channelType`: Number. The channel profile. Agora Cloud Recording must use the same channel profile as the Agora RTC SDK. Otherwise, issues may occur.
+- `channelType`: Number. The channel profile. Agora Cloud Recording must use the same channel profile as the Agora <Vg k="VSDK" />. Otherwise, issues may occur.
   - `0`: (Default) Communication profile.
   - `1`: Live broadcast profile.
 - `streamTypes`: (Optional) Number. The type of the media stream to subscribe to:
@@ -78,7 +78,7 @@ The following parameters are required in the request body.
   - `7`: AES_128_GCM2. 128-bit AES encryption, GCM mode. Compared to AES_128_GCM encryption mode, AES_128_GCM2 encryption mode is more secure and requires you to set the secret and salt.
 - `8`: AES_256_GCM2. 256-bit AES encryption, GCM mode. Compared to AES_256_GCM encryption mode, AES_256_GCM2 encryption mode is more secure and requires you to set the secret and salt.
 - `secret`: (Optional) String. The decryption password when decryption mode is enabled. If `decryptionMode` is not `0`, you need to set this value.
-- `salt`: (Optional) Base64 encoding, 32-bit bytes. The decryption [salt](/en/video-calling/develop/media-stream-encryption.html#_understand_the_tech) that needs to be set for the GCM2 encryption mode. If `decryptionMode` is `7` or `8`, you need to set this value.
+- `salt`: (Optional) Base64 encoding, 32-bit bytes. The decryption [salt](/video-calling/develop/media-stream-encryption.html#_understand_the_tech) that needs to be set for the GCM2 encryption mode. If `decryptionMode` is `7` or `8`, you need to set this value.
 - `audioProfile`: (Optional) Number. The profile of the output audio stream, including the sample rate, bitrate, encoding mode, and the number of channels. You cannot set this parameter in individual recording mode.
   - `0`: (Default) Sample rate of 48 kHz, music encoding, mono, and a bitrate of up to 48 Kbps.
   - `1`: Sample rate of 48 kHz, music encoding, mono, and a bitrate of up to 128 Kbps.
@@ -380,7 +380,7 @@ For details, see <a href="https://www.alibabacloud.com/help/doc-detail/31837.htm
 <a name="extensionServiceConfig"></a>
 ### Extension service configuration
 
-`extensionServiceConfig` is a JSON Object for extension service configurations. Extension services are a collection of applications that process the media streams generated from the Agora RTC SDK. One example extension service is VoD service.
+`extensionServiceConfig` is a JSON Object for extension service configurations. Extension services are a collection of applications that process the media streams generated from the Agora <Vg k="VSDK" />. One example extension service is VoD service.
 
 `extensionServiceConfig` has the following fields:
 

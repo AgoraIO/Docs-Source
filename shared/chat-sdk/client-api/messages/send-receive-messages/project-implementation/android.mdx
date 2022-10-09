@@ -275,7 +275,7 @@ CmdMessageBody cmdBody = new CmdMessageBody(action);String toUsername = "test1";
 cmdMsg.setTo(toUsername);cmdMsg.addBody(cmdBody); ChatClient.getInstance().chatManager().sendMessage(cmdMsg);
 ```
 
-To notify the recipient that a CMD message is received, use a seperate delegate so that users can deal with the message differently.
+To notify the recipient that a CMD message is received, use a separate delegate so that users can deal with the message differently.
 
 ```java
 MessageListener msgListener = new MessageListener() 
@@ -284,12 +284,121 @@ MessageListener msgListener = new MessageListener()
   @Override    
   public void onMessageReceived(List<ChatMessage> messages) { 
   }        
-  // Occues when a CMD message is received 
+  // Occurs when a CMD message is received 
   @Override    
   public void onCmdMessageReceived(List<ChatMessage> messages) { 
   }
 }
 ```
+
+#### Implement typing indicators via CMD messages
+
+Typing indicators signify when other users are typing a message. This feature enables users to communicate efficiently and sets users' expectations about new interactions in a chat app. You can implement typing indicators via CMD messages. 
+
+The following diagram explains how typing indicators work.
+
+
+Listen for the input status of user A. Once there is text input, the input status is sent to user B through a command message, and user B receives the input status that indicates that user A is typing.
+
+ - User A sends a message to user B indicating the starting input status.
+ - After receiving the message, if user B is currently on the chat page of with user A, the typing indicator of user A is displayed.
+ - If user B receives the ending input status of user A or have not received from user A again after a few seconds, the typing indicator is automatically canceled.
+
+**Note：**
+User A can set the sending interval between cmd messages as needed.
+
+The following code example shows how to send a cmd message of the input status.
+
+```objc
+#define MSG_TYPING_BEGIN @"TypingBegin"
+#define MSG_TYPING_END @"TypingEnd"
+
+- (void)textViewDidChange:(UITextView *)textView
+{
+    long long currentTimestamp = [self getCurrentTimestamp];
+    // Do not send messages repeatedly within 5s.
+    if ((currentTimestamp - _previousChangedTimeStamp) > 5) {
+        // Sends a cmd message of start typing.
+        [self _sendBeginTyping];
+        [self startReceiveTypingTimer];
+        _previousChangedTimeStamp = currentTimestamp;
+    }
+}
+
+- (void)startReceiveTypingTimer {
+    [self stopReceiveTypingTimer];
+    _receiveTypingCountDownNum = 10;
+    _receiveTypingTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(startReceiveCountDown) userInfo:nil repeats:YES];
+
+    [[NSRunLoop currentRunLoop] addTimer:_receiveTypingTimer forMode:UITrackingRunLoopMode];
+    [_receiveTypingTimer fire];
+    if (self.delegate && [self.delegate respondsToSelector:@selector(peerTyping)]) {
+        [self.delegate peerTyping];
+    }
+    
+}
+
+- (void)startReceiveCountDown
+{
+    if (_receiveTypingCountDownNum == 0) {
+        [self stopReceiveTypingTimer];
+        // After 10s, sends a cmd message of end typing.
+        [self _sendEndTyping]
+        return;
+    }
+    _receiveTypingCountDownNum--;
+}
+
+- (void)stopReceiveTypingTimer {
+    _receiveTypingCountDownNum = 0;
+    if (_receiveTypingTimer) {
+        [_receiveTypingTimer invalidate];
+        _receiveTypingTimer = nil;
+    }
+}
+
+- (void)_sendBeginTyping
+{
+    AgoraChatCmdMessageBody *body = [[AgoraChatCmdMessageBody alloc] initWithAction:MSG_TYPING_BEGIN];
+    body.isDeliverOnlineOnly = YES;
+    AgoraChatMessage *message = [[AgoraChatMessage alloc] initWithConversationID:conversationId body:body ext:nil];
+    message.chatType = AgoraChatTypeChat;
+    [[AgoraChatClient sharedClient].chatManager sendMessage:message progress:nil completion:nil];
+}
+
+- (void)_sendEndTyping
+{
+    AgoraChatCmdMessageBody *body = [[AgoraChatCmdMessageBody alloc] initWithAction:MSG_TYPING_END];
+    body.isDeliverOnlineOnly = YES;
+    AgoraChatMessage *message = [[AgoraChatMessage alloc] initWithConversationID:conversationId body:body ext:nil];
+    message.chatType = AgoraChatTypeChat;
+    [[AgoraChatClient sharedClient].chatManager sendMessage:message progress:nil completion:nil];
+}
+```
+
+The following code example shows how to accept and parse a cmd message of the input status.
+
+```objc
+- (void)cmdMessagesDidReceive:(NSArray *)aCmdMessages
+{
+    NSString *conId = self.currentConversation.conversationId;
+    for (AgoraChatMessage *message in aCmdMessages) {
+        if (![conId isEqualToString:message.conversationId]) {
+            continue;
+        }
+        AgoraChatCmdMessageBody *body = (AgoraChatCmdMessageBody *)message.body;
+        // Receives a cmd message of starting typing.
+        if ([body.action isEqualToString:MSG_TYPING_BEGIN]) {
+            // Updates the UI.
+        }
+        // Receives a cmd message of ending typing.
+        if ([body.action isEqualToString:MSG_TYPING_END]) {
+            // Updates the UI.
+        }
+    }
+}
+```
+
 
 ### Send a customized message
 

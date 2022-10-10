@@ -42,7 +42,7 @@ After the recording is over, the cloud recording service uploads the recording f
   - [Google Cloud](https://cloud.google.com/storage)
   - [Huawei Cloud](https://www.huaweicloud.com/intl/en-us/product/obs)
   - [Baidu AI Cloud](https://intl.cloud.baidu.com/product/bos)
-- Ensure that you have joined the RTC channel and have users in the channel and are streaming.
+- Ensure that you have joined the <Vg k="VSDK" /> channel and have users in the channel and are streaming.
 
 ## Project setup
 
@@ -137,7 +137,7 @@ curl --location --request POST  'https://api.agora.io/v1/apps/<appid>/cloud_reco
         },
 		# Set the recordingConfig related parameters.
         "recordingConfig": {
-		   # Which is consistent with the "channelType" of the Agora RTC SDK.
+		   # Which is consistent with the "channelType" of the Agora <Vg k="VSDK" />.
             "channelType": 0
         }
     }

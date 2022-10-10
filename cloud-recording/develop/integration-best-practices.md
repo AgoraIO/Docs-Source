@@ -64,11 +64,11 @@ You can obtain the M3U8 file name by two means. One is by splicing according to 
 
 #### Obtain file name by splicing
 
-In composite recording mode, the format of the M3U8 file name is `<sid>_<cname>.m3u8`. Therefore, you can predict the M3U8 file name by splicing. See [Naming conventions](./manage-files#naming-conventions) for details.
+In composite recording mode, the format of the M3U8 file name is `<sid>_<cname>.m3u8`. Therefore, you can predict the M3U8 file name by splicing. See [Naming conventions](../develop/manage-files#naming-conventions) for details.
 
 #### Obtain file name via the `query` call
 
-The M3U8 file name is generated after the first slice file is generated. Therefore, you should call `query` after the first slicing completes. See [Slicing](./manage-files#slicing) for details.
+The M3U8 file name is generated after the first slice file is generated. Therefore, you should call `query` after the first slicing completes. See [Slicing](../develop/manage-files#slicing) for details.
 
 In composite recording mode, call `query` 15 seconds after the cloud recording starts; in individual recording mode, call `query` one minute after the cloud recording starts. If the first `query` call fails, you can try again after one minute.
 

@@ -67,7 +67,7 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
 
 ### Start recording
 
-To enable [web page recording mode](./webpage-mode), set `mode` to `web` when calling  [`start`](../reference/rest-api/start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
+To enable [web page recording mode](../develop/webpage-mode), set `mode` to `web` when calling  [`start`](../reference/rest-api/start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
 
 You cannot switch to a different recording mode once you start recording.
 
@@ -192,7 +192,7 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
 
 ### Start a process
 
-To enable [web page recording mode](./webpage-mode), set `mode` to `web` when calling  [`start`](../reference/rest-api/start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
+To enable [web page recording mode](../develop/webpage-mode), set `mode` to `web` when calling  [`start`](../reference/rest-api/start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
 
 You cannot switch to a different recording mode once you start recording.
 
@@ -297,11 +297,11 @@ When a recording and stream pushing finishes, call [`stop`](../reference/rest-ap
 
 ## Recorded files
 
-A web page recording session generates one M3U8 file and multiple TS files. Depending on the value of `avFileType`, the recording session may also generate one or more MP4 files. For detailed information about the naming conventions of the recorded files, see [Manage Recorded Files](./manage-files).
+A web page recording session generates one M3U8 file and multiple TS files. Depending on the value of `avFileType`, the recording session may also generate one or more MP4 files. For detailed information about the naming conventions of the recorded files, see [Manage Recorded Files](../develop/manage-files).
 
 ## Pricing
 
-Web page recording mode is free to use by November 1, 2021. See [Pricing for Web Page Recording](../overview/pricing-webpage-recording) for details.
+Web page recording mode is free to use by November 1, 2021. See [Pricing for Web Page Recording](../reference/pricing-webpage-recording) for details.
 
 ## Considerations
 

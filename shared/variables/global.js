@@ -3,7 +3,6 @@ export const COMPANY = 'Agora';
 export const URL_ROOT = 'docs.agora.io/en';
 export const AGORA_BACKEND = `${COMPANY} SD-RTN™`;
 export const CLIENT = platform => (platform === 'unity' ? 'game' : 'app');
-
 export const VSDK_RELEASE_API = '4.x'
 export const VSDK_PREVIOUS_RELEASE_API = '3.x'
 export const VSDK_FLUTTER_RELEASE_API = '6.x'
@@ -139,7 +138,7 @@ export const UIK = 'UI Kit';
 export const vUIK = `${UIK}`;
 export const FC = 'Flexible Classroom';
 
-export const FC_VERSION = '2.6.x'
+export const FC_VERSION = '2.x' ;
 export const FC_API_REF_ROOT = `${API_ROOT}/flexible-classroom-sdk`;
 export const FC_API_REF_ANDROID_ROOT = `${FC_API_REF_ROOT}/android/${FC_VERSION}/API`;
 export const FC_API_REF_IOS_ROOT = `${FC_API_REF_ROOT}/ios/${FC_VERSION}/API`;

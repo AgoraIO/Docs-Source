@@ -67,7 +67,7 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
 
 ### Start recording
 
-To enable [web page recording mode](./webpage-mode), set `mode` to `web` when calling  [`start`](../reference/rest-api/start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
+To enable [web page recording mode](../develop/webpage-mode), set `mode` to `web` when calling  [`start`](../reference/rest-api/start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
 
 You cannot switch to a different recording mode once you start recording.
 
@@ -192,7 +192,7 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
 
 ### Start a process
 
-To enable [web page recording mode](./webpage-mode), set `mode` to `web` when calling  [`start`](../reference/rest-api/start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
+To enable [web page recording mode](../develop/webpage-mode), set `mode` to `web` when calling  [`start`](../reference/rest-api/start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
 
 You cannot switch to a different recording mode once you start recording.
 
@@ -297,11 +297,11 @@ When a recording and stream pushing finishes, call [`stop`](../reference/rest-ap
 
 ## Recorded files
 
-A web page recording session generates one M3U8 file and multiple TS files. Depending on the value of `avFileType`, the recording session may also generate one or more MP4 files. For detailed information about the naming conventions of the recorded files, see [Manage Recorded Files](./manage-files).
+A web page recording session generates one M3U8 file and multiple TS files. Depending on the value of `avFileType`, the recording session may also generate one or more MP4 files. For detailed information about the naming conventions of the recorded files, see [Manage Recorded Files](../develop/manage-files).
 
 ## Pricing
 
-Web page recording mode is free to use by November 1, 2021. See [Pricing for Web Page Recording](../overview/pricing-webpage-recording) for details.
+Web page recording mode is free to use by November 1, 2021. See [Pricing for Web Page Recording](../reference/pricing-webpage-recording) for details.
 
 ## Considerations
 
@@ -314,13 +314,13 @@ Web page recording mode is free to use by November 1, 2021. See [Pricing for Web
 - Ensure that your web application does not consume excessive CPU memory and network bandwidth and that your application is used legally.
 - If you enable the autoplay property for a video element in the recorded web page, the recording service can play the video without any user interaction. However, if you disable the autoplay property, the video cannot be played automatically, and the recording service cannot record the content of the video.
 - The recorded webpage should not be redirected to a different domain, and should avoid any other types of redirection. If the webpage requires login, complete the login first before the recording session starts.
-- You can use the [web page load timeout detection function](./webpage-load-timeout) to prevent the recorded content from being inconsistent with the expected content caused by the web page load timeout.
+- You can use the [web page load timeout detection function](/cloud-recording/develop/webpage-load-timeout) to prevent the recorded content from being inconsistent with the expected content caused by the web page load timeout.
 
 ### RESTful API requests
 
 - Recording starts approximately five seconds after you send a request. We recommend you send the request in advance to ensure that everything you want to record is captured.
 - Web page recording does not support the `update` and `updateLayout` methods.
-- If the URL you specify in the `start` method cannot be accessed, the recording service exits automatically after the `start` call. To ensure that the recording service starts successfully, see [Best Practices in Integrating Cloud Recording](./integration-best-practices#ensure-the-recording-service-starts-successfully).
+- If the URL you specify in the `start` method cannot be accessed, the recording service exits automatically after the `start` call. To ensure that the recording service starts successfully, see [Best Practices in Integrating Cloud Recording](/cloud-recording/develop/integration-best-practices#ensure-the-recording-service-starts-successfully).
 
 ### Other considerations
 

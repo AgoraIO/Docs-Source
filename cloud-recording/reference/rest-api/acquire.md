@@ -14,7 +14,7 @@ description: >
 
 > The request frequency limit is 10 requests per second for each [Agora account](../manage-agora-account#create-an-agora-account). Contact [Agora technical support](mailto:support@agora.io) if you want to raise the limit.
 
-If this method call succeeds, you get a resource ID (`resourceId`) from the HTTP response body. The resource ID is valid for five minutes, so you need to [start recording](./start) with this resource ID with it before it expires.
+If this method call succeeds, you get a resource ID (`resourceId`) from the HTTP response body. The resource ID is valid for five minutes, so you need to [start recording](start) with this resource ID with it before it expires.
 
 ## HTTP request
 

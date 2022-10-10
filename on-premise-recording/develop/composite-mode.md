@@ -56,7 +56,7 @@ You can set the `mixResolution` parameter, including the width, height, frame ra
 
 ### Set video layout
 
-In composite recording mode, you can use the `layoutMode` parameter to set the video layout and arrange the size and position of the region for each user. The default value is 0 (Floating Layout). For more information, see [Set Video Layout](./layout).
+In composite recording mode, you can use the `layoutMode` parameter to set the video layout and arrange the size and position of the region for each user. The default value is 0 (Floating Layout). For more information, see [Set Video Layout](../develop/layout).
 
 ## Example
 

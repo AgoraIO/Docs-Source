@@ -1,6 +1,6 @@
 ---
 title: 'Scene management '
-sidebar_position: 4
+sidebar_position: 5
 type: docs
 description: >
     Create a scene.
@@ -28,9 +28,9 @@ Pass in the following parameters in the request header:
 
 The following parameters are required in the URL:
 
-| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                             |
-| :-------- | :-------- | :---------------- |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `uuid`    | string    | Required          | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](./room-management#create-a-room-post) or calling the [RESTful API to get room information](./room-management#get-room-information-get). |
+| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                     |
+| :-------- | :-------- | :---------------- |:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `uuid`    | string    | Required          | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](../whiteboard-api/room-management#create-a-room-post) or calling the [RESTful API to get room information](../whiteboard-api/room-management#get-room-information-get). |
 
 ### Query parameters
 
@@ -52,7 +52,7 @@ Content-Type: application/json
 
 ### HTTP response
 
-For details about all possible response status codes, see the [status code table](./overview#status-codes).
+For details about all possible response status codes, see the [status code table](../whiteboard-api/overview#status-codes).
 
 If the status code is `200`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -93,9 +93,9 @@ Pass in the following parameters in the request header:
 
 The following parameters are required in the URL:
 
-| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                             |
-| :-------- | :-------- | :---------------- |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `uuid`    | string    | Required          | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](./room-management#create-a-room-post) or calling the [RESTful API to get room information](./room-management#get-room-information-get). |
+| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                                   |
+| :-------- | :-------- | :---------------- |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `uuid`    | string    | Required          | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](../whiteboard-api/room-management#create-a-room-post) or calling the [RESTful API to get room information](../whiteboard-api/room-management#get-room-information-get). |
 
 
 ### Request Body
@@ -140,7 +140,7 @@ token: NETLESSSDK_YWs9QlxxxxxA0NzA5ZGM2MjRi
 
 ### HTTP response
 
-For details about all possible response status codes, see the [status code table](./overview#status-codes).
+For details about all possible response status codes, see the [status code table](../whiteboard-api/overview#status-codes).
 
 If the status code is `201`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -178,9 +178,9 @@ Pass in the following parameters in the request header:
 
 The following parameters are required in the URL:
 
-| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                             |
-| :-------- | :-------- | :---------------- |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `uuid`    | string    | Required          | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](./room-management#create-a-room-post) or calling the [RESTful API to get room information](./room-management#get-room-information-get). |
+| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                     |
+| :-------- | :-------- | :---------------- |:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `uuid`    | string    | Required          | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](../whiteboard-api/room-management#create-a-room-post) or calling the [RESTful API to get room information](../whiteboard-api/room-management#get-room-information-get). |
 
 ### Request body
 
@@ -204,7 +204,7 @@ token: NETLESSSDK_YWs9TxxxxxYjc0
 
 ### HTTP response
 
-For details about all possible response status codes, see the [status code table](./overview#status-codes).
+For details about all possible response status codes, see the [status code table](../whiteboard-api/overview#status-codes).
 
 
 If the status code is `201`, the request is successful. The response returns the status code and corresponding parameters.

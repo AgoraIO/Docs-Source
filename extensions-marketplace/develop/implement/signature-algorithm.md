@@ -33,7 +33,7 @@ After receiving the request, you need to apply the encryption algorithm to gener
 
 ## Generate a signature (GET)
 
-Take the [Usage API](./usage) for example, Agora sends the following request to query usage information:
+Take the [Usage API](usage) for example, Agora sends the following request to query usage information:
 
 ```text
 https://[host]/usage?fromTs=1619913600&toTs=1619917200&pageNum=1&apiKey=pzD5XinRSlmA64tZx81fL92YcBsJK0gd&signature={signature}
@@ -101,7 +101,7 @@ SFVnCVlRbrZcjMPGTWVxAE4QWZ8%3D
 
 ## Generate a signature (POST and PUT)
 
-Take the [Provisioning API](./provisioning) for example, Agora sends the following request body:
+Take the [Provisioning API](provisioning) for example, Agora sends the following request body:
 
 ```json
 {

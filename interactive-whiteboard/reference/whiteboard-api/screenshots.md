@@ -1,6 +1,6 @@
 ---
 title: 'Screenshots'
-sidebar_position: 5
+sidebar_position: 6
 type: docs
 description: >
     Create a scene.
@@ -35,9 +35,9 @@ Pass in the following parameters in the request header:
 
 The following parameters are required in the URL:
 
-| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                             |
-| :----- | :----- | :------- |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `uuid` | string | Required | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](./room-management#create-a-room-post) or calling the [RESTful API to get room information](./room-management#get-room-information-get). |
+| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                                   |
+| :----- | :----- | :------- |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `uuid` | string | Required | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](../whiteboard-api/room-management#create-a-room-post) or calling the [RESTful API to get room information](../whiteboard-api/room-management#get-room-information-get). |
 
 ### Request body
 
@@ -114,9 +114,9 @@ Pass in the following parameters in the request header:
 
 The following parameters are required in the URL:
 
-| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                             |
-| :----- | :----- | :------- |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `uuid` | string | Required | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](./room-management#create-a-room-post) or calling the [RESTful API to get room information](./room-management#get-room-information-get). |
+| Parameter | Data type | Required/Optional | Description                                                                                                                                                                                                                                                                                   |
+| :----- | :----- | :------- |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `uuid` | string | Required | The room UUID, which is the unique identifier of a room. You can get it by calling the [RESTful API to create a room](../whiteboard-api/room-management#create-a-room-post) or calling the [RESTful API to get room information](../whiteboard-api/room-management#get-room-information-get). |
 
 #### Request body
 

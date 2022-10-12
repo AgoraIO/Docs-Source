@@ -53,7 +53,7 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
 
 ### Start recording
 
-To enable [composite recording mode](./composite-mode), set `mode` to `mix` when calling  [`start`](../reference/rest-api/start). Use `recordingConfig` to configure composite recording, and use `storageConfig` to configure your third-party cloud storage.
+To enable composite recording mode, set `mode` to `mix` when calling  [`start`](../reference/rest-api/start). Use `recordingConfig` to configure composite recording, and use `storageConfig` to configure your third-party cloud storage.
 
 You cannot switch to a different recording mode once you start recording.
 
@@ -160,7 +160,7 @@ The content of the recorded files varies according to the setting of `streamType
 | Audio and video  | Set [`streamTypes`](../reference/rest-api/start#recording-configuration) as `2` (default) | One M3U8 file, several TS files, and one or more MP4 files if you set avFileType as `["hls","mp4"]`. The TS files and MP4 files store the audio and video. |
 
 
-For detailed information about the naming conventions of the recorded files, see [Manage Recorded Files](./manage-files).
+For detailed information about the naming conventions of the recorded files, see [Manage Recorded Files](../develop/manage-files).
 
 <a name="Considerations"></a>
 ## Considerations

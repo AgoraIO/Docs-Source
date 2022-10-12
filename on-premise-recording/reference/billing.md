@@ -16,7 +16,7 @@ Starting in April 2021, Agora further divided HD+ video into Full HD, 2K, and 2K
 
 Agora calculates the billing of all projects under your [Agora account](https://console.agora.io/) monthly.
 
-Billing for the on-premise recording service begins once you use the Agora On-premise Recording SDK to record and save audio calls, group video calls, or interactive live video streaming made via the Agora RTC SDK on your server. 
+Billing for the on-premise recording service begins once you use the Agora On-premise Recording SDK to record and save audio calls, group video calls, or interactive live video streaming made via the Agora <Vg k="VSDK" /> on your server. 
 
 On the first day of each month, Agora sends you the bill via email, and five days later deducts the payment from your account. For details, see [Billing, fee deduction, and account suspension](../../video-calling/reference/billing-policies).
 

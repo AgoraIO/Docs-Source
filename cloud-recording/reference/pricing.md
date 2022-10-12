@@ -6,7 +6,7 @@ description: >
    Depending on the number of minutes you intend to record, estimate your monthly Cloud Recording cost.
 ---
 
-Web page recording is free to use by November 1, 2021. See [Pricing for Web Page Recording](./pricing-webpage-recording) for details.
+Web page recording is free to use by November 1, 2021. See [Pricing for Web Page Recording](../reference/pricing-webpage-recording) for details.
 
 Starting in April 2021, Agora further divided HD+ video into Full HD, 2K, and 2K+ video and set a more fine-grained pricing.
 
@@ -16,7 +16,7 @@ Starting in April 2021, Agora further divided HD+ video into Full HD, 2K, and 2K
 
 Agora calculates the billing of all projects under your [Agora account](https://console.agora.io/) monthly.
 
-Billing for the cloud recording service begins once you use Agora Cloud Recording to record and save audio calls, group video calls, or interactive video streaming made via the Agora RTC SDK on your cloud storage. 
+Billing for the cloud recording service begins once you use Agora Cloud Recording to record and save audio calls, group video calls, or interactive video streaming made via the Agora <Vg k="VSDK" /> on your cloud storage. 
 
 On the first day of each month, Agora sends you the bill via email, and five days later deducts the payment from your account. For details, see [Billing, fee deduction, and account suspension](../reference/billing-policies).
 

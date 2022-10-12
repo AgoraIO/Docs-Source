@@ -8,7 +8,7 @@ description: >
 
 <Vg k="WHITE" /> supports file conversion from PPT, PPTX, DOC, DOCX, and PDF files into static images, as well as from PPT/PPTX files into dynamic HTML web pages. The generated images and web pages can be presented on the whiteboard. See [File Conversion Overview](../../develop/file-conversion-overview).
 
-<div class="alert info">This page applies to the new version of file conversion. For the main differences between the old and new versions, see [Version comparison](../../develop/file-conversion-overview#version-comparison). If you use the old file conversion, see [Old File Conversion RESTful API Reference](./file-conversion-deprecated). </div>
+<div class="alert info">This page applies to the new version of file conversion. For the main differences between the old and new versions, see [Version comparison](../../develop/file-conversion-overview#version-comparison). If you use the old file conversion, see [Old File Conversion RESTful API Reference](../whiteboard-api/file-conversion-deprecated). </div>
 
 <div class="alert note">Before calling the RESTful API for file conversion, ensure that you have done the following:<ul><li>You have enabled <b>Docs to Picture</b> or <b>Docs to Web</b> and configured storage settings in <a href="https://console.agora.io/">Agora Console</a>. See [Enable server-side supporting features](../../develop/enable-whiteboard#enable-whiteboard-server-side-features).</li> <li>You have generated a URL address for the file you want to convert, and the address is publicly accessible.</li></ul></div>
 
@@ -66,7 +66,7 @@ token: NETLESSSDK_YWs9QxxxxxxMjRi
 
 ### HTTP response
 
-For the details of all the possible response status codes, see the [status code table](./overview#status-codes).
+For the details of all the possible response status codes, see the [status code table](../whiteboard-api/overview#status-codes).
 
 If the status code is `201`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -128,7 +128,7 @@ token: NETLESSSDK_YWsxxxxxM2MjRi
 
 ### HTTP response
 
-For the details of all the possible response status codes, see the [status code table](./overview#status-codes).
+For the details of all the possible response status codes, see the [status code table](../whiteboard-api/overview#status-codes).
 
 If the status code is `200`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -213,7 +213,7 @@ token: NETLESSSDK_YWs9QxxxxxxMjRi
 
 ### HTTP response
 
-For the details of all the possible response status codes, see the [status code table](./overview#status-codes).
+For the details of all the possible response status codes, see the [status code table](../whiteboard-api/overview#status-codes).
 
 If the status code is `200`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -280,7 +280,7 @@ token: NETLESSSDK_YWsxxxxxM2MjRi
 
 ### HTTP response
 
-For the details of all the possible response status codes, see the [status code table](./overview#status-codes).
+For the details of all the possible response status codes, see the [status code table](../whiteboard-api/overview#status-codes).
 
 If the status code is `200`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -354,7 +354,7 @@ token: NETLESSSDK_YWs9QxxxxxxMjRi
 
 ### HTTP response
 
-For the details of all the possible response status codes, see the [status code table](./overview#status-codes).
+For the details of all the possible response status codes, see the [status code table](../whiteboard-api/overview#status-codes).
 
 If the status code is `200`, the request is successful. The response returns the status code and corresponding parameters.
 
@@ -386,7 +386,7 @@ Call this callback to receive reports on the progress and operating status of fi
 
 ### HTTP response
 
-For the details of all the possible response status codes, see the [status code table](./overview#status-codes).
+For the details of all the possible response status codes, see the [status code table](../whiteboard-api/overview#status-codes).
 
 If the status code is `200`, the request is successful. The response returns the status code and corresponding parameters.
 

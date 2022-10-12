@@ -42,7 +42,7 @@ After the recording is over, the cloud recording service uploads the recording f
   - [Google Cloud](https://cloud.google.com/storage)
   - [Huawei Cloud](https://www.huaweicloud.com/intl/en-us/product/obs)
   - [Baidu AI Cloud](https://intl.cloud.baidu.com/product/bos)
-- Ensure that you have joined the RTC channel and have users in the channel and are streaming.
+- Ensure that you have joined the <Vg k="VSDK" /> channel and have users in the channel and are streaming.
 
 ## Project setup
 
@@ -62,7 +62,7 @@ Now, you can use Agora Cloud Recording and see the usage statistics in the **Usa
 ## Implement the cloud recording
 
 The following figure shows the API call sequence of a cloud recording:
-Querying the recording status ([`query`](#query)), updating the subscription list ([`update`](#update)), and updating the video layout ([`updateLayout`](#updateLayout)) are optional and can be called multiple times, but they must be called during the recording process, that is, after the recording starts and before the recording ends.
+Querying the recording status ([`query`](#query)), updating the subscription list ([`update`](#update)), and updating the video layout ([`updateLayout`](#update-video-layout)) are optional and can be called multiple times, but they must be called during the recording process, that is, after the recording starts and before the recording ends.
 ![](https://web-cdn.agora.io/docs-files/1627527945942)
 
 ### Pass the basic HTTP authentication
@@ -137,7 +137,7 @@ curl --location --request POST  'https://api.agora.io/v1/apps/<appid>/cloud_reco
         },
 		# Set the recordingConfig related parameters.
         "recordingConfig": {
-		   # Which is consistent with the "channelType" of the Agora RTC SDK.
+		   # Which is consistent with the "channelType" of the Agora <Vg k="VSDK" />.
             "channelType": 0
         }
     }

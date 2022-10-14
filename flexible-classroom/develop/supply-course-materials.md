@@ -33,44 +33,44 @@ If you want to upload the courseware to third-party cloud storage or to your own
    - `conversionFileUrl`: String. Indicates the URL of the generated image.
    - `preview`: String. Indicates the address of the preview. This field is returned only when `preview` is set as `true` and `type` is set as `dynamic` in the request body when starting file conversion.
 
-1. When you call [launch](/en/agora-class/agora_class_api_ref_web?platform=Web#launch) on your client, pass in the list of converted files by setting the [courseWareList](/en/agora-class/agora_class_api_ref_web?platform=Web#coursewarelist) parameter. Then students can see the courseware in the classroom.
+1. When you call [launch](../reference/classroom-sdk#launch) on your client, pass in the list of converted files by setting the [courseWareList](../reference/classroom-sdk#configcourseware) parameter. Then students can see the courseware in the classroom.
 
    ```json
    courseWareList:
    [
-        {
-        resourceName: xxxxxxx,
-        resourceUuid: xxxxxxxxx,
-        ext: 'pptx',
-        url: 'https://xxxxxxxxxxxxxx',
-        size: 0,
-        updateTime: xxxxxxxx
-        taskUuid: 'xxxxxxxxx',
-        conversion: {
-                    type: 'dynamic',
-                    preview: true,
-                    scale: 2,
-                    outputFormat: 'png',
-                    },
-        taskProgress: {
-            totalPageSize: 3,
-            convertedPageSize: 3,
-            convertedPercentage: 100,
-            convertedFileList: [
-                    {
-                    name: '1',
-                    ppt: {
-                          src: 'pptx://convertcdn.netless.link/dynamicConvert/3bxxxxxxx/1.slide',
-                          width: 1280,
-                          height: 720,
-                          preview:'dddddddddddddddurl'
-                        },
-                    },
-                    ...
-            ] as any,
-            currentStep: '',
-            },
-        },
+      {
+      resourceName: xxxxxxx,
+      resourceUuid: xxxxxxxxx,
+      ext: 'pptx',
+      url: 'https://xxxxxxxxxxxxxx',
+      size: 0,
+      updateTime: xxxxxxxx
+      taskUuid: 'xxxxxxxxx',
+      conversion: {
+                  type: 'dynamic',
+                  preview: true,
+                  scale: 2,
+                  outputFormat: 'png',
+                  },
+      taskProgress: {
+         totalPageSize: 3,
+         convertedPageSize: 3,
+         convertedPercentage: 100,
+         convertedFileList: [
+                  {
+                  name: '1',
+                  ppt: {
+                        src: 'pptx://convertcdn.netless.link/dynamicConvert/3bxxxxxxx/1.slide',
+                        width: 1280,
+                        height: 720,
+                        preview:'dddddddddddddddurl'
+                     },
+                  },
+                  ...
+         ] as any,
+         currentStep: '',
+         },
+      },
    ],
    ```
 
@@ -80,11 +80,10 @@ To upload courseware during a class, perform the following steps:
 
 1. Log in to Flexible Classroom, and enter the desired classroom.
 
-2. Click **Cloud Drive** in the tool bar, and then click **Upload** as shown in the following screenshot:
+1. Click **Cloud Drive** in the tool bar, and then click **Upload** as shown in the following screenshot:
 
    ![](https://web-cdn.agora.io/docs-files/1663562311451)
 
-You can delete your personal resources by selecting the option icon and clicking **Delete**, as shown in the following screenshot:
-![](https://web-cdn.agora.io/docs-files/1663562326661)
+   You can delete your personal resources by selecting the option icon and clicking **Delete**, as shown in the following screenshot:
 
-
+   ![](https://web-cdn.agora.io/docs-files/1663562326661)

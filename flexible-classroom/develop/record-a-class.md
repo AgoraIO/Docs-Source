@@ -12,7 +12,9 @@ This page introduces some best practices that you need to keep in mind when you 
 
 In Flexible Classroom, users normally start recording manually. The process is as follows:
 1. In the Flexible Classroom client, click the recording button, and click **Confirm** to start recording, as shown in the following screenshot:
-    ![](https://web-cdn.agora.io/docs-files/1664435632304)
+
+    ![start recording confirm](https://web-cdn.agora.io/docs-files/1664435632304)
+
 1. The client notifies the server to start recording.
 1. The server opens a browser window and navigates to the address specified in `recordURL` configured in `launchOption`.
 1. The server starts recording.
@@ -20,7 +22,8 @@ In Flexible Classroom, users normally start recording manually. The process is a
 If you want the recording to start automatically, you can listen for the event of class starting on the server side, and call [Set the recording state](../reference/classroom-api#set-the-recording-state) to start automatic recording.
 
 If you want to implement recording on your own, you can refer to the following diagram for the process. The steps highlighted in purple need to be implemented by you.
-![](https://web-cdn.agora.io/docs-files/1638259107675)
+
+![implement recording on your own](https://web-cdn.agora.io/docs-files/1638259107675)
 
 When you deploy the web page to be recorded into your CDN, you can use the template HTML file `templates/record_page_prod.html` provided by Agora in the [CloudClass-Desktop](https://github.com/AgoraIO-Community/CloudClass-Desktop) GitHub repository.
 

@@ -10,9 +10,20 @@ This page introduces some best practices that you need to keep in mind when you 
 
 ## The process of implementing the recording feature
 
-The following figure shows the basic process of implementing the recording feature in Flexible Classroom. The steps marked in purple in the figure are the operations you need to perform.
+In Flexible Classroom, users normally start recording manually. The process is as follows:
+1. In the Flexible Classroom client, click the recording button, and click **Confirm** to start recording, as shown in the following screenshot:
+    ![](https://web-cdn.agora.io/docs-files/1664435632304)
+1. The client notifies the server to start recording.
+1. The server opens a browser window and navigates to the address specified in `recordURL` configured in `launchOption`.
+1. The server starts recording.
 
+If you want the recording to start automatically, you can listen for the event of class starting on the server side, and call [Set the recording state](../reference/classroom-api#set-the-recording-state) to start automatic recording.
+
+If you want to implement recording on your own, you can refer to the following diagram for the process. The steps highlighted in purple need to be implemented by you.
 ![](https://web-cdn.agora.io/docs-files/1638259107675)
+
+When you deploy the web page to be recorded into your CDN, you can use the template HTML file `templates/record_page_prod.html` provided by Agora in the [CloudClass-Desktop](https://github.com/AgoraIO-Community/CloudClass-Desktop) GitHub repository.
+
 
 ## Start the recording
 
@@ -40,9 +51,7 @@ After setting `retryTimeout`, when calling the [launch](../reference/classroom-s
 - Prototype
 
   - Method: PUT
-
-  - Path: https://api.agora.io/edu/apps/{appId}/v2/rooms/{roomUUid}/records/ready
-
+  - Path: `api.agora.io/edu/apps/{appId}/v2/rooms/{roomUUid}/records/ready`
   - A successful method call returns the following response:
 
     ```json
@@ -54,31 +63,31 @@ After setting `retryTimeout`, when calling the [launch](../reference/classroom-s
     }
     ```
 
-The following sample code shows this logic:
+    The following sample code shows this logic:
 
-```typescript
-AgoraEduSDK.launch(document.querySelector(`#${this.elem.id}`), {
-    ...
-    listener: (evt) => {
-        if ( evt === 1 ) {
-        // Send a web request to notify the server side that the recording page was fully loaded.
+    ```typescript
+    AgoraEduSDK.launch(document.querySelector(`#${this.elem.id}`), {
+        ...
+        listener: (evt) => {
+            if ( evt === 1 ) {
+            // Send a web request to notify the server side that the recording page was fully loaded.
+            }
         }
-    }
-})
-```
+    })
+    ```
 
-If you use a version earlier than v1.1.5, you also need to set `params` to monitor the whiteboard loading state. The following sample code shows this logic:
+    If you use a version earlier than v1.1.5, you also need to set `params` to monitor the whiteboard loading state. The following sample code shows this logic:
 
-```typescript
-AgoraEduSDK.launch(document.querySelector(`#${this.elem.id}`), {
-    ...
-    listener: (evt, params) => {
-        if ( evt === 1 && params.type === "whiteboard") {
-        // Send a web request to notify the server side that the recording page was fully loaded.
+    ```typescript
+    AgoraEduSDK.launch(document.querySelector(`#${this.elem.id}`), {
+        ...
+        listener: (evt, params) => {
+            if ( evt === 1 && params.type === "whiteboard") {
+            // Send a web request to notify the server side that the recording page was fully loaded.
+            }
         }
-    }
-})
-```
+    })
+    ```
 
 ## Get the recording state
 
@@ -90,7 +99,8 @@ After starting the recording, the Flexible Classroom cloud service generates an 
 - `4`: Time out. Wait for retry.
 - `5`: Exit the recording when the number of retries reaches the upper limit.
 
-You can further implement your own logic based on the recording state change.
+The clients also receive callbacks that indicate the recording state change in [room properties](../reference/classroom-api#the-recording-state-changes). You can further implement your own logic based on the recording state change.
+
 
 ## Remove the white screen at the beginning of the recorded file
 

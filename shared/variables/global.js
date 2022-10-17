@@ -61,9 +61,11 @@ export const ILSS = 'Interactive Live Streaming Standard';
 export const ILSP = 'Interactive Live Streaming Premium';
 export const VSDK = 'Video SDK';
 export const VSDK_RELEASE = '4.x';
-export const VSDK_LATEST_RELEASE = '4.0.0';
+// A varible to update the version of SDK in relase notes.
+export const VSDK_LATEST_4_0_0 = '4.0.0';
 export const VSDK_FLUTTER_LATEST_RELEASE = '6.0.0';
-export const VSDK_LATEST_RELEASE_TWO = '4.0.1';
+// A variable to update the version of sdk in release notes.
+export const VSDK_LATEST_4_0_1 = '4.0.1';
 export const VSDK_PREVIOUS_RELEASE = '3.7.x';
 export const VSDK_RELEASE_FOLDER = 'video-call-4.x-beta';
 export const VSDK_FLUTTER_RELEASE = '6.0.0-rc.2';

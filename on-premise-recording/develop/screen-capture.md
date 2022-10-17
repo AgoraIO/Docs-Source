@@ -3,7 +3,7 @@ title: 'Capture Screenshots'
 sidebar_position: 5
 type: docs
 description: >
-  How to record screenshots using the On-premise Recording.
+  How to record screenshots using the On-Premise Recording.
 ---
 
 ## Overview

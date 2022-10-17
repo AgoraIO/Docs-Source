@@ -57,6 +57,7 @@ export const RTEC = `${RTE} Core`;
 export const RTES = `${RTE} SDK`;
 export const APP_ID_LINK = `http://agora.io`;
 export const AGORA_CONSOLE_URL = `http://console.agora.io`;
+export const AGORA_WEBDEMO_URL = `https://webdemo.agora.io`;
 export const API_REF_ANDROID = `http://api.agora.io/android`;
 
 export const PLATFORM = 'dummy';
@@ -177,6 +178,8 @@ export const APO = 'Product Owner';
 
 export const AGORA_DOCS_URL = 'https://docs.agora.io/en';
 
+export const AGORA_PREPROD_DOCS_URL = 'https://docs-preprod.agora.io/en';
+
 export const DEMO_BASIC_VIDEO_CALL_URL =
   'https://webdemo.agora.io/agora-websdk-api-example-4.x/basicVideoCall/index.html';
 
@@ -184,6 +187,9 @@ export const DEMO_PAGE_LINK = `<Link to="{{Global.DEMO_BASIC_VIDEO_CALL_URL}}"><
 
 export const AGORA_DYNAMIC_KEY_CODE_BASE_URL =
   'https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey';
+
+export const AGORA_MARKETPLACE_BASE_URL =
+  'https://github.com/AgoraIO-Community/AgoraMarketPlace/blob/master';
 
 export const ANDROID_UIKIT_VERSION = '4.0.1';
 export const ANDROID_UIKIT_SDK = 'com.github.AgoraIO-Community.Android-UIKit:final';

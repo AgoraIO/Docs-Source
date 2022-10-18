@@ -197,7 +197,7 @@ export const AGORA_MARKETPLACE_BASE_URL =
   'https://github.com/AgoraIO-Community/AgoraMarketPlace/blob/master';
 
 export const ANDROID_UIKIT_VERSION = '4.0.1';
-export const ANDROID_UIKIT_SDK = 'com.github.AgoraIO-Community.Android-UIKit:final';
+export const ANDROID_UIKIT_SDK = 'com.github.agoraio-community:videouikit-android:final';
 
 export const WEB_UIKIT = 'Agora React Web UI Kit';
 
@@ -207,8 +207,8 @@ export const IOS_VOICE_PACKAGE = 'AgoraRtcEngine_iOS_Voice_Beta';
 
 export const UIKIT_GH_HUB = 'https://github.com/AgoraIO-Community/.github/wiki/Agora-Video-UIKit'
 export const UIKIT_PACKAGE_IOS = 'https://github.com/AgoraIO-Community/VideoUIKit-iOS'
-export const UIKIT_PACKAGE_ANDROID = 'https://github.com/AgoraIO-Community/Android-UIKit'
-export const UIKIT_PACKAGE_MACOS = 'https://github.com/AgoraIO-Community/macOS-UIKit'
-export const UIKIT_PACKAGE_FLUTTER = 'https://github.com/AgoraIO-Community/Flutter-UIKit'
-export const UIKIT_PACKAGE_RN = 'https://github.com/AgoraIO-Community/ReactNative-UIKit'
-export const UIKIT_PACKAGE_REACT_WEB = 'https://github.com/AgoraIO-Community/Web-React-UIKit'
+export const UIKIT_PACKAGE_ANDROID = 'https://github.com/AgoraIO-Community/VideoUIKit-Android'
+export const UIKIT_PACKAGE_MACOS = 'https://github.com/AgoraIO-Community/VideoUIKit-macOS'
+export const UIKIT_PACKAGE_FLUTTER = 'https://github.com/AgoraIO-Community/VideoUIKit-Flutter'
+export const UIKIT_PACKAGE_RN = 'https://github.com/AgoraIO-Community/VideoUIKit-ReactNative'
+export const UIKIT_PACKAGE_REACT_WEB = 'https://github.com/AgoraIO-Community/VideoUIKit-Web-React'

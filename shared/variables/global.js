@@ -186,7 +186,7 @@ export const AGORA_DOCS_URL = 'https://docs.agora.io/en';
 export const AGORA_PREPROD_DOCS_URL = 'https://docs-preprod.agora.io/en';
 
 export const DEMO_BASIC_VIDEO_CALL_URL =
-  'https://webdemo.agora.io/agora-websdk-api-example-4.x/basicVideoCall/index.html';
+  'https://webdemo.agora.io/basicVideoCall/index.html';
 
 export const DEMO_PAGE_LINK = `<Link to="{{Global.DEMO_BASIC_VIDEO_CALL_URL}}"><Vg k="COMPANY" /> web demo</Link>`;
 

@@ -1,116 +1,223 @@
 <PlatformWrapper platform="ios">
 
-## Procedure
+## Implement a custom plugin
 
-### 1. Implement a plugin
+This section uses the countdown plug-in as an example to introduce the basic steps of implementing a custom plug-in through a Widget and embedding the plug-in in Flexible Classroom.
 
-First, inherit the `AgoraBaseExtApp` class to implement a custom plugin in your app.
+### Implement the widget
 
-`AgoraExtAppBase` includes the following methods and callbacks:
+Refer to the following steps to implement a custom Widget:
 
-#### Method
+1. Import the `AgoraWidget` library
 
-**initWithAppIdentifier**
+   ```swift
+   import AgoraWidget
+   ```
 
-```swift
-(instancetype)initWithAppIdentifier:(NSString *)appIdentifier
-                      localUserInfo:(AgoraExtAppUserInfo *)userInfo
-                           roomInfo:(AgoraExtAppRoomInfo *)roomInfo
-                         properties:(NSDictionary *)properties;
-```
+1. Initialize the Widget's interface and data in the `onWidgetDidLoad` method :
 
-Initialize the plugin.
+   ```swift
+   public override func onWidgetDidLoad() {
+    super.onWidgetDidLoad()
+    initViews()
+    initConstraints()
+    updateRoomData()
+    updateViewData()
+    updateViewFrame()
 
-**updateProperties**
+    log(content: info.roomProperties?.jsonString() ?? "nil",
+        extra: nil,
+        type: .info)
+   }
+   ```
 
-```swift
-(void)updateProperties:(NSDictionary *)properties
-               success:(AgoraExtAppCompletion)success
-                  fail:(AgoraExtAppErrorCompletion)fail;
-```
+1. Monitor `onWidgetRoomPropertiesUpdated` and `onMessageReceived` methods to update data:
 
-Update properties. Other plugins receive the `propertiesDidUpdate` callback to get the new properties.
+   ```swift
+   public override func onWidgetRoomPropertiesUpdated(_ properties: [String : Any],
+                                                      cause: [String : Any]?,
+                                                      keyPaths: [String]) {
+      super.onWidgetRoomPropertiesUpdated(properties,
+                                          cause: cause,
+                                          keyPaths: keyPaths)
+      updateRoomData()
+      updateViewData()
+      shouldStartTime()
 
-**deleteProperties**
+      log(content: properties.jsonString() ?? "nil",
+         extra: cause?.jsonString(),
+         type: .info)
+   }
 
-```swift
-(void)deleteProperties:(NSArray <NSString *> *)keys
-               success:(AgoraExtAppCompletion)success
-                  fail:(AgoraExtAppErrorCompletion)fail;
-```
+   public override func onMessageReceived(_ message: String) {
+      super.onMessageReceived(message)
 
-Delete properties. Other plugins receive the `propertiesDidUpdate` callback to get the new properties.
+      if let timestamp = message.toSyncTimestamp() {
+         objectCreateTimestamp = timestamp
+         initCurrentTimestamp()
+         shouldStartTime()
+      }
 
-**unload**
+      log(content: message,
+         type: .info)
+   }
+   ```
 
-```swift
-(void)unload;
-```
+1. If you need to change the size of the Widget, send a message to the outside using `sendMessage`, and the parent container that listens for the message will update the size of the Widget:
 
-Remove the plugin. A successful method call triggers the `onExtAppUnloaded` callback.
+   ```swift
+   func updateViewFrame() {
+      let size = ["width": countdownView.neededSize.width,
+                  "height": countdownView.neededSize.height]
 
-#### Callback
+      guard let message = ["size": size].jsonString() else {
+         return
+      }
 
-**propertiesDidUpdate**
+      sendMessage(message)
+   }   
+   ```
 
-```swift
-(void)propertiesDidUpdate:(NSDictionary *)properties;
-```
+### Register Widget in Agora Classroom SDK
 
-Occurs when the properties have been updated.
+`AgoraEduLaunchConfig.widgetsAdd` a countdown to `AgoraWidgetConfig`, and register the implemented plugin to the Agora Classroom SDK `launch` when:
 
-**extAppDidLoad**
+   ```swift
+   let launchConfig = AgoraEduLaunchConfig(userName: userName,
+                                          userUuid: userUuid,
+                                          userRole: userRole,
+                                          roomName: roomName,
+                                          roomUuid: roomUuid,
+                                          roomType: roomStyle,
+                                          appId: appId,
+                                          token: rtmToken,
+                                          startTime: nil,
+                                          duration: NSNumber(value: duration),
+                                          region: region.eduType,
+                                          mediaOptions: mediaOptions,
+                                          userProperties: nil)
 
-```swift
-(void)extAppDidLoad:(AgoraExtAppContext *)context;
-```
+   let widgetId = "countdownTimer"
 
-Occurs when the plugin has been loaded. You can initialize the plugin in this callback.
+   launchConfig.widgets[widgetId] = AgoraWidgetConfig(with: AgoraCountdownTimerWidget.self,
+                                                      widgetId: widgetId)
 
-**extAppWillUnload**
+   AgoraClassroomSDK.launch(launchConfig,
+                           success: launchSuccessBlock,
+                           failure: failureBlock)
+   ```
 
-```swift
-(void)extAppWillUnload;
-```
+### Using Widgets in the Classroom
 
-Occurs before the plugin is unloaded. You can perform operations such as data backup in this callback.
+Refer to the following steps to integrate the countdown plugin in the classroom:
 
-### 2. Register the plugin to the Agora Classroom SDK
+1. Add as an observer of the widget activity through `AgoraEduContext.widget` the `addWidgetActivityObserver` method of, and listen for the callback of the activity, `AgoraClassToolsViewController`.
 
-To register the plugin in the Agora Classroom SDK, call `AgoraEduSDK.registerExtApps`.
+   ```swift
+   override func viewDidLoad() {
+      super.viewDidLoad()
+      contextPool.room.registerRoomEventHandler(self)
+      contextPool.widget.add(self)
+   }
+   ```
 
-The following sample code demonstrates how to register the countdown plugin CountDownExtApp.
+1. Create and destroy the widget.
 
-```swift
-// appIdentifier: The plugin ID. Different clients must use the same ID for the same plugin. 
-// extAppClass: Inherit the AgoraBaseExtApp class to implement a custom plugin. 
-// frame: The size of the plugin container. 
-// language: The language of the container.
-let countDown = AgoraExtAppConfiguration(appIdentifier: "io.agora.countdown",
-                                         extAppClass: CountDownExtApp.self,
-                                         frame: UIEdgeInsets(top: 10,
-                                                            left: 50,
-                                                          bottom: 10,
-                                                           right: 50),
-                                                        language: "zh")
+   ```swift
+   extension AgoraClassToolsViewController: AgoraWidgetActivityObserver {
+      // Create Widget when onWidgetActive callback is received
+      func onWidgetActive(_ widgetId: String) {
+         createWidget(widgetId)
+      }
 
+      // When the `onWidgetInactive` callback is received, destroy the Widget
+      func onWidgetInactive(_ widgetId: String) {
+         releaseWidget(widgetId)
+      }
+   }
+   ```
 
-// The plugin icon. 
-countDown.image = image
-countDown.selectedImage = selectedImage
-let apps = [countDown]
-AgoraEduSDK.registerExtApps(apps)
-```
+1. Create the Widget object of `AgoraCountdownTimer` and implement the communication of the Widget on the local client.
 
-### 3. Use the plugin in the flexible classroom
+   ```swift
+   // Call the createWidget method to create the Widget object of AgoraCountdownTimer
+   func createWidget(_ widgetId: String) {
+      let widgetController = contextPool.widget
 
-By default, the icon of the registered plugin is displayed in the whiteboard toolbar in the flexible classroom.
+      guard widgetIdList.contains(widgetId),
+            // Call getWidgetConfig to get AgoraWidgetConfig of AgoraCountdownTimer
+            let config = widgetController.getWidgetConfig(widgetId) else {
+         return
+      }
 
-If you want to customize an entry for the plugin in the flexible classroom, you can edit the source code of the UI components and call the following methods when the user clicks on the plugin icon.
+      if let _ = getWidget(widgetId) {
+         return
+      }
 
-```java
-// Pass in the plugin ID in the willLaunchExtApp method. 
-extAppContext?.willLaunchExtApp(appIdentifier)
-```
+      // Add AgoraClassToolsViewController as the observer of Widget syncFrame through addObserverForWidgetSyncFrame of AgoraWidgetContext, and monitor the callback of syncFrame
+      widgetController.addObserver(forWidgetSyncFrame: self, widgetId: widgetId)
+
+      // Add AgoraClassToolsViewController as an observer of widget message through addWidgetMessageObserver of AgoraWidgetContext, and monitor the callback of message
+      widgetController.add(self, widgetId: widgetId)
+
+      let widget = widgetController.create(config)
+
+      view.addSubview(widget.view)
+
+      switch widgetId {
+         case PollWidgetId:
+            pollWidget = widget
+         case CountdownTimerWidgetId:
+            countdownTimerWidget = widget
+         case PopupQuizWidgetId:
+            popupQuizWidget = widget
+         default:
+            return
+      }
+
+      sendWidgetCurrentTimestamp(widgetId)
+   }
+
+   func sendWidgetCurrentTimestamp(_ widgetId: String) {
+      let syncTimestamp = contextPool.monitor.getSyncTimestamp()
+      let tsDic = ["syncTimestamp": syncTimestamp]
+
+      if let string = tsDic.jsonString() {
+         // Call the sendMessage method to send the current timestamp to the Widget
+         contextPool.widget.sendMessage(toWidget: widgetId,
+                                          message: string)
+      }
+   }
+   ```
+
+1. Implement the `syncFrameListener` callback
+
+   ```swift
+   extension AgoraClassToolsViewController: AgoraWidgetSyncFrameObserver {
+      // When syncFrame is updated, update the position and size of the Widget
+      func onWidgetSyncFrameUpdated(_ syncFrame: CGRect,
+                                    widgetId: String) {
+         let size = getWidgetSize(widgetId)
+         updateWidgetFrame(widgetId,
+                           size: size)
+      }
+   }
+   ```
+
+1. The callback method for listening to the message.
+
+   ```swift
+   extension AgoraClassToolsViewController: AgoraWidgetMessageObserver {
+      // When the message callback is received, AgoraClassToolsViewController acts as the parent container to update the size of the Widget
+      func onMessageReceived(_ message: String,
+                              widgetId: String) {
+         if let size = parseSizeMessage(widgetId: widgetId,
+                                          message: message) {
+               updateWidgetFrame(widgetId,
+                                 size: size)
+         }
+      }
+   }
+   ```
 
 </PlatformWrapper>

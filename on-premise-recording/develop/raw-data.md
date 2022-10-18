@@ -3,10 +3,10 @@ title: 'Record raw data'
 sidebar_position: 7
 type: docs
 description: >
-  How to record raw data using the On-premise Recording SDK.
+  How to record raw data using the On-Premise Recording SDK.
 ---
 
-The Agora On-premise Recording SDK supports raw audio and video data in individual recording mode, and only raw audio data in composite recording mode.
+The Agora On-Premise Recording SDK supports raw audio and video data in individual recording mode, and only raw audio data in composite recording mode.
 
 For details about configuring an on-premise recording in these modes, see [Individual Recording](../develop/individual-mode) and [Composite Recording](../develop/composite-mode).
 
@@ -25,7 +25,7 @@ You can get the raw video data from the `videoFrameReceived` callback, and the r
 
 ## Get raw audio and video data from a composite recording session
 
-The Agora On-premise Recording SDK supports only raw audio data in composite recording mode. Depending on whether you record by command line or by APIs, set the parameter according to the following table to get the raw audio data in composite recording mode, storing it in a PCM file.
+The Agora On-Premise Recording SDK supports only raw audio data in composite recording mode. Depending on whether you record by command line or by APIs, set the parameter according to the following table to get the raw audio data in composite recording mode, storing it in a PCM file.
 
 | Data type      | Command line                   | API settings                |
 | :------------- | :----------------------------- | :-------------------------- |

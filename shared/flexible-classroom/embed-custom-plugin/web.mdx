@@ -2,6 +2,256 @@ import Js from './js.mdx';
 
 <PlatformWrapper platform="web">
 
-    <Js />
+:warning: **Note:** This document applies to version `2.7.0` or later.
+
+## Understand the tech
+
+Flexible Classroom provides a plugin mechanism to help developers expand classroom capabilities under various scenarios. This mechanism also reduces the degree of code coupling between the custom application and the classroom, thereby reducing the difficulty of subsequent upgrading of the integrated source code.
+
+The technical principle of the plugin is divided into:
+
+* Plugin life cycle
+* Instantiation of a plugin
+* Plugin's mount point
+* Plugin communication mechanism
+* Plugins for extending classroom capabilities
+* Plugin for invoking classroom capabilities
+* Plugin for tracking synchronization and multilingual capabilities
+
+For details, please refer to the introduction of the technical principle of the plugin.
+
+## Built-in plugins
+
+This section introduces the built-in plugins of Smart Classroom. They extend classroom capabilities and fall into two main categories:
+
+* Common class plugin
+    * Interactive whiteboard
+    * ring message chat
+    * RTM message chat
+    * Embedded browser
+    * Video sync player (currently supports Youtube videos only)
+
+* Teaching aids plugin
+    * Clicker
+    * Voting machine
+    * Timer
+
+The [source codes of the built-in plugins](https://github.com/AgoraIO-Community/CloudClass-Desktop/tree/release/2.7.1/packages/agora-plugin-gallery/src/gallery) is located in the CloudClass-Desktop repository.
+
+| Plugin name | Source code folder |
+| :------ | :----- |
+| Interactive whiteboard | `whiteboard`
+| ring message chat | `hx-chat`
+| RTM message chat | `simple-chat`
+| Embedded browser | `webview`
+| Video Sync Player | `stream-media`
+| Clicker | ``answer``
+| voting machine | `vote`
+| timer | `counter`
+
+## Custom plugins
+
+If you need to add a custom Widget, you can inherit the class provided by `AgoraWidgetBase` and implement its abstract methods.
+
+### The `AgoraWidgetBase` class
+
+The `AgoraWidgetBase` class is defined as follows:
+
+```javascript
+// AgoraWidgetBase provides Widget related operation API
+
+export declare abstract class AgoraWidgetBase implements AgoraWidgetRenderable, AgoraMultiInstanceWidget {
+    private _widgetController;
+    private _classroomStore;
+    private _shareUIStore;
+    private _uiConfig;
+    private _theme;
+    private _trackController?;
+    private _instanceId;
+    constructor(_widgetController: AgoraWidgetController, _classroomStore: EduClassroomStore, _shareUIStore: EduShareUIStore, _uiConfig: FcrUIConfig, _theme: FcrTheme);
+    setInstanceId(instId: string): void;
+    get instanceId(): string;
+    
+    // Widget Name
+    abstract get widgetName(): string;
+    
+    // Check Permission
+    abstract get hasPrivilege(): boolean;
+
+    // Unique Widget ID
+    get widgetId(): string;
+
+    // Container level
+    get zContainer(): 0 | 10;
+
+    // Track synchronization controller
+    get trackController(): AgoraWidgetTrackController | undefined;
+
+    // Widget Controller
+    get widgetController(): AgoraWidgetController;
+
+    // Classroom Store
+    get classroomStore(): EduClassroomStore;
+
+    // Share UIStore
+    get shareUIStore(): EduShareUIStore;
+
+    // Classroom configuration
+    get classroomConfig(): import("agora-edu-core").EduClassroomConfig;
+
+    // UI configuration
+    get uiConfig(): FcrUIConfig;
+
+    // Theme
+    get theme(): FcrTheme;
+
+    // Send a message
+    sendMessage(toWidgetId: string, messageType: string, message: unknown): void;
+
+    // Add a message listener
+    addMessageListener(listener: Pick<AgoraWidgetMessageListener, 'messageType' | 'onMessage'>): void;
+    
+    // Remove a message listener
+    removeMessageListener(listener: Pick<AgoraWidgetMessageListener, 'messageType' | 'onMessage'>): void;
+
+    // Broadcast message
+    broadcast(messageType: string, message: unknown): void;
+
+    // Add broadcast listener
+    addBroadcastListener(listener: Omit<AgoraWidgetMessageListener, 'widgetId'>): void;
+
+    // Remove broadcast listener
+    removeBroadcastListener(listener: Omit<AgoraWidgetMessageListener, 'widgetId'>): void;
+
+    // Update widget properties
+    updateWidgetProperties(properties: any): Promise<{
+        data: any;
+    }>;
+
+    // Update Widget User Properties
+    updateWidgetUserProperties(userProperties: any): void;
+
+    // Delete widget
+    deleteWidget(): Promise<{
+        data: any;
+    }>;
+
+    // Delete Widget User Properties
+    removeWidgetUserProperties(keys: string[]): Promise<{
+        data: any;
+    }>;
+
+    // Remove Widget Extended Properties
+    removeWidgetExtraProperties(keys: string[]): Promise<{
+        data: any;
+    }>;
+
+    // Set Widget as active
+    setActive(props?: any): void;
+
+    // Set Widget to inactive state
+    setInactive(props?: any): void;
+    locate(): HTMLElement | undefined | null;
+    render(dom: HTMLElement): void;
+    unload(): void;
+
+    // Get the latest component Z-index level
+    get latestZIndex(): number;
+    setTrackController(controller: AgoraWidgetTrackController): void;
+}
+```
+
+### Using AgoraWidgetBase
+
+The following code shows the addition of an ExampleWidget to implement a basic widget.
+
+```javascript
+import {
+    AgoraWidgetBase,
+} from 'agora-classroom-sdk';
+
+
+export class ExampleWidget extends AgoraWidgetBase {
+    private _dom?: HTMLElement;
+
+    // Globally unique widget name
+    get widgetName(): string {
+        return 'example'
+    }
+
+    // Control whether the Widget is controllable
+    get hasPrivilege(): boolean {
+        return false;
+    }
+
+    // mount point
+    // Rewrite the locate method to return a node, then this Widget will be rendered inside this node
+    // Here the ExampleWidget is mounted to the whiteboard area
+    locate(): HTMLElement | null | undefined {
+        return document.querySelector(".widget-slot-board") as HTMLElement;
+    }
+
+    // Widget node is mounted
+    // At this point, custom rendering can be performed on the DOM node
+    render(dom: HTMLElement): void {
+        dom.innerHTML = 'This is a custom widget';
+        dom.style.height = '100%';
+        dom.style.display = "flex";
+        dom.style.alignItems = "center";
+        dom.style.justifyContent = "center";
+        this._dom = dom;
+    }
+
+    // Uninstall components
+    // Relevant resources can be released here
+    unload(): void {
+        this._dom = undefined;
+    }
+}
+```
+
+### Pass in the custom widget at launch
+Pass `launch` in a `widgets` custom Widget through the parameter in :
+
+```javascript
+const widgets = {
+    // Need to import the ExampleWidget class defined above
+    'example': ExampleWidget
+};
+
+AgoraEduSDK.launch(dom, {
+...
+widgets: widgets
+...
+});
+```
+
+### Create the custom widget on install
+
+Since `ExampleWidget` is a custom Widget, you need to manually call the `createWidget` method to create a Widget:
+
+```javascript
+// Modify the WidgetUIStore code
+// File path packages/agora-classroom-sdk/src/infra/stores/common/widget/index.ts file to add code
+
+onInstall() {
+    ...
+    // Add this code to open the specified Widget after the room is successfully added
+    this._disposers.push(
+      reaction(
+        () => this.classroomStore.widgetStore.widgetController,
+        () => {
+          // Open our new widget, pass in widgetName here
+          this.createWidget('example');
+        },
+      ),
+    );
+}
+```
+### Plug-in effect display
+
+Start the classroom, and the effect after the plug-in is mounted is as follows:
+
+![](https://web-cdn.agora.io/docs-files/1664451212904)
 
 </PlatformWrapper>

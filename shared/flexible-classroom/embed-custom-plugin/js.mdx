@@ -1,73 +1,610 @@
+:warning: **Note:** This document applies to version `2.7.0` or later.
 
-## Procedure
+## Understand the tech
 
-### 1. Implement a plugin
+Flexible Classroom provides a plugin mechanism to help developers expand classroom capabilities under various scenarios. This mechanism also reduces the degree of code coupling between the custom application and the classroom, thereby reducing the difficulty of subsequent upgrading of the integrated source code.
 
-Refer to the [PluginGallery](https://github.com/AgoraIO-Community/CloudClass-Desktop/tree/release/apaas-1.1.0.1-ga/packages/agora-plugin-gallery) provided by Agora to create an independent JavaScript project.
+The technical principle of the plugin is divided into:
 
-Take the countdown plugin in PluginGallery as an example. You need to import the following contexts.
+* Plugin life cycle
+* Instantiation of a plugin
+* Plugin's mount point
+* Plugin communication mechanism
+* Plugins for extending classroom capabilities
+* Plugin for invoking classroom capabilities
+* Plugin for tracking synchronization and multilingual capabilities
+
+For details, please refer to the introduction of the technical principle of the plugin.
+
+## Built-in plugins
+
+This section introduces the built-in plugins of Smart Classroom. They extend classroom capabilities and fall into two main categories:
+
+* Common class plugin
+    * Interactive whiteboard
+    * ring message chat
+    * RTM message chat
+    * Embedded browser
+    * Video sync player (currently supports Youtube videos only)
+
+* Teaching aids plugin
+    * Clicker
+    * Voting machine
+    * Timer
+
+The [source codes of the built-in plugins](https://github.com/AgoraIO-Community/CloudClass-Desktop/tree/release/2.7.1/packages/agora-plugin-gallery/src/gallery) is located in the CloudClass-Desktop repository.
+
+| Plugin name | Source code folder |
+| :------ | :----- |
+| Interactive whiteboard | `whiteboard`
+| ring message chat | `hx-chat`
+| RTM message chat | `simple-chat`
+| Embedded browser | `webview`
+| Video Sync Player | `stream-media`
+| Clicker | ``answer``
+| voting machine | `vote`
+| timer | `counter`
+
+## Custom plugins
+
+If you need to add a custom Widget, you can inherit the class provided by `AgoraWidgetBase` and implement its abstract methods.
+
+### The `AgoraWidgetBase` class
+
+The `AgoraWidgetBase` class is defined as follows:
 
 ```javascript
-import type {IAgoraExtApp, AgoraExtAppContext, AgoraExtAppHandle} from 'agora-edu-core'
+// AgoraWidgetBase provides Widget related operation API
+
+export declare abstract class AgoraWidgetBase implements AgoraWidgetRenderable, AgoraMultiInstanceWidget {
+    private _widgetController;
+    private _classroomStore;
+    private _shareUIStore;
+    private _uiConfig;
+    private _theme;
+    private _trackController?;
+    private _instanceId;
+    constructor(_widgetController: AgoraWidgetController, _classroomStore: EduClassroomStore, _shareUIStore: EduShareUIStore, _uiConfig: FcrUIConfig, _theme: FcrTheme);
+    setInstanceId(instId: string): void;
+    get instanceId(): string;
+    
+    // Widget Name
+    abstract get widgetName(): string;
+    
+    // Check Permission
+    abstract get hasPrivilege(): boolean;
+
+    // Unique Widget ID
+    get widgetId(): string;
+
+    // Container level
+    get zContainer(): 0 | 10;
+
+    // Track synchronization controller
+    get trackController(): AgoraWidgetTrackController | undefined;
+
+    // Widget Controller
+    get widgetController(): AgoraWidgetController;
+
+    // Classroom Store
+    get classroomStore(): EduClassroomStore;
+
+    // Share UIStore
+    get shareUIStore(): EduShareUIStore;
+
+    // Classroom configuration
+    get classroomConfig(): import("agora-edu-core").EduClassroomConfig;
+
+    // UI configuration
+    get uiConfig(): FcrUIConfig;
+
+    // Theme
+    get theme(): FcrTheme;
+
+    // Send a message
+    sendMessage(toWidgetId: string, messageType: string, message: unknown): void;
+
+    // Add a message listener
+    addMessageListener(listener: Pick<AgoraWidgetMessageListener, 'messageType' | 'onMessage'>): void;
+    
+    // Remove a message listener
+    removeMessageListener(listener: Pick<AgoraWidgetMessageListener, 'messageType' | 'onMessage'>): void;
+
+    // Broadcast message
+    broadcast(messageType: string, message: unknown): void;
+
+    // Add broadcast listener
+    addBroadcastListener(listener: Omit<AgoraWidgetMessageListener, 'widgetId'>): void;
+
+    // Remove broadcast listener
+    removeBroadcastListener(listener: Omit<AgoraWidgetMessageListener, 'widgetId'>): void;
+
+    // Update widget properties
+    updateWidgetProperties(properties: any): Promise<{
+        data: any;
+    }>;
+
+    // Update Widget User Properties
+    updateWidgetUserProperties(userProperties: any): void;
+
+    // Delete widget
+    deleteWidget(): Promise<{
+        data: any;
+    }>;
+
+    // Delete Widget User Properties
+    removeWidgetUserProperties(keys: string[]): Promise<{
+        data: any;
+    }>;
+
+    // Remove Widget Extended Properties
+    removeWidgetExtraProperties(keys: string[]): Promise<{
+        data: any;
+    }>;
+
+    // Set Widget as active
+    setActive(props?: any): void;
+
+    // Set Widget to inactive state
+    setInactive(props?: any): void;
+    locate(): HTMLElement | undefined | null;
+    render(dom: HTMLElement): void;
+    unload(): void;
+
+    // Get the latest component Z-index level
+    get latestZIndex(): number;
+    setTrackController(controller: AgoraWidgetTrackController): void;
+}
 ```
 
-Refer to the following code to inherit the IAgoraExtApp class to implement a plugin.
+### Using AgoraWidgetBase
+
+The following code shows the addition of an ExampleWidget to implement a basic widget.
 
 ```javascript
-export class AgoraExtAppCountDown implements IAgoraExtApp {
-  // The plugin ID. 
-  appIdentifier = "io.agora.countdown"
-  // The plugin name
-  appName = "Count Down"
-  // The default size of the window for the plugin
-  width = 640
-  height= 480
-  // (Optional) The state management of AgoraExtAppCountDown
-  store?:PluginStore
-  constructor(){
-  }
-  // Initialize the plugin. Draw the content of the plug-in in dom. The ctx and handle parameter refers to the edu context provided by Agora
-  extAppDidLoad(dom: Element, ctx: AgoraExtAppContext, handle: AgoraExtAppHandle): void {
-    this.store = new PluginStore(ctx, handle)
-    ReactDOM.render((
-      <Provider store={this.store}>
-        <App/>
-      </Provider>
-    ),
-      dom
+import {
+    AgoraWidgetBase,
+} from 'agora-classroom-sdk';
+
+
+export class ExampleWidget extends AgoraWidgetBase {
+    private _dom?: HTMLElement;
+
+    // Globally unique widget name
+    get widgetName(): string {
+        return 'example'
+    }
+
+    // Control whether the Widget is controllable
+    get hasPrivilege(): boolean {
+        return false;
+    }
+
+    // mount point
+    // Rewrite the locate method to return a node, then this Widget will be rendered inside this node
+    // Here the ExampleWidget is mounted to the whiteboard area
+    locate(): HTMLElement | null | undefined {
+        return document.querySelector(".widget-slot-board") as HTMLElement;
+    }
+
+    // Widget node is mounted
+    // At this point, custom rendering can be performed on the DOM node
+    render(dom: HTMLElement): void {
+        dom.innerHTML = 'This is a custom widget';
+        dom.style.height = '100%';
+        dom.style.display = "flex";
+        dom.style.alignItems = "center";
+        dom.style.justifyContent = "center";
+        this._dom = dom;
+    }
+
+    // Uninstall components
+    // Relevant resources can be released here
+    unload(): void {
+        this._dom = undefined;
+    }
+}
+```
+
+### Pass in the custom widget at launch
+Pass `launch` in a `widgets` custom Widget through the parameter in :
+
+```javascript
+const widgets = {
+    // Need to import the ExampleWidget class defined above
+    'example': ExampleWidget
+};
+
+AgoraEduSDK.launch(dom, {
+...
+widgets: widgets
+...
+});
+```
+
+### Create the custom widget on install
+
+Since `ExampleWidget` is a custom Widget, you need to manually call the `createWidget` method to create a Widget:
+
+```javascript
+// Modify the WidgetUIStore code
+// File path packages/agora-classroom-sdk/src/infra/stores/common/widget/index.ts file to add code
+
+onInstall() {
+    ...
+    // Add this code to open the specified Widget after the room is successfully added
+    this._disposers.push(
+      reaction(
+        () => this.classroomStore.widgetStore.widgetController,
+        () => {
+          // Open our new widget, pass in widgetName here
+          this.createWidget('example');
+        },
+      ),
     );
+}
+```
+### Plugin effect display
+
+Start the classroom, and the effect after the plugin is mounted is as follows:
+
+![](https://web-cdn.agora.io/docs-files/1664451212904)
+
+### Quickly create a teaching aid plugin based on existing capabilities
+
+Flexible Classroom provides developers with an abstract class called `AgoraEduToolWidget`. The class, implements the encapsulation of the general capabilities of teaching aid plugins. Inheriting this class gives the plugin track synchronization, hierarchical control capabilities, and control logic for the display of UI windows.
+
+With the `ControlledModal` component, you can also quickly implement the outer window of the built-in teaching aid plugin, reducing a lot of general logic code development. For specific implementation, please refer to the `answer`, `vote` and `counter` folders in the [Github repository](https://github.com/AgoraIO-Community/CloudClass-Desktop/tree/release/2.7.1/packages/agora-plugin-gallery/src/gallery), which provide the source code of the built-in teaching-aid plugins in Flexible Classroom.
+
+Here is the `AgoraEduToolWidget` class definition:
+
+```javascript
+// AgoraEduToolWidget is the base class of teaching props Widget
+// Use the AgoraEduToolWidget abstract class as the base class to implement draggable and track-synchronized Widgets
+
+export abstract class AgoraEduToolWidget
+  extends AgoraWidgetBase
+  implements AgoraWidgetLifecycle, AgoraTrackSyncedWidget
+{
+  private _controlStateCallbacks: CallableFunction[] = [];
+  onUninstall(controller: AgoraWidgetController) {}
+  onInstall(controller: AgoraWidgetController) {}
+  onCreate(properties: any, userProperties: any): void {}
+  onPropertiesUpdate(properties: any): void {}
+  onUserPropertiesUpdate(userProperties: any): void {}
+  onDestroy(): void {}
+  get track(): Track {
+    return this.trackController?.track!;
   }
-    // Each plugin has its own shared kv space. Plugins can communicate with each other through this property. When the property of the plugin is updated, other clients that have also registered the plugin will receive this callback. 
-    extAppRoomPropertiesDidUpdate(properties:any, cause:any): void {
-    this.store?.onReceivedProps(properties, cause)
+  get zIndex(): number {
+    return this.trackController?.zIndex || 0;
   }
-  // Remove the plugin
-  extAppWillUnload(): void {
-    this.store?.cleanup()
+  @bound
+  updateZIndexToRemote(zIndex: number) {
+    this.trackController?.updateRemoteZIndex(zIndex);
+    this.widgetController.zIndexController.setZIndex(zIndex);
+  }
+  @bound
+  updateZIndexToLocal(zIndex: number) {
+    this.trackController?.updateLocalZIndex(zIndex);
+    this.widgetController.zIndexController.setZIndex(zIndex);
+  }
+  get draggable(): boolean {
+    return true;
+  }
+  get resizable(): boolean {
+    return false;
+  }
+  get dragHandleClassName(): string {
+    return 'modal-title';
+  }
+  get dragCancelClassName(): string {
+    return 'modal-title-close';
+  }
+  get boundaryClassName(): string {
+    return 'widget-slot-board';
+  }
+  get minWidth(): number {
+    return 0;
+  }
+  get minHeight(): number {
+    return 0;
+  }
+  get trackMode(): AgoraWidgetTrackMode {
+    return AgoraWidgetTrackMode.TrackPositionOnly;
+  }
+
+  @bound
+  updateToRemote(
+    end: boolean,
+    pos: Point,
+    dimensions?: Dimensions | undefined,
+    options?: TrackOptions | undefined,
+  ): void {
+    this.trackController?.updateRemoteTrack(end, pos, dimensions, options);
+  }
+
+  @bound
+  updateToLocal(trackProps: AgoraWidgetTrack): void {
+    this.trackController?.updateLocalTrack(trackProps);
+  }
+
+  @bound
+  handleResize({ width, height }: { width: number; height: number }) {
+    this.track.setRealDimensions({ width, height });
+    this.track.reposition(false);
+  }
+
+  @bound
+  handleClose() {
+    this.widgetController.broadcast(AgoraExtensionWidgetEvent.WidgetBecomeInactive, this.widgetId);
+
+    this.deleteWidget();
+  }
+
+  @bound
+  setVisibility(visible: boolean) {
+    this.track.setVisibility(visible);
+  }
+
+  get controlled() {
+    return this.hasPrivilege;
+  }
+
+  addControlStateListener(cb: (controlled: boolean) => void) {
+    this._controlStateCallbacks.push(cb);
+  }
+
+  removeControlStateListener(cb: (controlled: boolean) => void) {
+    this._controlStateCallbacks = this._controlStateCallbacks.filter((c) => c !== cb);
+  }
+
+  fireControlStateChanged() {
+    const controled = this.controlled;
+    this._controlStateCallbacks.forEach((cb) => {
+      cb(controled);
+    });
   }
 }
 ```
 
-### 2. Register the plugin to the Agora Classroom SDK
+The following shows how to create a teaching aid plugin for pre-class roll call based on the existing Widget capabilities of Smart Classroom. See the full source code in rollbook-widget .
 
-To register the plugin in the Agora Classroom SDK, set the `extApps` parameter when calling `AgoraEduSDK.launch`.
-
-The following sample code shows how to register the countdown plugin CountDownExtApp to the Agora Classroom SDK.
+### Using AgoraEduToolWidget
+Create a `AgoraEduToolWidget` class the `RollbookWidget` class:
 
 ```javascript
-import { AgoraExtAppCountDown } from 'agora-plugin-gallery'
+// packages/agora-plugin-gallery/src/gallery/rollbook/index.tsx
+import { render, unmountComponentAtNode } from 'react-dom';
+import { App } from './app';
+import { AgoraEduToolWidget } from '../../common/edu-tool-widget';
+import { observable, action, computed } from 'mobx';
+import { AgoraWidgetController, EduRoleTypeEnum } from 'agora-edu-core';
+import { AgoraExtensionWidgetEvent } from '@/infra/api';
+import { SvgIconEnum } from '~ui-kit';
+import { bound } from 'agora-rte-sdk';
 
-const countDownApp = new AgoraExtAppCountDown()
-AgoraSDK.launch(dom, {
-	extApps: [countDownApp],
-	...
-})
+// Roll call:
+// Teachers can use this plugin to know the participation of students in the classroom
+export class RollbookWidget extends AgoraEduToolWidget {
+    private _dom?: HTMLElement;
+    @observable
+    started: boolean = false;
+    @observable
+    checkInList: string[] = [];
+    /**
+     * 是否已签到
+     */
+    @computed
+    get isCheckedIn() {
+        const { userUuid } = this.classroomConfig.sessionInfo;
+        return this.checkInList.includes(userUuid);
+    }
+
+    // Have you signed in
+    @computed
+    get checkInUserNames() {
+        return this.checkInList.map((userUuid) => {
+            // 从UserStore中取出对应用户ID的用户名(此方法不适用于大班课班型)
+            const user = this.classroomStore.userStore.studentList.get(userUuid);
+            return user?.userName || 'Unknown';
+        });
+    }
+
+    // The initial width of the window
+    get minWidth(): number {
+        return 400;
+    }
+
+    // The initial height of the window
+    get minHeight(): number {
+        return 200;
+    }
+
+    // Globally unique widget name
+    get widgetName(): string {
+        return 'rollbook'
+    }
+
+    // Specify whether the Widget is controllable
+    get hasPrivilege(): boolean {
+        return [EduRoleTypeEnum.teacher, EduRoleTypeEnum.assistant].includes(this.classroomConfig.sessionInfo.role);
+    }
+
+    get checkInPropKey() {
+        const { userUuid } = this.classroomConfig.sessionInfo;
+        const key = `checkIn-${userUuid}`;
+        return key;
+    }
+
+    // Widget node is mounted
+    // At this point, custom rendering can be performed on the DOM node
+    render(dom: HTMLElement): void {
+        this._dom = dom;
+        dom.style.width = '100%';
+        dom.style.height = '100%';
+        // 使用 React 渲染 UI 组件
+        render(<App widget={this} />, dom);
+    }
+
+    // Uninstall components
+    // Relevant resources can be released at this time
+    unload(): void {
+        if (this._dom) {
+            // Register the plugin entry to the toolbox
+            unmountComponentAtNode(this._dom);
+        }
+        this._dom = undefined;
+    }
+
+    onCreate(properties: any, userProperties: any): void {
+        this._handlePropertiesChange(properties);
+    }
+
+    onPropertiesUpdate(properties: any): void {
+        this._handlePropertiesChange(properties);
+    }
+
+    onInstall(controller: AgoraWidgetController) {
+        // Register the plugin entry to the toolbox
+        controller.broadcast(AgoraExtensionWidgetEvent.RegisterCabinetTool, {
+            id: this.widgetName,
+            name: "Rollbook",
+            iconType: SvgIconEnum.ANSWER,
+        });
+    }
+
+    onUninstall(controller: AgoraWidgetController) {
+        // Remove plugin entry from toolbox
+        controller.broadcast(AgoraExtensionWidgetEvent.UnregisterCabinetTool, this.widgetName);
+    }
+
+
+    @action
+    private _handlePropertiesChange(properties: any) {
+        const list: string[] = [];
+        Object.keys(properties.extra || {}).forEach((k) => {
+            if (k.startsWith('checkIn-')) {
+                const userUuid = k.replace('checkIn-', '');
+                list.push(userUuid);
+            }
+        });
+        this.checkInList = list;
+        this.started = !!properties.extra?.started
+    }
+
+    // Students click to check in to update the check-in list
+    @bound
+    checkIn() {
+        this.updateWidgetProperties({
+            extra: {
+                // Use the Key-Value method to update the Widget incrementally
+                [this.checkInPropKey]: true
+            }
+        });
+    }
+
+    // The teacher clicks to start checking in and update the Widget status
+    @bound
+    startCheckIn() {
+        this.setActive({ extra: { started: 1 } });
+    }
+}
 ```
 
-### 3. Use the plugin in the flexible classroom
+### Add rendering components
 
-By default, the icon of the registered plugin is displayed in the whiteboard toolbar in the flexible classroom. Click the icon to use the plugin.
+Add an App component for rendering in the plugin window:
 
-![](https://web-cdn.agora.io/docs-files/1619755145025)
+```javascript
+// packages/agora-plugin-gallery/src/gallery/rollbook/app.tsx
+import React, { FC } from "react";
+import { observer } from 'mobx-react';
+import { ControlledModal } from "../../common/edu-tool-modal";
+import { EduRoleTypeEnum } from "agora-edu-core";
+import { RollbookWidget } from ".";
+import { Button } from "~ui-kit";
 
-If you want to customize an entry for the plugin in the flexible classroom, you can edit the source code of the UI components. Listen for the events of the Agora Classroom SDK through `useAppPluginContext` and call the `onLaunchAppPlugin` method to launch the plugin when the user clicks on the plugin icon.
+// Roll roster component
+export const App: FC<{ widget: RollbookWidget }> = ({ widget }) => {
+    const view = () => [EduRoleTypeEnum.teacher, EduRoleTypeEnum.assistant].includes(widget.classroomConfig.sessionInfo.role) ? <TeacherView widget={widget} /> : <StudentView widget={widget} />
+    return (
+        <ControlledModal
+            widget={widget}
+            title="Rollbook"
+            onCancel={widget.handleClose}
+        >
+            {view()}
+        </ControlledModal>
+    );
+}
+
+// The teacher interface shows the actual check-in list
+export const TeacherView: FC<{ widget: RollbookWidget }> = observer(({ widget }) => {
+    const started = widget.started;
+    return (
+        <div>
+            {started
+                ?
+                <React.Fragment>
+                    <div>Check-In List:</div>
+                    <ul>
+                        {
+                            widget.checkInUserNames.map((item, i) =>
+                            (
+                                <li key={i.toString()}>{item}</li>
+                            ))
+                        }
+                    </ul>
+                </React.Fragment>
+                :
+                <Button className="px-1" onClick={widget.startCheckIn}>Start Check-In</Button>
+            }
+        </div>
+    );
+});
+
+// StudentView showing check in button
+export const StudentView: FC<{ widget: RollbookWidget }> = observer(({ widget }) => {
+    const isCheckedIn = widget.isCheckedIn;
+    return (
+        <div>
+            <Button onClick={widget.checkIn} disabled={isCheckedIn}>{isCheckedIn ? 'Checked-In' : 'Check-In'}</Button>
+        </div>
+    );
+});
+```
+
+### Pass in a custom Widget in launch
+Pass `launch` in a `widgets` custom Widget through the parameter in:
+
+```javascript
+const widgets = {
+    // Need to import the RollbookWidget class defined above
+    'rollbook': RollbookWidget
+};
+
+AgoraEduSDK.launch(dom, {
+...
+widgets: widgets
+...
+});
+```
+
+### Test your implementation
+
+Start the classroom, you can find this plugin in the toolbox, as shown in the figure:
+
+![](https://web-cdn.agora.io/docs-files/1664451141797)
+
+The teacher clicks and opens the interface effect of the plugin:
+
+![](https://web-cdn.agora.io/docs-files/1664451162107)
+
+After the teacher clicks Start Check-In, the effect of the plugin is displayed on the student side:
+
+![](https://web-cdn.agora.io/docs-files/1664451174839)
+
+After the student clicks Check-In, the teacher's check-in list displays the student's effect:
+
+![](https://web-cdn.agora.io/docs-files/1664451187164)

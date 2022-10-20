@@ -57,7 +57,7 @@ function notifyReady() {
 ```
 If you record other URL pages, you need to set the `notifyReady` interface on the page to be recorded.
 
-### API Reference
+### API reference
 
 - [`start`](../reference/rest-api/start) 
 - [`web_recorder_started`](../reference/rest-api/rest-api-overview#70-web_recorder_started-web_recorder_started)

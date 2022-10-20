@@ -70,6 +70,11 @@ export const ILSS = 'Interactive Live Streaming Standard';
 export const ILSP = 'Interactive Live Streaming Premium';
 export const VSDK = 'Video SDK';
 export const VSDK_RELEASE = '4.x';
+// A varible to update the version of SDK in relase notes.
+export const VSDK_LATEST_4_0_0 = '4.0.0';
+export const VSDK_FLUTTER_LATEST_RELEASE = '6.0.0';
+// A variable to update the version of sdk in release notes.
+export const VSDK_LATEST_4_0_1 = '4.0.1';
 export const VSDK_PREVIOUS_RELEASE = '3.7.x';
 export const VSDK_PREVIOUS_RELEASE_WEB = '3.x';
 export const VSDK_RELEASE_FOLDER = 'video-call-4.x-beta';
@@ -181,7 +186,7 @@ export const AGORA_DOCS_URL = 'https://docs.agora.io/en';
 export const AGORA_PREPROD_DOCS_URL = 'https://docs-preprod.agora.io/en';
 
 export const DEMO_BASIC_VIDEO_CALL_URL =
-  'https://webdemo.agora.io/agora-websdk-api-example-4.x/basicVideoCall/index.html';
+  'https://webdemo.agora.io/basicVideoCall/index.html';
 
 export const DEMO_PAGE_LINK = `<Link to="{{Global.DEMO_BASIC_VIDEO_CALL_URL}}"><Vg k="COMPANY" /> web demo</Link>`;
 
@@ -192,7 +197,7 @@ export const AGORA_MARKETPLACE_BASE_URL =
   'https://github.com/AgoraIO-Community/AgoraMarketPlace/blob/master';
 
 export const ANDROID_UIKIT_VERSION = '4.0.1';
-export const ANDROID_UIKIT_SDK = 'com.github.AgoraIO-Community.Android-UIKit:final';
+export const ANDROID_UIKIT_SDK = 'com.github.agoraio-community:videouikit-android:final';
 
 export const WEB_UIKIT = 'Agora React Web UI Kit';
 
@@ -202,8 +207,8 @@ export const IOS_VOICE_PACKAGE = 'AgoraRtcEngine_iOS_Voice_Beta';
 
 export const UIKIT_GH_HUB = 'https://github.com/AgoraIO-Community/.github/wiki/Agora-Video-UIKit'
 export const UIKIT_PACKAGE_IOS = 'https://github.com/AgoraIO-Community/VideoUIKit-iOS'
-export const UIKIT_PACKAGE_ANDROID = 'https://github.com/AgoraIO-Community/Android-UIKit'
-export const UIKIT_PACKAGE_MACOS = 'https://github.com/AgoraIO-Community/macOS-UIKit'
-export const UIKIT_PACKAGE_FLUTTER = 'https://github.com/AgoraIO-Community/Flutter-UIKit'
-export const UIKIT_PACKAGE_RN = 'https://github.com/AgoraIO-Community/ReactNative-UIKit'
-export const UIKIT_PACKAGE_REACT_WEB = 'https://github.com/AgoraIO-Community/Web-React-UIKit'
+export const UIKIT_PACKAGE_ANDROID = 'https://github.com/AgoraIO-Community/VideoUIKit-Android'
+export const UIKIT_PACKAGE_MACOS = 'https://github.com/AgoraIO-Community/VideoUIKit-macOS'
+export const UIKIT_PACKAGE_FLUTTER = 'https://github.com/AgoraIO-Community/VideoUIKit-Flutter'
+export const UIKIT_PACKAGE_RN = 'https://github.com/AgoraIO-Community/VideoUIKit-ReactNative'
+export const UIKIT_PACKAGE_REACT_WEB = 'https://github.com/AgoraIO-Community/VideoUIKit-Web-React'

@@ -196,7 +196,7 @@ Agora supports only taking screenshots in a recording process or recording and t
   - `5`: [Microsoft Azure](https://azure.microsoft.com/en-us/services/storage/blobs/)
   - `6`: [Google Cloud](https://cloud.google.com/storage)
   - `7`: [Huawei Cloud](https://www.huaweicloud.com/intl/en-us/product/obs)
-  - `8`: [Baidu AI Cloud](https://intl.cloud.baidu.com/product/bos)
+  - `8`: [Baidu AI Cloud](https://intl.cloud.baidu.com/product/bos.html)
 
 - `region`: Number. The region information specified for the third-party cloud storage. The recording service only supports regions in the following lists:
 

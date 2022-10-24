@@ -41,7 +41,7 @@ After the recording is over, the cloud recording service uploads the recording f
   - [Microsoft Azure](https://azure.microsoft.com/en-us/services/storage/blobs/)
   - [Google Cloud](https://cloud.google.com/storage)
   - [Huawei Cloud](https://www.huaweicloud.com/intl/en-us/product/obs)
-  - [Baidu AI Cloud](https://intl.cloud.baidu.com/product/bos)
+  - [Baidu AI Cloud](https://intl.cloud.baidu.com/product/bos.html)
 - Ensure that you have joined the <Vg k="VSDK" /> channel and have users in the channel and are streaming.
 
 ## Project setup

@@ -1,5 +1,5 @@
 ---
-name: New issue
+name: Agora documentation issue
 about: Describe this issue template's purpose here.
 title: ''
 labels: ''

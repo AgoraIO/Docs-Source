@@ -17,7 +17,7 @@ After you enable the callback service, when a specified event occurs, the Agora 
 
 The following is an example that shows the fields in the request body.
 ![](https://web-cdn.agora.io/docs-files/1567593635825)
-- The fields in the red rectangle are the common fields of all the callback events. For details, see [Notification callback format](https://docs-preview.agoralab.co/en/Agora%20Platform/ncs?platform=All%20Platforms#notification-callback-format).
+- The fields in the red rectangle are the common fields of all the callback events. For details, see [Notification callback format](https://docs-preview.agoralab.co/en/Agora%20Platform/ncs#notification-callback-format).
 - The fields in the blue rectangle are the common fields in `payload` of all the cloud recording events. For details, see [Fields in payload](#payload).
 - The values of `eventType`, `serviceType`, and `details` depend on the event. For details, see [Callback events](#event).
 

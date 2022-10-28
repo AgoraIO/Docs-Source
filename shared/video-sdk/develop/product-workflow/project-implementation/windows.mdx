@@ -1,0 +1,188 @@
+<PlatformWrapper platform = "windows">
+
+
+### Implement the user interface
+
+In a real-world application, for each volume setting you want to control, you typically add a volume control UI element such as a <Link target="_blank" to="https://learn.microsoft.com/en-us/cpp/mfc/using-csliderctrl?view=msvc-170">Slider Control</Link> to the audio configuration panel. To enable the user to mute local or remote audio, you add a switch or a Check Box to the interface for each user. In this example, you add a `Slider Control` and a `Check Box` to the UI to test different volume settings. For screen sharing, you add a `Button` to start and stop sharing.
+
+
+1. **Add a slider control**
+
+    1. Go to menu **View** > **Other Windows** > **Resource View**.
+        
+        If the **Resource View** window isn't the top-most window, select the **Resource View** tab to bring it to the top.
+
+    2. To view the dialog resources, in **Resource View**, go to **AgoraImplementation.rc** > **Dialog** and double-click `IDD_AGORAIMPLEMENTATION_DIALOG`.
+
+        The resource opens inside the **Dialog Editor**. 
+    
+    3. To open **Toolbox**, go to menu **View** > **ToolBox**.
+
+    4. From **ToolBox**, drag **Slider Control** and drop it onto the surface of the **Dialog Editor**.
+
+        You see a slider in your **Dialog Editor**.
+
+2. **Add a Button to the UI**
+
+    1. From **ToolBox**, drag **Button** and drop it onto the surface of the **Dialog Editor**
+
+    2. To update the button caption, in **Properties**, update the **Caption** field with `Share Screen`.
+
+3. **Add a Check Box**
+
+    1. From **ToolBox**, drag **Check Box** and drop it over the **Dialog Editor**.
+
+    2. To update the check box caption, in **Properties**, update the **Caption** field with `Mute`.
+
+
+### Handle the system logic
+
+### Implement screen sharing, volume control and mute
+
+To implement these features in your <Vpl k="CLIENT" />, take the following steps:
+
+1. **Declare the variables you need**
+
+    To access and use the UI elements and apply workflow settings, in `AgoraImplementationDlg.cpp`, add the following declarations to the `CButton leaveButton;` class:
+
+    ```cpp
+    // Share screen button.
+    CButton* shareScreenBtn;
+    // Mute check box.
+    CButton* muteCheckBox;
+    // Volume control
+    CSliderCtrl* volumeSlider;
+    // Boolean variable to track screen sharing state.
+    BOOL m_windowShare = false;
+    ```
+2. **Access the UI elements programmatically**
+    
+    To set the range of control slider and access the **Mute** checkbox, in `AgoraImplementationDlg.cpp`, add the following to `OnInitDialog()` before `SetIcon(m_hIcon, TRUE);`:  
+
+    ```cpp
+    muteCheckBox = (CButton*)GetDlgItem(IDC_CHECK1);
+	volumeSlider = (CSliderCtrl*)GetDlgItem(IDC_SLIDER2);
+	volumeSlider->SetRange(0, 100);
+    ```
+
+1. **Adjust or mute the volume**
+
+    To mute and unmute the remote user, you setup an event listener on the mute check box and call `adjustRecordingSignalVolume` with `remoteUId` when the user selects the mute checkbox. To implement this workflow, in **Dialog Editor**, double-click **Mute**. Visual Studio Editor automatically setup an event listener for you and open
+
+    ```cpp
+    volumeSeekBar = (SeekBar)findViewById(R.id.volumeSeekBar);
+    volumeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+
+        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            volume = progress;
+            agoraEngine.adjustRecordingSignalVolume(volume);
+        }
+
+        public void onStartTrackingTouch(SeekBar seekBar) {
+            //Required to implement OnSeekBarChangeListener
+        }
+
+        public void onStopTrackingTouch(SeekBar seekBar) {
+            //Required to implement OnSeekBarChangeListener
+        }
+    });
+
+    muteCheckBox = (CheckBox) findViewById(R.id.muteCheckBox);
+    muteCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener(){
+
+        @Override
+        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+            agoraEngine.muteRemoteAudioStream(remoteUid, isChecked);
+        }
+    });
+    ```
+
+1. **Start or stop screen sharing**
+
+    When a user presses the start screen sharing button, you create an `Intent` to start a foreground service. You pass `ScreenCaptureParameters` to the `startScreenCapture` method and set up the local preview. To start publishing the screen sharing data to the channel, you call `updateMediaPublishOptions`. When a user ends screen sharing, you call `stopScreenCapture`. To do this, add the following method to the `MainActivity` class:
+
+    ```java
+    public void shareScreen(View view) {
+        Button sharingButton = (Button) view;
+
+        if (!isSharingScreen) { // Start sharing
+            // Ensure that your Android version is Lollipop or higher.
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    fgServiceIntent = new Intent(this, MainActivity.class);
+                    startForegroundService(fgServiceIntent);
+                }
+                // Get the screen metrics
+                DisplayMetrics metrics = new DisplayMetrics();
+                getWindowManager().getDefaultDisplay().getMetrics(metrics);
+
+                // Set screen capture parameters
+                ScreenCaptureParameters screenCaptureParameters = new ScreenCaptureParameters();
+                screenCaptureParameters.captureVideo = true;
+                screenCaptureParameters.videoCaptureParameters.width = metrics.widthPixels;
+                screenCaptureParameters.videoCaptureParameters.height = metrics.heightPixels;
+                screenCaptureParameters.videoCaptureParameters.framerate = DEFAULT_SHARE_FRAME_RATE;
+                screenCaptureParameters.captureAudio = true;
+                screenCaptureParameters.audioCaptureParameters.captureSignalVolume = 50;
+
+                // Start screen sharing
+                agoraEngine.startScreenCapture(screenCaptureParameters);
+                isSharingScreen = true;
+                startScreenSharePreview();
+                // Update channel media options to publish the screen sharing video stream
+                updateMediaPublishOptions(true);
+                sharingButton.setText("Stop Screen Sharing");
+            }
+        } else { // Stop sharing
+            agoraEngine.stopScreenCapture();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                if (fgServiceIntent!=null) stopService(fgServiceIntent);
+            }
+            isSharingScreen = false;
+            sharingButton.setText("Start Screen Sharing");
+
+            // Restore camera and microphone publishing
+            updateMediaPublishOptions(false);
+            setupLocalVideo();
+        }
+    }
+    ```
+1. **Set up local screen sharing preview**
+
+    To show the screen sharing preview in the local video container, add the following method to the `MainActivity` class:
+
+    ``` java
+    private void startScreenSharePreview() {
+        // Create render view by RtcEngine
+        FrameLayout container = findViewById(R.id.local_video_view_container);
+        SurfaceView surfaceView = new SurfaceView(getBaseContext());
+        if (container.getChildCount() > 0) {
+            container.removeAllViews();
+        }
+        // Add to the local container
+        container.addView(surfaceView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        // Setup local video to render your local camera preview
+        agoraEngine.setupLocalVideo(new VideoCanvas(surfaceView, Constants.RENDER_MODE_FIT,
+                Constants.VIDEO_MIRROR_MODE_DISABLED,
+                Constants.VIDEO_SOURCE_SCREEN_PRIMARY,
+                0));
+
+        agoraEngine.startPreview(Constants.VideoSourceType.VIDEO_SOURCE_SCREEN_PRIMARY);
+    }
+    ```
+
+1. **Switch between publishing camera feed and screen sharing**
+
+    Add the following method to the `MainActivity` class to update publishing options when starting or stopping screen sharing:
+
+    ``` java
+    void updateMediaPublishOptions(boolean publishScreen) {
+        ChannelMediaOptions mediaOptions = new ChannelMediaOptions();
+        mediaOptions.publishCameraTrack = !publishScreen;
+        mediaOptions.publishMicrophoneTrack = !publishScreen;
+        mediaOptions.publishScreenCaptureVideo = publishScreen;
+        mediaOptions.publishScreenCaptureAudio = publishScreen;
+        agoraEngine.updateChannelMediaOptions(mediaOptions);
+    }
+    ```
+</PlatformWrapper>

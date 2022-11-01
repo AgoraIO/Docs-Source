@@ -144,7 +144,7 @@ export const CREC = 'Cloud Recording';
 export const CGATE = 'Cloud Gateway';
 
 export const CGATE_RELEASE_API = `3.x`;
-export const API_REF_ROOT_CGATE_SDK = `${API_ROOT}/on-premise-recording-sdk`;
+export const API_REF_ROOT_CGATE_SDK = `${API_ROOT}/cloud-gateway-sdk`;
 export const CGATE_SDK_API_CPP  = `${API_REF_ROOT_CGATE_SDK}/linux-cpp/${CGATE_RELEASE_API}`;
 export const CGATE_SDK_API_JAVA  = `${API_REF_ROOT_CGATE_SDK}/linux-java/${CGATE_RELEASE_API}`
 

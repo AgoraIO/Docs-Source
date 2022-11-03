@@ -20,5 +20,5 @@ assignees: ''
 
 **Acceptance criteria**: Criteria for this issue to be approved.
 
-**Additional valuable information** - Anything else that will help with this issue.
+**Additional valuable information**: Anything else that will help with this issue.
 

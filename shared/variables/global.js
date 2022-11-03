@@ -116,6 +116,8 @@ export const ACCG = 'Global Accelerator';
 export const TEMPL = 'Templates';
 
 export const RTEE = 'Extensions';
+export const RTEE_DRM = `${COMPANY} DRM`;
+export const RTEE_DRM_FRAMEWORK = `AgoraDrmLoader.framework`;
 export const AA = `${COMPANY} Analytics`;
 export const WHITE = 'Interactive Whiteboard';
 export const WHITE_SDK = `${WHITE} SDK`

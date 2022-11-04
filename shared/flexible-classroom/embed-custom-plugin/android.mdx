@@ -1,155 +1,417 @@
 <PlatformWrapper platform="android">
 
-## Procedure
+## Implement a custom plugin
 
-### 1. Implement a plugin
+This section uses the cloud disk plug-in as an example to introduce the basic steps of implementing a custom plug-in through Widget, and embedding the plug-in in Flexible Classroom. The complete code can be viewed in the [CloudClass-Android repository](https://github.com/AgoraIO-Community/CloudClass-Android/tree/release/2.7.1/AgoraEduUIKit/src/main/java/com/agora/edu/component/teachaids/networkdisk/FCRCloudDiskWidget.kt).
 
-First, inherit the `io.agora.extension.AgoraExtAppBase` class to implement a custom plugin in your app.
+1. Define the class
 
-`AgoraExtAppBase` includes the following methods and callbacks:
+    ```java
+    class FCRCloudDiskWidget : AgoraBaseWidget() {
+        override val tag = "AgoraEduNetworkDiskWidget"
 
-#### Method
+        private var cloudDiskContent: AgoraEduCloudDiskWidgetContent? = null
 
-**updateProperties**
+        // Initialize Widget
+        // Add your custom UI layout to the container here
+        override fun init(container: ViewGroup) {
+            super.init(container)
+            container.post {
+                widgetInfo?.let {
+                    // Instantiate content and add CloudDisk view to container
+                    cloudDiskContent = AgoraEduCloudDiskWidgetContent(container, it)
+                }
+            }
+        }
 
-```kotlin
-fun updateProperties(properties: MutableMap<String, Any?>,
-                     cause: MutableMap<String, Any?>,
-                     callback: AgoraExtAppCallback<String>? = null)
-```
+        // Release used resources
+        override fun release() {
+            cloudDiskContent?.dispose()
+            super.release()
+        }
 
-Update properties. Other plugins receive the `onPropertyUpdated` callback to get the new properties.
+        // The content class is only for encapsulation of the code.
+        // Functional details are placed in the content.
+        private inner class AgoraEduCloudDiskWidgetContent(val container: ViewGroup, val widgetInfo: AgoraWidgetInfo) {
+            ......
+        }
+    }
+    ```
 
-| Parameter | Description |
-| ------------ | --------------------------------------------- |
-| `properties` | The property map. |
-| `cause` | The reason map. |
-| `callback` | Asynchronously check whether this method call is successful through `AgoraExtAppCallback`. |
+    The complete code can be viewed in the [CloudClass-Android repository](https://github.com/AgoraIO-Community/CloudClass-Android/tree/release/2.7.1/AgoraEduUIKit/src/main/java/com/agora/edu/component/teachaids/networkdisk/FCRCloudDiskWidget.kt).
 
-**deleteProperties**
+1. Configure the plugin in to register it with the Agora Classroom SDK
 
-```kotlin
-fun deleteProperties(propertyKeys: MutableList<String>,
-                     cause: MutableMap<String, Any?>,
-                     callback: AgoraExtAppCallback<String>?)
-```
+    ```java
+    private fun configPublicCourseware(launchConfig: AgoraEduLaunchConfig) {
+        val courseware0 = CoursewareUtil.transfer(DefaultPublicCoursewareJson.data0)
+        val courseware1 = CoursewareUtil.transfer(DefaultPublicCoursewareJson.data1)
+        val publicCoursewares = ArrayList<AgoraEduCourseware>(2)
+        publicCoursewares.add(courseware0)
+        publicCoursewares.add(courseware1)
+        
+        // custom data for map structure
+        val cloudDiskExtra = mutableMapOf<String, Any>()
+        cloudDiskExtra[publicResourceKey] = publicCoursewares
+        cloudDiskExtra[configKey] = Pair(launchConfig.appId, launchConfig.userUuid)
+        val widgetConfigs = mutableListOf<AgoraWidgetConfig>()
+        widgetConfigs.add(
+            // Instantiate widgetConfig and add it to widgetConfig collection
+            AgoraWidgetConfig(widgetClass = FCRCloudDiskWidget::class.java, widgetId = AgoraWidgetDefaultId.AgoraCloudDisk.id,
+                extraInfo = cloudDiskExtra)
+        )
+        // Copy widgetConfigs into the SDK's startup parameters. 
+        // After calling launch, Smart Class will pass widgetConfigs to internal to complete the registration.
+        launchConfig.widgetConfigs = widgetConfigs
+    }
+    ```
 
-Delete properties. Other plugins receive the `onPropertyUpdated` callback to get the new properties.
+1. Instantiate and initialize the widget
 
-| Parameter | Description |
-| ------------ | --------------------------------------------- |
-| `properties` | The property map. |
-| `cause` | The reason map. |
-| `callback` | Asynchronously check whether this method call is successful through `AgoraExtAppCallback`. |
+    ```java
+    // Add an AgoraWidgetActiveObserver through widgetContext.addWidgetActiveObserver 
+    // to monitor the activation and deregistration of the Widget
+    private val widgetActiveObserver = object : AgoraWidgetActiveObserver {
+        override fun onWidgetActive(widgetId: String) {
+            createWidget(widgetId)
+        }
 
-**unload**
+        override fun onWidgetInActive(widgetId: String) {
+            destroyWidget(widgetId)
+        }
+    }
+    
+    private fun createWidget(widgetId: String) {
+        if (teachAidWidgets.contains(widgetId)) {
+            AgoraLog?.w("$tag->'$widgetId' is already created, can not repeat create!")
+            return
+        }
+        AgoraLog?.w("$tag->create teachAid that of '$widgetId'")
+        // Here, the previously registered widgetConfigs are searched by widgetId
+        val widgetConfig = eduContext?.widgetContext()?.getWidgetConfig(widgetId)
+        widgetConfig?.let { config ->
+            
+            // Take widgetClass from widgetConfig and instantiate a Widget object instance through reflection
+            val widget = eduContext?.widgetContext()?.create(config)
+            widget?.let {
+                AgoraLog?.w("$tag->successfully created '$widgetId'")
+                when (widgetId) {
+                    CountDown.id -> {
+                        (it as? AgoraCountDownWidget)?.getWidgetMsgObserver()?.let { observer ->
+                            eduContext?.widgetContext()?.addWidgetMessageObserver(observer, widgetId)
+                        }
+                    }
+                    Selector.id -> {
+                        (it as? AgoraIClickerWidget)?.getWidgetMsgObserver()?.let { observer ->
+                            eduContext?.widgetContext()?.addWidgetMessageObserver(observer, widgetId)
+                        }
+                    }
+                    Polling.id -> {
+                        (it as? AgoraVoteWidget)?.getWidgetMsgObserver()?.let { observer ->
+                            eduContext?.widgetContext()?.addWidgetMessageObserver(observer, widgetId)
+                        }
+                    }
+                }
+                // record widget
+                teachAidWidgets[widgetId] = widget
+                // Create widgetContainer and bind to root Container
+                val widgetContainer = managerWidgetsContainer(allWidgetsContainer = binding.root, widgetId = widgetId)
+                AgoraLog?.i("$tag->successfully created '$widgetId' container")
+                widgetContainer?.let { group ->
+                    AgoraLog?.w("$tag->initialize '$widgetId'")
+                    // Initialize the Widget
+                    widget.init(group)
+                }
+            }
+        }
+    }
+    
+    private fun destroyWidget(widgetId: String) {
+        // remove from map
+        val widget = teachAidWidgets.remove(widgetId)
+        // remove UIDataProviderListener
+        when (widgetId) {
+            CountDown.id -> {
+                (widget as? AgoraTeachAidCountDownWidget)?.getWidgetMsgObserver()?.let { observer ->
+                    eduContext?.widgetContext()?.removeWidgetMessageObserver(observer, widgetId)
+                }
+            }
+            Selector.id -> {
+                (widget as? AgoraTeachAidIClickerWidget)?.getWidgetMsgObserver()?.let { observer ->
+                    eduContext?.widgetContext()?.removeWidgetMessageObserver(observer, widgetId)
+                }
+            }
+            Polling.id -> {
+                (widget as? AgoraTeachAidVoteWidget)?.getWidgetMsgObserver()?.let { observer ->
+                    eduContext?.widgetContext()?.removeWidgetMessageObserver(observer, widgetId)
+                }
+            }
+            AgoraCloudDisk.id -> {
+                (widget as? AgoraTeachAidVoteWidget)?.getWidgetMsgObserver()?.let { observer ->
+                    eduContext?.widgetContext()?.removeWidgetMessageObserver(observer, widgetId)
+                }
+            }
+        }
+        widget?.let {
+            handler.post { it.release() }
+            it.container?.let { group ->
+                managerWidgetsContainer(binding.root, widgetId, group)
+            }
+        }
+    }
+    ```
 
-```kotlin
-fun unload()
-```
+## API Reference
 
-Remove the plugin. A successful method call triggers the `onExtAppUnloaded` callback.
+### `AgoraBaseWidget` class
 
-**getLocalUserInfo**
+    ```java
+    // Widget base class
+    abstract class AgoraBaseWidget {
+        // The parent layout of the current Widget
+        var container: ViewGroup? = null
 
-```kotlin
-fun getLocalUserInfo(): AgoraExtAppUserInfo?
-```
+        // Information about the current widget
+        var widgetInfo: AgoraWidgetInfo? = null
 
-Get the current user information.
+        // Initialize the current widget
+        // @param container The parent layout of the current Widget
+        open fun init(container: ViewGroup) {
+            this.container = container
+        }
 
-**getRoomInfo**
+        // position and size ratio information of the current Widget to the remote
+        // @param frame The position and size ratio information of the current Widget
+        // @param contextCallback callback listener for synchronous operations
+        protected fun updateSyncFrame(frame: AgoraWidgetFrame, contextCallback: EduContextCallback<Unit>? = null) {
+            ......
+        }
 
-```kotlin
-fun getRoomInfo(): AgoraExtAppRoomInfo?
-```
+        // @param properties Map of custom room properties in the Widget to be updated. 
+        // Need to pass the full path: "a.b.c.d": value
+        // @param cause custom update reason
+        // @param contextCallback callback listener for update operations
+        
+        protected fun updateRoomProperties(
+                properties: MutableMap<String, Any>,
+                cause: MutableMap<String, Any>,
+                contextCallback: EduContextCallback<Unit>? = null
+        ) {
+            ......
+        }
 
-Get the current classroom information.
+        // @param keys The set of key values ​​for custom user properties in the widget that needs to be deleted. 
+        // Need to pass the full path: a.b.c.d
+        // @param cause custom delete reason
+        // @param contextCallback callback listener for delete operation
+        protected fun deleteRoomProperties(
+                keys: MutableList<String>,
+                cause: MutableMap<String, Any>,
+                contextCallback: EduContextCallback<Unit>? = null
+        ) {
+            ......
+        }
 
-**getProperties**
+        // @param properties Map of custom user properties within the Widget to be updated. Need to pass the full path: "a.b.c.d": value
+        // @param cause custom update reason
+        // @param contextCallback callback listener for update operations
+        protected fun updateUserProperties(
+            properties: MutableMap<String, Any>,
+            cause: MutableMap<String, Any>,
+            contextCallback: EduContextCallback<Unit>? = null
+        ) {
+            ......
+        }
 
-```kotlin
-fun getProperties(): MutableMap<String, Any?>?
-```
+        // @param keys The set of key values ​​for custom user properties in the widget that needs to be deleted. Need to pass the full path: a.b.c.d
+        // @param cause custom delete reason
+        // @param contextCallback callback listener for delete operation
+        protected fun deleteUserProperties(
+            keys: MutableList<String>,
+            cause: MutableMap<String, Any>,
+            contextCallback: EduContextCallback<Unit>? = null
+        ) {
+            ......
+        }
 
-Get the current property list.
+        // Send messages from inside the Widget to the outside
+        protected fun sendMessage(message: String) {
+            ......
+        }
 
-#### Callback
+        // Widget's position and size changed
+        // @params frame Widget position and size scale information
+        open fun onSyncFrameUpdated(frame: AgoraWidgetFrame) {
+        }
 
-**onExtAppLoaded**
+        // Receive messages from outside the widget. The message comes from sendMessageToWidget in widgetContext
+        open fun onMessageReceived(message: String) {
+        }
 
-```kotlin
-fun onExtAppLoaded(context: Context)
-```
+        // Callback for the update of local user information
+        open fun onLocalUserInfoUpdated(info: AgoraWidgetUserInfo) {
+            widgetInfo?.let {
+                ......
+            }
+        }
 
-This callback is triggered after the plugin is initialized and before the view is added to the container.
+        // Callback when room information is updated
+        open fun onRoomInfoUpdated(info: AgoraWidgetRoomInfo) {
+            widgetInfo?.let {
+                ......
+            }
+        }
 
-| Parameter | Description |
-| --------- | ---------------- |
-| `context` | The android context. |
+        // Callback for when the custom room property in the widget is updated
+        open fun onWidgetRoomPropertiesUpdated(properties: MutableMap<String, Any>, cause: MutableMap<String, Any>?, keys: MutableList<String>) {
+            ......
+        }
 
-**onCreateView**
+        // Callback when custom room property in Widget is deleted
+        open fun onWidgetRoomPropertiesDeleted(properties: MutableMap<String, Any>, cause: MutableMap<String, Any>?, keys: MutableList<String>) {
+            ......
+        }
 
-```kotlin
-fun onCreateView(content: Context): View
-```
+        // Callback for when custom local user properties in Widget are updated
+        open fun onWidgetUserPropertiesUpdated(properties: MutableMap<String, Any>,
+            cause: MutableMap<String, Any>?,
+            keys: MutableList<String>) {
+            ......
+        }
 
-Occurs when the view is created.
+        // The callback for the deletion of the custom local user attribute in the Widget
+        open fun onWidgetUserPropertiesDeleted(properties: MutableMap<String, Any>,
+            cause: MutableMap<String, Any>?,
+            keys: MutableList<String>) {
+            ......
+        }
 
-```kotlin
-fun onPropertyUpdated(properties: MutableMap<String, Any>?, cause: MutableMap<String, Any?>?)
-```
+        // Release resources
+        open fun release() {
+            ......
+        }
+    }
+    ```
 
-Occurs when the properties of the container are updated.
-
-| Parameter | Description |
-| ------------ | --------------------------------------------- |
-| `properties` | The property map. |
-| `cause` | The reason map. |
-| `callback` | Asynchronously check whether this method call is successful through `AgoraExtAppCallback`. |
-
-**onExtAppUnloaded**
-
-```kotlin
-fun onExtAppUnloaded()
-```
-
-Occurs after the plugin is closed and before the view is removed from the container.
-
-### 2. Register the plugin to the Agora Classroom SDK
-
-To register the plugin in the Agora Classroom SDK, call `AgoraEduSDK.registerExtApp`.
-
-The following sample code demonstrates how to register the countdown plugin CountDownExtApp.
+### `AgoraWidgetContext` interface
 
 ```java
-AgoraEduSDK.registerExtApps(Arrays.asList(
-   new AgoraExtAppConfiguration(
-       // The plugin ID. 
-       CountDownExtApp.getAppIdentifier(),
-       // The size of the plugin container. 
-       new ViewGroup.LayoutParams(
-         ViewGroup.LayoutParams.WRAP_CONTENT,
-         ViewGroup.LayoutParams.WRAP_CONTENT),
-       // Inherits io.agora.extension.AgoraExtAppBase to implement the plugin 
-       CountDownExtApp.class,
-       // The language of the plugin. 
-       Locale.getDefault().getLanguage(),
-       // The plugin icon. 
-       CountDownExtApp.getAppIconResource()),
-   ......
-));
+// WidgetContext capability interface
+interface AgoraWidgetContext {
+    // Create a Widget object instance
+    // @param config The configuration information of this Widget object
+    // @return Widget instance, if it is empty, it means the creation failed
+    fun create(config: AgoraWidgetConfig): AgoraBaseWidget?
+
+    // Get the current position and size ratio information of the Widget
+    // @param widgetId Widget's unique identifier
+    // @return widget's current position and scale information. The benchmark of the ratio needs to be unified by the developers themselves.
+    fun getWidgetSyncFrame(widgetId: String): AgoraWidgetFrame?
+
+    // Get the configuration information of all registered widgets
+    fun getWidgetConfigs(): MutableList<AgoraWidgetConfig>
+
+    // Get the configuration information of a registered widget
+    // @param widgetId Widget's unique identifier
+    fun getWidgetConfig(widgetId: String): AgoraWidgetConfig?
+
+    // Activate a widget.
+    // After the operation is successful, you will receive a callback from AgoraWidgetActiveObserver.onWidgetActive
+    // @param widgetId Widget's unique identifier
+    // @param ownerUserUuid The userUuid of the user who owns the currently activated Widget
+    // @param roomProperties initialized room properties
+    // @param callback The callback listener for the activation operation
+    fun setWidgetActive(widgetId: String, ownerUserUuid: String? = null,
+                        roomProperties: Map<String, Any>? = null,
+                        callback: EduContextCallback<Unit>? = null)
+
+    // Log out the specified Widget
+    // @param widgetId Widget's unique identifier
+    // @param isRemove Whether to completely delete all the information of this Widget in the current classroom:
+    // - true: delete completely. All information under roomProperties.widgets.'widgetId' and userProperties.widgets.'widgetId' will be deleted
+    // - false: Only set roomProperties.widgets.'widgetId'.state to '0', that is, set the current Widget to inactive state. 
+    // No matter what value is passed, you will receive the AgoraWidgetActiveObserver.onWidgetInActive callback.
+    // @param callback callback listener for logout operation
+    fun setWidgetInActive(widgetId: String, isRemove: Boolean = false, callback: EduContextCallback<Unit>? = null)
+
+
+    // Get the activation state of a widget
+    // @param widgetId Widget's unique identifier
+    fun getWidgetActive(widgetId: String): Boolean
+
+    // Get the activation status of all registered widgets
+    // @param widgetId Widget's unique identifier
+    fun getAllWidgetActive(): Map<String, Boolean>
+
+    // Add an AgoraWidgetActiveObserver listener to monitor whether the Widget is active
+    fun addWidgetActiveObserver(observer: AgoraWidgetActiveObserver, widgetId: String)
+
+    // Remove an AgoraWidgetActiveObserver listener
+    fun removeWidgetActiveObserver(observer: AgoraWidgetActiveObserver, widgetId: String)
+
+    // Add an AgoraWidgetMessageObserver listener to listen for all messages sent by this Widget
+    fun addWidgetMessageObserver(observer: AgoraWidgetMessageObserver, widgetId: String)
+
+    // Remove an AgoraWidgetMessageObserver listener
+    fun removeWidgetMessageObserver(observer: AgoraWidgetMessageObserver, widgetId: String)
+
+    // Send a message to a widget
+    fun sendMessageToWidget(msg: String, widgetId: String)
+}
 ```
 
-### 3. Use the plugin in the flexible classroom
-
-By default, the icon of the registered plugin is displayed in the whiteboard toolbar in the flexible classroom.
-
-If you want to customize an entry for the plugin in the flexible classroom, you can edit the `AgoraUI1v1Container.kt`, `AgoraUILargeClassContainer.kt,` and `AgoraUISmallClassContainer.kt` files under the `agoraui/src/main/kotlin/io/agora/uikit/impl/container` path. Then call the following methods when the user clicks on the plugin icon.
+### Type definition
 
 ```java
-// Pass in the plug-in ID in the launchExtApp method. 
-getEduContext()?.extAppContext()?.launchExtApp(CountDownExtApp.getAppIdentifier())
+// Widget configuration class
+data class AgoraWidgetConfig(
+    // The custom Widget class corresponding to this WidgetId
+    var widgetClass: Class<out AgoraBaseWidget>,
+    // Unique identifier for the current Widget
+    var widgetId: String,
+    // The icon in the unselected (default or inactive) state
+    val image: Int? = null,
+    // The icon in the selected or activated state
+    val selectedImage: Int? = null,
+    // Custom data, which is passed to AgoraWidgetInfo.extraInfo after Widget is instantiated
+    var extraInfo: Any? = null
+)
+
+// Widget information class
+data class AgoraWidgetInfo(
+    var roomInfo: AgoraWidgetRoomInfo,
+    var localUserInfo: AgoraWidgetUserInfo,
+    // Unique identifier for the current Widget
+    val widgetId: String,
+    // Custom data passed in externally
+    val extraInfo: Any?,
+    // custom room properties in the current widget
+    var roomProperties: MutableMap<String, Any>?,
+    // Custom local user properties in the current Widget
+    var localUserProperties: MutableMap<String, Any>?
+)
+
+// Widget's position and size ratio information class
+data class AgoraWidgetFrame(
+    val x: Float? = null,
+    val y: Float? = null,
+    val width: Float? = null,
+    val height: Float? = null
+)
+
+// User information class in Widget
+data class AgoraWidgetUserInfo(
+        val userUuid: String,
+        val userName: String,
+        val userRole: Int
+)
+
+// Room information class in Widget
+data class AgoraWidgetRoomInfo(
+        val roomUuid: String,
+        val roomName: String,
+        val roomType: Int
+)
 ```
 
 </PlatformWrapper>

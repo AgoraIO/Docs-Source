@@ -41,7 +41,7 @@ After the recording is over, the cloud recording service uploads the recording f
   - [Microsoft Azure](https://azure.microsoft.com/en-us/services/storage/blobs/)
   - [Google Cloud](https://cloud.google.com/storage)
   - [Huawei Cloud](https://www.huaweicloud.com/intl/en-us/product/obs)
-  - [Baidu AI Cloud](https://intl.cloud.baidu.com/product/bos)
+  - [Baidu AI Cloud](https://intl.cloud.baidu.com/product/bos.html)
 - Ensure that you have joined the <Vg k="VSDK" /> channel and have users in the channel and are streaming.
 
 ## Project setup
@@ -236,7 +236,7 @@ During the recording, you can call the [`updateLayout`](../reference/rest-api/up
 
 ### Sample project
 
-Agora provides a [Postman collection](https://github.com/AgoraIO/Agora-RESTful-Service/blob/master/cloud-recording/README.md), which contains sample requests of RESTful API for a cloud recording. You can use the collection to quickly grasp the basic functionalities of the Cloud Recording RESTful APIs. You only need to import the collection to Postman and set your environment variables.
+Agora provides a [Postman collection](https://documenter.getpostman.com/view/6319646/SVSLr9AM), which contains sample requests of RESTful API for a cloud recording. You can use the collection to quickly grasp the basic functionalities of the Cloud Recording RESTful APIs. You only need to import the collection to Postman and set your environment variables.
 
 You can also use Postman to generate code snippets written in various programming languages. To do so, select a request, click **Code**, and select the desired language in **GENERATE CODE SNIPPETS**.
 

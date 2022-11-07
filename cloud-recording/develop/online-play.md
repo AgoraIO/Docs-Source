@@ -43,7 +43,10 @@ We use [Amazon S3](https://aws.amazon.com/s3/) as an example to show you how to 
             "Effect": "Allow",
             "Principal": "*",
             "Action": "s3:*",
-            "Resource": "arn:aws:s3:::<YourBucketName>"
+            "Resource": [
+               "arn:aws:s3:::<YourBucketName>",
+               "arn:aws:s3:::<YourBucketName>/*"
+            ]
         }
     ]
    }

@@ -1,5 +1,7 @@
 <PlatformWrapper platform="web">
 
+This section introduces how to use <b>the latest version</b> of the AI Noise Suppression extension. Implementation for previous versions might be different. For details, see <a href="">Extension release notes</a>.
+
 1. **Integrate <Vg k="RTEE_NS" /> into your app**
 
     To install the  <Vg k="RTEE_NS" /> extension ([agora-extension-ai-denoiser](https://www.npmjs.com/package/agora-extension-ai-denoiser)), in the root of your project run the following command:
@@ -24,26 +26,31 @@
 
     2. If you have enabled the Content Security Policy (CSP), because Wasm files are not allowed to load in Chrome and Edge by default, you need to configure the CSP as follows:
 
-        - For versions later than Chrome 97 and Edge 97 (Chrome 97 and Edge 97 included): Add `'wasm-unsafe-eval'` in the [`script-src`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src) options. For example:
+        - For versions later than Chrome 97 and Edge 97 (Chrome 97 and Edge 97 included): Add `'wasm-unsafe-eval'` and `blob:` in the [`script-src`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src) options. For example:
            ``` xml
-             <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'wasm-unsafe-eval'">
+             <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'wasm-unsafe-eval' blob:">
              ```
 
-        - For versions earlier than Chrome 97 and Edge 97: Add `'unsafe-eval'` in the `script-src` options.
+        - For versions earlier than Chrome 97 and Edge 97: Add `'unsafe-eval'` and `blob:` in the `script-src` options.
 
 4. **Register the <Vg k="RTEE_NS" /> extension**
 
     Call <Link to= "{{global.API_REF_WEB_ROOT}}/interfaces/iagorartc.html#registerextensions">AgoraRTC.registerExtensions</Link>, and pass in the created `AIDenoiserExtension` instance. Optionally, listen for the callback reporting that the Wasm and JS files fail to load.
-    Ensure that you create one <code>AIDenoiserExtension</code> instance only.
+    <Vg k="COMPANY"/> recommends that you create one <code>AIDenoiserExtension</code> instance only.
 
-   ```typescript
-   // Create an AIDenoiserExtension instance, and pass in the host URL of the Wasm and JS files
+  ```typescript
+   // Create an AIDenoiserExtension instance, and pass in the host URL of the Wasm files
    const denoiser = new AIDenoiserExtension({assetsPath:'./external'});
+   // Check compatibility
+   if (!denoiser.checkCompatibility()) {
+     // The extension might not be supported in the current browser. You can stop executing further code logic
+     console.error("Does not support AI Denoiser!");
+   }
    // Register the extension
    AgoraRTC.registerExtensions([denoiser]);
-   // (Optional) Listen for the callback reporting that the Wasm and JS files fail to load
+   // (Optional) Listen for the callback reporting that the Wasm files fail to load
    denoiser.onloaderror = (e) => {
-     // If the Wasm and JS files fail to load, you can disable the plugin, for example:
+     // If the Wasm files fail to load, you can disable the plugin, for example:
      // openDenoiserButton.enabled = false;
      console.log(e);
    }
@@ -51,34 +58,28 @@
 5. **Create an `IAIDenoiserProcessor` instance**
 
 
-    Call the `createProcessor` method to create a `processor`, and set whether to enable the extension by default. Optionally, you can listen for the callback reporting that the noise reduction process takes too long.
+    Call the `createProcessor` method to create a `processor`, and set whether to enable the extension by default. If you do not set the default state, the extension inherits the previous state.
 
-   ```typescript
-   //  Create a processor
-   const processor = denoiser.createProcessor();
-   // Enable the extension by default
-   processor.enable();
-   // Disable the extension by default
-   // processor.disable();
-   // (Optional) Listen for the callback reporting that the noise reduction process takes too long
-   processor.onoverload = async () => {
-     console.log("overload!!!");
-     // If noise reduction takes too long, turn off the extension
-     await processor.disable();
-   }
-   ```
+    ```typescript
+    // Create a processor
+    const processor = denoiser.createProcessor();
+    // Enable the extension by default
+    processor.enable();
+    // Disable the extension by default
+    // processor.disable();
+    ```
 
 6. **Inject the extension to the audio processing pipeline**
 
     Call <Link to="{{global.API_REF_WEB_ROOT}}/interfaces/imicrophoneaudiotrack.html#pipe">pipe</Link> and specify the <Link to="{{global.API_REF_WEB_ROOT}}/interfaces/imicrophoneaudiotrack.html#processordestination">processorDestination</Link> property.
 
-       ```typescript
-       // Create a local video track
-       const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-       // Inject the extension to the audio processing pipeline
-       audioTrack.pipe(processor).pipe(audioTrack.processorDestination);
+    ```typescript
+    // Create a local video track
+    const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+    // Inject the extension to the audio processing pipeline
+    audioTrack.pipe(processor).pipe(audioTrack.processorDestination);
     await processor.enable();
-       ```
+    ```
 
 7. **Enable or disable the extension as needed**
 
@@ -93,19 +94,31 @@
         }
       }
       ```
+8. Set the noise suppression mode and level as needed:
+   ```javascript
+   // Listen for the callback reporting that the noise suppression process takes too long
+   processor.onoverload = async (elapsedTime) => {
+     console.log("overload!!!");
+     // Switch from AI noise suppression to stationary noise suppression
+     await processor.setMode("STATIONARY_NS");
+     // Disable AI noise suppression
+     await processor.disable();
+   }
+   ```
 
-8. **Setup logging**
+9. **Setup logging**
 
-    Best practice is to dump audio data, this significantly improves the efficiency of troubleshooting.  Call the `dump` method, and listen for the `ondump` and `ondumpend` callbacks.
+    Best practice is to dump audio data, this significantly improves the efficiency of troubleshooting.  Call the `dump` method, and listen for the `ondump` and `ondumpend` callbacks. <Vg k="COMPANY"/> strongly recommends dumping audio data, because it significantly improves the efficiency of troubleshooting.
 
    ```typescript
    processor.ondump = (blob, name) => {
-     // Dump the audio data to a local folder in WAV format
+     // Dump the audio data to a local folder in PCM format
      const objectURL = URL.createObjectURL(blob);
      const tag = document.createElement("a");
-     tag.download = name + ".wav";
+     tag.download = name;
      tag.href = objectURL;
      tag.click();
+     setTimeout(() => {URL.revokeObjectURL(objectURL);}, 0);
    }
 
    processor.ondumpend = () => {

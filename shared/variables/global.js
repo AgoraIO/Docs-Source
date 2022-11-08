@@ -117,7 +117,7 @@ export const TEMPL = 'Templates';
 
 export const RTEE = 'Extensions';
 export const RTEE_NS = 'AI Noise Suppression';
-
+export const RTEE_VB = 'Vitual Background';
 export const AA = `${COMPANY} Analytics`;
 export const WHITE = 'Interactive Whiteboard';
 export const WHITE_SDK = `${WHITE} SDK`

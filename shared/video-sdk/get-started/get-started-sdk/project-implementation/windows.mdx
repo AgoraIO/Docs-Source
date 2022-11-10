@@ -4,185 +4,254 @@
 
 In the interface, create windows for local and remote video, and add buttons to join and leave a channel. To create this UI, take the following steps:
 
-   1. **Create the required variables**
-   
-    To create windows for the local and remote view, you use the `CWnd` class. To add buttons to the UI, you use the `CButton` class. To specify objects of these classe, in **Solution Explorer**, open the **Source Files** folder and then open the `AgoraImplementationDlg.cpp` file. In the file, add the following before `class CAboutDlg : public CDialogEx`:
+1. **Add buttons to joins and leave the channel**
 
-    ```cpp
-    CWnd RemoteView;
-    CWnd LocalView;
-    CButton joinButton;
-    CButton leaveButton;
-    ```
-
-    2. **Add the UI elements to the UI**
+   1. Go to menu **View** > **Other Windows** > **Resource View**.
     
-    In `AgoraImplementationDlg.cpp`, locate the `OnInitDialog` function definition and add the following contents before `return true;`:
+        If the **Resource View** window isn't the top-most window, select the **Resource View** tab to bring it to the top.
+    
+   1. In **Resource View**, go to **AgoraImplementation.rc** > **Dialog** and double-click `IDD_AGORAIMPLEMENTATION_DIALOG`.
+    The resource opens inside the **Dialog Editor**. 
+
+   1. Click **View** > **ToolBox**. The **Toolbox** opens.
+
+   1. From **ToolBox**, drag **Button** to the surface of the **Dialog Editor**
+
+   1. In **Properties**, update the **Caption** field to `Join`.
+
+   1. Repeat the step four and add another button where **Caption** says `Leave`.
+
+Adjust the button positions as needed.
+
+2. **Create windows for the local and remote view**
+
+    To display the local and remote video, you use the `CWnd` class. To setup the local and remote view in your <Vpl k= "CLIENT"/>, take the following steps:
+        
+    1. In `AgoraImplementation.h`, add the following declarations to `CAgoraImplementationDlg`:
+        
+    ```cpp
+    public:
+        CWnd RemoteView;
+        CWnd LocalView;
+    ```
+    
+    1. In `AgoraImplementationDlg.cpp`, replace `OnInitDialog()` with the following code:
 
     ```cpp
-	RemoteView.Create(NULL,NULL, WS_CHILD | WS_VISIBLE,
-		CRect(0, 0, 20, 20), this, 1234);
-	RemoteView.MoveWindow(800, 300, 350, 350, TRUE);
-
-	LocalView.Create(NULL, NULL , WS_CHILD | WS_VISIBLE,
-		CRect(0, 0, 20, 20), this, 12345);
-	LocalView.MoveWindow(300, 300, 350, 350, TRUE);
-
-
-	joinButton.Create(_T("Join"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-		CRect(10, 10, 100, 30), this, 1);
-	joinButton.MoveWindow(500, 700, 200, 50, TRUE);
-
-	leaveButton.Create(_T("Leave"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-		CRect(10, 10, 100, 30), this, 2);
-	leaveButton.MoveWindow(250, 700, 200, 50, TRUE);
+	BOOL CAgoraImplementationDlg::OnInitDialog()
+    {
+        CDialogEx::OnInitDialog();
+        remoteView.Create(NULL, NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
+		CRect(0, 0, 20, 20), this, NULL);
+        remoteView.MoveWindow(600, 200, 350, 350, TRUE);
+        localView.Create(NULL, NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
+		CRect(0, 0, 20, 20), this, NULL);
+        localView.MoveWindow(200, 200, 350, 350, TRUE);
+        initAgora();
+        return TRUE;  // return TRUE  unless you set the focus to a control
+    }
     ```
 
 The UI looks like: 
 
-![image](/images/video-sdk/Quick-start-window-UI.png)
+![image](/images/video-sdk/video-call-windows-ui.png)
 
 ### Implement the  <Vpd k="PRODUCT" /> logic
 
-
-1. **Import the Video SDK classes**
+1. **Add the Video SDK libraries to the precompiled header file**
     
-    In `AgoraImplementationDlg.cpp`, add the following to the list of header files:
+    From **Solution Explorer**, open the `pch.h` file and add the following lines after `#include "framework.h"`:
 
     ```cpp
-    #include "IAgoraRtcEngine.h"
-    ```
-
-1. **Specify the Agora namespaces**
-    
-    In `AgoraImplementationDlg.cpp`, add the following namespace declarations after `#include "IAgoraRtcEngine.h"`
-
-    ```cpp
+    #define _AFX_ALL_WARNINGS
+    #include <afxwin.h>         // MFC core and standard components
+    #include <IAgoraRtcEngine.h>
+    #include <IAgoraMediaEngine.h>
     #pragma comment(lib, "agora_rtc_sdk.dll.lib")
+    #pragma comment(lib, "libagora_segmentation_extension.dll.lib")
+    #pragma comment(lib, "libagora-ffmpeg.dll.lib")
     using namespace agora;
     using namespace agora::rtc;
+    using namespace agora::media;
+    #define WM_MSGID(code) (WM_USER+0x200+code)
+    #define EID_USER_JOINED					0x00000003
     ```
 
 1. **Add the required variables**
 
-    In `AgoraImplementationDlg.cpp`, add the following declarations after `CButton leaveButton;`:
+    In `AgoraImplementationDlg.h`, add the following declarations after `CWnd remoteView;`:
 
     ```cpp
     IRtcEngine* agoraEngine = nullptr;
-    CHAR appID[] = "0cc8ea75bf504ed08d3e8f5ef3c371bf";
-    CHAR Token[] = "";
-    CHAR Channel[] = "";
+    CHAR appId[] = "";
+    CHAR token[] = "";
+    CHAR channelName[] = "";
+    BOOL isJoin = false;
+    u_int remoteUId;
+    AgoraEventHandler agoraEventHandler;
     ```
-1. **Setup the Agora Video SDK**
+1. **Setup Agora Engine**
 
-   When the user launches this application, you call `InitAgoraEngine` to create and initialize an instance of Video SDK. To setup an engine instance of Video SDK, do the following:
+   When the user launches this application, you call `SetupVideoSDK` to create and initialize an instance of Video SDK. To setup an engine instance of Video SDK, do the following:
 
     1. In `AgoraImplementationDlg.h`, add the following code after `afx_msg void OnPaint()`:
       
       ```cpp
-      	void InitAgoraEngine();
+      void SetupVideoSDK();
       ```
+
     1. In `AgoraImplementationDlg.cpp`, add the following before `void AgoraImplementationDlg::OnPaint()`
       
       ```cpp
-      void CAgoraImplementationDlg::InitAgoraEngine()
+      void CAgoraImplementationDlg::SetupVideoSDK()
       {
-        AgoraEngineEventHandler m_eventHandler;
         agoraEngine = createAgoraRtcEngine();
+        if (!agoraEngine) {
+		return;
+        }
+        //set message notify receiver window
+        agoraEventHandler.SetMsgReceiver(m_hWnd);
         RtcEngineContext context;
-        std::string strAppID = "0cc8ea75bf504ed08d3e8f5ef3c371bf";
-        context.appId = strAppID.c_str();
-        context.eventHandler = &m_eventHandler;
+        context.appId = app_ID;
+        context.eventHandler = &agoraEventHandler;
         //set channel profile in the engine to the CHANNEL_PROFILE_LIVE_BROADCASTING.
         context.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
         //initialize the Agora RTC engine context.
         agoraEngine->initialize(context);
+        agoraEngine->setClientRole(CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER);
       }
       ```
 1. **Setup an event handler to receive callbacks**
 
-   <Vg k = "COMPANY"/> video SDK provides `IRtcEngineEventHandler` to implement callback functions. To setup an event handler, add the following to `AgoraImplementationDlg.cpp`:
+   <Vg k = "COMPANY"/> video SDK provides `IRtcEngineEventHandler` to implement callback functions. To implement the required callbacks, take the following steps:
 
-   ```cpp
-    class AgoraEngineEventHandler: public IRtcEngineEventHandler
-    {
-    };
-    ```
-    
-1. **Set the local video view**
+        1. Add the following class to `AgoraImplementation.h` after the list of headers:
 
-   When the user successfully joins a channel, <Vg k = "VSDK"/> triggers `onJoinChannelSuccess`. You catch this callback and setup the local video view to display the local video. To implement this callback in your <Vg k = "CLIENT"/>, in `AgoraImplementationDlg.cpp`, add the following code to the `AgoraEngineEventHandler` class:
+        ```cpp
+        class AgoraEventHandler : public IRtcEngineEventHandler
+        {
+            public:
+            // set the message notify window handler
+            void SetMsgReceiver(HWND hWnd) { m_hMsgHanlder = hWnd; }
+            virtual void onJoinChannelSuccess(const char* channel, uid_t uid, int elapsed) override;
+            virtual void onUserJoined(uid_t uid, int elapsed) override;
+            virtual void onUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason) override;
+            virtual void onLeaveChannel(const RtcStats& stats) override;
+            private:
+            HWND m_hMsgHanlder;
+        };
+        ```
 
-   ```cpp
-   public:
-	virtual void onJoinChannelSuccess(const char* channel, uid_t uid, int elapsed) override
-	{
-		//start preview in the engine.
-		agoraEngine->startPreview();
-		VideoCanvas canvas;
-		canvas.renderMode = media::base::RENDER_MODE_FIT;
-		canvas.uid = 0;
-		canvas.view = LocalView.GetSafeHwnd();
-		//setup local video in the engine to the canvas. 
-		agoraEngine->setupLocalVideo(canvas);
-	}
-   ```
+        2. Provide definitions for the callbacks you declared in `AgoraEventHandler`. In `AgoraImplementation.cpp`, add the following after the list of headers:
 
-1. **Setup the remote video view**
+        ```cpp
+        void AgoraEventHandler::onJoinChannelSuccess(const char* channel, uid_t uid, int elapsed)
+        {
+            // Occurs when you join a channel.
+        }
+        void AgoraEventHandler::onUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason)
+        {
+            AfxMessageBox(L"Remote user Leave the channe");
+        }
+        void AgoraEventHandler::onLeaveChannel(const RtcStats& stats)
+        {
+            AfxMessageBox(L"You left the channel");
+        }
+        ```
+
+1. **View the remote user when they join a channel**
    
-   When a remote user joins the channel, <Vg k = "VSDK"/> triggers `onUserJoined`. You catch this callback and retrieve the remote user ID and display the remote video. To Implement this workflow, in `AgoraImplementationDlg.cpp`, add the following code to the `AgoraEngineEventHandler` class after `onJoinChannelSuccess`:
+   When a remote user joins the channel, <Vg k = "VSDK"/> triggers `onUserJoined`. You catch this callback and retrieve the remote user ID and display the remote video. To Implement this workflow, in `AgoraImplementationDlg.cpp`, take the following steps:
 
-   ```cpp
-   virtual void onUserJoined(uid_t uid, int elapsed) override
-	{
-		VideoCanvas canvas;
-		canvas.uid = uid;
-		canvas.view = RemoteView.GetSafeHwnd();
-		agoraEngine->setupRemoteVideo(canvas);
-	}
-   ```
+    1. Retrieve the remote user `uid` and send a notification to parent window. In `AgoraImplementation.cpp`, add the following before `OnInitDialog`:
+    
+        ```cpp
+        void AgoraEventHandler::onUserJoined(uid_t uid, int elapsed) 
+        {
+            remoteUId = uid;
+            if (m_hMsgHanlder) 
+            {
+                ::PostMessage(m_hMsgHanlder, WM_MSGID(EID_USER_JOINED), (WPARAM)uid, (LPARAM)elapsed);
+            }
+        }        
+        ```
+    1. When the parent window receives the notification sent by `AgoraEventHandler`, it calls `OnEIDUserJoined` to setup the remote view. To setup the `OnEIDUserJoined` method in your <Vpl k = "CLIENT"/>, take the following steps:
+       
+        1. Add the following method declaration to `AgoraImplementation.h` after `CAgoraImplementationDlg(CWnd* pParent = nullptr);`:
+
+            ```cpp
+            afx_msg LRESULT OnEIDUserJoined(WPARAM wParam, LPARAM lParam);
+            ```
+
+        1. Add the logic for remote video view to `OnEIDUserJoined`. In `AgoraImplementation.cpp`, add the following code before `OnInitDialog`:
+
+            ```cpp
+            LRESULT CMFCApplication2Dlg::OnEIDUserJoined(WPARAM wParam, LPARAM lParam)
+            {
+                // Start preview in the engine.
+                VideoCanvas canvas;
+                canvas.renderMode = media::base::RENDER_MODE_FIT;
+                canvas.uid = wParam;
+                canvas.view = remoteView.GetSafeHwnd();
+                // Setup local video in the engine to the canvas. 
+                agoraEngine->setupRemoteVideo(canvas);
+                // Notify parent window
+                ::PostMessage(GetParent()->GetSafeHwnd(), WM_MSGID(EID_USER_JOINED), TRUE, 0);
+                return 0;
+            }
+        
+        1. Add the following macro to `AgoraImplementation.cpp` after `ON_WM_QUERYDRAGICON()`:
+
+            ```cpp
+            ON_MESSAGE(WM_MSGID(EID_USER_JOINED), &CAgoraImplementationDlg::OnEIDUserJoined)
+            ```
+
 
 4. **Join the channel to start <Vpd k = "PRODUCT"/>**
 
-   When the user presses **Join**, you <Vg k = "CLIENT"/> listens to the button click event and calls `OnBnClickedButtonJoinchannel` to join the channel. To implement this workflow, take the following steps:
+    When the local user clicks the **Join** button, call `joinChannel`. This method securely connects the local user to a channel using the authentication token. To Implement this workflow, in **Dialog Editor**, double-click **Join**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener you just created:
 
-    1. Declare the `OnBnClickedButtonJoinchannel` function. In `AgoraImplementationDlg.h`, add the following before `#ifdef AFX_DESIGN_TIME`;`
-   
     ```cpp
-   	afx_msg void OnBnClickedButtonJoinchannel();
+    if (agoraEngine == NULL)
+	{
+		AfxMessageBox(L"Engine is not initialized");
+	}
+	agoraEngine->enableAudio();
+	agoraEngine->enableVideo();
+	agoraEngine->enableLocalVideo(true);
+	agoraEngine->startPreview();
+	VideoCanvas canvas;
+	canvas.uid = 0;
+	canvas.view = localView;
+	canvas.sourceType = VIDEO_SOURCE_CAMERA;
+	agoraEngine->setupLocalVideo(canvas);
+	int res = agoraEngine->joinChannel(Token, ChannelName, 0, NULL);
+	if (res == 0)
+	{
+		isJoin = true;
+	}
     ```
 
-    1. Give the definition of the `OnBnClickedButtonJoinchannel` function. In `AgoraImplementationDlg.cpp`, add the following code before `void AgoraImplementationDlg::OnPaint()`:
+1. **Leave the channel when user ends the call**
+
+    When your app is running, the user can leave or join a channel using the buttons available in the UI. When a user clicks **Leave**, use `leaveChannel` to exit the channel. In **Dialog Editor**, double-click **Leave**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener you just created:
 
     ```cpp
-    void CAgoraImplementationDlg::OnBnClickedButtonJoinchannel()
-    {
-        //enable video in the engine.
-        agoraEngine->enableVideo();
-        // Join te channel.
-        agoraEngine->joinChannel(Token, Channel, NULL, 0);
-    }
-    ```
-
-6. **Leave the channel**
-
-   When the user presses **Leave**, you <Vg k = "CLIENT"/> listens to the button click event and calls `OnBnClickedButtonLeaveChannel` to leave the channel. To implement this workflow, take the following steps:
-
-    1. Declare the `OnBnClickedButtonLeaveChannel` function. In `AgoraImplementationDlg.h`, add the following before `#ifdef AFX_DESIGN_TIME`;`
-   
-    ```cpp
-   	afx_msg void OnBnClickedButtonLeaveChannel();
-    ```
-
-    1. Give the definition of the `OnBnClickedButtonLeaveChannel` function. In `AgoraImplementationDlg.cpp`, add the following code before `void AgoraImplementationDlg::OnPaint()`:
-
-    ```cpp
-    void CAgoraImplementationDlg::OnBnClickedButtonLeaveChannel()
-    {
-        if(agoraEngine != NULL)
-           // Release the IRtcEngine object.
-           agoraEngine->release();
-        agoraEngine = NULL;
-    }
+    if (isJoin == true)
+	{
+		agoraEngine->leaveChannel();
+		// Stop preview in the engine.
+		agoraEngine->stopPreview();
+		// Disable video in the engine.
+		agoraEngine->disableVideo();
+		// Release engine.
+		agoraEngine->release(true);
+		agoraEngine = NULL;
+		isJoin = false;
+	}
+	else
+	{
+		AfxMessageBox(L"Join a channel first!");
+	}
     ```
 </PlatformWrapper>

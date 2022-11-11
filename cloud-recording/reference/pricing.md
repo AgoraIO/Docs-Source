@@ -274,7 +274,7 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
                             <p>($US)</p>
                         </td>
                         <td>
-                            <p ><strong>s<strong>1.66</strong></strong></p>
+                            <p ><strong><strong>1.66</strong></strong></p>
                             <p ><strong><strong>(0.447 + 0.35341 + 0.37772 + 0.48591 =
                                         1.66404 ≈ 1.66）</strong></strong></p>
                         </td>

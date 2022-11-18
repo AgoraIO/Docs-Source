@@ -4,6 +4,8 @@ To implement the <Vpd k="NAME"/> workflow in your <Vpl k="CLIENT" />, you need t
 
 * A button to mute and unmute the remote audio track.
 * Two buttons, `+` and `-` to change the volume of the local audio track.
+* A button to start and stop screen sharing.
+* A `SurfaceView` to render the screensharing.
 
 To create this UI, in `App.tsx`, add the following code after `<Text onPress={leave} style={styles.button}>Leave</Text></View>`:
 
@@ -18,19 +20,106 @@ To create this UI, in `App.tsx`, add the following code after `<Text onPress={le
     <Text onPress={mute} style={styles.button}>
         Mute
     </Text>
+    <Text
+        onPress={
+            startScreenCaptureBool ? stopScreenSharing : startScreenCapture
+        }
+        style={styles.button}>
+        Screen Sharing
+    </Text>
 </View>
 ```
 
+In the `return` statement before the `showMessage` function, add the following the code before `<Text style={styles.info}>{message}</Text>`:
+
+```ts
+{startScreenCaptureBool ? (
+    <RtcSurfaceView
+    style={styles.videoView}
+    canvas={{
+        uid: 0,
+        sourceType: VideoSourceType.VideoSourceScreen,
+        renderMode: RenderModeType.RenderModeFit,
+    }}
+    />
+) : undefined}
+```
+
+You see errors in your IDE. This is because these components refer to methods and variables that you create later.
+
 ### Handle the system logic
+
+1. **Add the required libraries**
+
+    To switch between publishing screen and camera streams:
+
+    1. Import the corresponding Agora libraries. In `App.tsx`, add the following code before `createAgoraRtcEngine,`:
+
+        ```ts
+        VideoContentHint,
+        IRtcEngineEx,
+        VideoSourceType,
+        LocalVideoStreamState,
+        LocalVideoStreamError,
+        RenderModeType,
+        ```
+
+    1. Remove the `IRtcEngine,` line from the imports.
+
+1. **Change the IRtcEngine instance to IRtcEngineEx instance**
+
+    To enable screen sharing:
+
+    1. Replace `const agoraEngineRef = useRef<IRtcEngine>();` in `const App = () => {}` with:
+
+        ```ts
+        const agoraEngineRef = useRef<IRtcEngineEx>();
+        ```
+
+    1. Replace `agoraEngineRef.current = createAgoraRtcEngine();` in `setupVideoSDKEngine` with:
+
+        ```ts
+        agoraEngineRef.current = createAgoraRtcEngine() as IRtcEngineEx;
+        ```
 
 1. **Add the required variables**
 
-   To mute and unmute the remote user audio stream, in `App.tsx`, add the following variables to the declarations:
+   To screenshare, and mute and unmute the remote user audio stream, in `App.tsx`:
 
-   ```ts
-   // A variable to mute and unmute the local or remote user.
-   var isMuted = false;
-   ```
+    1. Add the following variables to the declarations:
+
+       ```ts
+       // A variable to mute and unmute the local or remote user.
+       var isMuted = false;
+       const uid = 0;
+       const sampleRate = 16000;
+       const channels = 2;
+       const captureSignalVolume = 100;
+       const width = 1280;
+       const height = 720;
+       const frameRate = 15;
+       const bitrate = 0;
+       const contentHint = VideoContentHint.ContentHintMotion;
+       var captureAudio = false;
+       var captureVideo = true;
+       ```
+
+   1. Add the following state variable after the declarations in `const App = () => {}`:
+
+       ```ts
+       const [startScreenCaptureBool, setScreenCapture] = useState(false); // Start screen capture
+       ```
+
+1. **Load the required extension for screen sharing**
+
+    Load the screensharing extension after you have initialized `agoraEngine` and before calling `joinChannel`. To do so, add the following code before `agoraEngine.enableVideo();`:
+
+    ```ts
+    // Must call after initialize and before joinChannel
+      if (Platform.OS === 'android') {
+        agoraEngine.loadExtensionProvider('agora_screen_capture_extension');
+      }
+    ```
 
 ### Implement the product workflow
 
@@ -67,4 +156,64 @@ To implement volume control in your <Vpl k="CLIENT" />, take the following steps
     };
     ```
 
+1. **Start or stop screen sharing**
+
+    When the user presses **Screen Share**:
+    - If the `startScreenCaptureBool` state variable is `false`, call `startScreenCapture()` and share the screen.
+    - If the `startScreenCaptureBool` state variable is `true`, call `stopScreenSharing()` and stop sharing the screen.
+
+    To implement this logic, in `App.tsx`, add the following code after 
+
+    ```ts
+    const startScreenCapture = () => {
+        agoraEngineRef.current?.startScreenCapture({
+        captureVideo: captureVideo,
+        captureAudio: captureAudio,
+        videoParams: {
+            dimensions: {width: width, height: height},
+            frameRate: frameRate,
+            bitrate: bitrate,
+            contentHint: contentHint,
+        },
+        audioParams: {
+            sampleRate: sampleRate,
+            channels: channels,
+            captureSignalVolume: captureSignalVolume,
+        },
+        });
+        agoraEngineRef.current?.startPreview(VideoSourceType.VideoSourceScreen);
+        if (captureAudio && !captureVideo) {
+        setScreenCapture(true);
+        }
+    };
+
+    const stopScreenSharing = () => {
+        agoraEngineRef.current?.stopScreenCapture();
+        setScreenCapture(false);
+    };
+    ```
+
+1. **Register the necessary callbacks**
+
+    To register the `onLocalVideoStateChanged` callback to manage the `startScreenCaptureBool` state variable,  add the following code in `agoraEngine.registerEventHandler({})`:
+
+    ```ts
+    onLocalVideoStateChanged(
+        source: VideoSourceType,
+        state: LocalVideoStreamState,
+        _error: LocalVideoStreamError,
+    ) {
+        if (source === VideoSourceType.VideoSourceScreen) {
+        switch (state) {
+            case LocalVideoStreamState.LocalVideoStreamStateStopped:
+            case LocalVideoStreamState.LocalVideoStreamStateFailed:
+            break;
+            case LocalVideoStreamState.LocalVideoStreamStateCapturing:
+            case LocalVideoStreamState.LocalVideoStreamStateEncoding:
+            setScreenCapture(true);
+            break;
+        }
+        }
+    },
+    ``` 
 </PlatformWrapper>

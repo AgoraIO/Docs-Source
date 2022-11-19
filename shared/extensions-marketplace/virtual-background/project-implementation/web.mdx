@@ -1,0 +1,177 @@
+<PlatformWrapper platform='web'>
+
+Integrate the virtual background extension, and implement the virtual background feature, as follows:
+
+1. Register the virtual background extension: After calling `AgoraRTC.createClient`to create a client object, new a `VirtualBackgroundExtension` object and pass in the `VirtualBackgroundExtension` object when calling `AgoraRTC.registerExtensions`.
+
+   ```typescript
+   // Create a client object
+   var client = AgoraRTC.createClient({mode: "rtc", codec: "vp8"});
+   // Create a VirtualBackgroundExtension instance
+   const extension = new VirtualBackgroundExtension();
+   // Register the extension
+   AgoraRTC.registerExtensions([extension]);
+   ```
+
+1. Initialize the virtual background extension:
+
+   1. Call `extension.createProcessor` to create a `VirtualBackgroundProcessor` instance.
+
+      ```typescript
+      processor = extension.createProcessor();
+      ```
+
+   2. Call `processor.init` to initialize the extension. In this method, you need to pass in the URL of the Wasm module. If resource loading or extension initialization fails, this method throws an exception. Catch this exception, and handle it accordingly.
+
+      ```typescript
+      await processor.init("./assets/wasms");
+      ```
+
+   3. After creating a local camera track, call `videoTrack.pipe` and `videoTrack.processorDestination` to inject the extension into the SDK's media processing pipeline.
+
+      ```typescript
+      localTracks.videoTrack.pipe(processor).pipe(localTracks.videoTrack.processorDestination);
+      ```
+
+1. Call `processor.setOptions` to choose the virtual background type and make settings. Agora supports the following settings:
+
+   - Set a solid color as the background: Set the `type` parameter as `"color"`, and set the `color` parameter.
+
+      ```typescript
+      processor.setOptions({type: 'color', color: '#00ff00'});
+      ```
+
+   - Set an image as the background: Set the `type` parameter as `"img"`, and set the `source` parameter to specify the image object.
+
+      ```typescript
+      processor.setOptions({type: 'img', source: HTMLImageElement});
+      ```
+
+   - Blur the user's original background: Set the `type` parameter as `"blur"` and set the `blurDegree` parameter to choose the blurring degree, low (`1`), medium (`2`), or high (`3`).
+
+      ```typescript
+      processor.setOptions({type: 'blur', blurDegree: 2});
+      ```
+
+1. Call `processor.enable` to enable the virtual background feature.
+
+   ```typescript
+   await processor.enable();
+   ```
+
+   If you do not call `setOptions` before calling this method, the default behavior of the SDK is to blur users' actual background with the blurring degree set as 1. After enabling the virtual background feature, to switch the virtual background type, just call `setOptions`.
+
+### Sample code
+
+```typescript
+import AgoraRTC from "agora-rtc-sdk-ng";
+import VirtualBackgroundExtension from "agora-extension-virtual-background";
+
+// Create a client object
+var client = AgoraRTC.createClient({mode: "rtc", codec: "vp8"});
+// Create a VirtualBackgroundExtension instance
+const extension = new VirtualBackgroundExtension();
+// Register the extension
+AgoraRTC.registerExtensions([extension]);
+
+let processor = null;
+var localTracks = {
+  videoTrack: null,
+  audioTrack: null
+};
+
+// Initialization
+async function getProcessorInstance() {
+  if (!processor && localTracks.videoTrack) {
+    // Create a VirtualBackgroundProcessor instance
+    processor = extension.createProcessor();
+
+      try {
+        // Initialize the extension and pass in the URL of the Wasm file
+        await processor.init("./assets/wasms");
+        } catch(e) {
+          console.log("Fail to load WASM resource!");return null;
+          }
+    // Inject the extension into the video processing pipeline in the SDK
+    localTracks.videoTrack.pipe(processor).pipe(localTracks.videoTrack.processorDestination);
+  }
+  return processor;
+}
+
+// Join a channel
+async function join() {
+  // Add event listeners
+  client.on("user-published", handleUserPublished);
+  client.on("user-unpublished", handleUserUnpublished);
+
+  [options.uid, localTracks.audioTrack, localTracks.videoTrack] = await Promise.all([
+    // Join a channel
+    client.join(options.appid, options.channel, options.token || null),
+    // Create a local microphone track and camera track
+    localTracks.audioTrack || AgoraRTC.createMicrophoneAudioTrack(),
+    localTracks.videoTrack || AgoraRTC.createCameraVideoTrack({encoderConfig: '720p_4'})
+  ]);
+
+  // Play local tracks
+  localTracks.videoTrack.play("local-player");
+}
+
+// Set a solid color as the background
+async function setBackgroundColor() {
+  if (localTracks.videoTrack) {
+    document.getElementById("loading").style.display = "block";
+
+    let processor = await getProcessorInstance();
+
+    try {
+      processor.setOptions({type: 'color', color: '#00ff00'});
+      await processor.enable();
+    } finally {
+      document.getElementById("loading").style.display = "none";
+    }
+
+    virtualBackgroundEnabled = true;
+  }
+}
+
+// Blur the user's actual background
+async function setBackgroundBlurring() {
+  if (localTracks.videoTrack) {
+    document.getElementById("loading").style.display = "block";
+
+    let processor = await getProcessorInstance();
+
+    try {
+      processor.setOptions({type: 'blur', blurDegree: 2});
+      await processor.enable();
+    } finally {
+      document.getElementById("loading").style.display = "none";
+    }
+
+    virtualBackgroundEnabled = true;
+  }
+}
+
+// Set an image as the background
+async function setBackgroundImage() {
+    const imgElement = document.createElement('img');
+
+    imgElement.onload = async() => {
+      document.getElementById("loading").style.display = "block";
+
+      let processor = await getProcessorInstance();
+
+      try {
+        processor.setOptions({type: 'img', source: imgElement});
+        await processor.enable();
+      } finally {
+        document.getElementById("loading").style.display = "none";
+      }
+
+      virtualBackgroundEnabled = true;
+    }
+    imgElement.src = '/images/background.png';
+}
+```
+
+</PlatformWrapper>

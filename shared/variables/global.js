@@ -10,7 +10,7 @@ export const VSDK_UNITY_FLUTTER_RN_RELEASE_API = '4.0.0.beta-2'
 export const VSDK_WEB_RELEASE_API = '4.13.0'
 export const MAJOR_VERSION = '4.x'
 export const VSDK_FLUTTER_PREVIOUS_RELEASE = '5.x';
-export const API_ROOT = 'https://api-ref.agora.io/en';
+export const API_ROOT = 'https://api-reference-qyvoy4pye-agora-gdxe.vercel.app';
 export const API_REF_ROOT = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VIDEO_SDK = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VOICE_SDK = `${API_ROOT}/voice-sdk`;
@@ -48,6 +48,9 @@ export const API_REF_IOS_WHITE = `${API_REF_ROOT_WHITE}/ios/2.x`;
 export const API_REF_WEB_WHITE = `${API_REF_ROOT_WHITE}/web/2.x`;
 export const API_REF_WEB_ROOT_PREV_SDK = `${API_REF_ROOT}/web/3.x`;
 export const API_REF_FLUTTER_ROOT_PREV_SDK = `${API_REF_ROOT}/flutter/5.x/API`;
+export const API_REF_WINDOWS_ROOT_CPP  = `${API_REF_ROOT}/cpp/${VSDK_RELEASE_API}/API`;
+export const API_REF_WINDOWS_ROOT_CPP_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/cpp/${VSDK_FLUTTER_RELEASE_API}/API`;
+
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
 
@@ -116,6 +119,8 @@ export const ACCG = 'Global Accelerator';
 export const TEMPL = 'Templates';
 
 export const RTEE = 'Extensions';
+export const RTEE_DRM = `${COMPANY} DRM`;
+export const RTEE_DRM_FRAMEWORK = `AgoraDrmLoader.framework`;
 export const RTEE_NS = 'AI Noise Suppression';
 export const RTEE_VB = 'Vitual Background';
 export const AA = `${COMPANY} Analytics`;
@@ -154,6 +159,7 @@ export const AB = 'App Builder';
 export const UIK = 'UI Kit';
 export const vUIK = `${UIK}`;
 export const FC = 'Flexible Classroom';
+export const FC_UIB = 'UI Builder';
 
 export const FC_VERSION = '2.x' ;
 export const FC_API_REF_ROOT = `${API_ROOT}/flexible-classroom-sdk`;

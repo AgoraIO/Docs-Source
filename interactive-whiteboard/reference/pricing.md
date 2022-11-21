@@ -12,10 +12,15 @@ This page introduces the billing policy for the <Vg k="WHITE" />.
 
 Your billing details may differ if you have signed a contract with Agora. If your scenario involves other Agora products or services, such as the <Vg k="VSDK" />, <Vg k="MESS_SDK" />, or <Vg k="CREC" />, expect additional charges for these products or services. For details, see the billing policy for each Agora product or service.
 
-## Overview
-
+## <Vg k="WHITE" /> pricing
 
 Billing for <Vg k="WHITE" /> begins once you enable and implement the service in your project. Agora sends your bill and deducts the payment from your account on a monthly basis. For details, see [Billing, fee deduction, and account suspension](/help/account-and-billing/billing_account). 
+The unit price for each whiteboard feature is as follows:
+
+| Whiteboard feature   | Pricing             |
+| :------------------- |:--------------------|
+| Online whiteboard    | $1.40/1,000 minutes |
+| File conversion      | $0.50/1,000 images  |
 
 ## Composition
 
@@ -28,15 +33,6 @@ At the end of each month, Agora adds up the usage of each whiteboard feature in 
 **Cost of each whiteboard feature = (monthly total usage - free-of-charge usage) × unit price**
 
 **Total cost = online whiteboard cost + file conversion cost**
-
-### Unit price
-
-The unit price for each whiteboard feature is as follows:
-
-| Whiteboard feature   | Unit price          |
-| :------------------- | :------------------ |
-| Online whiteboard    | $1.40/1,000 minutes |
-| File conversion      | $0.50/1,000 images  |
 
 ### Usage calculation
 

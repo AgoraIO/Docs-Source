@@ -4,48 +4,239 @@ import MaintainStatus from '@docs/shared/notification-center-service/maintain-us
 import SignatureVerification from '@docs/shared/notification-center-service/signature-verification.mdx';
 import ReleaseNotes from '@docs/shared/notification-center-service/release-notes.mdx';
 
-Agora Notification Center Service (NCS) is a tool that enables you to subscribe to events across multiple product lines in one place. It informs you of channel events in real-time when you use the Real-time Communication (RTC) service.
+
+A webhook is a user-defined callback over HTTP. You use webhooks to notify your <Vpl k="CLIENT" /> or back-end system when certain <Vpd k="PRODUCT" /> events occur. For example, when a channel is created, a user joins and leaves a channel, or changes role from host to audience. <Vg k="COMPANY" /> <Vg k="NCS_LONG" /> (<Vg k="NCS" />) enables you to subscribe to events and receive notifications about them across multiple product lines.
 
 ## Understand the tech
 
-The following figure illustrates how the Agora NCS works:
+Using <Vg k="CONSOLE" /> you subscribe to specific events for your project and tell <Vg k="NCS" /> the URL of the webhooks you have configured to receive these events. <Vg k="NCS" /> sends notifications of your events to your webhooks every time they occur. Your server authenticates the notification and returns `200 Ok` to confirm reception. You use the information in the JSON payload of each notification to give the best user experience to your users.
 
-![](\images\notification-center-service\how-ncs-works.png)
+The following figure illustrates the workflow when <Vg k="NCS" /> is enabled for the specific events you subscribe to:
 
-1. Once the Agora NCS is enabled, the Agora service server notifies the Agora NCS server when a subscribed event occurs.
-1. The Agora NCS server informs your server of that event through an HTTPS POST request.
-1. When receiving the request, your server must respond to the Agora NCS server within 10 seconds. The response body must be in JSON format.
-1. When receiving your response with the status code of 200 within 10 seconds after sending the request, the Agora NCS server considers the notification callback is sent successfully.If the Agora NCS server does not receive your response within 10 seconds after sending the request, or if the HTTP status code received from your server is not 200, the notification callback is considered to have failed. The Agora NCS server immediately resends the notification callback after the failure.The interval between these notification attempts gradually increases, until the server stops sending notifications after three retries.
+![](/images/shared/ncs-worklow.png)
+
+1. A user commits an action that creates an event. For example, creates a channel.
+1. <Vg k="NCS" /> sends an HTTPS POST request to your webhook.
+1. Your server validates the request signature, then sends a response to <Vg k="NCS" /> within 10 seconds. The response body must be in JSON.
+
+If <Vg k="NCS" /> receives `200 OK` within 10 seconds of sending the initial notification, the callback is considered successful. If these conditions are not met, <Vg k="NCS" /> immediately resends the notification. The interval between notification attempts gradually increases. <Vg k="NCS" /> stops sending notifications after three retries.
 
 ## Prerequisites
 
 To set up and use Agora NCS, you must have:
 
-* An <Vg k="COMPANY" /> [account](../reference/manage-agora-account#create-an-agora-account) and [project](../reference/manage-agora-account#create-an-agora-project).
-* A computer with Internet access.
+- A [valid Agora account](../reference/manage-agora-account#create-an-agora-account).
+- An [active Agora project](../reference/manage-agora-account#create-an-agora-project).
+- A computer with Internet access.
     
-    If your network access is restricted by a firewall, call the IP address query API to get the IP addresses of the Agora NCS server and configure the firewall to allow these IP addresses.
+    If your network access is restricted by a firewall, call the [IP address query API](#ip-address-query-api) to retrieve the <Vg k="NCS" /> IP addresses , then configure the firewall to allow these IP addresses.
 
-## Enable Notification Center Service
+## Handle notifications for specific events
+
+In order to handle notifications for the events you subscribe to you need to:
+
+- [Create your webhook](#create-your-webhook)
+- [Enable <Vg k="NCS" /> events](#enable-NCS-events)
+- [Verify NCS signatures](#verify-ncs-signatures)
+
+### Create your webhook
+
+Once <Vg k="NCS" /> is enabled,  <Vg k="AGORA_BACKEND" /> sends notification callbacks as HTTPS POST requests to your webhook when your subscribed events occur. The data format of the requests is JSON, the character encoding is `UTF-8`, and the signature algorithm is `HMAC/SHA1` or `HMAC/SHA256`.
+
+For <Vg k="NCS" />, a webhook is an endpoint on an HTTP server that handles these requests. In a production environment you write this in your web infrastructure, for development purposes best practice is to create a simple local server and use a service such as [ngrok](https://ngrok.com/download) to supply a public URL that you regiser with  <Vg k="AGORA_BACKEND" /> when you enable <Vg k="NCS" />. To do this:
+
+1. Saud, can you create a simple web server in JAVA for this please.
+
+1. Code
+
+
+### Add signature verification
+<SignatureVerification />
+
+### Enable NCS
+
 <EnableNcs />
 
-## Channel events
-<ChannelEvents />
+### Implement online user status tracking
 
-## Maintain User Online Status
+Saud, please clean this up and add it to the sample.
+
+This section provides Java sample code to show how to maintain online user status in the live streaming at your app server by using channel event callbacks.
+
+```java
+package io.agora;
+
+import java.util.HashMap;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.logging.Logger;
+
+public class UserRegistry {
+  public static int EVENT_BROADCASTER_JOIN = 103;
+  public static int EVENT_BROADCASTER_QUIT = 104;
+  public static int EVENT_AUDIENCE_JOIN = 105;
+  public static int EVENT_AUDIENCE_QUIT = 106;
+  public static int EVENT_CHANGE_ROLE_TO_BROADCASTER = 111;
+  public static int EVENT_CHANGE_ROLE_TO_AUDIENCE = 112;
+  public static int ROLE_BROADCASTER = 1;
+  public static int ROLE_AUDIENCE = 2;
+  public static int WAIT_TIMEOUT_MS = 60 * 1000;
+  private static Logger logger = Logger.getLogger("UserRegistry");
+  private Timer timer;
+
+  /* The data set for a user, including user ID, user role,
+  whether the user is in a channel, and clientSeq of the last
+  event handled by your server. */
+
+  class User {
+    int uid;
+    int role;
+    boolean isOnline;
+    long lastClientSeq;
+    public User(int uid, int role, boolean isOnline, long clientSeq) {
+      this.uid = uid;
+      this.role = role;
+      this.isOnline = isOnline;
+      this.lastClientSeq = clientSeq;
+    }
+  };
+  // Channel lists and the user lists of each channel.
+  class Channel {
+    HashMap < Integer, User > users = new HashMap < > ();
+  };
+  private HashMap < String, Channel > channels;
+  // Logic to handle the channel event callbacks sent by the Agora NCS server.
+  public void HandleNcsEvent(String cname, int uid, int eventType, long clientSeq) {
+    /* If the received notification callbacks need to be handled, the
+    notification callbacks are to be handled as follows. If not, ignore the
+    notification callbacks. */
+
+    if (eventType != EVENT_BROADCASTER_JOIN &&
+      eventType != EVENT_BROADCASTER_QUIT &&
+      eventType != EVENT_AUDIENCE_JOIN &&
+      eventType != EVENT_AUDIENCE_QUIT &&
+      eventType != EVENT_CHANGE_ROLE_TO_BROADCASTER &&
+      eventType != EVENT_CHANGE_ROLE_TO_AUDIENCE) {
+      logger.warning("Drop un-expected NCS event type " + eventType);
+      return;
+    }
+    // Determine whether a user is online.
+    boolean isOnlineInNotice = IsUserOnlineInNotice(eventType);
+    // Get the user role according to event type.
+    int roleInNotice = GetUserRoleInNotice(eventType);
+    Channel channel = channels.get(cname);
+    if (channel == null) {
+      // If a channel does not exist, create a Channel object and add it to the channel list
+      channel = new Channel();
+      channels.put(cname, channel);
+      logger.info("New channel " + cname + " created");
+    }
+    User user = channel.users.get(uid);
+    // Get whether a user has left a channel.
+    boolean isQuit = !isOnlineInNotice && (user == null || user.isOnline);
+    if (user == null) {
+      // Create a data set for a new user and add it to the user list of the corresponding channel.
+      user = new User(uid, roleInNotice, isOnlineInNotice,
+        clientSeq);
+      channel.users.put(uid, user);
+      if (!isOnlineInNotice) {
+        logger.info("New User " + uid + " joined");
+      } else {
+        // Set a timer for deleting a user's data after the user
+        leaves a channel.
+        DelayedRemoveUserFromChannel(cname, uid, clientSeq);
+      }
+    } else if (clientSeq > user.lastClientSeq) {
+
+      /* If the data for a user already exists, compare the value in
+      the clientSeq field of the latest notification callback you receive with
+      that of the last notification callback handled by your server.
+      If the former is greater than the latter, update the user
+      data according to the the channel event reported; otherwise, ignore the
+      notification callback. */
+
+      user.role = roleInNotice;
+      user.isOnline = isOnlineInNotice;
+      user.lastClientSeq = clientSeq;
+      if (isQuit) {
+
+        /* Mark the status of a user as offline, and delete the
+        user data after one minute. */
+
+        logger.info("User " + uid + " quit channel " + cname);
+        DelayedRemoveUserFromChannel(cname, uid, clientSeq);
+      }
+    }
+  }
+  // Set a timer for deleting the data of users that are offline.
+  private void DelayedRemoveUserFromChannel(final String cname, final int uid, final long clientSeq) {
+    timer.schedule(new TimerTask() {
+      @Override
+      public void run() {
+        Channel channel = channels.get(cname);
+        if (channel == null) return;
+        User user = channel.users.get(uid);
+        if (user == null) return;
+
+        /* If the value in the clientSeq field changes, do not
+        delete the user data. */
+
+        if (user.lastClientSeq != clientSeq) return;
+        if (!user.isOnline) {
+          /* Delete user data only when the user is offline and
+            the value in the clientSeq field does not change. */
+          channel.users.remove(uid);
+          logger.info("Remove user " + uid + " from channel " +
+            cname);
+        } else {
+          logger.info("User " + uid + " is online while delayed removing, cancelled");
+        }
+        if (channel.users.isEmpty()) {
+          channels.remove(cname);
+          logger.info("Remove channel " + cname);
+        }
+      }
+    }, WAIT_TIMEOUT_MS);
+  }
+  // Determine whether a user is online.
+  private static boolean IsUserOnlineInNotice(int eventType) {
+    return eventType == EVENT_BROADCASTER_JOIN ||
+      eventType == EVENT_AUDIENCE_JOIN ||
+      eventType == EVENT_CHANGE_ROLE_TO_BROADCASTER ||
+      eventType == EVENT_CHANGE_ROLE_TO_AUDIENCE;
+  }
+  // Get the user role.
+  private static int GetUserRoleInNotice(int eventType) {
+    if (eventType == EVENT_BROADCASTER_JOIN ||
+      eventType == EVENT_BROADCASTER_QUIT ||
+      eventType == EVENT_CHANGE_ROLE_TO_BROADCASTER) {
+      return ROLE_BROADCASTER;
+    } else {
+      return ROLE_AUDIENCE;
+    }
+  }
+}
+```
+When adopting the solutions recommended by Agora to maintain user online status, you need to recognize the following:
+
+* The solutions only guarantee eventual consistency of user status.
+* To improve accuracy, the notification callbacks specific to one channel must be handled in a single process.
+
+### Handle redundand notifications and abnormal user activity
 <MaintainStatus />
 
-## Signature Verification
-<SignatureVerification />
 
 ## Reference
 
-### Get IP addresses of the Agora NCS server
+This section contains in depth information about <Vg k="NCS" />
 
-If your server that receives notification callbacks is behind a firewall, you need to call the IP address query API to get the IP addresses of the Agora NCS server and configure your firewall to trust all these IP addresses.
+<ChannelEvents />
 
-Agora occasionally adjusts the IP addresses of the Agora NCS server. Therefore, Agora highly recommends that you call the IP address query API at least every 24 hours and automatically update the firewall configuration; otherwise, your server might not
-receive the notification callbacks.
+### IP address query API
+
+If your server that receives notification callbacks is behind a firewall, you need to call the IP address query API to retrieve the IP addresses of <Vg k="NCS" /> and configure your firewall to trust all these IP addresses.
+
+Agora occasionally adjusts the <Vg k="NCS" /> IP addresses. Best practice is to call this endpoint at least every 24 hours and automatically update the firewall configuration.
 
 #### Prototype
 
@@ -81,13 +272,13 @@ When the request succeeds, the response body looks like the following:
 }
 ```
 
-Each primary IP field shows an IP address of the Agora NCS server. When you receive a response, you need to note the primary IP fields and add all these IP addresses to your firewall's allowed IP list.
+Each primary IP field shows an IP address of <Vg k="NCS" /> server. When you receive a response, you need to note the primary IP fields and add all these IP addresses to your firewall's allowed IP list.
 
 ### Considerations
 
 * The Agora NCS does not guarantee that notification callbacks arrive at your server in the same order as events occur.
 * Your server needs to be able to handle messages arriving out of order.
-* To improve the reliability of the Agora NCS, there can be more than one notification callback for each event, and your server needs to be able to handle repeated messages.
+* To improve the reliability of <Vg k="NCS" />, there can be more than one notification callback for each event, and your server needs to be able to handle repeated messages.
 
 ### Release notes
 

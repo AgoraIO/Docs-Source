@@ -12,7 +12,7 @@ Starting in April 2021, Agora further divided HD+ video into Full HD, 2K, and 2K
 
 <ul><li>Your billing details may differ if you have signed a contract with Agora.</li><li>If the previous pricing set for HD and HD+ video still applies to you, see <a href="#question">What is the previous pricing for audio and video?</a> for detailed video categorization and unit price.</li></ul>
 
-## Overview
+## Cloud Recording pricing
 
 Agora calculates the billing of all projects under your [Agora account](https://console.agora.io/) monthly.
 
@@ -22,8 +22,33 @@ On the first day of each month, Agora sends you the bill via email, and five day
 
 Agora gives each Agora account 10,000 free-of-charge minutes each month. For more information on the deduction sequence and applicable products, see [Agora's free-of-charge policy for the first 10,000 minutes](../reference/billing-policies#agoras-free-of-charge-policy-for-the-first-10000-minutes).
 
+The unit pricing for audio and video is as follows:
 
-## Composition
+| Service Type    | Category                                  | Pricing (US$/1,000 minutes) |
+|:----------------| :-----------------------------------------|:----------------------------|
+| Recording Audio | N/A                                       | 1.49                        |
+| Recording Video | High-Definition (HD)<sup>①</sup>          | 5.99                        |
+| Recording Video | Full High-Definition (Full HD)<sup>①</sup>| 13.49                       |
+| Recording Video | 2K<sup>①</sup>                            | 23.99                       |
+| Recording Video | 2K+<sup>①</sup>                           | 53.99                       |
+
+>① Agora determines video category based on aggregate video resolution, which is the sum of resolutions of all the video streams a user subscribes to at the same time. For details, see <a href="#aggregate">Aggregate video resolution</a>.
+
+<a name="aggregate"></a>
+#### Aggregate video resolution
+
+Agora adds up the resolution of all the video streams recorded at the same time to get the **aggregate resolution**, which categorizes video as follows:
+
+| Video category                 | Aggregate video resolution                      |
+| :----------------------------- | :----------------------------------------------------------- |
+| High-Definition (HD)           | Up to 921,600 (1280 × 720）           |
+| Full High-Definition (Full HD) | From greater than 921,600 (1280 × 720) to 2,073,600 (1920 × 1080) |
+| 2K                             | From greater than 2,073,600 (1920 × 1080) to 3,686,400 (2560 × 1440)  |
+| 2K+                            | From greater than 3,686,400 (2560 × 1440) to 8,847,360 (4096 × 2160)  |
+
+For example, if the recording server records two 960 × 720 video streams at the same time, the aggregate resolution is 960 × 720 + 960 × 720 = 1,382,400. The recording service is charged based on the Full HD video pricing.
+
+## Cost calculation
 
 Agora calculates the recording service minutes of audio and video used by your projects on a monthly basis.
 
@@ -43,34 +68,6 @@ Service minutes comprise the following:
 - **Audio minutes**: The remaining duration after deducting the video minutes from the total duration when the recording server is in the channel, regardless of whether the recording server records any audio.
 
 If you create a recording instance and record multiple audio and video streams at the same time in a channel, the total service minutes per streams are not additive. For example: <ul><li>If a recording instance records the video streams of both user A and user B for the same 10 minutes, the billing for the recording service is for 10 minutes of video.</li><li>If a recording instance records the audio stream of user A and the video stream of user B for the same 10 minutes, the billing for the recording device is also for 10 minutes of video.</li></ul>If you use multiple recording sessions at the same time in a channel, then the service minutes per recording session are additive.
-
-### Unit Price
-
-The unit pricing for audio and video is as follows:
-
-| Service Type    | Category                                  | Pricing ($US/1,000 minutes)  |
-|:----------------| :-----------------------------------------|:-----------------------------|
-| Recording Audio | N/A                                       | 1.49                            |
-| Recording Video | High-Definition (HD)<sup>①</sup>          | 5.99                             |
-| Recording Video | Full High-Definition (Full HD)<sup>①</sup>| 13.49                             |
-| Recording Video | 2K<sup>①</sup>                            | 23.99                             |
-| Recording Video | 2K+<sup>①</sup>                           | 53.99                             |
-
->① Agora determines video category based on aggregate video resolution, which is the sum of resolutions of all the video streams a user subscribes to at the same time. For details, see <a href="#aggregate">Aggregate video resolution</a>.
-
-<a name="aggregate"></a>
-#### Aggregate video resolution
-
-Agora adds up the resolution of all the video streams recorded at the same time to get the **aggregate resolution**, which categorizes video as follows:
-
-| Video category                 | Aggregate video resolution                      |
-| :----------------------------- | :----------------------------------------------------------- |
-| High-Definition (HD)           | Up to 921,600 (1280 × 720）           |
-| Full High-Definition (Full HD) | From greater than 921,600 (1280 × 720) to 2,073,600 (1920 × 1080) |
-| 2K                             | From greater than 2,073,600 (1920 × 1080) to 3,686,400 (2560 × 1440)  |
-| 2K+                            | From greater than 3,686,400 (2560 × 1440) to 8,847,360 (4096 × 2160)  |
-
-For example, if the recording server records two 960 × 720 video streams at the same time, the aggregate resolution is 960 × 720 + 960 × 720 = 1,382,400. The recording service is charged based on the Full HD video pricing.
 
 ## Examples
 
@@ -98,9 +95,9 @@ On February 9, 2021: Four users join the channel at the same time and have a vid
 
 During this recording, the recording service generates only charges for the audio minutes.
 
-| Session                     | Audio                  | HD video | Full HD video | 2K video | 2K+ video |
-| :-------------------------- | :--------------------- | :------- | :------------ | :------- | :-------- |
-| Usage duration (in seconds) | 6,000 + 6,000 = 12,000 | 0        | 0             | 0        | 0         |
+| Session                   | Audio                  | HD video | Full HD video | 2K video | 2K+ video |
+|:--------------------------| :--------------------- | :------- | :------------ | :------- | :-------- |
+| Usage duration in seconds | 6,000 + 6,000 = 12,000 | 0        | 0             | 0        | 0         |
 
 #### Recording three
 
@@ -108,9 +105,9 @@ On February 13, 2021: Four users join the channel at the same time and have a vi
 
 During this recording, the recording service generates charges for the video minutes. The aggregate video resolution is 4 × (640 × 360) = 921,600, falling into the category of HD.
 
-| Session                     | Audio | HD video | Full HD video | 2K video | 2K+ video |
-| :-------------------------- | :---- | :------- | :------------ | :------- | :-------- |
-| Usage duration (in seconds) | 0     | 3,500    | 0             | 0        | 0         |
+| Session                   | Audio | HD video | Full HD video | 2K video | 2K+ video |
+|:--------------------------| :---- | :------- | :------------ | :------- | :-------- |
+| Usage duration in seconds | 0     | 3,500    | 0             | 0        | 0         |
 
 #### Recording four
 
@@ -126,7 +123,7 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
 | :-------------------------- | :---- | :------- | :------------ | :------- | :-------- |
 | Usage duration (in seconds) | 0     | 0        | 1,680         | 0        | 520       |
 
-### Cost calculation
+### Calculation
 
 <table>
                 <colgroup span="1">
@@ -145,8 +142,8 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
                 <tbody>
                     <tr>
                         <th rowspan="2">Date</th>
-                        <th colspan="5">Actual usage duration (seconds)</th>
-                        <th colspan="5">Usage duration displayed on Agora Console (minutes)</th>
+                        <th colspan="5">Actual usage duration in seconds</th>
+                        <th colspan="5">Usage duration displayed on Agora Console in minutes</th>
                     </tr>
                     <tr>
                         <td>
@@ -258,8 +255,8 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
                     </tr>
                     <tr>
                         <td>
-                            <p>Cost of each service</p>
-                            <p>($US)</p>
+                            <p>Cost of each service,</p>
+                            <p>US$</p>
                         </td>
                         <td>(300/1000 )<br /> × 1.49<br /> = 0.447</td>
                         <td>(59/1000)<br /> × 5.99<br /> = 0.35341</td>
@@ -270,8 +267,8 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
                     </tr>
                     <tr>
                         <td>
-                            <p>Total cost</p>
-                            <p>($US)</p>
+                            <p>Total cost,</p>
+                            <p>US$</p>
                         </td>
                         <td>
                             <p ><strong><strong>1.66</strong></strong></p>
@@ -293,10 +290,6 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
 
 At the end of each month, Agora adds up the usage duration (in seconds) of audio and video in each category, and divides them by 60 to get the respective service minutes (rounded up to the next integer). For example, if the duration of audio service of the month is 59 seconds, then the audio service minutes is calculated as 1 minute; if the duration of video service is 61 seconds, then the video service minutes is calculated as 2 minutes. The error of service minutes for each month is within 1 minute. 
 
-
-
-
-
 ### Video resolution in the dual-stream scenario
 
 When the user being recorded enables [dual-stream mode](../reference/glossary#dual-stream-mode), the recording service can receive only one stream at a time:
@@ -308,35 +301,14 @@ When the user being recorded enables [dual-stream mode](../reference/glossary#du
 
 When calculating the aggregate resolution, Agora counts the resolution of 225,280 (640 × 352) as 640 × 360.
 
-
-
-
-
-
 <a name="question"></a>
 ## Q&A
 
+- How does Agora charge if I use different recording modes?
 
+  Your recording fee has nothing to do with the recording mode you choose. Regardless of whether you use the individual mode or composite mode, your recording fee relates only to the number of the streams recorded, the recording time, and the aggregate recording resolutions. The number of the streams recorded does not affect the recording duration, but affects the aggregate recording resolution.
 
-
-
-
-
-<details>
-	<summary>Question: How does Agora charge if I use different recording modes?</summary>
-
-Your recording fee has nothing to do with the recording mode you choose. Regardless of whether you use the individual mode or composite mode, your recording fee relates only to the number of the streams recorded, the recording time, and the aggregate recording resolutions. The number of the streams recorded does not affect the recording duration, but affects the aggregate recording resolution.
-
-</details>
-
-
-
-
-
-
-
-
-## Relevant links
+## See also
 
 - [Agora's free-of-charge policy for the first 10,000 minutes](../reference/billing-policies#agoras-free-of-charge-policy-for-the-first-10000-minutes)
 - [Billing, free deduction, and account suspension](../reference/billing-policies#billing-fee-deductions-and-account-suspension-policies)

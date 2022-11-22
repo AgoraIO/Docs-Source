@@ -8,21 +8,21 @@ description: >
 
 export const toc = [{}]
 
-This page introduces the billing policy for the <Vg k="WHITE" />.
+This page introduces the pricing policy for <Vg k="WHITE" />.
 
-Your billing details may differ if you have signed a contract with Agora. If your scenario involves other Agora products or services, such as the <Vg k="VSDK" />, <Vg k="MESS_SDK" />, or <Vg k="CREC" />, expect additional charges for these products or services. For details, see the billing policy for each Agora product or service.
+Your pricing details may differ if you have signed a contract with Agora. If your scenario involves other Agora products or services, such as the <Vg k="VSDK" />, <Vg k="MESS_SDK" />, or <Vg k="CREC" />, expect additional charges for these products or services. For details, see the pricing policy for each Agora product or service.
 
 ## <Vg k="WHITE" /> pricing
 
 Billing for <Vg k="WHITE" /> begins once you enable and implement the service in your project. Agora sends your bill and deducts the payment from your account on a monthly basis. For details, see [Billing, fee deduction, and account suspension](/help/account-and-billing/billing_account). 
 The unit price for each whiteboard feature is as follows:
 
-| Whiteboard feature   | Pricing             |
-| :------------------- |:--------------------|
-| Online whiteboard    | $1.40/1,000 minutes |
-| File conversion      | $0.50/1,000 images  |
+| Whiteboard feature   | Pricing, US$/1,000 minutes |
+| :------------------- |:---------------------------|
+| Online whiteboard    | 1.40                       |
+| File conversion      | 0.50                       |
 
-## Composition
+## Cost calculation
 
 At the end of each month, Agora adds up the usage of each whiteboard feature in all projects under your [Agora account](https://console.agora.io/) and subtracts your monthly free usage allowances. Agora multiplies each resulting usage number by the corresponding price and adds up the cost of each feature to get the total cost for that month.
 <Vg k="WHITE" /> provides the following features:
@@ -94,15 +94,15 @@ The usage calculation is as follows:
 | Online whiteboard               | <li>User A: 60 minutes</li><li>Another 200 users: 60 × 200 minutes</li> |
 | File conversion to web page | 50 web pages = 50 × 5 = 250 images                                 |
 
-### Cost calculation
+### Calculation
 
 The following table shows the calculation of the total cost of the lecture:
 
-<div><table><colgroup><col/><col/><col/><col/></colgroup><thead><tr><th><span class="td-span"><span class="md-plain">Billed service</span></span></th><th><span class="td-span"><span class="md-plain">Unit price </span></span></th><th><span class="td-span"><span class="md-plain">Cost of each service ($US)</span></span></th><th><span class="td-span"><span class="md-plain">Total cost($US)</span></span></th></tr></thead><tbody><tr><td class="confluenceTd"><span class="td-span"><span class="md-plain">Online whiteboard</span></span></td><td class="confluenceTd"><span class="td-span"><span class="md-plain">$1.40/1,000 minutes</span></span></td><td class="confluenceTd"><span class="td-span"><span class="md-plain">(12,060 - 10,000)/1000 × 1.40 = 2.884</span></span></td><td rowspan="3" class="confluenceTd"><span class="td-span"><span class="md-plain">2.884 </span><span><strong>≈ 2.89</strong></span></span><br/><br/></td></tr><tr><td class="confluenceTd"><span class="td-span"><span class="md-plain">Document conversion to web page</span></span></td><td class="confluenceTd"><span class="td-span"><span class="md-plain">$0.50/1,000 images</span></span></td><td class="confluenceTd">0 (The first 1000 converted images are free of charge）<span> </span></td></tr></tbody></table></div>
+<div><table><colgroup><col/><col/><col/><col/></colgroup><thead><tr><th><span class="td-span"><span class="md-plain">Billed service</span></span></th><th><span class="td-span"><span class="md-plain">Unit price, US$/1,000 minutes </span></span></th><th><span class="td-span"><span class="md-plain">Cost of each service, US$</span></span></th><th><span class="td-span"><span class="md-plain">Total cost, US$</span></span></th></tr></thead><tbody><tr><td class="confluenceTd"><span class="td-span"><span class="md-plain">Online whiteboard</span></span></td><td class="confluenceTd"><span class="td-span"><span class="md-plain">$1.40/1,000 minutes</span></span></td><td class="confluenceTd"><span class="td-span"><span class="md-plain">(12,060 - 10,000)/1000 × 1.40 = 2.884</span></span></td><td rowspan="3" class="confluenceTd"><span class="td-span"><span class="md-plain">2.884 </span><span><strong>≈ 2.89</strong></span></span><br/><br/></td></tr><tr><td class="confluenceTd"><span class="td-span"><span class="md-plain">Document conversion to web page</span></span></td><td class="confluenceTd"><span class="td-span"><span class="md-plain">$0.50/1,000 images</span></span></td><td class="confluenceTd">0 (The first 1000 converted images are free of charge）<span> </span></td></tr></tbody></table></div>
 
 Agora rounds up the total cost to two decimal places.
 
-## FAQ
+## Q&A
 
 - Will usage calculation continue if live streaming has ended but users are still in the room?
 

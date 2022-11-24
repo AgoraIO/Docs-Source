@@ -24,7 +24,7 @@ Implement this UI, take the following steps:
 
         You see a slider in your **Dialog Editor**.
 
-2. **Add a Button to the UI**
+2. **Add a Button**
 
     1. From **ToolBox**, drag **Button** and drop it onto the surface of the **Dialog Editor**
 
@@ -39,32 +39,33 @@ Implement this UI, take the following steps:
 
 ### Handle the system logic
 
-### Implement screen sharing, volume control and mute
+### Implement screen sharing, volume control, and mute
 
 To implement these features in your <Vpl k="CLIENT" />, take the following steps:
 
 1. **Declare the variables you need**
 
-    To access and use the UI elements and apply workflow settings, in `AgoraImplementationDlg.cpp`, add the following declarations after the list of header files:
+    To access and use the UI elements and apply workflow settings, in `AgoraImplementationDlg.h`, add the following declarations to `CAgoraImplementationDlg`:
 
     ```cpp
     // A variable to access the share screen button.
     CButton* shareScreenBtn;
     // A variable to access Mute check box.
     CButton* muteCheckBox;
-    // A variable to access the Slider.
+    // A variable to access the volume slider .
     CSliderCtrl* volumeSlider;
-    // Boolean variable to track screen sharing state.
+    // Boolean variable to track the screen sharing state.
     BOOL isScreenShare = false;
-    // Boolean variable to track remote user mute and un-mute state.
+    // A boolean variable to track remote user mute and un-mute state.
     BOOL isChecked = false;
     ```
 
 1. **Access the UI elements programmatically**
     
-    To reference the UI elements, in `AgoraImplementationDlg.cpp`, add the following at the end of `OnInitDialog`:  
+    To reference the UI elements, in `AgoraImplementationDlg.cpp`, add the following to `OnInitDialog` before `return TRUE;`:  
 
     ```cpp
+    // Reference the newly added UI elements.
     muteCheckBox = (CButton*)GetDlgItem(IDC_CHECK1);
     shareScreenBtn = (CButton*)GetDlgItem(IDC_BUTTON3);
 	volumeSlider = (CSliderCtrl*)GetDlgItem(IDC_SLIDER1);
@@ -73,47 +74,134 @@ To implement these features in your <Vpl k="CLIENT" />, take the following steps
 
 1. **Adjust or mute the volume**
 
-    To adjust the local playback volume, you setup an event listener on the slider control and call `adjustRecordingSignalVolume` whenever the user drags the slider left or right. To implement this workflow, in **Dialog Editor**, double-click **Mute**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener you just created:
+    To adjust the local playback volume, you setup an event listener for the slider control and call `adjustRecordingSignalVolume` whenever the user drags the slider left or right. To implement this workflow, in **Dialog Editor**, double-click **Mute**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener before `*pResult = 0;`:
 
     ```cpp
+    // Get the current value of the volume slider.
     int value = volumeSlider->GetPos();
+    // Use the slider value to adjust the recording volume.
 	agoraEngine->adjustRecordingSignalVolume(value);
     ```
 
-1. **Mute and un-mute a remote user**
+1. **Mute and un-mute the remote user**
 
-    To mute and unmute the remote user, you setup an event listener on the mute check box and call `muteRemoteAudioStream` with `remoteUId` when the user selects or deselects the mute checkbox. To implement this workflow, in **Dialog Editor**, double-click **Mute**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener you just created:
+    To mute and unmute the remote user, you setup an event listener for the mute check box and call `muteRemoteAudioStream` with `remoteUId` when the user selects or deselects the mute checkbox. To implement this workflow, in **Dialog Editor**, double-click **Mute**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener you just created:
 
     ```cpp
+    // Mute and un-mute the remote user.
     if (remoteUId == NULL)
-    {
+	{
 		AfxMessageBox(L"No remote user in the channel");
 		return;
 	}
-    if (muteCheckBox->GetCheck()) 
-    {
-		agoraEngine->muteRemoteAudioStream(remoteUId, true);
-        isChecked = true;
+	if (muteCheckBox->GetCheck())
+	{
+		isChecked = true;
 	}
-	else 
-    {
-		agoraEngine->muteRemoteAudioStream(remoteUId, false);
-        isChecked = false;
+	else
+	{
+		isChecked = false;
 	}
+	agoraEngine->muteRemoteAudioStream(remoteUId, isChecked);
     ```
     
+1.  **Configure <Vg k="ENGINE" /> to publish the media player stream**
 
+    You use `ChannelMediaOptions` and the `updateChannelMediaOptions` method to specify the type of stream to publish. To switch between publishing screen and camera stream, take the following steps:
+
+    1. In `AgoraImplementationDlg.h`, add the following to method `CAgoraImplementationDlg` before `afx_msg void OnClose();`
+
+       ``` cpp
+       // Declare a method to switch between the local video and screen tracks.
+       void updateChannelPublishOptions(BOOL value);
+       ```
+    
+    2. In `AgoraImplementationDlg.cpp`, add the method after `OnInitDialog`:
+
+        ``` cpp
+        void CAgoraImplementationDlg::updateChannelPublishOptions(BOOL publishScreenTrack)
+        {
+            // You use ChannelMediaOptions to change channel media options.
+            ChannelMediaOptions channelOptions;
+            channelOptions.publishMediaPlayerAudioTrack = publishScreenTrack;
+            channelOptions.publishMediaPlayerVideoTrack = publishScreenTrack;
+            channelOptions.publishMicrophoneTrack = publishScreenTrack;
+            channelOptions.publishCameraTrack = !publishScreenTrack;
+            agoraEngine->updateChannelMediaOptions(channelOptions);
+        }
+        ```
+
+4.  **Preview the screen track**
+
+    Create a `VideoCanvas` and use it in the `setupLocalVideo` method of the <Vg k = "VSDK"/> to switch between displaying the screen track and the camera stream. To implement this workflow, take the following steps:
+
+    1. In `AgoraImplementationDlg.h`, add the following to method `CAgoraImplementationDlg` before `afx_msg void OnClose();`
+        
+        ``` cpp
+        // Declare a method to preview the screen track.
+        void setupLocalVideo(BOOL value);
+        ```
+
+    2. In `AgoraImplementationDlg.cpp`, add the method after `OnInitDialog`:
+        
+        ``` cpp
+        void CAgoraImplementationDlg::setupLocalVideo(BOOL screenTrack) 
+        {
+            // Setup a canvas to switch between the local video and screen preview.
+            VideoCanvas canvas;
+            canvas.renderMode = media::base::RENDER_MODE_FIT;
+            canvas.uid = 0;
+            canvas.view = localView.GetSafeHwnd();
+            if (screenTrack) 
+            {
+                // Disable the local video capturer.
+                agoraEngine->enableLocalVideo(screenTrack);
+                // Select a video source.
+                canvas.sourceType = VIDEO_SOURCE_SCREEN_PRIMARY;
+                // Use the video canvas to setup a local view for the screen track.
+                agoraEngine->setupLocalVideo(canvas);
+                // Preview the screen track.
+                agoraEngine->startPreview();
+            }
+            else 
+            {
+                // Enable the local video capturer.
+                agoraEngine->enableLocalVideo(screenTrack);
+                // Select a video source.
+                canvas.sourceType = VIDEO_SOURCE_CAMERA;
+                // Use the video canvas to setup a local video view.
+                agoraEngine->setupLocalVideo(canvas);
+                // Preview the local video.
+                agoraEngine->startPreview();
+            }
+        }
+        ```
 1. **Start or stop screen sharing**
 
-    When a user presses **Share Screen**, you call `startScreenCaptureByWindowId` and pass the handle of the window that you want to share. When you start screen sharing, you stop the local video capturer with a call to `enableLocalVideo`. To start publishing the screen sharing data to the channel, you call `updateMediaPublishOptions`. When a user ends screen sharing, you call `stopScreenCapture` to stop screen sharing and call `enableLocalVideo` to start local video capturer. To implement this workflow, in **Dialog Editor**, double-click **Share Screen**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener you just created:
+    When the user presses **Share Screen**, your <Vpl k = "CLIENT"/>:
+    
+        - Calls `getScreenCaptureSources` to get the list of available screens.
+        - Calls `getSourceInfo` and selects the first screen from the list.
+        - Calls `startScreenCaptureByWindowId` and passes the handle of the window that you selected for sharing. 
+        - Calls `updateMediaPublishOptions` and passes `true` as an argument to publish the screen track.
+        - Calls `setupLocalVideo` and passes `true` as an argument to preview the screen track.
+
+    When the user presses the button again, your <Vpl k = "CLIENT"/>:
+
+        - Calls `stopScreenCapture` to stop screen sharing.
+        - Calls `updateChannelMediaOptions` and passes `false` to publish the local video track. 
+        - Calls `setupLocalVideo` and passes `false` as an argument to restore the local video preview.
+
+    To implement this workflow, in **Dialog Editor**, double-click **Share Screen**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener you just created:
 
     ```cpp
     SIZE sz = { 300, 300 };
-    // Reterieve the list of windows.
-    agora::rtc::IScreenCaptureSourceList* listCapture = agoraEngine->getScreenCaptureSources(sz, sz, false);
-    // Select the first window ID to share the whole screen.
-    agora::rtc::ScreenCaptureSourceInfo info = listCapture->getSourceInfo(0);
-    // Get the handle of main screen.
+    // Retrieve the list of available screens.
+    IScreenCaptureSourceList* listCapture = agoraEngine->getScreenCaptureSources(sz, sz, false);
+    // In a real-world scenario, you use combo box to show the list of available screens.
+    // Select the first screen from the list.
+    ScreenCaptureSourceInfo info = listCapture->getSourceInfo(0);
+    // Get the id of the main window.
     HWND hWnd = (HWND)info.sourceId;
     if (!agoraEngine)
     {
@@ -122,59 +210,33 @@ To implement these features in your <Vpl k="CLIENT" />, take the following steps
     if (!isScreenShare)
     {
         ::SwitchToThisWindow(hWnd, TRUE);
-        // Select the bitrate and framerate for screen sharing.
+        // Select the bitrate and frame rate for screen sharing.
         ScreenCaptureParameters capParam;
         capParam.frameRate = 15;
         capParam.bitrate = 5000;
         CRect rcWnd = {0};
         ::GetClientRect(hWnd, &rcWnd);
-        // Specify the rigion of the screen that you wish to share.
+        // Specify a region of the main screen that you wish to share.
         agora::rtc::Rectangle rcCapWnd = { rcWnd.left, rcWnd.top, rcWnd.right - rcWnd.left, rcWnd.bottom - rcWnd.top };
-        // Start screen share.
+        // Start sharing screen.
         agoraEngine->startScreenCaptureByWindowId(hWnd, rcCapWnd, capParam);
-        // Stop the local video capturer.
-        agoraEngine->enableLocalVideo(false);
-        // Start the local preview.
-        agoraEngine->startPreview();
-        // Publish the screen track and unpublishes the local video track.
-        ChannelMediaOptions option;
-        option.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
-        option.clientRoleType = CLIENT_ROLE_BROADCASTER;
-        option.autoSubscribeAudio = true; option.autoSubscribeVideo = true;
-        option.publishMicrophoneTrack = true;
-        option.publishScreenTrack = true;
-        option.publishCameraTrack = false;
-        // Update the channel media options set the selected media configuration.
-        agoraEngine->updateChannelMediaOptions(option);
-        // Update screen sharing state.
+        // Update channel media options to publish the screen track.
+        updateChannelPublishOptions(true);
+        // Preview the screen track.
+        setupLocalVideo(true);
+        // Update the screen sharing state.
         isScreenShare = true;
-        // Display the screen track in the local view.
-        VideoCanvas canvas;
-        canvas.renderMode = media::base::RENDER_MODE_FIT;
-        canvas.uid = 0;
-        canvas.view = localView.GetSafeHwnd();
-        canvas.sourceType = VIDEO_SOURCE_SCREEN_PRIMARY;
-        canvas.mirrorMode = VIDEO_MIRROR_MODE_DISABLED;
-        // Render the local video on the canvas.
-        agoraEngine->setupLocalVideo(canvas);
         // Update the button text.
         shareScreenBtn->SetWindowTextW(L"Stop Sharing");
     }
     else
     {
-        // Stop screen capture in the engine.
+        // Stop the screen capturer to end screen sharing.
         agoraEngine->stopScreenCapture();
+        // Update channel media options to publish the video stream.
+        updateChannelPublishOptions(false);
         // Enable the local video capturer.
-        agoraEngine->enableLocalVideo(true);
-        //start preview in the engine.
-        agoraEngine->startPreview();
-        // Display the local video.
-        VideoCanvas canvas;
-        canvas.renderMode = media::base::RENDER_MODE_FIT;
-        canvas.uid = 0;
-        canvas.view = localView.GetSafeHwnd();
-        // Render the local video on canvas. 
-        agoraEngine->setupLocalVideo(canvas);
+        setupLocalVideo(false);
         // Update the screen sharing state.
         isScreenShare = false;
         // Update the button text. 

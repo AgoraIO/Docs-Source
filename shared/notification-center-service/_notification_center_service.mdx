@@ -38,6 +38,8 @@ In order to handle notifications for the events you subscribe to you need to:
 - [Create your webhook](#create-your-webhook)
 - [Enable <Vg k="NCS" /> events](#enable-ncs)
 - [Verify NCS signatures](#add-signature-verification)
+- [Implement online user status tracking](#implement-online-user-status-tracking)
+- [Handle redundand notifications and abnormal user activity](#handle-redundand-notifications-and-abnormal-user-activity)
 
 ### Create your webhook
 
@@ -45,13 +47,136 @@ Once <Vg k="NCS" /> is enabled,  <Vg k="AGORA_BACKEND" /> sends notification cal
 
 For <Vg k="NCS" />, a webhook is an endpoint on an HTTP server that handles these requests. In a production environment you write this in your web infrastructure, for development purposes best practice is to create a simple local server and use a service such as [ngrok](https://ngrok.com/download) to supply a public URL that you regiser with  <Vg k="AGORA_BACKEND" /> when you enable <Vg k="NCS" />. To do this:
 
-1. Saud, can you create a simple web server in JAVA for this please. 
+https://mvnrepository.com/artifact/com.googlecode.json-simple/json-simple/1.1.1
 
-1. Code
+```java
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import com.sun.net.httpserver.HttpServer;
 
-see: https://www.codeproject.com/Tips/1040097/Create-a-Simple-Web-Server-in-Java-HTTP-Server
+public class Main {
+	public static int port = 80;
+	public static void main(String[] args) {
+		// start http server
+		SimpleHttpServer httpServer = new SimpleHttpServer();
+		httpServer.Start(port);
+	}
 
-https://repo1.maven.org/maven2/com/googlecode/json-simple/json-simple/1.1.1/json-simple-1.1.1.jar
+	static class SimpleHttpServer {
+		private HttpServer server;
+	
+		public void Start(int port) {
+			try {
+				server = HttpServer.create(new InetSocketAddress(port), 0);
+				System.out.println("NCS server started at port " + port);
+				server.createContext("/", new Handlers.RootHandler());
+				server.createContext("/ncsNotify", new Handlers.NcsHandler());
+				server.setExecutor(null);
+				server.start();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	
+		public void Stop() {
+			server.stop(0);
+			System.out.println("server stopped");
+		}
+	}
+}
+```
+
+```java
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import com.sun.net.httpserver.Headers;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+
+public class Handlers {
+
+	public static UserRegistry userRegistry = new UserRegistry();
+	
+	public static class RootHandler implements HttpHandler {
+
+		@Override
+		public void handle(HttpExchange he) throws IOException {
+			String response = "<h1>Agora NCS Demo</h1>" + "<h2>Port: " + Main.port + "</h2>";
+			he.sendResponseHeaders(200, response.length());
+			OutputStream os = he.getResponseBody();
+			os.write(response.getBytes());
+			os.close();
+		}
+	}
+
+	public static class NcsHandler implements HttpHandler {
+
+		@Override
+		public void handle(HttpExchange he) throws IOException {
+			Headers headers = he.getRequestHeaders();
+			String agoraSignature = headers.getFirst("Agora-Signature");
+			// String agoraSignatureV2 = headers.getFirst("Agora-Signature-V2");
+
+			InputStreamReader isr = new InputStreamReader(he.getRequestBody(), "utf-8");
+			BufferedReader br = new BufferedReader(isr);
+			String query = br.readLine();
+
+			System.out.println("Verified: " + Signature.verify(query, agoraSignature));
+
+			// parsing query
+			String noticeId, channelName = "";
+			long productId, clientSeq;
+			int uid=0, eventType;
+
+			try {
+				Object obj = new JSONParser().parse(query);
+				JSONObject jsonObj = (JSONObject) obj;
+
+				noticeId = (String) jsonObj.get("noticeId");
+				productId = (long) jsonObj.get("productId");
+				eventType = (int) (long) jsonObj.get("eventType");
+				JSONObject payload = (JSONObject) jsonObj.get("payload");
+
+				Signature.verify(query, noticeId);
+
+				// Read payload
+				clientSeq = (long) payload.get("clientSeq");
+
+				if (payload.containsKey("uid"))
+					uid = (int) (long) payload.get("uid");
+
+				if (payload.containsKey("channelName"))
+					channelName = (String) payload.get("channelName");
+
+				System.out.println(
+						"Notification: " + noticeId
+								+ " Event code: " + eventType
+								+ " Product: " + productId
+								+ " ClientSeq: " + clientSeq);
+
+			} catch (Exception e) {
+				System.out.println("Error parsing JSON: " + e.toString());
+				return;
+			}
+
+			// send response
+			String response = "Ok";
+			he.sendResponseHeaders(200, response.length());
+			OutputStream os = he.getResponseBody();
+			os.write(response.toString().getBytes());
+			os.close();
+
+			// Maintain user registry
+			userRegistry.HandleNcsEvent(channelName, uid, eventType, clientSeq);
+		}
+	}
+
+}
+```
 
 ### Add signature verification
 <SignatureVerification />
@@ -67,12 +192,9 @@ Saud, please clean this up and add it to the sample.
 This section provides Java sample code to show how to maintain online user status in the live streaming at your app server by using channel event callbacks.
 
 ```java
-package io.agora;
-
 import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.logging.Logger;
 
 public class UserRegistry {
   public static int EVENT_BROADCASTER_JOIN = 103;
@@ -81,21 +203,18 @@ public class UserRegistry {
   public static int EVENT_AUDIENCE_QUIT = 106;
   public static int EVENT_CHANGE_ROLE_TO_BROADCASTER = 111;
   public static int EVENT_CHANGE_ROLE_TO_AUDIENCE = 112;
+  
   public static int ROLE_BROADCASTER = 1;
   public static int ROLE_AUDIENCE = 2;
   public static int WAIT_TIMEOUT_MS = 60 * 1000;
-  private static Logger logger = Logger.getLogger("UserRegistry");
-  private Timer timer;
-
-  /* The data set for a user, including user ID, user role,
-  whether the user is in a channel, and clientSeq of the last
-  event handled by your server. */
+  private static Timer timer = new Timer();
 
   class User {
-    int uid;
-    int role;
-    boolean isOnline;
-    long lastClientSeq;
+    int uid; // user ID
+    int role; // user role
+    boolean isOnline; // whether the user is in a channel
+    long lastClientSeq; // clientSeq of the last event handled by your server
+
     public User(int uid, int role, boolean isOnline, long clientSeq) {
       this.uid = uid;
       this.role = role;
@@ -103,116 +222,122 @@ public class UserRegistry {
       this.lastClientSeq = clientSeq;
     }
   };
-  // Channel lists and the user lists of each channel.
-  class Channel {
-    HashMap < Integer, User > users = new HashMap < > ();
-  };
-  private HashMap < String, Channel > channels;
-  // Logic to handle the channel event callbacks sent by the Agora NCS server.
-  public void HandleNcsEvent(String cname, int uid, int eventType, long clientSeq) {
-    /* If the received notification callbacks need to be handled, the
-    notification callbacks are to be handled as follows. If not, ignore the
-    notification callbacks. */
 
+  // Channel list
+  private static HashMap<String, Channel> channels = new HashMap<>();;
+
+  // Holds the list of users in each channel
+  class Channel {
+    HashMap<Integer, User> users = new HashMap<>();
+  };
+
+  // Process Agora NCS server callbacks to update user registry
+  public void HandleNcsEvent(String channelName, int uid, int eventType, long clientSeq) {
+
+    // Check the eventType to only process events that notify of users joining or
+    // leaving
+    // a channel or a change in the user role
     if (eventType != EVENT_BROADCASTER_JOIN &&
-      eventType != EVENT_BROADCASTER_QUIT &&
-      eventType != EVENT_AUDIENCE_JOIN &&
-      eventType != EVENT_AUDIENCE_QUIT &&
-      eventType != EVENT_CHANGE_ROLE_TO_BROADCASTER &&
-      eventType != EVENT_CHANGE_ROLE_TO_AUDIENCE) {
-      logger.warning("Drop un-expected NCS event type " + eventType);
+        eventType != EVENT_BROADCASTER_QUIT &&
+        eventType != EVENT_AUDIENCE_JOIN &&
+        eventType != EVENT_AUDIENCE_QUIT &&
+        eventType != EVENT_CHANGE_ROLE_TO_BROADCASTER &&
+        eventType != EVENT_CHANGE_ROLE_TO_AUDIENCE) {
       return;
     }
+
     // Determine whether a user is online.
     boolean isOnlineInNotice = IsUserOnlineInNotice(eventType);
     // Get the user role according to event type.
     int roleInNotice = GetUserRoleInNotice(eventType);
-    Channel channel = channels.get(cname);
+
+    Channel channel = channels.get(channelName);
     if (channel == null) {
-      // If a channel does not exist, create a Channel object and add it to the channel list
+      // If a channel does not exist, create a Channel and add it to the list
       channel = new Channel();
-      channels.put(cname, channel);
-      logger.info("New channel " + cname + " created");
+      channels.put(channelName, channel);
+      System.out.println("New channel " + channelName + " created");
     }
+
     User user = channel.users.get(uid);
     // Get whether a user has left a channel.
     boolean isQuit = !isOnlineInNotice && (user == null || user.isOnline);
     if (user == null) {
-      // Create a data set for a new user and add it to the user list of the corresponding channel.
-      user = new User(uid, roleInNotice, isOnlineInNotice,
-        clientSeq);
+      // Create a new user and add it to the user list of the corresponding channel
+      user = new User(uid, roleInNotice, isOnlineInNotice, clientSeq);
       channel.users.put(uid, user);
-      if (!isOnlineInNotice) {
-        logger.info("New User " + uid + " joined");
+
+      if (isOnlineInNotice) {
+        System.out.println("New User " + uid + " joined channel " + channelName);
       } else {
-        // Set a timer for deleting a user's data after the user
-        leaves a channel.
-        DelayedRemoveUserFromChannel(cname, uid, clientSeq);
+        // Set a timer for deleting a user's data after the user leaves a channel.
+        DelayedRemoveUserFromChannel(channelName, uid, clientSeq);
       }
     } else if (clientSeq > user.lastClientSeq) {
-
-      /* If the data for a user already exists, compare the value in
-      the clientSeq field of the latest notification callback you receive with
-      that of the last notification callback handled by your server.
-      If the former is greater than the latter, update the user
-      data according to the the channel event reported; otherwise, ignore the
-      notification callback. */
-
+      /*
+       * If the data for a user already exists, compare the clientSeq
+       * of the latest notification with that of the last notification
+       * callback handled by your server. If the latest value is greater,
+       * update the user data; otherwise, ignore the notification callback.
+       */
       user.role = roleInNotice;
       user.isOnline = isOnlineInNotice;
       user.lastClientSeq = clientSeq;
+
       if (isQuit) {
-
-        /* Mark the status of a user as offline, and delete the
-        user data after one minute. */
-
-        logger.info("User " + uid + " quit channel " + cname);
-        DelayedRemoveUserFromChannel(cname, uid, clientSeq);
+        // Mark the status of a user as offline, and delete the user after one minute.
+        System.out.println("User " + uid + " quit channel " + channelName);
+        DelayedRemoveUserFromChannel(channelName, uid, clientSeq);
       }
     }
   }
-  // Set a timer for deleting the data of users that are offline.
-  private void DelayedRemoveUserFromChannel(final String cname, final int uid, final long clientSeq) {
+
+  // Set a timer for deleting the data of an offline user
+  private void DelayedRemoveUserFromChannel(final String channelName, final int uid, final long clientSeq) {
     timer.schedule(new TimerTask() {
       @Override
       public void run() {
-        Channel channel = channels.get(cname);
-        if (channel == null) return;
+        Channel channel = channels.get(channelName);
+        if (channel == null)
+          return;
         User user = channel.users.get(uid);
-        if (user == null) return;
+        if (user == null)
+          return;
 
-        /* If the value in the clientSeq field changes, do not
-        delete the user data. */
+        // If the value in the clientSeq field changes, do not delete data
+        if (user.lastClientSeq != clientSeq)
+          return;
 
-        if (user.lastClientSeq != clientSeq) return;
         if (!user.isOnline) {
-          /* Delete user data only when the user is offline and
-            the value in the clientSeq field does not change. */
+          // Delete user data only when the user is offline
           channel.users.remove(uid);
-          logger.info("Remove user " + uid + " from channel " +
-            cname);
+          System.out.println("Removed user " + uid + " from channel " + channelName);
         } else {
-          logger.info("User " + uid + " is online while delayed removing, cancelled");
+          System.out.println("User " + uid + " is online while delayed removing, cancelled");
         }
+
+        // If there are no users left in the channel, delete the channel
         if (channel.users.isEmpty()) {
-          channels.remove(cname);
-          logger.info("Remove channel " + cname);
+          channels.remove(channelName);
+          System.out.println("Removed channel " + channelName);
         }
       }
     }, WAIT_TIMEOUT_MS);
   }
+
   // Determine whether a user is online.
   private static boolean IsUserOnlineInNotice(int eventType) {
     return eventType == EVENT_BROADCASTER_JOIN ||
-      eventType == EVENT_AUDIENCE_JOIN ||
-      eventType == EVENT_CHANGE_ROLE_TO_BROADCASTER ||
-      eventType == EVENT_CHANGE_ROLE_TO_AUDIENCE;
+        eventType == EVENT_AUDIENCE_JOIN ||
+        eventType == EVENT_CHANGE_ROLE_TO_BROADCASTER ||
+        eventType == EVENT_CHANGE_ROLE_TO_AUDIENCE;
   }
+
   // Get the user role.
   private static int GetUserRoleInNotice(int eventType) {
     if (eventType == EVENT_BROADCASTER_JOIN ||
-      eventType == EVENT_BROADCASTER_QUIT ||
-      eventType == EVENT_CHANGE_ROLE_TO_BROADCASTER) {
+        eventType == EVENT_BROADCASTER_QUIT ||
+        eventType == EVENT_CHANGE_ROLE_TO_BROADCASTER) {
       return ROLE_BROADCASTER;
     } else {
       return ROLE_AUDIENCE;
@@ -225,7 +350,7 @@ When adopting the solutions recommended by Agora to maintain user online status,
 * The solutions only guarantee eventual consistency of user status.
 * To improve accuracy, the notification callbacks specific to one channel must be handled in a single process.
 
-### Handle redundand notifications and abnormal user activity
+### Handle redundant notifications and abnormal user activity
 <MaintainStatus />
 
 

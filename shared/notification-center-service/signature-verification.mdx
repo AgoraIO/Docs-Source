@@ -1,8 +1,6 @@
-
-
 To communicate securely between <Vg k="NCS" /> and your webhook,  <Vg k="AGORA_BACKEND" />  uses signatures for identity verification.
 
-1. When you configure <Vg k="NCS" /> in <Vg k="CONSOLE" />,  <Vg k="AGORA_BACKEND" />  generates the secret use for verification.
+1. When you configure <Vg k="NCS" /> in <Vg k="CONSOLE" />,  <Vg k="AGORA_BACKEND" />  generates the secret you use for verification.
 1. When sending a notification,  <Vg k="NCS" /> generates two signature values from the secret using `HMAC/SHA1` and `HMAC/SHA256` algorithms. These signatures are added to the `Agora-Signature` and `Agora-Signature-V2` fields in the HTTPS request header.
 1. When your server receives the callback, you use :
 
@@ -12,48 +10,59 @@ To communicate securely between <Vg k="NCS" /> and your webhook,  <Vg k="AGORA_B
        - `Agora-Signature` - the `HMAC/SHA1`  algorithm.
        - `Agora-Signature-V2` - the `HMAC/SHA2` algorithm.
 
-To verify a signature:
+To add signature verification to your server, take the following steps:
 
-```java
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
+1. In your project folder, add a new file named `Signature.java` containing the following code:
 
-public class Signature { //HmacSha {
-    static String secret = "<your secret for signature verification>";
+    ```java
+    import javax.crypto.Mac;
+    import javax.crypto.spec.SecretKeySpec;
 
-    // Convert an encrypted byte array into a hex string
-    public static String bytesToHex(byte[] bytes) {
-        StringBuffer sb = new StringBuffer();
-        for (int i = 0; i < bytes.length; i++) {
-            String hex = Integer.toHexString(bytes[i] & 0xFF);
-            if (hex.length() < 2) {
-                sb.append(0);
+    public class Signature { 
+        static String secret = "<your NCS secret>";
+
+        // Convert an encrypted byte array into a hex string
+        public static String bytesToHex(byte[] bytes) {
+            StringBuffer sb = new StringBuffer();
+            for (int i = 0; i < bytes.length; i++) {
+                String hex = Integer.toHexString(bytes[i] & 0xFF);
+                if (hex.length() < 2) {
+                    sb.append(0);
+                }
+                sb.append(hex);
             }
-            sb.append(hex);
+            return sb.toString();
         }
-        return sb.toString();
-    }
 
-    // Use the HMAC/SHA1 algorithm and get the encrypted hex string
-    // To use the HMAC/SHA256 algorithm, replace "HmacSHA1" with "HmacSHA256"
-    public static String hmacSha1(String message) {
-        try {
-            SecretKeySpec signingKey = new SecretKeySpec(secret.getBytes(
-                "utf-8"), "HmacSHA1");
-            Mac mac = Mac.getInstance("HmacSHA1");
-            mac.init(signingKey);
-            byte[] rawHmac = mac.doFinal(message.getBytes("utf-8"));
-            return bytesToHex(rawHmac);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        // Use the HMAC-SHA1 algorithm and get the encrypted hex-string.
+        // To use the HMAC-SHA256 algorithm, replace "HmacSHA1" with "HmacSHA256"
+        public static String hmacSha1(String message) {
+            try {
+                SecretKeySpec signingKey = new SecretKeySpec(secret.getBytes(
+                    "utf-8"), "HmacSHA1");
+                Mac mac = Mac.getInstance("HmacSHA1");
+                mac.init(signingKey);
+                byte[] rawHmac = mac.doFinal(message.getBytes("utf-8"));
+                return bytesToHex(rawHmac);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public static boolean verify(String request_body, String signature) {
+            // Check the signature against the request body
+            return (hmacSha1(request_body).equals(signature));
         }
     }
-    public static boolean verify(String request_body, String signature) {
-        // Check the signature against the request body
-        return (hmacSha1(request_body).equals(signature));
-    }
-}
+    ```
+    Make sure you update your <Vg k="NCS" /> secret in the code.
 
-```
+1. Add the following code to `Handlers.java` after `String query = br.lines()...;` to verify the data in the <Vg k="NCS" /> callback:
+
+    ```java
+    boolean isVerified = Signature.verify(query, agoraSignature);
+    System.out.println("Verified: " + isVerified);
+    ```
+
 
 

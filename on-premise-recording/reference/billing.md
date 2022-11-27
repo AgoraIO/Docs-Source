@@ -366,7 +366,7 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
                     <tr>
                         <td class="confluenceTd" colspan="1"
                             rowspan="1">
-                            <p>Cost of each service,</p>
+                            <p>Cost of each service</p>
                             <p>($US)</p>
                         </td>
                         <td class="confluenceTd" colspan="1"
@@ -385,7 +385,7 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
                     <tr>
                         <td class="confluenceTd" colspan="1"
                             rowspan="1">
-                            <p>Total cost,</p>
+                            <p>Total cost</p>
                             <p>($US)</p>
                         </td>
                         <td class="confluenceTd" colspan="5"

@@ -311,64 +311,22 @@ The following code example shows how to send a CMD message of the input status.
 
 ```objc
 #define MSG_TYPING_BEGIN @"TypingBegin"
-#define MSG_TYPING_END @"TypingEnd"
 
 - (void)textViewDidChange:(UITextView *)textView
 {
     long long currentTimestamp = [self getCurrentTimestamp];
     // Do not send messages repeatedly within 5s.
     if ((currentTimestamp - _previousChangedTimeStamp) > 5) {
-        // Sends a CMD message of start typing.
+        // Sends a CMD message of starting typing.
         [self _sendBeginTyping];
-        [self startReceiveTypingTimer];
         _previousChangedTimeStamp = currentTimestamp;
-    }
-}
-
-- (void)startReceiveTypingTimer {
-    [self stopReceiveTypingTimer];
-    _receiveTypingCountDownNum = 10;
-    _receiveTypingTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(startReceiveCountDown) userInfo:nil repeats:YES];
-
-    [[NSRunLoop currentRunLoop] addTimer:_receiveTypingTimer forMode:UITrackingRunLoopMode];
-    [_receiveTypingTimer fire];
-    if (self.delegate && [self.delegate respondsToSelector:@selector(peerTyping)]) {
-        [self.delegate peerTyping];
-    }
-    
-}
-
-- (void)startReceiveCountDown
-{
-    if (_receiveTypingCountDownNum == 0) {
-        [self stopReceiveTypingTimer];
-        // After 10s, sends a CMD message of end typing.
-        [self _sendEndTyping]
-        return;
-    }
-    _receiveTypingCountDownNum--;
-}
-
-- (void)stopReceiveTypingTimer {
-    _receiveTypingCountDownNum = 0;
-    if (_receiveTypingTimer) {
-        [_receiveTypingTimer invalidate];
-        _receiveTypingTimer = nil;
     }
 }
 
 - (void)_sendBeginTyping
 {
     AgoraChatCmdMessageBody *body = [[AgoraChatCmdMessageBody alloc] initWithAction:MSG_TYPING_BEGIN];
-    body.isDeliverOnlineOnly = YES;
-    AgoraChatMessage *message = [[AgoraChatMessage alloc] initWithConversationID:conversationId body:body ext:nil];
-    message.chatType = AgoraChatTypeChat;
-    [[AgoraChatClient sharedClient].chatManager sendMessage:message progress:nil completion:nil];
-}
-
-- (void)_sendEndTyping
-{
-    AgoraChatCmdMessageBody *body = [[AgoraChatCmdMessageBody alloc] initWithAction:MSG_TYPING_END];
+    // Only deliver this CMD message to online users.
     body.isDeliverOnlineOnly = YES;
     AgoraChatMessage *message = [[AgoraChatMessage alloc] initWithConversationID:conversationId body:body ext:nil];
     message.chatType = AgoraChatTypeChat;
@@ -376,9 +334,10 @@ The following code example shows how to send a CMD message of the input status.
 }
 ```
 
-The following code example shows how to accept and parse a CMD message of the input status.
+The following code example shows how to receive and parse a CMD message of the input status.
 
 ```objc
+#define TypingTimerCountNum 10
 - (void)cmdMessagesDidReceive:(NSArray *)aCmdMessages
 {
     NSString *conId = self.currentConversation.conversationId;
@@ -389,12 +348,42 @@ The following code example shows how to accept and parse a CMD message of the in
         AgoraChatCmdMessageBody *body = (AgoraChatCmdMessageBody *)message.body;
         // Receives a CMD message of starting typing.
         if ([body.action isEqualToString:MSG_TYPING_BEGIN]) {
-            // Updates the UI.
+            if (_receiveTypingCountDownNum == 0) {
+                [self startReceiveTypingTimer];
+            }else {
+                _receiveTypingCountDownNum = TypingTimerCountNum;
+            }
         }
-        // Receives a CMD message of ending typing.
-        if ([body.action isEqualToString:MSG_TYPING_END]) {
-            // Updates the UI.
-        }
+
+    }
+}
+
+- (void)startReceiveTypingTimer {
+    [self stopReceiveTypingTimer];
+    _receiveTypingCountDownNum = TypingTimerCountNum;
+    _receiveTypingTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(startReceiveCountDown) userInfo:nil repeats:YES];
+
+    [[NSRunLoop currentRunLoop] addTimer:_receiveTypingTimer forMode:UITrackingRunLoopMode];
+    [_receiveTypingTimer fire];
+    // Updates the UI.
+}
+
+- (void)startReceiveCountDown
+{
+    if (_receiveTypingCountDownNum == 0) {
+        [self stopReceiveTypingTimer];
+        // Updates the UI.
+        
+        return;
+    }
+    _receiveTypingCountDownNum--;
+}
+
+- (void)stopReceiveTypingTimer {
+    _receiveTypingCountDownNum = 0;
+    if (_receiveTypingTimer) {
+        [_receiveTypingTimer invalidate];
+        _receiveTypingTimer = nil;
     }
 }
 ```

@@ -47,7 +47,7 @@ Before recording, call the [`acquire`](../reference/rest-api/acquire) method to 
 
 ### Start recording
 
-Set `mode` to `individual` when calling [`start`](../reference/rest-api/start) to enable [individual recording mode](./individual-mode).
+Set `mode` to `individual` when calling [`start`](../reference/rest-api/start) to enable [individual recording mode](../develop/individual-mode).
 
 You cannot switch to a different recording mode once you start recording.
 

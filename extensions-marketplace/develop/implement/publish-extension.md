@@ -12,7 +12,7 @@ Your extension is distributed to app developers through the [Extensions Marketpl
 
 ## Prerequisites
 
-Before publishing your extension, ensure that you have tested your extension following the procedure in [Test Your Extension](./test_extension).
+Before publishing your extension, ensure that you have tested your extension.
 
 ## Apply for Agora review
 
@@ -46,7 +46,7 @@ You need to provide the following assets for your extension listing. If you have
 | 7    | Vendor logo                 | A 600 x 315 JPG file                                         |
 | 8    | Vendor website URL          | Must be accessible                                           |
 | 9    | Vendor support URL          | Must link to a page providing your company's contact information |
-| 10   | Implementation guides     | Must include quickstart guides and API reference. You need to provide the URL to the documentation. See [Implementation guides](./implementation-guide) for details. |
+| 10   | Implementation guides     | Must include quickstart guides and API reference. You need to provide the URL to the documentation. See [Implementation guides](implementation-guide) for details. |
 
 ### Supplementary information
 

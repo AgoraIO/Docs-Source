@@ -17,7 +17,7 @@ After you enable the callback service, when a specified event occurs, the Agora 
 
 The following is an example that shows the fields in the request body.
 ![](https://web-cdn.agora.io/docs-files/1567593635825)
-- The fields in the red rectangle are the common fields of all the callback events. For details, see [Notification callback format](https://docs-preview.agoralab.co/en/Agora%20Platform/ncs?platform=All%20Platforms#notification-callback-format).
+- The fields in the red rectangle are the common fields of all the callback events. For details, see [Notification callback format](https://docs-preview.agoralab.co/en/Agora%20Platform/ncs#notification-callback-format).
 - The fields in the blue rectangle are the common fields in `payload` of all the cloud recording events. For details, see [Fields in payload](#payload).
 - The values of `eventType`, `serviceType`, and `details` depend on the event. For details, see [Callback events](#event).
 
@@ -43,33 +43,33 @@ The following is an example that shows the fields in the request body.
 
 The related fields of the Agora Cloud Recording callback events are listed below:
 
-| eventType | serviceType                   | Event description                                            |
-| :-------- | :---------------------------- | :----------------------------------------------------------- |
-| [1](#1)   | 0 (cloud recording service)   | An error occurs during the recording.                        |
-| [2](#2)   | 0 (cloud recording service)   | A warning occurs during the recording.                       |
-| [3](#3)   | 0 (cloud recording service)   | The status of the Agora Cloud Recording service changes.     |
-| [4](#4)   | 0 (cloud recording service)   | The M3U8 playlist file is generated.                         |
-| [11](#11)   | 0 (cloud recording service)   | The cloud recording service has ended its tasks and exited.                    |
-| [12](#12-session_failover)   | 0 (cloud recording service)   | The cloud recording service has enabled the [high availability mechanism](../understand/product-overview#features).                    |
-| [30](#30) | 2 (uploader module)           | The upload service starts.                                   |
-| [31](#31-uploaded) | 2 (uploader module)           | All the recorded files are uploaded to the specified third-party cloud storage. |
-| [32](#32-backuped) | 2 (uploader module)           | All the recorded files are uploaded, but at least one file is uploaded to Agora Cloud Backup. |
-| [33](#33) | 2 (uploader module)           | The progress of uploading the recorded files to the cloud storage. |
-| [40](#40) | 1 (recorder module)           | The recording starts.                                        |
-| [41](#41) | 1 (recorder module)           | The recording exits.                                         |
-| [42](#42) | 1 (recorder module)           | The recording service syncs the information of the recorded files. |
-| [43](#43) | 1 (recorder module)           | The state of the audio stream changes. |
-| [44](#44) | 1 (recorder module)           | The state of the video stream changes. |
-| [45](#45) | 1 (recorder module)           | The screenshot is captured successfully. |
-| [60](#60-vod_started) | 4 (extension services)           | The uploader for ApsaraVideo for VoD has started and successfully acquired the upload credential.|
-| [61](#61-vod_triggered) | 4 (extension services)         | All recorded files have been uploaded to ApsaraVideo for VoD. |
-| [70](#70-web_recorder_started) | 6 (web page recording module) | Web page recording starts.  |
-| [71](#71-web_recorder_stopped) | 6 (web page recording module) | Web page recording stops.   |
+| eventType | serviceType                   | Event description                                                                                                             |
+| :-------- | :---------------------------- |:------------------------------------------------------------------------------------------------------------------------------|
+| [1](#1)   | 0 (cloud recording service)   | An error occurs during the recording.                                                                                         |
+| [2](#2)   | 0 (cloud recording service)   | A warning occurs during the recording.                                                                                        |
+| [3](#3)   | 0 (cloud recording service)   | The status of the Agora Cloud Recording service changes.                                                                      |
+| [4](#4)   | 0 (cloud recording service)   | The M3U8 playlist file is generated.                                                                                          |
+| [11](#11)   | 0 (cloud recording service)   | The cloud recording service has ended its tasks and exited.                                                                   |
+| [12](#12-session_failover)   | 0 (cloud recording service)   | The cloud recording service has enabled the [high availability mechanism](../../overview/product-overview).                   |
+| [30](#30) | 2 (uploader module)           | The upload service starts.                                                                                                    |
+| [31](#31-uploaded) | 2 (uploader module)           | All the recorded files are uploaded to the specified third-party cloud storage.                                               |
+| [32](#32-backuped) | 2 (uploader module)           | All the recorded files are uploaded, but at least one file is uploaded to Agora Cloud Backup.                                 |
+| [33](#33) | 2 (uploader module)           | The progress of uploading the recorded files to the cloud storage.                                                            |
+| [40](#40) | 1 (recorder module)           | The recording starts.                                                                                                         |
+| [41](#41) | 1 (recorder module)           | The recording exits.                                                                                                          |
+| [42](#42) | 1 (recorder module)           | The recording service syncs the information of the recorded files.                                                            |
+| [43](#43) | 1 (recorder module)           | The state of the audio stream changes.                                                                                        |
+| [44](#44) | 1 (recorder module)           | The state of the video stream changes.                                                                                        |
+| [45](#45) | 1 (recorder module)           | The screenshot is captured successfully.                                                                                      |
+| [60](#60-vod_started) | 4 (extension services)           | The uploader for ApsaraVideo for VoD has started and successfully acquired the upload credential.                             |
+| [61](#61-vod_triggered) | 4 (extension services)         | All recorded files have been uploaded to ApsaraVideo for VoD.                                                                 |
+| [70](#70-web_recorder_started) | 6 (web page recording module) | Web page recording starts.                                                                                                    |
+| [71](#71-web_recorder_stopped) | 6 (web page recording module) | Web page recording stops.                                                                                                     |
 | [72](#72-web_recorder_capability_limit) | 6 (web page recording module) | The web page to record uses a feature that is unsupported by web page recording. The recording service will stop immediately. |
-| [73](#73) | 6 (web page recording module) |The web page reloads. |
-| [90](#90) | 	8（download module） |The recording service fails to download the recorded files.|
-| [100](#100) | 	6（web page recording module） |The CDN streaming status of the web page recording changes.|
-| [1001](#1001) | 0 (cloud recording service) | The result of the transcoding.   |
+| [73](#73) | 6 (web page recording module) | The web page reloads.                                                                                                         |
+| [90](#90) | 	8（download module） | The recording service fails to download the recorded files.                                                                   |
+| [100](#100) | 	6（web page recording module） | The CDN streaming status of the web page recording changes.                                                                   |
+| [1001](#1001) | 0 (cloud recording service) | The result of the transcoding.                                                                                                |
 
 ###  <a name="1"></a>1 cloud_recording_error
 
@@ -106,7 +106,7 @@ The related fields of the Agora Cloud Recording callback events are listed below
   - `0`: The recorder.
   - `1`: The uploader.
 - `warnCode`: Number. The warning code. 
-  - If the warning occurs in the recorder, see [warning code](../../on-premise-recording/reference/error_rtc.html#warning-codes).
+  - If the warning occurs in the recorder, see [warning code](../../../on-premise-recording/reference/error-code#warning-codes).
   - If the warning occurs in the uploader, see [upload warning code](#uploadwarn).
 
 ###  <a name="3"></a>3 cloud_recording_status_update

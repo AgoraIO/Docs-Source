@@ -1,20 +1,21 @@
 ---
 title: "DeepAR"
-sidebar_position: 3
+sidebar_position: 4
 type: docs
 description: >
     Enable augmented reality features in video calls such as face filters, face touch up filters and virtual backgrounds.
 ---
 export const toc = [{}];
 
-This guide is provided by DeepAR. Agora is planning a documentation upgrade program for all extensions on the marketplace. Please stay tuned.
+DeepAR Extension is a wrapper around [DeepAR Web](https://www.npmjs.com/package/deepar) that simplifies integration with the Agora RTC platform.
+
+For more information, see [DeepAR](https://www.deepar.ai).
+
 <PlatformWrapper notAllowed="web">
 This extension is for Web only.
 </PlatformWrapper>
 
 <PlatformWrapper platform="web">
-
-
 
 ## Prerequisites
 
@@ -24,66 +25,147 @@ In order to use the DeepAR Web extension you need to set up a license key for yo
 2. Create a project: https://developer.deepar.ai/projects.
 3. Add a web app to the project. Note that you need to specify the domain name which you plan to use for hosting the app.
 
-## Integrate DeepAR extension
-
 ### Download the extension
 
-You can download the DeepAR extension from the Agora Console.
+You need both DeepAR Web extension and Agora RTC packages.
 
-Copy the downloaded code into your project and load it in a script tag in HTML.
+Using `npm`:
+```shell
+npm install deepar-agora-extension agora-rtc-sdk-ng
+```
 
-```xml
-<script src="./deepar-agora-web-plugin/deepar-agora-web-plugin.js"></script>
+Using `yarn`:
+```shell
+yarn add deepar-agora-extension agora-rtc-sdk-ng
+```
+
+### Add the imports
+
+Import `VideoExtension` and `AgoraRTC`:
+```javascript
+import { VideoExtension } from 'deepar-agora-extension';
+import AgoraRTC from 'agora-rtc-sdk-ng'
+```
+
+You are also going to need import WebAssembly file that DeepAR runs
+and machine learning models that DeepAR uses for face tracking, background removal and such.
+
+We recommend using a bundler to correctly include assets like models, effects and WebAssembly files.
+
+For example, if using Webpack, you can use [Asset Modules](https://webpack.js.org/guides/asset-modules/).
+Add this to your `webpack.config.js`:
+
+```javascript
+module.exports = {
+  // ...
+  module: {
+    rules: [
+      {
+        test: /\.(wasm)|(bin)|(obj)$/i,
+        include: [
+          path.resolve(__dirname, 'node_modules/deepar/'),
+        ],
+        type: 'asset/resource',
+      },
+      {
+        include: [
+          path.resolve(__dirname, 'effects/'),
+        ],
+        type: 'asset/resource',
+      },
+    ],
+  },
+  // ...
+```
+
+Then you can import paths for these files like this:
+```javascript
+import deeparWasm from 'deepar/wasm/deepar.wasm'
+import faceModel from 'deepar/models/face/models-68-extreme.bin'
+import segmentationModel from 'deepar/models/segmentation/segmentation-160x160-opt.bin'
 ```
 
 ### Enable the extension
 
-Create a `div` tag that will be used as a container for DeepAR rendering:
+Create a `div` tag that will be used as a container for camera preview:
 
-```xml
-<div class="video-container">
+```html
+<div class="video-container"></div>
 ```
 
-Copy the license key you got when you created the web app or look it up here: https://developer.deepar.ai/projects.
+Be sure to set the width and height of the `div`!
+```html
+<style>
+    .video-container{
+        width: 640px;
+        height: 480px;
+    }
+</style>
+```
 
-Initialize the DeepAR extension:
+### Initialize the extension:
 
 ```javascript
-const videoExtension = new DeepARVideoExtension.DeepARVideoExtension({
-    licenseKey: 'your_license_key_here',
-    libPath: './deepar-agora-web-plugin' // if you are going to use segmentation effects, set this path to the folder where segmentation.zip file is located
+const videoExtension = new VideoExtension({
+    licenseKey: 'your_license_key_here', // create the license key here https://developer.deepar.ai/projects
+    deeparWasmPath: deeparWasm,
+    segmentationConfig: { // don't need to define this if you don't use background removal effects
+        modelPath: segmentationModel
+    },
+    onInitialize: function (deepAR) {
+      // at this point DeepAR is initialized and can be used normally
+    },
 });
+```
+
+### Set up video processing
+
+To add video processing to the previously created `div` container:
+
+```javascript
+//register extension
 AgoraRTC.registerExtensions([videoExtension]);
-```
 
-Set up video processing on the previously created `div` container:
-
-```javascript
+//create DeepAR extension processor
 const processor = videoExtension.createProcessor();
+
+//create CameraVideoTrack
 const videoTrack = await AgoraRTC.createCameraVideoTrack();
+
+//piping processor
 videoTrack.pipe(processor).pipe(videoTrack.processorDestination);
-await videoTrack.play(document.querySelector('.video-container'), { mirror: false });
+
+await videoTrack.play(document.querySelector('.video-container'), {mirror: false});
 ```
 
-### Initialize face tracking
+You can use the `deepAR` object normally as in the standard DeepAR Web SDK.
+See API reference [here](https://s3.eu-west-1.amazonaws.com/sdk.developer.deepar.ai/doc/web/index.html).
 
-Acquire the DeepAR object:
+### Access deepAR
 
+You do this using the `VideoExtension`'s `onInitialize` callback:
 ```javascript
-let deepAR = processor.deepAR;
+const videoExtension = new VideoExtension({
+  ...
+  onInitialize: function (deepAR) {
+    // at this point DeepAR is initialized and can be used normally
+  }
+  ...
+});
 ```
 
-This object is used the same way as the usual DeepAR SDK ([API reference](https://s3.eu-west-1.amazonaws.com/sdk.developer.deepar.ai/doc/web/index.html)).
-
-Load the face tracking model:
+### Load the face tracking model
 
 ```javascript
-deepAR.downloadFaceTrackingModel('./deepar-agora-web-plugin/models-68-extreme.bin');
+deepAR.downloadFaceTrackingModel('path/to/models-68-extreme.bin');
 ```
 
 ### Load effects
 
-You can download a free filter pack here: https://developer.deepar.ai/downloads
+All masks, filters, background removal, etc. are represented by effect files in DeepAR.
+You can load them to preview the effect.
+You can download a free filter pack here: https://docs.deepar.ai/deep-ar-studio/free-filter-pack
+or visit DeepAR [effect store](https://www.store.deepar.ai/).
 
 Load an effect using the `switchEffect` method:
 
@@ -98,29 +180,87 @@ deepAR.switchEffect(0, 'slot', './effects/alien');
 deepAR.switchEffect(1, 'slot', './effects/lion');
 ```
 
-Load a background segmentation effect:
-
+Load a background removal effect:
 ```javascript
 deepAR.switchEffect(0, 'slot', './effects/background_segmentation');
 ```
 
-## Supported browsers
+### Background removal or blur
+
+To use background segmentation DeepAR needs to initialize the segmentation model.
+
+```javascript
+import segmentationModelPath from 'deepar/models/segmentation/segmentation-160x160-opt.bin';
+
+// ...
+
+const videoExtension = new VideoExtension({
+  segmentationConfig: {
+    modelPath: segmentationModelPath,
+  },
+  // other params ...
+});
+```
+
+### Shoe try-on
+
+To use shoe try-on feature DeepAR needs to initialize foot tracking. All the `footTrackingConfig` parameters are required.
+
+```javascript
+import poseEstimationWasmPath from 'deepar/wasm/libxzimgPoseEstimation.wasm';
+import footDetectorPath from 'deepar/models/foot/foot-detector-android.bin'; // or ...-ios.bin
+import footTrackerPath from 'deepar/models/foot/foot-tracker-android.bin'; // or ...-ios.bin
+import footObjPath from 'deepar/models/foot/foot-model.obj';
+
+// ...
+
+const videoExtension = new VideoExtension({
+  footTrackingConfig: {
+    poseEstimationWasmPath,
+    detectorPath: footDetectorPath,
+    trackerPath: footTrackerPath,
+    objPath: footObjPath,
+  },
+  // other params ...
+});
+```
+
+### License
+
+Please see: https://developer.deepar.ai/customer-agreement
+
+## Reference
+
+### Supported browsers
 
 Both desktop and mobile browsers are supported by DeepAR.
 
-### Desktop
+#### Desktop
 
 - Google Chrome 66+
 - Safari 11.1+
 - Firefox 60+
 - Edge 42+
 
-### iOS
+#### iOS
 
 - Safari on iOS 11+
 
-### Android
+#### Android
 
 - Google Chrome 66+
+
+
+## Sample Demo
+You can test our sample demo app to test out the DeepAR Agora Extension.
+ 🔥 **It is free!** 🔥
+
+See the official quickstart example here: https://github.com/DeepARSDK/quickstart-agora-web-extension
+
+### Documentation
+
+Once the extension is initialized with Agora, the DeepAR SDK is used very much the same as plain [DeepAR Web](https://www.npmjs.com/package/deepar).
+
+Visit the official DeepAR docs for Web SDK here: https://docs.deepar.ai/category/deepar-sdk-for-web
 
 </PlatformWrapper>

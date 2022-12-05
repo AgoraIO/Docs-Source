@@ -18,7 +18,7 @@ In order to solve these issues, the web page recording service supports **web pa
 - If the browser receives a notification that the web page is loaded before the timeout limit, the browser starts recording the web page.
 - If the browser does not receive a notification that the web page is loaded before the timeout limit, the browser automatically reloads the web page and notify the developer in time as an event message. If the web page fails to load before the timeout limit for a second time, the recording service stops to avoid recording wrong content.
 
-The Agora web page load timeout detection function can only ensure that page elements are loaded correctly. If you need more comprehensive protection for web page recording, please refer to [Best Practices in Integrating Web Page Recording](./webpage-best-practices).
+The Agora web page load timeout detection function can only ensure that page elements are loaded correctly. If you need more comprehensive protection for web page recording, please refer to [Best Practices in Integrating Web Page Recording](../develop/webpage-best-practices).
 
 ## Implementation
 
@@ -57,7 +57,7 @@ function notifyReady() {
 ```
 If you record other URL pages, you need to set the `notifyReady` interface on the page to be recorded.
 
-### API Reference
+### API reference
 
 - [`start`](../reference/rest-api/start) 
 - [`web_recorder_started`](../reference/rest-api/rest-api-overview#70-web_recorder_started-web_recorder_started)

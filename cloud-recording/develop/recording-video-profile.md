@@ -6,13 +6,13 @@ description: >
    Setting the video profile for recorded videos.
 ---
 
-In composite recording mode, you can set the video profile (resolution, frame rate, and bitrate) for the output video stream. Agora recommends setting the video profile according to the values listed in the [video profile table](#video-profile-table). For Cloud Recording, use `transcodingConfig` to set the video profile. For On-premise Recording, use `mixResolution` to set the video profile.
+In composite recording mode, you can set the video profile (resolution, frame rate, and bitrate) for the output video stream. Agora recommends setting the video profile according to the values listed in the [video profile table](#video-profile-table). For Cloud Recording, use `transcodingConfig` to set the video profile. For On-Premise Recording, use `mixResolution` to set the video profile.
 
 In individual recording mode, the recorded video keeps the original video profile.
 
 ## Basic guidelines
 
-- Agora recommends setting the recording resolution lower than the [aggregate resolution](../overview/pricing#resolution-calibration) of the original video streams, otherwise the recorded video may be blurry.
+- Agora recommends setting the recording resolution lower than the [aggregate resolution](../reference/pricing#resolution-calibration) of the original video streams, otherwise the recorded video may be blurry.
 - The resolution you set in the video profile is that of the video canvas, and its aspect ratio does not need to be identical to any source video stream. The aspect ratio of each user region in the output video depends on the aspect ratio of the canvas and the video layout. See [Related articles](#related-articles).
 - Agora only supports the following frame rates: 1 fps, 7 fps, 10 fps, 15 fps, 24 fps, 30 fps, and 60 fps. The default value is 15 fps. If you set other frame rates, the SDK uses the default value.
 - The base bitrate in the video profile table applies to the communication profile. The live-broadcast profile generally requires a higher bitrate to ensure better video quality. Set the bitrate of the live-broadcast profile as twice the base bitrate.
@@ -67,5 +67,5 @@ Suppose your target resolution is 300 * 240 with a frame rate of 30 fps. The clo
 
 ## Related articles
 
-- Cloud Recording: [Set Video Layout](./layout)
-- On-premise Recording: [Set Video Layout](../../on-premise-recording/develop/recording-layout)
+- Cloud Recording: [Set Video Layout](../develop/layout)
+- On-Premise Recording: [Set Video Layout](/on-premise-recording/develop/layout)

@@ -8,7 +8,7 @@ description: >
 
 ## Overview
 
-The On-premise Recording SDK supports two recording modes:
+The On-Premise Recording SDK supports two recording modes:
 
 - Individual recording mode: This is the default recording mode. The SDK generates one audio and/or video file for each UID. 
 - Composite recording mode: Generates a single mixed audio and video file for all UIDs in a channel, or mixes the audio of all UIDs in the channel into an audio file and the video of all UIDs into a video file.
@@ -56,7 +56,7 @@ You can set the `mixResolution` parameter, including the width, height, frame ra
 
 ### Set video layout
 
-In composite recording mode, you can use the `layoutMode` parameter to set the video layout and arrange the size and position of the region for each user. The default value is 0 (Floating Layout). For more information, see [Set Video Layout](./layout).
+In composite recording mode, you can use the `layoutMode` parameter to set the video layout and arrange the size and position of the region for each user. The default value is 0 (Floating Layout). For more information, see [Set Video Layout](../develop/layout).
 
 ## Example
 

@@ -12,20 +12,20 @@ Many educational apps need to synchronize the playback of recorded files and oth
 
 ## Prerequisites
 
-In individual recording mode, Agora Cloud Recording records the audio and video of each user ID separately. Before you start, you need to first merge the audio and video into one file with the Audio & Video Merging script. See [Merge Audio and Video Files](./merge-files) for details. Ensure that you set `-m` as `1` and do not set `-s`, so that the period when a user is absent will be included and displayed as the last frame before the absence in the recorded files.
+In individual recording mode, Agora Cloud Recording records the audio and video of each user ID separately. Before you start, you need to first merge the audio and video into one file with the Audio & Video Merging script. See [Merge Audio and Video Files](../develop/merge-files) for details. Ensure that you set `-m` as `1` and do not set `-s`, so that the period when a user is absent will be included and displayed as the last frame before the absence in the recorded files.
 
 ## Get the timestamp
 
 You can use the [Agora Cloud Recording RESTful API Callback Service](../reference/rest-api/rest-api-overview) to acquire the start timestamp of the recording. The `startUtcMs` parameter in the `recorder_slice_start` event indicates the time when Agora Cloud Recording starts to record a user ID, or the start time of the first slice file for the user ID. `startUtcMs` is the time (ms) in UTC.
 
-> Contact [support@agora.io](http://support@agora.io/) to enable the callback service. 
+> Contact [support@agora.io](http://support@agora.io) to enable the callback service. 
 
 
 You can also get the start timestamp by parsing the M3U8 file.
 
 1. Get the M3U8 file: Find the M3U8 file in the specified directory in the third-party cloud storage. You can find the M3U8 file of a certain recording instance by its filename:
   - In composite recording mode, the name of the M3U8 file consists of the recording ID and the channel name, that is, `sid_cname.m3u8`.
-  - See [Manage Recorded Files](./manage-files) for the detailed naming conventions of the M3U8 file in individual recording mode.
+  - See [Manage Recorded Files](../develop/manage-files) for the detailed naming conventions of the M3U8 file in individual recording mode.
 2. Get the timestamp by parsing the M3U8 file. You can find the start timestamp at the start of each M3U8 file:
 ```
 #EXT-X-AGORA-TRACK-EVENT:EVENT=START,TRACK_TYPE=AUDIO,TIME=1568597779021

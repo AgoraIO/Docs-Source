@@ -1,5 +1,5 @@
 ---
-title: 'Secure authentication'
+title: 'Secure authentication with tokens'
 sidebar_position: 3
 type: docs
 description: >
@@ -98,7 +98,7 @@ Unexpected exposure of these access keys can cause severe security problems. To 
 
 ### Set token role
 
-A token can be assigned to an `admin`, `writer`, or `reader` role. The permissions granted by each token role are described in <a href="/interactive-whiteboard/develop/authentication-workflow#sdk-token">Introduction</a>.
+A token can be assigned to an `admin`, `writer`, or `reader` role. The permissions granted by each token role are described in <a href="#sdk-token">Introduction</a>.
 
 To enhance security, Agora recommends the following precautions:
 - Avoid sending tokens that grant a lot of permissions to your app clients.

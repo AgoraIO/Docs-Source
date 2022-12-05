@@ -1,6 +1,6 @@
 ---
 title: Security
-sidebar_position: 7.6
+sidebar_position: 10
 description: >
     The security practices that Agora has implemented for Agora Interactive Whiteboard.
 ---

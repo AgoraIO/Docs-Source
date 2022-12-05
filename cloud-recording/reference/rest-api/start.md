@@ -23,18 +23,18 @@ The HTTP method and endpoint of `start`:
 
 The following parameters are required in the URL.
 
-| Parameter    | Type   | Description                                                  |
-| :----------- | :----- | :----------------------------------------------------------- |
-| `appid`      | String | Your App ID.               |
-| `resourceid` | String | The resource ID requested by the [`acquire`](./acquire) method. |
-| `mode`       | String | One of the following three recording modes:<ul><li> Individual recording (`individual`): Records the audio and video of each user ID in separate files.</li><li> Composite recording (`mix`): (Default) Records the audio and video of multiple user IDs in a single file.</li><li>Web page recording (`web`): Records the content and audio on a specified web page in a single file.</li></ul>|
+| Parameter    | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                      |
+| :----------- | :----- |:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `appid`      | String | Your App ID.                                                                                                                                                                                                                                                                                                                                                                                     |
+| `resourceid` | String | The resource ID requested by the [`acquire`](../rest-api/acquire) method.                                                                                                                                                                                                                                                                                                                        |
+| `mode`       | String | One of the following three recording modes:<ul><li> Individual recording (`individual`): Records the audio and video of each user ID in separate files.</li><li> Composite recording (`mix`): (Default) Records the audio and video of multiple user IDs in a single file.</li><li>Web page recording (`web`): Records the content and audio on a specified web page in a single file.</li></ul> |
 
 The following parameters are required in the request body.
 
 | Parameter       | Type   | Description                                                  |
 | :-------------- | :----- | :----------------------------------------------------------- |
 | `cname`         | String | <ul><li> In web page recording mode, use `cname` to distinguish between recording sessions.</li><li> In other recording modes, use `cname` to set the name of the channel to be recorded. </li></ul>              |
-| `uid`           | String | A string containing the user ID of the recording client. Must be the same `uid` used in the [`acquire`](./acquire) method. |
+| `uid`           | String | A string containing the user ID of the recording client. Must be the same `uid` used in the [`acquire`](../rest-api/acquire) method. |
 | `clientRequest` | JSON   | A specific client request that requires the following parameters: <li>[`token`](../glossary#token): String. The dynamic key used for the channel to record. Ensure that you set this parameter if App Certificate is enabled for your application. See [Authenticate Your Users with Tokens](../../develop/authentication-workflow).</li><li>[`recordingConfig`](#recordingConfig): JSON. Configurations for subscribing to media streams.</li><li>[`recordingFileConfig`](#recordingFileConfig): JSON. Configurations for the recorded files.</li><li>[`snapshotConfig`](#snapshotConfig): JSON. Video screenshot configurations.</li><li>[`storageConfig`](#storageConfig): JSON. Third-party cloud storage configurations.</li><li>[`extensionServiceConfig`](#extensionServiceConfig): JSON. Configurations for third-party extension services. Currently supports ApsaraVideo for VoD and web page recording.</li> |
 
 ### Application configuration
@@ -50,7 +50,7 @@ The following parameters are required in the request body.
 
 `recordingConfig` is a JSON object for configuring how the Cloud Recording service subscribes to the media streams in the channel. `recordingConfig` has the following fields:
 
-- `channelType`: Number. The channel profile. Agora Cloud Recording must use the same channel profile as the Agora RTC SDK. Otherwise, issues may occur.
+- `channelType`: Number. The channel profile. Agora Cloud Recording must use the same channel profile as the Agora <Vg k="VSDK" />. Otherwise, issues may occur.
   - `0`: (Default) Communication profile.
   - `1`: Live broadcast profile.
 - `streamTypes`: (Optional) Number. The type of the media stream to subscribe to:
@@ -78,7 +78,7 @@ The following parameters are required in the request body.
   - `7`: AES_128_GCM2. 128-bit AES encryption, GCM mode. Compared to AES_128_GCM encryption mode, AES_128_GCM2 encryption mode is more secure and requires you to set the secret and salt.
 - `8`: AES_256_GCM2. 256-bit AES encryption, GCM mode. Compared to AES_256_GCM encryption mode, AES_256_GCM2 encryption mode is more secure and requires you to set the secret and salt.
 - `secret`: (Optional) String. The decryption password when decryption mode is enabled. If `decryptionMode` is not `0`, you need to set this value.
-- `salt`: (Optional) Base64 encoding, 32-bit bytes. The decryption [salt](../../../video-calling/develop/media-stream-encryption.html#_understand_the_tech) that needs to be set for the GCM2 encryption mode. If `decryptionMode` is `7` or `8`, you need to set this value.
+- `salt`: (Optional) Base64 encoding, 32-bit bytes. The decryption [salt](/video-calling/develop/media-stream-encryption#_understand_the_tech) that needs to be set for the GCM2 encryption mode. If `decryptionMode` is `7` or `8`, you need to set this value.
 - `audioProfile`: (Optional) Number. The profile of the output audio stream, including the sample rate, bitrate, encoding mode, and the number of channels. You cannot set this parameter in individual recording mode.
   - `0`: (Default) Sample rate of 48 kHz, music encoding, mono, and a bitrate of up to 48 Kbps.
   - `1`: Sample rate of 48 kHz, music encoding, mono, and a bitrate of up to 128 Kbps.
@@ -196,170 +196,148 @@ Agora supports only taking screenshots in a recording process or recording and t
   - `5`: [Microsoft Azure](https://azure.microsoft.com/en-us/services/storage/blobs/)
   - `6`: [Google Cloud](https://cloud.google.com/storage)
   - `7`: [Huawei Cloud](https://www.huaweicloud.com/intl/en-us/product/obs)
-  - `8`: [Baidu AI Cloud](https://intl.cloud.baidu.com/product/bos)
+  - `8`: [Baidu AI Cloud](https://intl.cloud.baidu.com/product/bos.html)
 
 - `region`: Number. The region information specified for the third-party cloud storage. The recording service only supports regions in the following lists:
 
-In order to improve the success rate and real-time performance when uploading recording files, if you set the `region` of the cloud recording service in the `acquire` method, make sure that the region of the third-party cloud storage corresponds to the same geographical region. For example, if the region of the cloud recording service is set to `NA` (North America), the third-party cloud storage needs to be set to a location within North America.
+  In order to improve the success rate and real-time performance when uploading recording files, if you set the `region` of the cloud recording service in the `acquire` method, make sure that the region of the third-party cloud storage corresponds to the same geographical region. For example, if the region of the cloud recording service is set to `NA` (North America), the third-party cloud storage needs to be set to a location within North America.
 
-```html	
-<details>
-		<summary><font color="#3ab7f8">When the third-party cloud storage is Qiniu Cloud (`vendor` = 0):</font></summary>
-<ul>
-<li>`0`: East China</li>
-<li>`1`: North China </li>
-<li>`2`: South China</li>
-<li>`3`: North America </li>
-<li>`4`: Southeast Asia</li>
-</ul>
-</details>
- 
-<details>
-		<summary><font color="#3ab7f8">When the third-party cloud storage is Amazon S3 (`vendor` = 1):</font></summary>
-<ul>
-<li>`0`: US_EAST_1 </li>
-<li>`1`: US_EAST_2 </li>
-<li>`2`: US_WEST_1 </li>
-<li>`3`: US_WEST_2 </li>
-<li>`4`: EU_WEST_1 </li>
-<li>`5`: EU_WEST_2 </li>
-<li>`6`: EU_WEST_3 </li>
-<li>`7`: EU_CENTRAL_1 </li>
-<li>`8`: AP_SOUTHEAST_1 </li>
-<li>`9`: AP_SOUTHEAST_2 </li>
-<li>`10`: AP_NORTHEAST_1 </li>
-<li>`11`: AP_NORTHEAST_2 </li>
-<li>`12`: SA_EAST_1 </li>
-<li>`13`: CA_CENTRAL_1 </li>
-<li>`14`: AP_SOUTH_1 </li>
-<li>`15`: CN_NORTH_1 </li>
-<li>`16`: CN_NORTHWEST_1</li>
-<li>`17`: US_GOV_WEST_1 </li>
-<li>`20`：AP_NORTHEAST_3</li>
-<li>`21`：EU_NORTH_1</li>
-<li>`22`：ME_SOUTH_1</li>
-<li>`23`：US_GOV_EAST_1</li>
-</ul>
-</details>
+  - Third-party cloud storage is Qiniu Cloud (`vendor` = 0):
+    - `0`: East China
+    - `1`: North China
+    - `2`: South China
+    - `3`: North America
+    - `4`: Southeast Asia
+  
+  - Third-party cloud storage is Amazon S3 (`vendor` = 1):
+    - `0`: US_EAST_1 
+    - `1`: US_EAST_2 
+    - `2`: US_WEST_1 
+    - `3`: US_WEST_2 
+    - `4`: EU_WEST_1 
+    - `5`: EU_WEST_2 
+    - `6`: EU_WEST_3 
+    - `7`: EU_CENTRAL_1 
+    - `8`: AP_SOUTHEAST_1 
+    - `9`: AP_SOUTHEAST_2 
+    - `10`: AP_NORTHEAST_1 
+    - `11`: AP_NORTHEAST_2 
+    - `12`: SA_EAST_1 
+    - `13`: CA_CENTRAL_1 
+    - `14`: AP_SOUTH_1 
+    - `15`: CN_NORTH_1 
+    - `16`: CN_NORTHWEST_1
+    - `17`: US_GOV_WEST_1 
+    - `20`：AP_NORTHEAST_3
+    - `21`：EU_NORTH_1
+    - `22`：ME_SOUTH_1
+    - `23`：US_GOV_EAST_1
+    - `24`: AP_SOUTHEAST_3
+    - `25`: EU_SOUTH_1
+    - `26`: AWS_REGION_NUM
+  - Third-party cloud storage is Alibaba Cloud (`vendor` = 2):
+    - `0`: CN_Hangzhou 
+    - `1`: CN_Shanghai 
+    - `2`: CN_Qingdao 
+    - `3`: CN_Beijing
+    - `4`: CN_Zhangjiakou 
+    - `5`: CN_Huhehaote 
+    - `6`: CN_Shenzhen 
+    - `7`: CN_Hongkong 
+    - `8`: US_West_1 
+    - `9`: US_East_1 
+    - `10`: AP_Southeast_1 
+    - `11`: AP_Southeast_2 
+    - `12`: AP_Southeast_3 
+    - `13`: AP_Southeast_5 
+    - `14`: AP_Northeast_1 
+    - `15`: AP_South_1 
+    - `16`: EU_Central_1 
+    - `17`: EU_West_1 
+    - `18`: EU_East_1
+    - `19`：AP_Southeast_6	
+    - `20`：CN_Heyuan	
+    - `21`：CN_Guangzhou		
+    - `22`：CN_Chengdu
+    For details, see <a href="https://www.alibabacloud.com/help/doc-detail/31837.html">Alibaba Cloud Documentation</a>.
+  - Third-party cloud storage is Tencent Cloud (`vendor` = 3):
+    - `0`：AP_Beijing_1
+    - `1`：AP_Beijing
+    - `2`：AP_Shanghai
+    - `3`：AP_Guangzhou
+    - `4`：AP_Chengdu 
+    - `5`：AP_Chongqing 
+    - `6`：AP_Shenzhen_FSI 
+    - `7`：AP_Shanghai_FSI 
+    - `8`：AP_Beijing_FSI 
+    - `9`：AP_Hongkong 
+    - `10`：AP_Singapore 
+    - `11`：AP_Mumbai 
+    - `12`：AP_Seoul 
+    - `13`：AP_Bangkok 
+    - `14`：AP_Tokyo 
+    - `15`：NA_Siliconvalley 
+    - `16`：NA_Ashburn 
+    - `17`：NA_Toronto 
+    - `18`：EU_Frankfurt 
+    - `19`：EU_Moscow
+  - Third-party cloud storage is Kingsoft Cloud (`vendor` = 4):
+    - `0`：CN_Hangzhou
+    - `1`：CN_Shanghai
+    - `2`：CN_Qingdao
+    - `3`：CN_Beijing
+    - `4`：CN_Guangzhou
+    - `5`：CN_Hongkong
+    - `6`：JR_Beijing
+    - `7`：JR_Shanghai
+    - `8`：NA_Russia_1
+    - `9`：NA_Singapore_1
+  - Third-party cloud storage is Microsoft Azure (`vendor` = 5), the `region` parameter has no effect, if it is set or not.
+  - Third-party cloud storage is Google Cloud (`vendor` = 6), the `region` parameter has no effect, if it is set or not.
+  - Third-party cloud storage is Huawei Cloud (`vendor` = 7):
+    - `0`：CN_North_1
+    - `1`：CN_North_4
+    - `2`：CN_East_2
+    - `3`：CN_East_3
+    - `4`：CN_South_1
+    - `5`：CN_Southwest_2
+    - `6`：AP_Southeast_1
+    - `7`：AP_Southeast_2
+    - `8`：AP_Southeast_3
+    - `9`：AF_South_1
+    - `10`：SA_Argentina_1
+    - `11`：SA_Peru_1
+    - `12`：NA_Mexico_1
+    - `13`：SA_Brazil_1
+    - `14`：LA_South_2
+    - `15`：SA_Chile_1
+  - Third-party cloud storage is Huawei Cloud (`vendor` = 7):
+    - `0`：CN_North_1
+    - `1`：CN_North_4
+    - `2`：CN_East_2
+    - `3`：CN_East_3
+    - `4`：CN_South_1
+    - `5`：CN_Southwest_2
+    - `6`：AP_Southeast_1
+    - `7`：AP_Southeast_2
+    - `8`：AP_Southeast_3
+    - `9`：AF_South_1
+    - `10`：SA_Argentina_1
+    - `11`：SA_Peru_1
+    - `12`：NA_Mexico_1
+    - `13`：SA_Brazil_1
+    - `14`：LA_South_2
+    - `15`：SA_Chile_1
+  - Third-party cloud storage is Baidu AI Cloud (`vendor` = 8):
+    - `0`：Beijing
+    - `1`：Baoding
+    - `2`：Suzhou
+    - `3`：Guangzhou
+    - `4`：Hongkong
+    - `5`：Singapore
+    - `6`：Wuhan
+    - `7`：Shanghai
 
-<details>
-<summary><font color="#3ab7f8">When the third-party cloud storage is Alibaba Cloud (`vendor` = 2):</font></summary>
-<ul>
-<li>`0`: CN_Hangzhou </li>
-<li>`1`: CN_Shanghai </li>
-<li>`2`: CN_Qingdao </li>
-<li>`3`: CN_Beijing</li>
-<li>`4`: CN_Zhangjiakou </li>
-<li>`5`: CN_Huhehaote </li>
-<li>`6`: CN_Shenzhen </li>
-<li>`7`: CN_Hongkong </li>
-<li>`8`: US_West_1 </li>
-<li>`9`: US_East_1 </li>
-<li>`10`: AP_Southeast_1 </li>
-<li>`11`: AP_Southeast_2 </li>
-<li>`12`: AP_Southeast_3 </li>
-<li>`13`: AP_Southeast_5 </li>
-<li>`14`: AP_Northeast_1 </li>
-<li>`15`: AP_South_1 </li>
-<li>`16`: EU_Central_1 </li>
-<li>`17`: EU_West_1 </li>
-<li>`18`: EU_East_1</li>
-<li>`19`：AP_Southeast_6</li>	
-<li>`20`：CN_Heyuan</li>	
-<li>`21`：CN_Guangzhou</li>		
-<li>`22`：CN_Chengdu</li>	
-</ul>
-For details, see <a href="https://www.alibabacloud.com/help/doc-detail/31837.html">Alibaba Cloud Documentation</a>.
-</details>
-
-<details>
-<summary><font color="#3ab7f8">When the third-party cloud storage is Tencent Cloud (`vendor` = 3):</font></summary>
-<ul>
-<li>`0`：AP_Beijing_1</li>
-<li>`1`：AP_Beijing</li>
-<li>`2`：AP_Shanghai</li>
-<li>`3`：AP_Guangzhou</li>
-<li>`4`：AP_Chengdu </li>
-<li>`5`：AP_Chongqing </li>
-<li>`6`：AP_Shenzhen_FSI </li>
-<li>`7`：AP_Shanghai_FSI </li>
-<li>`8`：AP_Beijing_FSI </li>
-<li>`9`：AP_Hongkong </li>
-<li>`10`：AP_Singapore </li>
-<li>`11`：AP_Mumbai </li>
-<li>`12`：AP_Seoul </li>
-<li>`13`：AP_Bangkok </li>
-<li>`14`：AP_Tokyo </li>
-<li>`15`：NA_Siliconvalley </li>
-<li>`16`：NA_Ashburn </li>
-<li>`17`：NA_Toronto </li>
-<li>`18`：EU_Frankfurt </li>
-<li>`19`：EU_Moscow</li>
-</ul>
-</details>
-	
-<details>
-<summary><font color="#3ab7f8">When the third-party cloud storage is Kingsoft Cloud (`vendor` = 4):</font></summary>
-<ul>
-<li>`0`：CN_Hangzhou</li>
-<li>`1`：CN_Shanghai</li>
-<li>`2`：CN_Qingdao</li>
-<li>`3`：CN_Beijing</li>
-<li>`4`：CN_Guangzhou</li>
-<li>`5`：CN_Hongkong</li>
-<li>`6`：JR_Beijing</li>
-<li>`7`：JR_Shanghai</li>
-<li>`8`：NA_Russia_1</li>
-<li>`9`：NA_Singapore_1</li>
-</ul>
-</details>
-	
-<details>
-		<summary><font color="#3ab7f8">When the third-party cloud storage is Microsoft Azure (`vendor` = 5): </font></summary>
-		The `region` parameter has no effect, whether or not it is set.
-</details>
-	
-<details>
-		<summary><font color="#3ab7f8">When the third-party cloud storage is Google Cloud (`vendor` = 6): </font></summary>
-		The `region` parameter has no effect, whether or not it is set.
-</details>
-	
-<details>
-<summary><font color="#3ab7f8">When the third-party cloud storage is Huawei Cloud (`vendor` = 7):</font></summary>
-<ul>
-<li>`0`：CN_North_1</li>
-<li>`1`：CN_North_4</li>
-<li>`2`：CN_East_2</li>
-<li>`3`：CN_East_3</li>
-<li>`4`：CN_South_1</li>
-<li>`5`：CN_Southwest_2</li>
-<li>`6`：AP_Southeast_1</li>
-<li>`7`：AP_Southeast_2</li>
-<li>`8`：AP_Southeast_3</li>
-<li>`9`：AF_South_1</li>
-<li>`10`：SA_Argentina_1</li>
-<li>`11`：SA_Peru_1</li>
-<li>`12`：NA_Mexico_1</li>
-<li>`13`：SA_Brazil_1</li>
-<li>`14`：LA_South_2</li>
-<li>`15`：SA_Chile_1</li>
-</ul>
-</details>
-	
-<details>
-<summary><font color="#3ab7f8">When the third-party cloud storage is Baidu AI Cloud (`vendor` = 8):</font></summary>
-<ul>
-<li>`0`：Beijing</li>
-<li>`1`：Baoding</li>
-<li>`2`：Suzhou</li>
-<li>`3`：Guangzhou</li>
-<li>`4`：Hongkong</li>
-<li>`5`：Singapore</li>
-<li>`6`：Wuhan</li>
-<li>`7`：Shanghai</li>
-</ul>
-</details>		
-```
 - `bucket`: String. The bucket name of the third-party cloud storage.
 
 - `accessKey`: String. The access key of the third-party cloud storage. Agora suggests that you use a write-only access key.
@@ -380,7 +358,7 @@ For details, see <a href="https://www.alibabacloud.com/help/doc-detail/31837.htm
 <a name="extensionServiceConfig"></a>
 ### Extension service configuration
 
-`extensionServiceConfig` is a JSON Object for extension service configurations. Extension services are a collection of applications that process the media streams generated from the Agora RTC SDK. One example extension service is VoD service.
+`extensionServiceConfig` is a JSON Object for extension service configurations. Extension services are a collection of applications that process the media streams generated from the Agora <Vg k="VSDK" />. One example extension service is VoD service.
 
 `extensionServiceConfig` has the following fields:
 

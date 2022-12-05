@@ -41,8 +41,8 @@ After the recording is over, the cloud recording service uploads the recording f
   - [Microsoft Azure](https://azure.microsoft.com/en-us/services/storage/blobs/)
   - [Google Cloud](https://cloud.google.com/storage)
   - [Huawei Cloud](https://www.huaweicloud.com/intl/en-us/product/obs)
-  - [Baidu AI Cloud](https://intl.cloud.baidu.com/product/bos)
-- Ensure that you have joined the RTC channel and have users in the channel and are streaming.
+  - [Baidu AI Cloud](https://intl.cloud.baidu.com/product/bos.html)
+- Ensure that you have joined the <Vg k="VSDK" /> channel and have users in the channel and are streaming.
 
 ## Project setup
 
@@ -62,7 +62,7 @@ Now, you can use Agora Cloud Recording and see the usage statistics in the **Usa
 ## Implement the cloud recording
 
 The following figure shows the API call sequence of a cloud recording:
-Querying the recording status ([`query`](#query)), updating the subscription list ([`update`](#update)), and updating the video layout ([`updateLayout`](#updateLayout)) are optional and can be called multiple times, but they must be called during the recording process, that is, after the recording starts and before the recording ends.
+Querying the recording status ([`query`](#query)), updating the subscription list ([`update`](#update)), and updating the video layout ([`updateLayout`](#update-video-layout)) are optional and can be called multiple times, but they must be called during the recording process, that is, after the recording starts and before the recording ends.
 ![](https://web-cdn.agora.io/docs-files/1627527945942)
 
 ### Pass the basic HTTP authentication
@@ -137,7 +137,7 @@ curl --location --request POST  'https://api.agora.io/v1/apps/<appid>/cloud_reco
         },
 		# Set the recordingConfig related parameters.
         "recordingConfig": {
-		   # Which is consistent with the "channelType" of the Agora RTC SDK.
+		   # Which is consistent with the "channelType" of the Agora <Vg k="VSDK" />.
             "channelType": 0
         }
     }
@@ -232,11 +232,11 @@ During the recording, you can call [`update`](../reference/rest-api/update) to u
 <a name="updateLayout"></a>
 ### Update video layout
 
-During the recording, you can call the [`updateLayout`](../reference/rest-api/rest#updateLayout) method to set or update the video layout. See [Set Video Layout](../develop/layout) for details.
+During the recording, you can call the [`updateLayout`](../reference/rest-api/update#updatelayout-update-the-video-mixing-layout) method to set or update the video layout. See [Set Video Layout](../develop/layout) for details.
 
 ### Sample project
 
-Agora provides a [Postman collection](https://github.com/AgoraIO/Agora-RESTful-Service/blob/master/cloud-recording/README.md), which contains sample requests of RESTful API for a cloud recording. You can use the collection to quickly grasp the basic functionalities of the Cloud Recording RESTful APIs. You only need to import the collection to Postman and set your environment variables.
+Agora provides a [Postman collection](https://documenter.getpostman.com/view/6319646/SVSLr9AM), which contains sample requests of RESTful API for a cloud recording. You can use the collection to quickly grasp the basic functionalities of the Cloud Recording RESTful APIs. You only need to import the collection to Postman and set your environment variables.
 
 You can also use Postman to generate code snippets written in various programming languages. To do so, select a request, click **Code**, and select the desired language in **GENERATE CODE SNIPPETS**.
 

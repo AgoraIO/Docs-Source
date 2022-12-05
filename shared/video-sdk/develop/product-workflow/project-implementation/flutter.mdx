@@ -25,9 +25,9 @@ Row(
     ],
 ),
 ElevatedButton(
+    onPressed: _isJoined ? () => {shareScreen()} : null,
     child: Text(
         _isScreenShared ? "Stop sharing screen" : "Share screen"),
-    onPressed: () => {shareScreen()},
 ),
 ```
 
@@ -69,44 +69,92 @@ To implement these features in your <Vpl k="CLIENT" />, take the following steps
 
     When a user presses the screen sharing button, you call a method to start screen sharing. When the user presses the button again, you call the method to stop screen capture. To do this, add the following method to the `_MyAppState` class:
 
-    ```dart
-    Future<void> shareScreen() async {
-        setState(() {
-        _isScreenShared = !_isScreenShared;
-        });
+        ```dart
+        Future<void> shareScreen() async {
+            setState(() {
+            _isScreenShared = !_isScreenShared;
+            });
 
-        if (_isScreenShared) {
-            agoraEngine.startScreenCaptureByScreenRect(
-                screenRect:  const Rectangle(x:0,y:0, width:640, height:400),
-                regionRect:  const Rectangle(),
-                captureParams: const ScreenCaptureParameters(
-                    captureMouseCursor: true,
-                    frameRate: 30,
-                )
+            if (_isScreenShared) {
+                // Start screen sharing
+
+            } else {
+                await agoraEngine.stopScreenCapture();
+            }
+
+            // Update channel media options to publish camera or screen capture streams
+            ChannelMediaOptions options = ChannelMediaOptions(
+                publishCameraTrack: !_isScreenShared,
+                publishMicrophoneTrack: !_isScreenShared,
+                publishScreenTrack: _isScreenShared,
+                publishScreenCaptureAudio: _isScreenShared,
+                publishScreenCaptureVideo: _isScreenShared,
             );
-        } else {
-            await agoraEngine.stopScreenCapture();
+
+            agoraEngine.updateChannelMediaOptions(options);
         }
+        ```
+1. **Call the method to start screen sharing**
 
-        // Set and update channel media options
-        ChannelMediaOptions options = ChannelMediaOptions(
-            publishScreenTrack: _isScreenShared,
-            publishCameraTrack: !_isScreenShared,
-        );
+    Depending on your target platform, you call a suitable <Vpd k="SDK" /> method to start screen sharing when the button is pressed. Copy the code for your target platform and add it to `shareScreen()` after `// Start screen sharing`:
 
-        agoraEngine.updateChannelMediaOptions(options);
-    }
-    ```
+    * **Windows and macOS**
 
-    ---
-    **Note**
+        On a multi-window system, you obtain a list of available windows and displays and choose the source to share.
 
-    The Flutter screen sharing methods used in this example currently work only on the Windows platform. You need a custom implementation to enable screen sharing on other platforms.
-    ---
+        ```dart
+        // Get the list of available windows and displays.
+        List<ScreenCaptureSourceInfo> screenCaptureSourceList;
+        screenCaptureSourceList = await agoraEngine.getScreenCaptureSources(
+            thumbSize: const SIZE(width: 360, height: 240),
+            iconSize: const SIZE(width: 360, height: 240),
+            includeScreen: false);
+
+        // In a real-life app, you list the sources and let the user choose.
+        // For this demo, get the sourceId of the last item in the list.
+        int? sourceId = screenCaptureSourceList.last.sourceId ?? 0;
+
+        // Share the entire screen or a particular window.
+        if (screenCaptureSourceList.last.type == ScreenCaptureSourceType.screencapturesourcetypeScreen) {
+            // The source is a screen
+            agoraEngine.startScreenCaptureByDisplayId(
+                displayId: sourceId,
+                regionRect: const Rectangle(),
+                captureParams: const ScreenCaptureParameters(
+                captureMouseCursor: true,
+                frameRate: 30,
+                ));
+        } else { 
+            // The source is a window
+            agoraEngine.startScreenCaptureByWindowId(
+                windowId: sourceId,
+                regionRect: const Rectangle(),
+                captureParams: const ScreenCaptureParameters(
+                captureMouseCursor: true,
+                frameRate: 30,
+                ));
+        }        
+        ```
+
+    * **iOS and Android**
+
+        On iOS and Android, you share the entire screen using the following method:
+
+        ```dart
+        agoraEngine.startScreenCapture(const ScreenCaptureParameters2(
+            captureAudio: true,
+            audioParams: ScreenAudioParameters(
+                sampleRate: 16000, channels: 2, captureSignalVolume: 100),
+            captureVideo: true,
+            videoParams: ScreenVideoParameters(
+                dimensions: VideoDimensions(height: 1280, width: 720),
+                frameRate: 15,
+                bitrate: 600)));  
+        ```  
 
 1. **Show screen sharing preview**
 
-    When a user starts screen sharing, the <Vpl k="CLIENT" /> switches to showing screen preview in the local video container. To do this, you update the code in the `_localPreview` widget. In `_MyAppState_` class, **replace** the `_localPreview` method with the following:
+    When a user starts screen sharing, your <Vpl k="CLIENT" /> switches to showing screen preview in the local video container. To do this, you update the `_localPreview` widget. In `_MyAppState_` class, **replace** the `_localPreview` method with the following:
 
     ```dart
     Widget _localPreview() {
@@ -122,17 +170,18 @@ To implement these features in your <Vpl k="CLIENT" />, take the following steps
             } else {
                 return AgoraVideoView(
                     controller: VideoViewController(
-                    rtcEngine: agoraEngine,
-                    canvas: const VideoCanvas(
-                        uid: 0,
-                        sourceType: VideoSourceType.videoSourceScreen,
-                    ),
-                    ));
-            }   
+                rtcEngine: agoraEngine,
+                canvas: const VideoCanvas(
+                    uid: 0,
+                    sourceType: VideoSourceType.videoSourceScreen,
+                ),
+                ));
+            }
         } else {
-            return const Text('Join a channel', 
+            return const Text(
+                'Join a channel',
                 textAlign: TextAlign.center,
-        );
+            );
         }
     }
     ```

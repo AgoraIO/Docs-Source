@@ -124,14 +124,251 @@ To create a simple interface for testing speech to text functionality you add tw
     }
     ```
 
-1.
+1. **Obtain the buildToken**
 
-1.
+    ```java
+    public void getBuildToken() throws IOException {
+        httpClient = new OkHttpClient().newBuilder().build();
+        MediaType mediaType = MediaType.parse("application/json");
+        RequestBody body = RequestBody.create("{\n \"instanceId\" : \"SpeechtoText\" \n}", mediaType);
+        Request request = new Request.Builder()
+                .addHeader("Authorization", Authorization)
+                .url(baseUrl + "/v1/projects/" + appId + "/rtsc/speech-to-text/builderTokens")
+                .method("POST", body)
+                .build();
 
-1.
+        httpClient.newCall(request)
+            .enqueue(new Callback() {
+                @Override
+                public void onFailure(final Call call, IOException e) {
+                    // Error
+                    showMessage(e.toString());
+                }
 
-1.
+                @Override
+                public void onResponse(Call call, final Response response) throws IOException {
+                    String result = response.body().string();
+                    String message = "";
+                    try {
+                        JSONObject jsonObject = new JSONObject(result);
+                        if (response.isSuccessful()) {
+                            builderToken = jsonObject.getString("tokenName");
+                            showMessage("BuildToken received: " + builderToken);
+                            startSpeechToText();
+                        } else {
+                            message = jsonObject.getString("message");
+                            showMessage("BuildToken not received: " + message);
+                        }
+                    } catch (Exception e) {
+                        showMessage("Exception fetching buildToken: " + e.toString());
+                    }
+                }
+            });
+    }
+    ```
 
-1.
+1. **Start**
+
+    ```java
+    public void startSpeechToText() throws JSONException {
+        String url = baseUrl + "/v1/projects/" + appId
+                + "/rtsc/speech-to-text/tasks?" + "builderToken=" + builderToken;
+        // Build Request body JSON
+        JSONObject startConfig = new JSONObject()
+            .put("audio", new JSONObject()
+                .put("subscribeSource", "AGORARTC")
+                .put("agoraRtcConfig", new JSONObject()
+                    .put("channelName", channelName)
+                    .put("uid", uid)
+                    .put("token", token)
+                    .put("channelType", "LIVE_TYPE")
+                    .put("subscribeConfig", new JSONObject()
+                            .put("subscribeMode", "CHANNEL_MODE"))
+                    .put("maxIdleTime", 60)))
+        .put("config", new JSONObject()
+            .put("features", new JSONArray()
+                    .put("RECOGNIZE"))
+            .put("recognizeConfig", new JSONObject()
+                .put("language", "ENG")
+                .put("model", "Model")
+                .put("output", new JSONObject()
+                    .put("destinations", new JSONArray()
+                            .put("AgoraRTCDataStream")
+                            .put("Storage"))
+                    .put("agoraRTCDataStream", new JSONObject()
+                            .put("channelName", channelName)
+                            .put("uid", uid)
+                            .put("token", token)
+                    ).put("cloudStorage", new JSONArray()
+                        .put(new JSONObject()
+                            .put("format", "HLS")
+                            .put("storageConfig", new JSONObject()
+                                .put("accessKey", "<YourOssAccessKey>")
+                                .put("secretKey", "<YourOssSecretKey>")
+                                .put("bucket", "<YourOssBucketName>")
+                                .put("vendor", "<YourOssVendor>")
+                                .put("region", "<YourOssRegion>")
+                                .put("fileNamePrefix", "<YourOssPrefix>")
+                            )
+                        )
+                    )
+                )
+            )
+            );
+
+        httpClient = new OkHttpClient().newBuilder().build();
+        MediaType mediaType = MediaType.parse("application/json");
+        RequestBody body = RequestBody.create(startConfig.toString(), mediaType);
+        Request request = new Request.Builder()
+            .addHeader("Authorization", Authorization)
+            .url(url)
+            .method("POST", body)
+            .build();
+
+        httpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(final Call call, IOException e) {
+                showMessage(e.toString());
+            }
+
+            @Override
+            public void onResponse(Call call, final Response response) throws IOException {
+                String result = response.body().string();
+                if (response.isSuccessful()) {
+                    try {
+                        JSONObject jsonObject = new JSONObject(result);
+                        String status = jsonObject.getString("status");
+                        speechToTextTaskId = jsonObject.getString("taskId");
+                        if (status.equals("IN_PROGRESS") || status.equals("PREPARING")) {
+                            isSpeechToTextRunning = true;
+                            runOnUiThread(() -> btnSpeechToText.setText("Stop speech to text"));
+                            showMessage("Speech to text started");
+                        } else {
+                            isSpeechToTextRunning = false;
+                            showMessage("Speech to text status: " + status);
+                        }
+                    } catch (Exception e) {
+                        Log.i("Error parsing start call response", result);
+                    }
+                } else {
+                    showMessage("Exception starting speech-to-text task: " + result);
+                }
+            }
+        }
+        );
+    }
+    ```
+
+1. **Query**
+
+    ```java
+    public void querySpeechToText() {
+        String url = baseUrl + "/v1/projects/" + appId
+                + "/rtsc/speech-to-text/tasks?" + "builderToken=" + builderToken;
+        httpClient = new OkHttpClient().newBuilder().build();
+        MediaType mediaType = MediaType.parse("application/json");
+        //RequestBody body = RequestBody.create(startConfig.toString(), mediaType);
+        Request request = new Request.Builder()
+                .addHeader("Authorization", Authorization)
+                .url(url)
+                .get()
+                .build();
+
+        httpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(final Call call, IOException e) {
+                // Error
+                showMessage(e.toString());
+            }
+
+            @Override
+            public void onResponse(Call call, final Response response) throws IOException {
+                String result = response.body().string();
+                try {
+                    JSONObject jsonObject = new JSONObject(result);
+                    if (response.isSuccessful()) {
+                        String status = jsonObject.getString("status");
+                        speechToTextTaskId = jsonObject.getString("taskId");
+                        if (status.equals("IN_PROGRESS") || status.equals("PREPARING")) {
+                            isSpeechToTextRunning = true;
+                            runOnUiThread(() -> btnSpeechToText.setText("Stop speech to text"));
+                            showMessage("Speech to text started");
+                        } else {
+                            isSpeechToTextRunning = false;
+                            speechToTextTaskId = "";
+                            showMessage("Speech to text status: " + status + "");
+                        }
+                    } else {
+                        String message = jsonObject.getString("message");
+                        showMessage("Exception querying speech-to-text task: " + message);
+                    }
+
+                } catch (Exception e) {
+                    Log.i("Error parsing query call response", result);
+                }
+            }
+        }
+        );
+    }
+    ```
+
+1. **Stop**
+
+    ```java
+    public void stopSpeechToText() {
+        String url = baseUrl + "/v1/projects/" + appId
+                + "/rtsc/speech-to-text/tasks/" + speechToTextTaskId
+                + "?builderToken=" + builderToken;
+
+        httpClient = new OkHttpClient().newBuilder().build();
+        MediaType mediaType = MediaType.parse("application/json");
+        Request request = new Request.Builder()
+                .url(url)
+                .delete()
+                .build();
+
+        httpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(final Call call, IOException e) {
+                // Error
+                showMessage(e.toString());
+            }
+
+            @Override
+            public void onResponse(Call call, final Response response) throws IOException {
+                String result = response.body().string();
+                if (response.isSuccessful()) {
+                    showMessage("Speect to text task stopped");
+                    speechToTextTaskId = "";
+                    isSpeechToTextRunning = false;
+                } else {
+                    showMessage("Exception stopping speech-to-text task: " + result);
+                }
+            }
+        }
+        );
+    }
+    ```
+
+
+1. **Run**
+
+    ```java
+    public void query(View view) {
+        querySpeechToText();
+    }
+
+    public void SpeechToText(View view) {
+        if (!isSpeechToTextRunning) {
+            try {
+                getAuthorization();
+            } catch (Exception e) {
+                showMessage(e.toString());
+            }
+        } else {
+            stopSpeechToText();
+        }
+    }
+    ```
 
 </PlatformWrapper>

@@ -15,7 +15,7 @@ The platforms supported by Flexible Classroom and their compatibility requiremen
 
 | Platform | Compatibility requirements | Recommended hardware settings |
 | :------ |:--------| :--------- |
-| Web | The browsers supported by the web client of Flexible Classroom are as follows:<ul><li>Windows: <ul><li>Chrome 89 or later</li><li>The latest version of Firefox</li></ul><li>macOS:<ul><li>Safari 13 or later</li><li>Chrome 89 or later</li><li>The latest version of Firefox</li></ul></li><li>Android:<ul><li>The latest version of Chrome</li><li>The latest version of the WeChat browser</li></ul></li></li><li>iOS:<ul><li>The latest version of Safari, Chrome, and the WeChat browser</li><li>Safari and Chrome on Apple iPad 10.0 or later</li></ul></li></ul> | <li>Using the web client of Flexible Classroom on mobile browsers has several known issues. For details, see the <a href="/en/Video/web_sdk_known_issues#mobile" target="_blank">known issues</a>.</li><li>To ensure a better end-user experience, Agora highly recommends using Flexible Classroom on the latest version of Desktop Chrome.</li> |
+| Web | The browsers supported by the web client of Flexible Classroom are as follows:<ul><li>Windows: <ul><li>Chrome 89 or later</li><li>The latest version of Firefox</li></ul><li>macOS:<ul><li>Safari 13 or later</li><li>Chrome 89 or later</li><li>The latest version of Firefox</li></ul></li></li></ul> | To ensure a better end-user experience, Agora highly recommends using Flexible Classroom on the latest version of Desktop Chrome. |
 
 </PlatformWrapper>
 

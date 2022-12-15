@@ -63,8 +63,7 @@ export const AGORA_CONSOLE_URL = `http://console.agora.io`;
 export const AGORA_WEBDEMO_URL = `https://webdemo.agora.io`;
 export const API_REF_ANDROID = `http://api.agora.io/android`;
 
-export const PLATFORM = 'dummy';
-
+export const PLATFORM = `${AGORA_BACKEND}`;
 export const VIDEO = 'Video Calling';
 export const AUDIO = 'Voice Calling';
 export const ASDK = 'Voice SDK';
@@ -87,6 +86,8 @@ export const AV = 'Audio/Video';
 
 export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
+export const NCS = `NCS`;
+export const NCS_LONG = `Notification Center Service`;
 export const SIG = `${MESS}`;
 export const SIG_RELEASE_API = `1.x`;
 export const SIG_SDK_API_REF_ROOT = `${API_ROOT}/signaling-sdk`;

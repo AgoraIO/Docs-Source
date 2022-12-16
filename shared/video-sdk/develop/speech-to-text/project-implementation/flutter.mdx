@@ -7,21 +7,23 @@ To create a simple interface for testing speech to text functionality, you add t
 ```dart
 ElevatedButton(
 onPressed: !_isJoined ? null : () => {speechToText()},
-child: const Text("Start speech to text"),
+child: isSpeechToTextRunning ? const Text("Stop speech to text")
+    : const Text("Start speech to text"),
 ),
 ElevatedButton(
-onPressed: !_isJoined ? null : () => {querySpeechToText()},
+onPressed: (_isJoined && isSpeechToTextRunning) ? () => {querySpeechToText()} : null,
 child: const Text("Query speech to text"),
+),
 ```
 
 ### Handle the system logic
 
 1. **Integrate a `HTTP` client library into your project**
 
-    To call `HTTP` methods that start, stop, and query a speech-to-text task, you add a `HTTP` client library to your project. Open `/Gradle Scripts/build.gradle (Module: <project name>.app)` and add the following line under `dependencies {`:
+    To call `HTTP` methods that start, stop, and query a speech-to-text task, you add a `HTTP` client library to your project. Open `pubspec.yaml` and add the following line under `dependencies:`
 
     ```groovy
-    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
+      http: ^0.13.5
     ```
 
 1. **Import the required classes**
@@ -29,6 +31,7 @@ child: const Text("Query speech to text"),
     To use the relevant `okhttp` classes in your project, add the following statements after the last `import` statement in `/app/java/com.example.<projectname>/MainActivity`.
 
     ```dart
+    import 'dart:typed_data';
     import 'dart:convert';
     import 'package:http/http.dart' as http;
     ```
@@ -38,14 +41,13 @@ child: const Text("Query speech to text"),
     In `/app/java/com.example.<projectname>/MainActivity`, add the following declarations to the `MainActivity` class:
 
     ```dart
-    private String baseUrl = "https://api.agora.io";
-    private String apiKey = "<your API key from Agora console>";
-    private String apiSecret = "<your API secret from Agora console>";
-    private String instanceID = "Test-1";
-    private String authorizationHeader, builderToken;
-    private String speechToTextTaskId = ""; // Returned by the start method
-    private boolean isSpeechToTextRunning = false;
-    private Button btnSpeechToText;
+    String baseUrl = "https://api.agora.io";
+    String apiKey = "<your API key from Agora console>";
+    String apiSecret = "<your API secret from Agora console>";
+    String instanceId = "Test-1";
+    String authorizationHeader = "", builderToken = "";
+    String speechToTextTaskId = ""; // Returned by the start method
+    bool isSpeechToTextRunning = false;
     ```
 
 ### Manage a speech-to-text task
@@ -57,52 +59,36 @@ Take the following steps to start, stop and query a text-to-speech task in your 
     To use the speech to text RESTful API, you generate a Base64-encoded credential with the API key and secret provided by <Vg k="COMPANY" />. You add this credential to the request header as a parameter named `Authorization`. In the request body, you pass a parameter `instanceID` that you choose to identify the instance. To [acquire a `builderToken`](#acquire-a-buildertoken), add the following method to the `MainActivity` class:
 
     ```dart
-    public void getBuilderToken() throws IOException {
-        String url = baseUrl + "/v1/projects/" + appId + "/rtsc/speech-to-text/builderTokens";
+    Future<void> getBuilderToken() async {
+        String url = "$baseUrl/v1/projects/$appId/rtsc/speech-to-text/builderTokens";
         // Concatenate the key and secret and use base64 encoding
-        String plainCredentials = apiKey + ":" + apiSecret;
-        String base64Credentials = new String(Base64.getEncoder()
-            .encode(plainCredentials.getBytes()));
-
+        String plainCredentials = "$apiKey:$apiSecret";
+        String base64Credentials = base64Encode(utf8.encode(plainCredentials));
         // Create authorization header
-        authorizationHeader = "Basic " + base64Credentials;
-        OkHttpClient httpClient = new OkHttpClient().newBuilder().build();
-        MediaType mediaType = MediaType.parse("application/json");
+        authorizationHeader = "Basic $base64Credentials";
 
-        RequestBody body = RequestBody.create("{\n \"instanceId\" : \""
-            + instanceID + "\" \n}", mediaType);
-        Request request = new Request.Builder()
-            .addHeader("Authorization", authorizationHeader)
-            .url(url)
-            .method("POST", body)
-            .build();
+        // Send the request
+        final response = await http.post(
+            Uri.parse(url),
+            headers: <String, String>{
+                'Content-Type': 'application/json; charset=UTF-8',
+                "Authorization": authorizationHeader
+            },
+            body: jsonEncode(<String, String>{
+                'instanceId': instanceId,
+            }),
+        );
 
-        httpClient.newCall(request)
-            .enqueue(new Callback() {
-                @Override
-                public void onFailure(final Call call, IOException e) {
-                    showMessage(e.toString());
-                }
-
-                @Override
-                public void onResponse(Call call, final Response response) throws IOException {
-                    String result = response.body().string();
-                    String message = "";
-                    try {
-                        JSONObject jsonObject = new JSONObject(result);
-                        if (response.isSuccessful()) {
-                            builderToken = jsonObject.getString("tokenName");
-                            showMessage("builderToken received" );
-                            startSpeechToText();
-                        } else {
-                            message = jsonObject.getString("message");
-                            showMessage("builderToken not received: " + message);
-                        }
-                    } catch (Exception e) {
-                        showMessage("Exception fetching builderToken: " + e.toString());
-                    }
-                }
-            });
+        if (response.statusCode == 200) {
+            // If the server returns an OK response, then parse the JSON.
+            Map<String, dynamic> json = jsonDecode(response.body);
+            builderToken = json["tokenName"];
+            showMessage("builderToken received" );
+        } else {
+            Map<String, dynamic> json = jsonDecode(response.body);
+            String message = json["message"];
+            showMessage("builderToken not received: $message");
+        }
     }
     ```
 
@@ -113,95 +99,79 @@ Take the following steps to start, stop and query a text-to-speech task in your 
     To [start a speech-to-text task](#start-a-speech-to-text-task), you create a JSON configuration and pass it in the body of a `POST` request. You add the `builderToken` as a query parameter to the URL. Upon success, the method returns a `taskId` that you use to query or stop the task later on. To start a task, add the following method to the `MainActivity` class:
 
     ```dart
-    public void startSpeechToText() throws JSONException {
-        String url = baseUrl + "/v1/projects/" + appId
-                + "/rtsc/speech-to-text/tasks?" + "builderToken=" + builderToken;
-        // Build Request body JSON
-        JSONObject startConfig = new JSONObject()
-            .put("audio", new JSONObject()
-                .put("subscribeSource", "AGORARTC")
-                .put("agoraRtcConfig", new JSONObject()
-                        .put("channelName", channelName)
-                        .put("uid", String.valueOf(uid))
-                        .put("token", token)
-                        .put("channelType", "LIVE_TYPE")
-                        .put("subscribeConfig", new JSONObject()
-                                .put("subscribeMode", "CHANNEL_MODE"))
-                        .put("maxIdleTime", 60)))
-            .put("config", new JSONObject()
-                .put("features", new JSONArray()
-                        .put("RECOGNIZE"))
-                .put("recognizeConfig", new JSONObject()
-                    .put("language", "ENG")
-                    .put("model", "Model")
-                    .put("output", new JSONObject()
-                            .put("destinations", new JSONArray()
-                                .put("AgoraRTCDataStream")
-                                .put("Storage"))
-                            .put("agoraRTCDataStream", new JSONObject()
-                                .put("channelName", channelName)
-                                .put("uid", String.valueOf(uid))
-                                .put("token", token))
-                            .put("cloudStorage", new JSONArray()
-                                .put(new JSONObject()
-                                    .put("format", "HLS")
-                                    .put("storageConfig", new JSONObject()
-                                        .put("accessKey", "<YourOssAccessKey>")
-                                        .put("secretKey", "<YourOssSecretKey>")
-                                        .put("bucket", "<YourOssBucketName>")
-                                        .put("vendor", 0) // Your Oss Vendor id
-                                        .put("region", 0) // Your Oss Region id
-                                        .put("fileNamePrefix", new JSONArray()
-                                            .put("directory1")
-                                            .put("directory2")
-                                        )
-                                    )
-                                )
-                            )
-                    )
-                )
-            );
+    void startSpeechToText() async {
+        String url = "$baseUrl/v1/projects/$appId/rtsc/speech-to-text/tasks?builderToken=$builderToken";
 
-        OkHttpClient httpClient = new OkHttpClient().newBuilder().build();
-        MediaType mediaType = MediaType.parse("application/json");
-        RequestBody body = RequestBody.create(startConfig.toString(), mediaType);
-        Request request = new Request.Builder()
-            .addHeader("Authorization", authorizationHeader)
-            .url(url)
-            .method("POST", body)
-            .build();
-
-        httpClient.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(final Call call, IOException e) {
-                showMessage(e.toString());
-            }
-
-            @Override
-            public void onResponse(Call call, final Response response) throws IOException {
-                String result = response.body().string();
-                if (response.isSuccessful()) {
-                    try {
-                        JSONObject jsonObject = new JSONObject(result);
-                        String status = jsonObject.getString("status");
-                        speechToTextTaskId = jsonObject.getString("taskId");
-                        if (status.equals("STARTED") || status.equals("IN_PROGRESS")) {
-                            isSpeechToTextRunning = true;
-                            runOnUiThread(() -> btnSpeechToText.setText("Stop speech to text"));
-                            showMessage("Speech to text task started");
-                        } else {
-                            isSpeechToTextRunning = false;
-                            showMessage("Speech to text status: " + status);
+        var config = {
+            'audio': {
+                'subscribeSource': 'AGORARTC',
+                'agoraRtcConfig': {
+                'channelName': channelName,
+                'uid': uid.toString(),
+                'token': token,
+                'channelType': 'LIVE_TYPE',
+                'subscribeConfig': {'subscribeMode': 'CHANNEL_MODE'},
+                'maxIdleTime': 60
+                }
+            },
+            'config': {
+                'features': ['RECOGNIZE'],
+                'recognizeConfig': {
+                'language': 'ENG',
+                'model': 'Model',
+                'output': {
+                    'destinations': ['AgoraRTCDataStream', 'Storage'],
+                    'agoraRTCDataStream': {
+                    'channelName': channelName,
+                    'uid': uid.toString(),
+                    'token': token,
+                    },
+                    'cloudStorage': [
+                        {
+                            'format': 'HLS',
+                            'storageConfig': {
+                            'accessKey': '<YourOssAccessKey>',
+                            'secretKey': '<YourOssSecretKey>',
+                            'bucket': '<YourOssBucketName>',
+                            'vendor': 0,
+                            'region': 0,
+                            'fileNamePrefix': ['directory', 'subDirectory']
+                            }
                         }
-                    } catch (Exception e) {
-                        Log.i("Error parsing start call response", result);
-                    }
-                } else {
-                    showMessage("Exception starting speech-to-text task: " + result);
+                    ]
+                }
                 }
             }
-        }
+        };
+
+        // Build Request body JSON
+        String body = jsonEncode(config);
+
+        final response = await http.post(
+            Uri.parse(url),
+            headers: <String, String>{
+                'Content-Type': 'application/json; charset=UTF-8',
+                "Authorization": authorizationHeader
+            },
+            body: body,
         );
+
+        if (response.statusCode == 200) {
+            // If the server returns an OK response, then parse the JSON.
+            Map<String, dynamic> json = jsonDecode(response.body);
+            String status = json["status"];
+            speechToTextTaskId = json["taskId"];
+            if (status.compareTo("STARTED") == 0 || status.compareTo("IN_PROGRESS") == 0) {
+                setState((){
+                    isSpeechToTextRunning = true;
+                });
+            }
+            showMessage("Speech to text task started");
+        } else {
+            Map<String, dynamic> json = jsonDecode(response.body);
+            String message = json["message"];
+            showMessage("Speech to text task could not be started: $message");
+        }
     }
     ```
 
@@ -210,54 +180,40 @@ Take the following steps to start, stop and query a text-to-speech task in your 
     You [query the status](#query-the-status-of-speech-to-text) of a speech-to-text task using a `GET` request containing the `taskId` and `builderToken` to notify the user of any change. To do this, add the following method to the `MainActivity`class:
 
     ```dart
-    public void querySpeechToText() {
-        String url = baseUrl + "/v1/projects/" + appId
-                + "/rtsc/speech-to-text/tasks/" + speechToTextTaskId
-                + "?builderToken=" + builderToken;
+    void querySpeechToText  () async {
+        String url = "$baseUrl/v1/projects/$appId/rtsc/speech-to-text/tasks/$speechToTextTaskId?builderToken=$builderToken";
 
-        OkHttpClient httpClient = new OkHttpClient().newBuilder().build();
-        Request request = new Request.Builder()
-                .addHeader("Content-Type", "application/json")
-                .addHeader("Authorization", authorizationHeader)
-                .url(url)
-                .get()
-                .build();
-
-        httpClient.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(final Call call, IOException e) {
-                showMessage(e.toString());
-            }
-
-            @Override
-            public void onResponse(Call call, final Response response) throws IOException {
-                String result = response.body().string();
-                try {
-                    JSONObject jsonObject = new JSONObject(result);
-                    if (response.isSuccessful()) {
-                        String status = jsonObject.getString("status");
-                        speechToTextTaskId = jsonObject.getString("taskId");
-                        if (status.equals("IN_PROGRESS")) {
-                            isSpeechToTextRunning = true;
-                            runOnUiThread(() -> btnSpeechToText.setText("Stop speech to text"));
-                            showMessage("Speech to text is running");
-                        } else {
-                            isSpeechToTextRunning = false;
-                            speechToTextTaskId = "";
-                            showMessage("Speech to text status: " + status + "");
-                            runOnUiThread(() -> btnSpeechToText.setText("Start speech to text"));
-                        }
-                    } else {
-                        String message = jsonObject.getString("message");
-                        showMessage("Exception querying speech-to-text task: " + message);
-                    }
-
-                } catch (Exception e) {
-                    Log.i("Error parsing query call response", result);
-                }
-            }
-        }
+        final response = await http.get(
+            Uri.parse(url),
+            headers: <String, String>{
+                'Content-Type': 'application/json; charset=UTF-8',
+                "Authorization": authorizationHeader
+            },
         );
+
+        if (response.statusCode == 200) {
+            // If the server returns an OK response, then parse the JSON.
+            Map<String, dynamic> json = jsonDecode(response.body);
+            String status = json["status"];
+            speechToTextTaskId = json["taskId"];
+
+            if (status.compareTo("IN_PROGRESS") == 0) {
+                setState(() {
+                    isSpeechToTextRunning = true;
+                });
+                showMessage("Speech to text is running");
+            } else{
+                setState(() {
+                    isSpeechToTextRunning = false;
+                });
+                speechToTextTaskId = "";
+                showMessage("Speech to text status: $status");
+            }
+        } else {
+            Map<String, dynamic> json = jsonDecode(response.body);
+            String message = json["message"];
+            showMessage("Exception querying speech-to-text task: $message");
+        }
     }
     ```
 
@@ -266,40 +222,29 @@ Take the following steps to start, stop and query a text-to-speech task in your 
     To [stop speech to text](#stop-speech-to-text), you send a `DELETE` request with the, `appId`, `taskId` and `builderToken` in the URL. In the `MainActivity` class, add the following method:
 
     ```dart
-    public void stopSpeechToText() {
-        String url = baseUrl + "/v1/projects/" + appId
-                + "/rtsc/speech-to-text/tasks/" + speechToTextTaskId
-                + "?builderToken=" + builderToken;
+    void stopSpeechToText() async {
+        String url = "$baseUrl/v1/projects/$appId/rtsc/speech-to-text/tasks/$speechToTextTaskId?builderToken=$builderToken";
 
-        OkHttpClient httpClient = new OkHttpClient().newBuilder().build();
-        MediaType mediaType = MediaType.parse("application/json");
-        Request request = new Request.Builder()
-                .addHeader("Content-Type", "application/json")
-                .addHeader("Authorization", authorizationHeader)
-                .url(url)
-                .delete()
-                .build();
-
-        httpClient.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(final Call call, IOException e) {
-                showMessage(e.toString());
-            }
-
-            @Override
-            public void onResponse(Call call, final Response response) throws IOException {
-                String result = response.body().string();
-                if (response.isSuccessful()) {
-                    showMessage("Speech-to-text task stopped");
-                    speechToTextTaskId = "";
-                    isSpeechToTextRunning = false;
-                    runOnUiThread(() -> btnSpeechToText.setText("Start speech to text"));
-                } else {
-                    showMessage("Exception stopping speech-to-text task: " + result);
-                }
-            }
-        }
+        final response = await http.delete(
+            Uri.parse(url),
+            headers: <String, String>{
+                'Content-Type': 'application/json; charset=UTF-8',
+                "Authorization": authorizationHeader
+            },
         );
+
+        if (response.statusCode == 200) {
+            // If the server returns an OK response, then parse the JSON.
+            showMessage("Speech-to-text task stopped");
+            speechToTextTaskId = "";
+            setState(() {
+                isSpeechToTextRunning = false;
+            });
+        } else {
+            Map<String, dynamic> json = jsonDecode(response.body);
+            String message = json["message"];
+            showMessage("Exception stopping speech-to-text task: $message");
+        }
     }
     ```
 
@@ -308,10 +253,10 @@ Take the following steps to start, stop and query a text-to-speech task in your 
     When you set one of the `destinations` in the starting configuration as `AgoraRTCDataStream`, the speech-to-text conversion output stream is pushed to your RTC channel. To receive this stream and display the text in your <Vpl k="CLIENT" />, add the following code after `private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {` in the `MainActivity` class:
 
     ```dart
-    @Override
-    public void onStreamMessage(int uid, int streamId, byte[] data) {
-        showMessage(data.toString());
-    }    
+    onStreamMessage: (RtcConnection connection, int remoteUid, int streamId,
+        Uint8List data, int length, int sentTs) {
+        showMessage(utf8.decode(data));
+    }, 
     ```
 
 1. **Enable a user to start, query and stop a task**
@@ -321,15 +266,12 @@ Take the following steps to start, stop and query a text-to-speech task in your 
         1. When a user presses the first button, the <Vpl k="CLIENT" /> requests a `builderToken`. If the request is successful, the <Vpl k="CLIENT" /> starts a speech-to-text task. If a task is already running, you stop the task. To implement this functionality, add the following method to the `MainActivity` class.
 
             ```dart
-            public void SpeechToText(View view) {
+            void speechToText() async {
                 if (!isSpeechToTextRunning) {
-                    try {
-                        getBuilderToken();
-                    } catch (Exception e) {
-                        showMessage(e.toString());
-                    }
+                    await getBuilderToken();
+                    startSpeechToText();
                 } else {
-                    stopSpeechToText();
+                stopSpeechToText();
                 }
             }
             ```
@@ -337,7 +279,7 @@ Take the following steps to start, stop and query a text-to-speech task in your 
         1. When a user presses the query status button, you call the query method to inform the user of the current task status and update the user interface. To implement this functionality, add the following method to the `MainActivity` class.
 
             ```dart
-            public void query(View view) {
+            void query() async {
                 if (isSpeechToTextRunning) 
                     querySpeechToText();
                 else

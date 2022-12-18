@@ -10,7 +10,7 @@ export const VSDK_UNITY_FLUTTER_RN_RELEASE_API = '4.0.0.beta-2'
 export const VSDK_WEB_RELEASE_API = '4.13.0'
 export const MAJOR_VERSION = '4.x'
 export const VSDK_FLUTTER_PREVIOUS_RELEASE = '5.x';
-export const API_ROOT = 'https://api-reference-qyvoy4pye-agora-gdxe.vercel.app';
+export const API_ROOT = 'https://api-reference-staging-git-410-agora-gdxe.vercel.app/';
 export const API_REF_ROOT = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VIDEO_SDK = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VOICE_SDK = `${API_ROOT}/voice-sdk`;
@@ -63,8 +63,7 @@ export const AGORA_CONSOLE_URL = `http://console.agora.io`;
 export const AGORA_WEBDEMO_URL = `https://webdemo.agora.io`;
 export const API_REF_ANDROID = `http://api.agora.io/android`;
 
-export const PLATFORM = 'dummy';
-
+export const PLATFORM = `${AGORA_BACKEND}`;
 export const VIDEO = 'Video Calling';
 export const AUDIO = 'Voice Calling';
 export const ASDK = 'Voice SDK';
@@ -87,6 +86,8 @@ export const AV = 'Audio/Video';
 
 export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
+export const NCS = `NCS`;
+export const NCS_LONG = `Notification Center Service`;
 export const SIG = `${MESS}`;
 export const SIG_RELEASE_API = `1.x`;
 export const SIG_SDK_API_REF_ROOT = `${API_ROOT}/signaling-sdk`;

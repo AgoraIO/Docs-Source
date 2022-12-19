@@ -48,6 +48,9 @@ export const API_REF_IOS_WHITE = `${API_REF_ROOT_WHITE}/ios/2.x`;
 export const API_REF_WEB_WHITE = `${API_REF_ROOT_WHITE}/web/2.x`;
 export const API_REF_WEB_ROOT_PREV_SDK = `${API_REF_ROOT}/web/3.x`;
 export const API_REF_FLUTTER_ROOT_PREV_SDK = `${API_REF_ROOT}/flutter/5.x/API`;
+export const API_REF_WINDOWS_ROOT_CPP  = `${API_REF_ROOT}/cpp/${VSDK_RELEASE_API}/API`;
+export const API_REF_WINDOWS_ROOT_CPP_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/cpp/${VSDK_FLUTTER_RELEASE_API}/API`;
+
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
 
@@ -60,8 +63,7 @@ export const AGORA_CONSOLE_URL = `http://console.agora.io`;
 export const AGORA_WEBDEMO_URL = `https://webdemo.agora.io`;
 export const API_REF_ANDROID = `http://api.agora.io/android`;
 
-export const PLATFORM = 'dummy';
-
+export const PLATFORM = `${AGORA_BACKEND}`;
 export const VIDEO = 'Video Calling';
 export const AUDIO = 'Voice Calling';
 export const ASDK = 'Voice SDK';
@@ -84,6 +86,8 @@ export const AV = 'Audio/Video';
 
 export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
+export const NCS = `NCS`;
+export const NCS_LONG = `Notification Center Service`;
 export const SIG = `${MESS}`;
 export const SIG_RELEASE_API = `1.x`;
 export const SIG_SDK_API_REF_ROOT = `${API_ROOT}/signaling-sdk`;
@@ -116,6 +120,8 @@ export const ACCG = 'Global Accelerator';
 export const TEMPL = 'Templates';
 
 export const RTEE = 'Extensions';
+export const RTEE_DRM = `${COMPANY} DRM`;
+export const RTEE_DRM_FRAMEWORK = `AgoraDrmLoader.framework`;
 export const RTEE_NS = 'AI Noise Suppression';
 export const RTEE_VB = 'Vitual Background';
 export const AA = `${COMPANY} Analytics`;

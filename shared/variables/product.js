@@ -56,7 +56,15 @@ const data = {
       PATH: 'server-gateway',
       SDK: 'Server Gateway SDK',
       PRODUCT: 'Server Gateway'
+  },
+
+  'media-accelerator': {
+    NAME: 'media-accelerator',
+    PATH: 'media-accelerator',
+    SDK: 'media-accelerator SDK',
+    PRODUCT: 'media-accelerator'
   }
+  
 };
 
 export default data;

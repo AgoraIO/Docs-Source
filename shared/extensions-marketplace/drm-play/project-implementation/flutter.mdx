@@ -1,0 +1,174 @@
+<PlatformWrapper platform="flutter">
+
+### Implement a user interface
+
+In this simple example, you add two buttons to search and play DRM music. To create these buttons, in `/lib/main.dart`, add the following code to the `build` method after `ListView(... children: [`:
+
+```dart
+ElevatedButton(
+    child: Text("Search Music"),
+    onPressed: () => {searchMusic()},
+),
+ElevatedButton(
+    child: Text("Play Music"),
+    onPressed: () => {playMusic()},
+),
+```
+### Implement DRM content center
+
+To search and play DRM protected content in your <Vpl k="CLIENT" />:
+
+1. **Declare the variables you need**
+
+    To instantiate `MusicContentCenter`, handle its events, and play music, add the following declarations to the `_MyAppState` class:
+
+    ```dart
+    String rtmToken="<your RTM token>";
+    String musicCenterAppId = "<your music center app Id>";
+
+    late final MusicContentCenter _musicContentCenter;
+    late final MusicPlayer _musicPlayer;
+    late final MediaPlayerSourceObserver _mediaPlayerSourceObserver;
+    bool _isPlaying = false;
+
+    List<MusicChartInfo> _musicChartInfos = [];
+    MusicCollection? _musicCollection;
+    MusicCollection? _searchedMusicCollection;
+    int selectedSongCode = 0;
+    String _currentRequestId = '';
+    String _searchMusicRequestId = '';
+    String _musicCollectionRequestId = '';
+    String _getLyricRequestId = '';
+    ```
+
+1. **Set up the music content center**
+
+    When your client starts, you do the following:
+
+    1. To configure your `MusicContentCenter` you define a `MusicContentCenterConfiguration` and pass it to the `initialize` method. To receive notification of preloading events and search results, define a `MusicContentCenterEventHandler` and attach it to the music content center. Add the following method to the `_MyAppState` class:
+
+        ```dart
+        Future<void> setupMusicContentCenter() async {
+            _musicContentCenter = agoraEngine.getMusicContentCenter(); // DRM
+
+            // Initialize the content center
+            await _musicContentCenter.initialize(MusicContentCenterConfiguration(
+                appId: musicCenterAppId,
+                rtmToken: rtmToken,
+                mccUid: 123,
+            ));
+
+            // Handle content center events
+            _musicContentCenter.registerEventHandler(MusicContentCenterEventHandler(
+                onMusicChartsResult: (requestId, status, result) {
+                showMessage(
+                    '[onMusicChartsResult], requestId: $requestId, status: $status, result: ${result
+                        .toString()}');
+                if (status ==
+                    MusicContentCenterStatusCode.kMusicContentCenterStatusOk) {
+                    if (_currentRequestId == requestId) {
+                        _musicChartInfos = result;
+                    }
+                }
+            }, onMusicCollectionResult: (String requestId,
+                    MusicContentCenterStatusCode status, MusicCollection result) {
+                showMessage(
+                    '[onMusicCollectionResult], requestId: $requestId, status: $status, result: ${result
+                        .toString()}');
+
+                if (_musicCollectionRequestId == requestId) {
+                    _musicCollection = result;
+                } else if (_searchMusicRequestId == requestId) {
+                    _searchedMusicCollection = result;
+                    selectedSongCode = result.getMusic(0).songCode ?? 0;
+                }
+            }, onPreLoadEvent: (int songCode, int percent, PreloadStatusCode status,
+                String msg, String lyricUrl) {
+                showMessage(
+                    '[onPreLoadEvent], songCode: $songCode, percent: $percent status: $status, msg: $msg, lyricUrl: $lyricUrl');
+
+                if (selectedSongCode == songCode &&
+                    status == PreloadStatusCode.kPreloadStatusCompleted) {
+                    showMessage("Preload completed");
+                }
+            }, onLyricResult: (String requestId, String lyricUrl) {
+                if (_getLyricRequestId == requestId) {
+                    showMessage("Get lyric completed");
+                }
+            }));
+        }
+        ```
+
+    1. To execute this method at startup, add the following line to `setupVideoSDKEngine` after `await agoraEngine.enableVideo();`:
+
+        ```dart
+        await setupMusicContentCenter();
+        ```
+
+1. **Find music from the content center**
+
+    <Vg k="RTEE_DRM" /> provides multiple methods to find the music you wish to play. You can search music by keywords or retrieve music charts. To use these methods, add the following code to the `_MyAppState` class:
+
+    ```dart
+    Future<void> searchMusic() async {
+        _searchMusicRequestId = await _musicContentCenter.searchMusic(
+            keyWord: "hello",
+            page: 1,
+            pageSize: 10);
+
+        _currentRequestId = await _musicContentCenter.getMusicCharts();
+    }
+    ```
+
+1. **Play music**
+
+    To create a music player and play the selected song, add the following method to the `_MyAppState` class:
+
+    ```dart
+    Future<void> playMusic() async {
+
+    // Create music player
+    _musicPlayer = await _musicContentCenter.createMusicPlayer();
+
+    _mediaPlayerSourceObserver = MediaPlayerSourceObserver(
+        onPlayerSourceStateChanged:
+            (MediaPlayerState state, MediaPlayerError ec) async {
+        showMessage('[onPlayerSourceStateChanged] state: $state ec: $ec');
+            if (state == MediaPlayerState.playerStateOpenCompleted) {
+                _isPlaying = !_isPlaying;
+                await _musicPlayer.play();
+            }
+        },
+    );
+    _musicPlayer.registerPlayerSourceObserver(_mediaPlayerSourceObserver);
+
+    // Set channel options to publish mediaPlayer tracks
+    ChannelMediaOptions options = ChannelMediaOptions(
+      publishMediaPlayerAudioTrack: true,
+      publishMediaPlayerVideoTrack: true,
+      enableAudioRecordingOrPlayout: true,
+      publishMediaPlayerId: _musicPlayer.getMediaPlayerId(),
+    );    
+    agoraEngine.updateChannelMediaOptions(options);
+
+    // Play the selected song
+    if (selectedSongCode > 0)
+        await _musicPlayer.openWithSongCode(
+            songCode: selectedSongCode, startPos: 0);
+    }   
+    ```
+
+1. **Clean up when you leave**
+
+    To free up resources when you exit the <Vpl k="CLIENT" />, add the following code to the `dispose() ` method:
+
+    ```dart
+    if (_isPlaying) { //DRM
+        await _musicPlayer.stop();
+        await agoraEngine.destroyMediaPlayer(_musicPlayer);
+        await _musicContentCenter.release();
+    }
+    ```
+
+
+</PlatformWrapper>

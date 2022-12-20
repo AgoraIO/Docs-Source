@@ -59,10 +59,10 @@ const data = {
   },
 
   'media-accelerator': {
-    NAME: 'media-accelerator',
+    NAME: 'Media Accelerator',
     PATH: 'media-accelerator',
-    SDK: 'media-accelerator SDK',
-    PRODUCT: 'media-accelerator'
+    SDK: 'RTSA SDK',
+    PRODUCT: 'Media Accelerator'
   }
   
 };

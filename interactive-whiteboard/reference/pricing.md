@@ -16,10 +16,10 @@ If you have already signed a contract with <Vg k="COMPANY" />, the billing terms
 
 The unit prices for whiteboard features are as follows: 
 
-| Whiteboard feature   | Pricing, US$/1,000 minutes |
-| :------------------- |:---------------------------|
-| Online whiteboard    | 1.40                       |
-| File conversion      | 0.50                       | 
+| Whiteboard feature   | Pricing                |
+| :------------------- |:-----------------------|
+| Online whiteboard    | 1.40 US$/1,000 minutes |
+| File conversion      | 0.50 US$/1,000 images  | 
 
 If your scenario involves other Agora products or services, such as the <Vg k="VIDEO" />, <Vg k="MESS" />, or <Vg k="CREC" />, expect additional charges for these products or services. For details, see the pricing policy for each Agora product or service.
 

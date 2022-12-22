@@ -16,10 +16,12 @@ If you have already signed a contract with <Vg k="COMPANY" />, the billing terms
 
 The unit prices for whiteboard features are as follows: 
 
-| Whiteboard feature   | Pricing                |
-| :------------------- |:-----------------------|
-| Online whiteboard    | 1.40 US$/1,000 minutes |
-| File conversion      | 0.50 US$/1,000 images  | 
+| Whiteboard feature | Volume                      | Pricing                |
+|:-------------------|:----------------------------|:-----------------------|
+| Online whiteboard  | 10,000 - 60,000 minutes     | 1.40 US$/1,000 minutes |
+|                    | 60,000 - 120,000 minutes    | 1.30 US$/1,000 minutes |
+|                    | 120,000 - 1,000,000 minutes | 1.10 US$/1,000 minutes |
+| File conversion    | Over 100,000 images         | 0.50 US$/1,000 images  | 
 
 If your scenario involves other Agora products or services, such as the <Vg k="VIDEO" />, <Vg k="MESS" />, or <Vg k="CREC" />, expect additional charges for these products or services. For details, see the pricing policy for each Agora product or service.
 
@@ -74,9 +76,9 @@ The file conversion feature can also be charged by QPS. See [QPS-based Pricing](
 Agora gives each whiteboard feature the following free-of-charge usage each month:
 
 | Whiteboard feature   | Monthly free-of-charge usage |
-| :------------------- | :--------------------------- |
+| :------------------- |:-----------------------------|
 | Online whiteboard    | The first 10,000 minutes     |
-| File conversion      | The first 1000 images (effective from September 1, 2022)        |
+| File conversion      | The first 100,000 images     |
 
 If the monthly total usage of a whiteboard feature does not exceed its free usage allowance, 
 the feature is free of charge for that month. 
@@ -103,7 +105,7 @@ The usage calculation is as follows:
 
 The following table shows the calculation of the total cost of the lecture:
 
-<div><table><colgroup><col/><col/><col/><col/></colgroup><thead><tr><th><span class="td-span"><span class="md-plain">Billed service</span></span></th><th><span class="td-span"><span class="md-plain">Unit price, US$/1,000 minutes </span></span></th><th><span class="td-span"><span class="md-plain">Cost of each service, US$</span></span></th><th><span class="td-span"><span class="md-plain">Total cost, US$</span></span></th></tr></thead><tbody><tr><td class="confluenceTd"><span class="td-span"><span class="md-plain">Online whiteboard</span></span></td><td class="confluenceTd"><span class="td-span"><span class="md-plain">$1.40/1,000 minutes</span></span></td><td class="confluenceTd"><span class="td-span"><span class="md-plain">(12,060 - 10,000)/1000 × 1.40 = 2.884</span></span></td><td rowspan="3" class="confluenceTd"><span class="td-span"><span class="md-plain">2.884 </span><span><strong>≈ 2.89</strong></span></span><br/><br/></td></tr><tr><td class="confluenceTd"><span class="td-span"><span class="md-plain">Document conversion to web page</span></span></td><td class="confluenceTd"><span class="td-span"><span class="md-plain">$0.50/1,000 images</span></span></td><td class="confluenceTd">0 (The first 1000 converted images are free of charge）<span> </span></td></tr></tbody></table></div>
+<div><table><colgroup><col/><col/><col/><col/></colgroup><thead><tr><th><span class="td-span"><span class="md-plain">Billed service</span></span></th><th><span class="td-span"><span class="md-plain">Unit price, US$/1,000 minutes </span></span></th><th><span class="td-span"><span class="md-plain">Cost of each service, US$</span></span></th><th><span class="td-span"><span class="md-plain">Total cost, US$</span></span></th></tr></thead><tbody><tr><td class="confluenceTd"><span class="td-span"><span class="md-plain">Online whiteboard</span></span></td><td class="confluenceTd"><span class="td-span"><span class="md-plain">$1.40/1,000 minutes</span></span></td><td class="confluenceTd"><span class="td-span"><span class="md-plain">(12,060 - 10,000)/1000 × 1.40 = 2.884</span></span></td><td rowspan="3" class="confluenceTd"><span class="td-span"><span class="md-plain">2.884 </span><span><strong>≈ 2.89</strong></span></span><br/><br/></td></tr><tr><td class="confluenceTd"><span class="td-span"><span class="md-plain">Document conversion to web page</span></span></td><td class="confluenceTd"><span class="td-span"><span class="md-plain">$0.50/1,000 images</span></span></td><td class="confluenceTd">0 (The first 100,000 converted images are free of charge）<span> </span></td></tr></tbody></table></div>
 
 Agora rounds up the total cost to two decimal places.
 

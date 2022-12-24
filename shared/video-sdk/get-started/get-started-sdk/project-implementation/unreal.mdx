@@ -168,6 +168,7 @@ Import the necessary C++ libraries, set up your <Vpl k="CLIENT" /> to run on And
 
     <ProductWrapper product="interactive-live-streaming">
     ```cpp
+    protected:
       UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
 		UImage* remoteView = nullptr;
       UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
@@ -216,7 +217,9 @@ Import the necessary C++ libraries, set up your <Vpl k="CLIENT" /> to run on And
     UFUNCTION(BlueprintCallable)
 	void OnJoinButtonClick();
 	UFUNCTION(BlueprintCallable)
-	void OnCheckboxChanged(bool bIsChecked);
+	void OnHostCheckboxChanged(bool bIsChecked);
+    UFUNCTION(BlueprintCallable)
+	void OnAudienceCheckboxChanged(bool bIsChecked);
     ```
     </ProductWrapper>
 
@@ -382,8 +385,6 @@ To implement this logic, take the following steps:
             agoraEngine->enableVideo();
             LeaveBtn->OnClicked.AddDynamic(this, &UMyUserWidget::OnLeaveButtonClick);
             JoinBtn->OnClicked.AddDynamic(this, &UMyUserWidget::OnJoinButtonClick);
-            hostToggle->OnCheckStateChanged.AddDynamic(this, &UMyUserWidget::OnCheckboxChanged);
-            audienceToggle->OnCheckStateChanged.AddDynamic(this, &UMyUserWidget::OnCheckboxChanged);
         }
         ```
         </ProductWrapper>
@@ -462,9 +463,9 @@ To implement this logic, take the following steps:
     </ProductWrapper>
     <ProductWrapper product="interactive-live-streaming">
     ``` csharp
-        void UMyUserWidget::OnJoinButtonClick() 
+    void UMyUserWidget::OnJoinButtonClick() 
     {
-        if(userRole == NULL)
+        if(userRole == "")
         {
             UE_LOG(LogTemp, Warning, TEXT("Select a role to join the channel"));
             return;
@@ -511,16 +512,22 @@ To implement this logic, take the following steps:
     <ProductWrapper product="interactive-live-streaming">
 
     ``` csharp
-    public override void OnUserJoined(RtcConnection connection, uint uid, int elapsed)
+       void UMyUserWidget::onUserJoined(uid_t uid, int elapsed) 
     {
-        // Setup remote view.
-        _videoSample.RemoteView.SetForUser(uid, connection.channelId, VIDEO_SOURCE_TYPE.VIDEO_SOURCE_REMOTE);
-        if(_videoSample.clientRole == "Audience")
+        AsyncTask(ENamedThreads::GameThread, [=]()
         {
-            // Start rendering remote video.
-            _videoSample.RemoteView.SetEnable(true);
-        }
-        _videoSample.remoteUid = uid;
+            UE_LOG(LogTemp, Warning, TEXT("UMyUserWidget::onUserJoined  uid: %u"), uid);
+            // Setup a canvas to render the remote video.
+            VideoCanvas videoCanvas;
+            videoCanvas.view = remoteView;
+            videoCanvas.uid = uid;
+            remoteUId = uid;
+            videoCanvas.sourceType = VIDEO_SOURCE_TYPE::VIDEO_SOURCE_REMOTE;
+            RtcConnection connection;
+            connection.channelId = channelName.c_str();
+            // Render the remote video.
+            ((IRtcEngineEx*)agoraEngine)->setupRemoteVideoEx(videoCanvas, connection);
+        });
     }
     ```
     </ProductWrapper>
@@ -540,7 +547,7 @@ To implement this logic, take the following steps:
             audienceToggle->OnCheckStateChanged.AddDynamic(this, &UMyUserWidget::OnAudienceCheckboxChanged);
             ``` 
 
-        2. Add the `remoteView` and `localView` visibility to `OnAudienceCheckboxChanged` and `OnHostCheckboxChanged`. In `MyUserWidget.cpp`, add the following before `setupVideoSDKEngine`:
+        2. Add the `remoteView` and `localView` visibility logic to `OnAudienceCheckboxChanged` and `OnHostCheckboxChanged`. In `MyUserWidget.cpp`, add the following before `setupVideoSDKEngine`:
 
             ```cpp
             void UMyUserWidget::OnHostCheckboxChanged(bool bIsChecked)
@@ -567,7 +574,7 @@ To implement this logic, take the following steps:
                         agoraEngine->muteRemoteVideoStream(remoteUId, false);
                     }
                     userRole = "Audience";
-                    agoraEngine->enableLocalVideo(true);
+                    agoraEngine->enableLocalVideo(false);
                     agoraEngine->setClientRole(CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER);
                     hostToggle->SetCheckedState(ECheckBoxState::Unchecked);
                     UE_LOG(LogTemp, Warning, TEXT("User role changed to Audience"));

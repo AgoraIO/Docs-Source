@@ -1,0 +1,255 @@
+<PlatformWrapper platform = "unreal">
+
+
+### Implement the user interface
+
+In a real-world application, for each volume setting you want to control, you typically add a volume control UI element such as a <Link target="_blank" to="https://learn.microsoft.com/en-us/cpp/mfc/using-csliderctrl?view=msvc-170">Slider Control</Link> to the audio configuration panel. To enable the user to mute local or remote audio, you add a switch or a Check Box to the interface for each user. In this example, you add a `Slider Control` and a `Check Box` to the UI to test different volume settings. For screen sharing, you add a `Button` to start and stop sharing. To
+Implement this UI, take the following steps:
+
+1. **Add a slider control**
+
+   To add a slider control to the UI, take the following steps:
+
+    1. Go to menu **View** > **Other Windows** > **Resource View**.
+        
+       If the **Resource View** window isn't the top-most window, select the **Resource View** tab to bring it to the top.
+
+    2. To view the dialog resources, in **Resource View**, go to **AgoraImplementation.rc** > **Dialog** and double-click `IDD_AGORAIMPLEMENTATION_DIALOG`.
+
+        The resource opens inside the **Dialog Editor**. 
+    
+    3. To open **Toolbox**, go to menu **View** > **ToolBox**.
+
+    4. From **ToolBox**, drag **Slider Control** and drop it onto the surface of the **Dialog Editor**.
+
+        You see a slider in your **Dialog Editor**.
+
+2. **Add a Button**
+
+    1. From **ToolBox**, drag **Button** and drop it onto the surface of the **Dialog Editor**
+
+    2. To change the button label, in **Properties**, update the **Caption** field with `Share Screen`.
+
+3. **Add a Check Box**
+
+    1. From **ToolBox**, drag **Check Box** and drop it over the **Dialog Editor**.
+
+    2. To change the check box label, in **Properties**, update the **Caption** field with `Mute`.
+
+
+### Handle the system logic
+
+### Implement screen sharing, volume control, and mute
+
+To implement these features in your <Vpl k="CLIENT" />, take the following steps:
+
+1. **Declare the variables you need**
+
+    To access and use the UI elements and apply workflow settings, in `MyUserWidget.h`, add the following declarations to `UMyUserWidget`:
+
+    ```cpp
+    // A variable to access the share screen button.
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, meta = (BindWidget))
+		UButton* shareScreenBtn = nullptr;
+    // A variable to access Mute check box.
+	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
+		UCheckBox* muteCheckBox = nullptr;
+    // A variable to access the volume slider .
+    UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
+		USlider* volumeSlider;
+    // Boolean variable to track the screen sharing state.
+    bool isScreenShare = false;
+    // A Boolean variable to track remote user mute and un-mute state.
+    bool isChecked = false;
+    ```
+
+1. **Setup UI elements**
+    
+    To setup event listeners for the screen share button and the mute check box, do the following:
+
+    1. In `MyUserWidget.h`, add the to following to `UMyUserWidget`:
+
+    ```cpp
+    UFUNCTION(BlueprintCallable)
+		void OnScreenShareButtonClick();
+    UFUNCTION(BlueprintCallable)
+		void OnMuteCheckboxChanged(bool bIsChecked);
+    ```
+
+    2. In `MyUserWidget.cpp`, add the following at the end of `setupVideoSDKEngine`:
+
+    ```cpp
+    shareScreenBtn->OnClicked.AddDynamic(this, &UMyUserWidget::OnScreenShareButtonClick);
+    muteCheckBox->OnCheckStateChanged.AddDynamic(this, &UMyUserWidget::OnMuteCheckboxChanged);
+    volumeSlider->SetMaxValue(100);
+    volumeSlider->SetMinValue(0);
+    ```
+
+1. **Adjust or mute the volume**
+
+    To adjust the local playback volume, you setup an event listener for the slider control and call `adjustRecordingSignalVolume` whenever the user drags the slider left or right. To implement this workflow, in `MyUserWidget.cpp`, add the following method before `setupVideoSDKEngine`:
+
+    ```cpp
+    void UMyUserWidget::OnSliderValueChanged(float value)
+    {
+        // Use the slider value to adjust the recording volume.
+        agoraEngine->adjustRecordingSignalVolume(value);
+    }
+    ```
+
+1. **Mute and un-mute the remote user**
+
+    To mute and un-mute the remote user, you setup an event listener for the mute check box and call `muteRemoteAudioStream` with `remoteUId` when the user selects or deselects the mute checkbox. To implement this workflow, in `MyUserWidget.cpp`, add the following before `setupVideoSDKEngine`:
+
+    ```cpp
+    void UMyUserWidget::OnMuteCheckboxChanged(bool isMute)
+    {
+        // Mute and un-mute the remote user.
+        if (remoteUId == NULL)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("No remote user in the channel"));
+            return;
+        }
+        agoraEngine->muteRemoteAudioStream(remoteUId, isMute);
+    }
+    ```
+    
+1.  **Configure <Vg k="ENGINE" /> to publish the media player stream**
+
+    You use `ChannelMediaOptions` and the `updateChannelMediaOptions` method to specify the type of stream to publish. To switch between publishing screen and camera stream, take the following steps:
+
+    1. In `MyUserWidget.h`, add the following method before `void setupVideoSDKEngine();`
+
+       ``` cpp
+       // Declare a method to switch between the local video and screen trackcs.
+       void updateChannelPublishOptions(bool value);
+       ```
+    
+    2. In `MyUserWidget.cpp`, add the method after `setupVideoSDKEngine`:
+
+        ``` cpp
+        void CAgoraImplementationDlg::updateChannelPublishOptions(BOOL publishScreenTrack)
+        {
+            // You use ChannelMediaOptions to change channel media options.
+            ChannelMediaOptions channelOptions;
+            channelOptions.publishMediaPlayerAudioTrack = publishScreenTrack;
+            channelOptions.publishMediaPlayerVideoTrack = publishScreenTrack;
+            channelOptions.publishMicrophoneTrack = publishScreenTrack;
+            channelOptions.publishCameraTrack = !publishScreenTrack;
+            agoraEngine->updateChannelMediaOptions(channelOptions);
+        }
+        ```
+
+4.  **Preview the screen track**
+
+    Create a `VideoCanvas` and use it in the `setupLocalVideo` method of the <Vg k = "VSDK"/> to switch between displaying the screen track and the camera stream. To implement this workflow, take the following steps:
+
+    1. In `MyUserWidget.h`, add the following to method `void setupVideoSDKEngine();`
+        
+        ``` cpp
+        // Declare a method to preview the screen track.
+        void setupLocalVideo(bool value);
+        ```
+
+    2. In `AgoraImplementationDlg.cpp`, add the method after `OnInitDialog`:
+        
+        ``` cpp
+        void UMyUserWidget::setupLocalVideo(bool screenTrack)
+        {
+            // Setup a canvas to switch between the local video and screen preview.
+            VideoCanvas canvas;
+            canvas.renderMode = media::base::RENDER_MODE_FIT;
+            canvas.uid = 0;
+            canvas.view = localView;
+            if (screenTrack)
+            {
+                // Disable the local video capturer.
+                agoraEngine->enableLocalVideo(screenTrack);
+                // Select a video source.
+                canvas.sourceType = VIDEO_SOURCE_SCREEN_PRIMARY;
+                // Use the video canvas to setup a local view for the screen track.
+                agoraEngine->setupLocalVideo(canvas);
+                // Preview the screen track.
+                agoraEngine->startPreview();
+            }
+            else
+            {
+                // Enable the local video capturer.
+                agoraEngine->enableLocalVideo(screenTrack);
+                // Select a video source.
+                canvas.sourceType = VIDEO_SOURCE_CAMERA;
+                // Use the video canvas to setup a local video view.
+                agoraEngine->setupLocalVideo(canvas);
+                // Preview the local video.
+                agoraEngine->startPreview();
+            }
+        }
+        ```
+1. **Start or stop screen sharing**
+
+    When the user presses **Share Screen**, your <Vpl k = "CLIENT"/>:
+    
+        - Calls `getScreenCaptureSources` to get the list of available screens.
+        - Calls `getSourceInfo` and selects the first screen from the list.
+        - Calls `startScreenCaptureByWindowId` and passes the handle of the window that you selected for sharing. 
+        - Calls `updateMediaPublishOptions` and passes `true` as an argument to publish the screen track.
+        - Calls `setupLocalVideo` and passes `true` as an argument to preview the screen track.
+
+    When the user presses the button again, your <Vpl k = "CLIENT"/>:
+
+        - Calls `stopScreenCapture` to stop screen sharing.
+        - Calls `updateChannelMediaOptions` and passes `false` to publish the local video track. 
+        - Calls `setupLocalVideo` and passes `false` as an argument to restore the local video preview.
+
+    To implement this workflow, in **Dialog Editor**, double-click **Share Screen**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener you just created:
+
+    ```cpp
+    SIZE sz = { 300, 300 };
+    // Retrieve the list of available screens.
+    IScreenCaptureSourceList* listCapture = agoraEngine->getScreenCaptureSources(sz, sz, false);
+    // In a real-world scenario, you use combo box to show the list of available screens.
+    // Select the first screen from the list.
+    ScreenCaptureSourceInfo info = listCapture->getSourceInfo(0);
+    // Get the id of the main window.
+    HWND hWnd = (HWND)info.sourceId;
+    if (!agoraEngine)
+    {
+        return;
+    }
+    if (!isScreenShare)
+    {
+        ::SwitchToThisWindow(hWnd, TRUE);
+        // Select the bitrate and frame rate for screen sharing.
+        ScreenCaptureParameters capParam;
+        capParam.frameRate = 15;
+        capParam.bitrate = 5000;
+        CRect rcWnd = {0};
+        ::GetClientRect(hWnd, &rcWnd);
+        // Specify a region of the main screen that you wish to share.
+        agora::rtc::Rectangle rcCapWnd = { rcWnd.left, rcWnd.top, rcWnd.right - rcWnd.left, rcWnd.bottom - rcWnd.top };
+        // Start sharing screen.
+        agoraEngine->startScreenCaptureByWindowId(hWnd, rcCapWnd, capParam);
+        // Update channel media options to publish the screen track.
+        updateChannelPublishOptions(true);
+        // Preview the screen track.
+        setupLocalVideo(true);
+        // Update the screen sharing state.
+        isScreenShare = true;
+        // Update the button text.
+        shareScreenBtn->SetWindowTextW(L"Stop Sharing");
+    }
+    else
+    {
+        // Stop the screen capturer to end screen sharing.
+        agoraEngine->stopScreenCapture();
+        // Update channel media options to publish the video stream.
+        updateChannelPublishOptions(false);
+        // Enable the local video capturer.
+        setupLocalVideo(false);
+        // Update the screen sharing state.
+        isScreenShare = false;
+        // Update the button text. 
+        shareScreenBtn->SetWindowTextW(L"Share Screen");
+    }    
+    ```
+</PlatformWrapper>

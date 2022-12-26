@@ -49,6 +49,7 @@ const data = {
     PATH: 'windows',
     CLIENT: 'app'
   },
+
   'flutter': {
     NAME: 'Flutter',
     PATH: 'flutter',
@@ -58,6 +59,12 @@ const data = {
   'windows': {
     NAME: 'Windows',
     PATH: 'windows',
+    CLIENT: 'app'
+  },
+
+  'unreal': {
+    NAME: 'Unreal Engine',
+    PATH: 'unreal',
     CLIENT: 'app'
   }
 };

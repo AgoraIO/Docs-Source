@@ -86,6 +86,7 @@ export const AV = 'Audio/Video';
 
 export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
+export const EASEMOB_SDK = `Easemob IM SDK`;
 export const NCS = `NCS`;
 export const NCS_LONG = `Notification Center Service`;
 export const SIG = `${MESS}`;

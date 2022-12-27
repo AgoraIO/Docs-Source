@@ -10,7 +10,9 @@ export const VSDK_UNITY_FLUTTER_RN_RELEASE_API = '4.0.0.beta-2'
 export const VSDK_WEB_RELEASE_API = '4.13.0'
 export const MAJOR_VERSION = '4.x'
 export const VSDK_FLUTTER_PREVIOUS_RELEASE = '5.x';
-export const API_ROOT = 'https://api-ref.agora.io/en';
+
+//export const API_ROOT = 'https://api-ref.agora.io/en';
+export const API_ROOT = 'https://api-reference-staging-ld7cg5jwr-agora-gdxe.vercel.app'
 export const API_REF_ROOT = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VIDEO_SDK = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VOICE_SDK = `${API_ROOT}/voice-sdk`;
@@ -24,6 +26,8 @@ export const API_REF_IOS_ROOT = `${API_REF_ROOT}/ios/${VSDK_RELEASE_API}/API`;
 export const API_REF_IOS_PREVIOUS_ROOT = `${API_REF_ROOT}/ios/${VSDK_PREVIOUS_RELEASE_API}`;
 export const API_REF_IOS_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/ios/${VSDK_RELEASE_API}/API`;
 export const API_REF_RN_ROOT  = `${API_REF_ROOT}/react-native/${MAJOR_VERSION}/API`;
+
+export const API_REF_UE_ROOT  = `${API_REF_ROOT}/unreal-engine/${MAJOR_VERSION}/API`;
 export const API_REF_RN_PREVIOUS_ROOT  = `${API_REF_ROOT}/react-native/${VSDK_PREVIOUS_RELEASE_API}`;
 export const API_REF_RN_ROOT_VOICE = `${API_REF_ROOT_VOICE_SDK}/react-native/${MAJOR_VERSION}/API`;
 export const API_REF_MACOS_ROOT = `${API_REF_ROOT}/macos/${VSDK_RELEASE_API}/API`;

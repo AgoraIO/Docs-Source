@@ -10,6 +10,7 @@ export const VSDK_UNITY_FLUTTER_RN_RELEASE_API = '4.0.0.beta-2'
 export const VSDK_WEB_RELEASE_API = '4.13.0'
 export const MAJOR_VERSION = '4.x'
 export const VSDK_FLUTTER_PREVIOUS_RELEASE = '5.x';
+export const VSDK_ELECTRON_RELEASE_API = '3.5.1-build.1116';
 export const API_ROOT = 'https://api-ref.agora.io/en';
 export const API_REF_ROOT = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VIDEO_SDK = `${API_ROOT}/video-sdk`;
@@ -160,8 +161,11 @@ export const UCS = 'Use Cases';
 export const AB = 'App Builder';
 export const UIK = 'UI Kit';
 export const vUIK = `${UIK}`;
-export const FC = 'Flexible Classroom';
 export const FC_UIB = 'UI Builder';
+
+export const FC = 'Flexible Classroom';
+export const AC = `${COMPANY} Classroom`;
+export const ACS = `${AC} SDK`;
 
 export const FC_VERSION = '2.x' ;
 export const FC_API_REF_ROOT = `${API_ROOT}/flexible-classroom-sdk`;

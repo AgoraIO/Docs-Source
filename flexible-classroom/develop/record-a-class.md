@@ -25,7 +25,7 @@ If you want to implement recording on your own, you can refer to the following d
 
 ![implement recording on your own](https://web-cdn.agora.io/docs-files/1638259107675)
 
-When you deploy the web page to be recorded into your CDN, you can use the template HTML file `templates/record_page_prod.html` provided by Agora in the [CloudClass-Desktop](https://github.com/AgoraIO-Community/CloudClass-Desktop) GitHub repository.
+When you deploy the web page to be recorded into your CDN, you can use the template HTML file `templates/record_page_prod.html` provided by Agora in the [Flexible-Classroom-Desktop](https://github.com/AgoraIO-Community/flexible-classroom-Desktop) GitHub repository.
 
 
 ## Start the recording

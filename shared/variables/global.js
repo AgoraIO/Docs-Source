@@ -143,6 +143,7 @@ export const OPREC_RELEASE_API = `3.x`;
 export const API_REF_ROOT_OPREC_SDK = `${API_ROOT}/on-premise-recording-sdk`;
 export const OPREC_SDK_API_CPP  = `${API_REF_ROOT_OPREC_SDK}/linux-cpp/${OPREC_RELEASE_API}`;
 export const OPREC_SDK_API_JAVA  = `${API_REF_ROOT_OPREC_SDK}/linux-java/${OPREC_RELEASE_API}`;
+export const EXTAPP = 'ExtApp';
 
 
 export const CREC = 'Cloud Recording';
@@ -159,8 +160,11 @@ export const UCS = 'Use Cases';
 export const AB = 'App Builder';
 export const UIK = 'UI Kit';
 export const vUIK = `${UIK}`;
-export const FC = 'Flexible Classroom';
 export const FC_UIB = 'UI Builder';
+
+export const FC = 'Flexible Classroom';
+export const AC = `${COMPANY} Classroom`;
+export const ACS = `${AC} SDK`;
 
 export const FC_VERSION = '2.x' ;
 export const FC_API_REF_ROOT = `${API_ROOT}/flexible-classroom-sdk`;

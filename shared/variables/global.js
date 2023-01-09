@@ -106,6 +106,9 @@ export const CHAT_SDK_API_WEB  = `${API_REF_ROOT_CHAT_SDK}/web/${CHAT_RELEASE_AP
 
 export const MA = `MA`;
 export const MA_RELEASE_API = `1.8`;
+export const MA_SDK_API_REF_ROOT = `https://docs.agora.io/cn/RTSA/API%20Reference`;
+export const MA_SDK_API_REF_ANDROID = `${MA_SDK_API_REF_ROOT}/rtsa_java`
+export const MA_SDK_API_REF_LNX_C = `${MA_SDK_API_REF_ROOT}/rtsa_c`
 
 export const PS = 'Pub-Sub';
 export const PUSH = 'Push Notifications';

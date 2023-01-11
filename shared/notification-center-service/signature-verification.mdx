@@ -1,0 +1,80 @@
+To communicate securely between <Vg k="NCS" /> and your webhook,  <Vg k="AGORA_BACKEND" />  uses signatures for identity verification.
+
+- When you configure <Vg k="NCS" /> in <Vg k="CONSOLE" />,  <Vg k="AGORA_BACKEND" />  generates the secret you use for verification.
+- When sending a notification,  <Vg k="NCS" /> generates two signature values from the secret using `HMAC/SHA1` and `HMAC/SHA256` algorithms. These signatures are added as `Agora-Signature` and `Agora-Signature-V2` to the `HTTPS` request header.
+- When your server receives a callback, you can verify `Agora-Signature` or `Agora-Signature-V2`. 
+
+    * To verify `Agora-Signature`, use the secret, the raw request body, and the `HMAC/SHA1` algorithm. 
+    * To verify `Agora-Signature-V2`, use the secret, the raw request body, and the `HMAC/SHA2` algorithm.
+
+
+To add signature verification to your server, take the following steps:
+
+1. In your JAVA project folder, add a new file named `Signature.java` containing the following code:
+
+    ```java
+    import javax.crypto.Mac;
+    import javax.crypto.spec.SecretKeySpec;
+
+    public class Signature { 
+        static String secret = "<your NCS secret>"; 
+        
+        public static String bytesToHex(byte[] bytes) {
+            // Convert an encrypted byte array into a hex string
+            StringBuffer sb = new StringBuffer();
+            for (int i = 0; i < bytes.length; i++) {
+                String hex = Integer.toHexString(bytes[i] & 0xFF);
+                if (hex.length() < 2) {
+                    sb.append(0);
+                }
+                sb.append(hex);
+            }
+            return sb.toString();
+        }
+
+        // Use the HMAC/SHA1 algorithm and get the encrypted hex string
+        // To use the HMAC/SHA256 algorithm, replace "HmacSHA1" with "HmacSHA256"
+        public static String hmacSha1(String message) {
+            try {
+                SecretKeySpec signingKey = new SecretKeySpec(secret.getBytes(
+                    "utf-8"), "HmacSHA1");
+                Mac mac = Mac.getInstance("HmacSHA1");
+                mac.init(signingKey);
+                byte[] rawHmac = mac.doFinal(message.getBytes("utf-8"));
+                return bytesToHex(rawHmac);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public static boolean verify(String request_body, String signature) {
+            // Check the signature against the encrypted request body
+            // Returns true if the signature matches the encrypted hex string
+            return (hmacSha1(request_body).equals(signature));
+        }
+    }
+    ```
+
+    Make sure you update your <Vg k="NCS" /> secret in the code. To verify authenticity using `Agora-Signature-V2`, replace `HmacSHA1` with `HmacSHA256` in the sample code.
+
+<ProductWrapper product="video-calling">
+2. Add the following code to `Handlers.java` after `String query = br.lines()...;` to verify the data in the <Vg k="NCS" /> callback:
+
+    ```java
+    boolean isVerified = Signature.verify(body, agoraSignature);
+    System.out.println("Signature verified: " + isVerified);
+    ```
+</ProductWrapper>
+
+<ProductWrapper notAllowed="video-calling">
+2. To verify data in the <Vg k="NCS" /> callback, add the following code to your <Vg k="NCS" /> notification handler:
+    
+    ```java
+    // Pass the request body and the signature from the request header
+    boolean isVerified = Signature.verify(body, agoraSignature);  
+    System.out.println("Signature verified: " + isVerified);
+    ```
+</ProductWrapper>
+
+
+

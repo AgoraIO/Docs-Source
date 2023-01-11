@@ -10,8 +10,8 @@ export const VSDK_UNITY_FLUTTER_RN_RELEASE_API = '4.0.0.beta-2'
 export const VSDK_WEB_RELEASE_API = '4.13.0'
 export const MAJOR_VERSION = '4.x'
 export const VSDK_FLUTTER_PREVIOUS_RELEASE = '5.x';
-export const API_ROOT = 'https://api-reference-staging-rden3m2tn-agora-gdxe.vercel.app';
-//export const API_ROOT = 'https://api-ref.agora.io/en';
+
+export const API_ROOT = 'https://api-ref.agora.io/en';
 export const API_REF_ROOT = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VIDEO_SDK = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VOICE_SDK = `${API_ROOT}/voice-sdk`;
@@ -200,6 +200,7 @@ export const DEMO_BASIC_VIDEO_CALL_URL =
   'https://webdemo.agora.io/basicVideoCall/index.html';
 
 export const DEMO_PAGE_LINK = `<Link to="{{Global.DEMO_BASIC_VIDEO_CALL_URL}}"><Vg k="COMPANY" /> web demo</Link>`;
+
 
 export const AGORA_DYNAMIC_KEY_CODE_BASE_URL =
   'https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey';

@@ -1,84 +1,77 @@
 import * as data from '@site/data/variables';
 import Introduction from '@docs/shared/video-sdk/common/channel_quality_intro.mdx';
-import Prerequites from '@docs/shared/common/prerequities.mdx';
-import ProjectSetup from '@docs/shared/video-sdk/develop/ensure-channel-quality/project-setup/index.mdx';
-import ProjectImplement from '@docs/shared/video-sdk/develop/ensure-channel-quality/project-implementation/index.mdx';
-import ProjectTest from '@docs/shared/video-sdk/develop/ensure-channel-quality/project-test/index.mdx';
-import Reference from '@docs/shared/video-sdk/develop/ensure-channel-quality/reference/index.mdx';
+import Prerequisites from '@docs/shared/common/prerequities.mdx';
+import ProjectSetup from '@docs/shared/media-accelerator/develop/ensure-channel-quality/project-setup/index.mdx';
+import ProjectImplement from '@docs/shared/media-accelerator/develop/ensure-channel-quality/project-implementation/index.mdx';
+import ProjectTest from '@docs/shared/media-accelerator/develop/ensure-channel-quality/project-test/index.mdx';
+import Reference from '@docs/shared/media-accelerator/develop/ensure-channel-quality/reference/index.mdx';
 
-<Introduction/>
+<Introduction />
 
 This page shows you how to use <Vpd k="SDK"/> features to account for these factors and ensure optimal audio and video quality in your {props.PRODUCT} <Vpl k="CLIENT" />.
 
 ## Understand the tech
 
-<Vg k="VSDK"/> provides the following features to deal with channel quality issues:
+<Vpd k="SDK"/> provides the following features to deal with channel quality issues:
 
-* **Network probe test**: The network probe test checks the last-mile network quality before you join a channel. The method returns network quality statistics including round-trip latency, packet loss rate, and network bandwidth.
+- **Choose from built-in audio codec or implement your own**
 
-* **Echo test**: The echo test captures audio through the microphone on the user’s device, and sends it to <Vg k = "AGORA_BACKEND"/>. After a delay of about 2 seconds, <Vg k = "AGORA_BACKEND"/> sends the audio back to the sending device to be played. The returned audio enable a user to judge if their hardware and network connection are of adequate quality. <Vg k="COMPANY"/> recommends that an echo test be performed before a network probe test.
+  Choose from:
 
-* **Audio profiles**: Delivering the best quality audio to your users requires choosing audio settings customized for your particular application. In <Vg k="VSDK"/> you can choose from pre-configured audio profiles and audio scenarios to optimize audio settings for a wide range of applications.
+  * **Built-in audio codec**
+  
+    Since version 1.4.1, you can use the internal audio codec provided by the Media Streaming SDK to encode audio. This article takes the use of C API to encode PCM data into Opus format as an example to introduce how to use the SDK internal audio encoder to send and receive data.
 
-    * An _audio profile_ sets the audio sample rate, bitrate, encoding scheme, and the number of channels for your audio. <Vg k="VSDK"/> offers several preset audio profiles to choose from. To pick the most suitable audio profile for your application, refer to the [List of audio profiles](#list-of-audio-profiles).
-    
-    <PlatformWrapper notAllowed="web">
+    When calling the `agora_rtc_join_channel` method to join the RTC channel, set `rtc_channel_options_t.audio_codec_opt.audio_codec_type` to `Opus`, `G722`, `G711A` or `G711U` audio codec. Set different sampling rates and channel numbers according to different codecs. 
 
-    * An _audio scenario_ specifies the audio performance in terms of volume, audio quality, and echo cancellation. Based on the nature of your application, you can pick the most suitable option from the [List of audio scenarios](#list-of-audio-scenarios). 
-    
-    </PlatformWrapper>
+    When calling the `agora_rtc_send_audio_data` method to send audio data, set the `*info_ptr.data_type` parameter to `AUDIO_DATA_TYPE_PCM` the PCM type. The SDK will automatically encode the PCM data into Opus format and transmit it.
 
-* **Video profiles**: In real-time engagement scenarios, user experience is closely tied to the sharpness, smoothness, and overall quality of the video. In <Vg k="VSDK"/> you can set the video dimensions, framerate, bitrate, orientation mode, and mirror mode by specifying a video profile. You can also set the degradation preference to specify how video quality is degraded under suboptimal network conditions. To find the suitable bitrate for a given combination of dimensions and framerate, refer to the [Video profile table](#video-profile-table).
+  * **Use own codec**
 
-* **In-call quality statistics**: <Vg k="VSDK"/> provides several callbacks and methods to monitor channel quality in real-time. These methods and callbacks provide vital statistics to evaluate communication quality and provide the information necessary to take remedial actions. <Vg k="VSDK"/> provides you the following statistics :
+    If you use your own codec, you need to call the agora_rtc_join_channel method to join the RTC channel, set rtc_channel_options_t.audio_codec_opt.audio_codec_type to AUDIO_CODEC_DISABLED. When calling the agora_rtc_send_audio_data method to send audio data, set the *info_ptr.data_type parameter to your encoding format. This setting is mainly for information synchronization, that is, the receiving end can know the audio encoding format you send through this setting. The SDK does not process audio.
 
-    * _Network quality_: The uplink and downlink network quality in terms of the transmission bitrate, packet loss rate, average Round-Trip Time (RTT), and jitter in your network.
+    The receiving end obtains the encoded audio data and encoding format transmitted by the sending end through the on_audio_data callback , and decodes it through your own decoder.
 
-    * _Call quality_: Information on the current user session and the resources being used by the channel in terms of the number of users in a channel, packet loss rate, CPU usage and call duration. Use these statistics to troubleshoot call quality issues. 
+- **Adjust target bit rate in real time**
 
-    * _Local audio quality_: Local audio measurements such as audio channels, sample rate, sending bitrate, and packet loss rate in the audio stream. 
+  In order to increase data transmission and avoid network congestion, <Vpd k="SDK"/> will suggest developers to adjust the sending bit rate in real time according to changes in network bandwidth conditions.
 
-    * _Remote audio quality_: These statistics provide information such as the number of channels, received bitrate, jitter in the audio stream, audio loss rate, and packet loss rate.
+  Developers can call the agora_rtc_set_bwe_param (C API) method or setBweParam (Java API) method to configure BWE (BandWidth Estimation) before joining the RTC channel according to their actual bandwidth and bit rate needs, and set the minimum, maximum, and starting value.
 
-    * _Local video quality_: Local video quality statistics such as packet loss rate, frame rate, encoded frame width, and sent bitrate. 
+  You must call (C API) method or (Java API) method to configure BWE (BandWidth Estimation) before calling (C agora_rtc_join_channelAPI) or joinChannel(Java API) to join the channel , otherwise the call is invalid.agora_rtc_set_bwe_paramsetBweParam
 
-    * _Remote video quality_: These statistics include information about the width and height of video frames, packet loss rate, receiving stream type, and bitrate in the reported interval. 
+  During bit stream transmission, when the network bandwidth changes, the SDK will trigger a on_target_bitrate_changed(C API) callback or onTargetBitrateChanged(Java API) callback to prompt the application to adjust the sending bit rate in real time. The bit rate returned by the callback is the maximum recommended encoding bit rate of the video encoder.
 
-    * _Video and Audio states_: <Vg k="AGORA_BACKEND"/> reports the new state, and the reason for state change, whenever the state of an audio or video stream changes.
+  Take the different definition levels of the webcam as an example:
 
-* **Dual stream mode**: In dual-stream mode, <Vg k="VSDK"/> transmits a high-quality and a low-quality video stream from the sender. The high-quality stream has higher resolution and bitrate than the the low-quality video stream. Remote users subscribe to the low-quality stream to improve communication continuity as it reduces bandwidth consumption. Subscribers should also choose the low-quality video streams when network condition are unreliable, or when multiple users publish streams in a channel.
+  
+  | gear	| resolution	| frame rate	| Bit rate range (kbps) | 
+  |---|---|---|---| 
+  | SD	| L1: 640*360	| 15 | 400 ~ 800 |
+  | hd	| L2: 1280*720	| 15	| 1130 ~ 2260 | 
+  | ultra hd	| L3: 1920*1080	| 15	| 1130 ~ 4160 | 
 
-* **Video stream fallback**: When network conditions deteriorate, <Vg k="VSDK"/> automatically switches the video stream from high-quality to low-quality, or disables video to ensure audio delivery. <Vg k="AGORA_BACKEND"/> continues to monitor the network quality after fallback, and restores the video stream when network conditions allow it. To improve communication quality under extremely poor network conditions, implement a fallback option in your <Vpl k="CLIENT"/>.
+  According to the configuration in the above table, the minimum value can be set to 400 kbps, and the maximum value can be set to 4200 kbps. The initial value is the initial callback value of bandwidth detection, the actual setting is between the minimum value and the maximum value, generally set to the code rate of normal encoding. If the initial encoding file is the SD file in the above table, the initial value can be set to 500 kbps.
 
-<ProductWrapper product="interactive-live-streaming">
-* **Ultra-low latency**: Agora’s <Vg k="ILS" /> keeps audiences engaged at low latency (1,500–2,000 ms). For applications that require ultra-low latency (400–800 ms), such as talk shows, sports broadcasts and live auctions, <Vg k="COMPANY" /> offers Interactive Live Streaming Premium.
-</ProductWrapper>
+  The sender will continue to detect the available bandwidth, and notify the application of the current available bandwidth through a on_target_bitrate_changed callback . The application code needs to follow the code rate to avoid sending at an excessive code rate, causing problems such as freezes.
 
-<PlatformWrapper platform="web">
-* **Transmission optimization modes**: Under poor network conditions, you usually have to choose between clarity and smoothness. The best strategy depends on your particular scenario:
-    - Some scenarios tolerate frozen images, but these images must be clear.
-    - Some scenarios allow slightly blurry images in poor network conditions, but cannot tolerate any freeze.
+  The sample code is as follows:
 
-    Based on these requirements, the <Vg k="COMPANY" /> Web SDK supports the following two transmission optimization strategies:
-    - *Prioritize clarity*:
-        - The SDK ensures high-quality images by automatically calculating a minimum bitrate based on the capturing resolution and frame rate. No matter how poor the network condition is, the sending bitrate will never be lower than the minimum value.
-        - In most cases, the SDK does not reduce the sending resolution, but may reduce the frame rate.
-    - *Prioritize smoothness*:
-        - In poor network conditions, the SDK reduces the sending bitrate to minimize video freezes.
-        - In most cases, the SDK does not reduce the frame rate, but may reduce the sending resolution.
-</PlatformWrapper>
+  ```java
+  // Add Code here
+  ```
 
-* **Video for multiple users**: When multiple users join a channel, several incoming high-quality video streams negatively impact network and device performance. In such cases, you can manage the excess load by playing high-quality video from the user who has focus, and low quality streams from all other users. To implement this feature, it is necessary for all users in the channel to enable the dual stream mode.
+  - **onTargetBitrateChanged**
 
-* **Echo cancellation when playing audio files**: <Vg k="VSDK"/> offers audio mixing functionality to play media in a channel. You can mix a local or online audio file with the audio captured through the microphone, or completely replace the microphone audio. Audio mixing takes advantage of the echo cancellation features of <Vg k="VSDK"/> to reduce echo in a channel. Refer to <Link to="audio-and-voice-effects">Audio and voice effects</Link> to learn more about audio mixing in <Vg k="VSDK"/>.
+    Encoder code rate update notification callback. You can use this callback to remind the app to update the encoder bit rate.
 
-* **Connection state monitoring**: The connection state between an <Vpl k="CLIENT"/> and <Vg k="AGORA_BACKEND"/> changes when the <Vpl k="CLIENT"/> joins or leaves a channel, or goes offline due to network or authentication issues. <Vg k="VSDK"/> provides connection state monitoring to detect when and why a network connection is interrupted. When the connection state changes, <Vg k="AGORA_BACKEND"/> sends a callback to notify the <Vpl k="CLIENT"/>. <Vg k="VSDK"/> then automatically tries to reconnect to the server to restore the connection.
+- **Change audio and video streaming status**
 
-<ProductWrapper product="interactive-live-streaming">
-* **Video profiles for screen sharing**: To provide a jitter-free and smooth game streaming experience to your audience, use <Vg k="VSDK"/> to set a suitable video profile when a user live-streams a gaming session. You can adjust the frame rate, resolution, and bitrate to improve the audience's viewing experience.
-</ProductWrapper>
+  After the user successfully connects to the Connection and starts audio and video streaming, he can suspend sending streams to the specified Connection or all Connections, or suspend receiving streams from the specified Connection or all Connections, so as to flexibly adjust the transmission status of audio and video streams.
 
-- **Log files**: <Vg k="VSDK"/> provides configuration options that you use to customize the location, content and size of log files containing key data of <Vg k="VSDK"/> operation. When you set up logging, <Vg k="VSDK"/> writes information messages, warnings, and errors regarding activities such as initialization, configuration, connection and disconnection to log files. Log files are useful in detecting and resolving channel quality issues.
+- **Log files** 
+
+  <Vpd k="SDK"/> provides configuration options that you use to customize the location, content and size of log files containing key data of <Vpd k="SDK"/> operation. When you set up logging, <Vpd k="SDK"/> writes information messages, warnings, and errors regarding activities such as initialization, configuration, connection and disconnection to log files. Log files are useful in detecting and resolving channel quality issues.
 
 The following figure shows the workflow you need to implement to ensure channel quality in your <Vpl k="CLIENT"/>:
 
@@ -90,11 +83,11 @@ In order to follow this procedure you must have:
 
 * Implemented the [<Vg k="GET_STARTED"/>](../get-started/get-started-sdk) project for <Vpd k="NAME"/>.
 
-<Prerequites />
+<Prerequisites/>
 
 ## Project setup
 
-To create the environment necessary to implement call quality best practices into your <Vpl k="CLIENT" />, open the [<Vg k="GET_STARTED"/>](../get-started/get-started-sdk) <Vpd k="NAME"/> project you created previously.
+To create the environment necessary to implement call quality best practices into your <Vpl k="CLIENT" />, open the [<Vg k="GET_STARTED"/>](../get-started/get-started-sdk) for <Vpd k="NAME"/> project you created previously.
 
 <ProjectSetup />
 

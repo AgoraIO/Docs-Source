@@ -10,9 +10,7 @@ export const VSDK_UNITY_FLUTTER_RN_RELEASE_API = '4.0.0.beta-2'
 export const VSDK_WEB_RELEASE_API = '4.13.0'
 export const MAJOR_VERSION = '4.x'
 export const VSDK_FLUTTER_PREVIOUS_RELEASE = '5.x';
-
-//export const API_ROOT = 'https://api-ref.agora.io/en';
-export const API_ROOT = 'https://api-reference-staging-ld7cg5jwr-agora-gdxe.vercel.app'
+export const API_ROOT = 'https://api-ref.agora.io/en';
 export const API_REF_ROOT = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VIDEO_SDK = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VOICE_SDK = `${API_ROOT}/voice-sdk`;
@@ -52,6 +50,9 @@ export const API_REF_IOS_WHITE = `${API_REF_ROOT_WHITE}/ios/2.x`;
 export const API_REF_WEB_WHITE = `${API_REF_ROOT_WHITE}/web/2.x`;
 export const API_REF_WEB_ROOT_PREV_SDK = `${API_REF_ROOT}/web/3.x`;
 export const API_REF_FLUTTER_ROOT_PREV_SDK = `${API_REF_ROOT}/flutter/5.x/API`;
+export const API_REF_WINDOWS_ROOT_CPP  = `${API_REF_ROOT}/cpp/${VSDK_RELEASE_API}/API`;
+export const API_REF_WINDOWS_ROOT_CPP_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/cpp/${VSDK_FLUTTER_RELEASE_API}/API`;
+
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
 
@@ -102,6 +103,7 @@ export const SIG_SDK_API_MACOS = `${SIG_SDK_API_REF_ROOT}/macos/${SIG_RELEASE_AP
 export const SIG_SDK_API_WEB = `${SIG_SDK_API_REF_ROOT}/web/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/reference/user-channel-events`;
 
+export const SPATIAL = '3D Spatial Audio';
 
 export const CHAT = `Chat`;
 export const CHAT_RELEASE_API = `1.x`;
@@ -121,6 +123,8 @@ export const ACCG = 'Global Accelerator';
 export const TEMPL = 'Templates';
 
 export const RTEE = 'Extensions';
+export const RTEE_DRM = `${COMPANY} DRM`;
+export const RTEE_DRM_FRAMEWORK = `AgoraDrmLoader.framework`;
 export const RTEE_NS = 'AI Noise Suppression';
 export const RTEE_VB = 'Vitual Background';
 export const AA = `${COMPANY} Analytics`;
@@ -149,7 +153,7 @@ export const CREC = 'Cloud Recording';
 export const CGATE = 'Cloud Gateway';
 
 export const CGATE_RELEASE_API = `3.x`;
-export const API_REF_ROOT_CGATE_SDK = `${API_ROOT}/cloud-gateway-sdk`;
+export const API_REF_ROOT_CGATE_SDK = `${API_ROOT}/server-gateway-sdk`;
 export const CGATE_SDK_API_CPP  = `${API_REF_ROOT_CGATE_SDK}/linux-cpp/${CGATE_RELEASE_API}`;
 export const CGATE_SDK_API_JAVA  = `${API_REF_ROOT_CGATE_SDK}/linux-java/${CGATE_RELEASE_API}`
 

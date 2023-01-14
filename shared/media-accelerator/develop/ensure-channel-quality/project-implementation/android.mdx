@@ -1,44 +1,99 @@
 <PlatformWrapper platform="android">
 
-1. **Specify the audio codec, sampling rate and the number of channels**
+### Handle the system logic
 
-    Built-in audio codec
-  
-    how to use the SDK internal audio encoder to send and receive data.
-    In this example, you encode PCM data into Opus format 
+**Import the supporting java library**
 
-    When calling the `agora_rtc_join_channel` method to join the RTC channel, set `rtc_channel_options_t.audio_codec_opt.audio_codec_type` to `Opus`, `G722`, `G711A` or `G711U` audio codec. Set different sampling rates and channel numbers according to different codecs. 
-
-    When calling the `agora_rtc_send_audio_data` method to send audio data, set the `*info_ptr.data_type` parameter to `AUDIO_DATA_TYPE_PCM` the PCM type. The SDK will automatically encode the PCM data into Opus format and transmit it.
-
-    Use own codec
-
-    If you use your own codec, you need to call the agora_rtc_join_channel method to join the RTC channel, set rtc_channel_options_t.audio_codec_opt.audio_codec_type to AUDIO_CODEC_DISABLED. When calling the agora_rtc_send_audio_data method to send audio data, set the *info_ptr.data_type parameter to your encoding format. This setting is mainly for information synchronization, that is, the receiving end can know the audio encoding format you send through this setting. The SDK does not process audio.
-
-    The receiving end obtains the encoded audio data and encoding format transmitted by the sending end through the on_audio_data callback , and decodes it through your own decoder.
-
-    Developers can call the `setBweParam` method to configure BWE before joining the RTC channel according to their actual bandwidth and bit rate needs, and set the minimum, maximum, and starting value. Your <Vpl k="CLIENT"/> needs to follow the bit rate recommendations to avoid sending data at an excessive bit rate leading to issues such as freezes.
-
-    - onTargetBitrateChanged
-
-    Encoder code rate update notification callback. You can use this callback to remind the app to update the encoder bit rate.
-
-1. **Configure Bandwidth Estimation and respond to target bit rate changes**
-
-    You must configure BWE (BandWidth Estimation) before calling `joinChannel` to join a channel, otherwise the call is `invalid.agora_rtc_set_bwe_paramsetBweParam`
-
-    During bit stream transmission, when the network bandwidth changes, the SDK will trigger a on_target_bitrate_changed(C API) callback or onTargetBitrateChanged(Java API) callback to prompt the application to adjust the sending bit rate in real time. The bit rate returned by the callback is the maximum recommended encoding bit rate of the video encoder.
-
-    See different definition levels of a webcam (Link to reference section)
-
-    The sender will continue to detect the available bandwidth, and notify the application of the current available bandwidth through a on_target_bitrate_changed callback .
-    The sample code is as follows:
+    In `MainActivity.java`, add the following to the list of `import` statements:
 
     ```java
-    // Add Code here
+    import java.lang.Math.abs;
     ```
 
-1. - **Manage audio and video streaming status**
+### Implement channel quality features
+
+1. **Configure the <Vpd k="SDK" /> log file**
+
+    To customize the location, and content of the log file, add the following code to `setupAgoraRtcService()` before `agoraRtcService.init(appId, agoraRtcEvents, options);`
+
+    ```java
+    // Configure log file location and logging level
+    options.logCfg.logPath = getExternalFilesDir(null).getPath() + "/rtsalog";
+    options.logCfg.logLevel = AgoraRtcService.LogLevel.RTC_LOG_WARNING;
+    ```
+
+1. **Specify the audio codec, sampling rate and the number of channels**
+
+    You set the audio codec, sampling rate, and the number of channels in `ChannelOptions` that you pass to the `agoraRtcService.joinChannel` method. To set these parameters, modify the following lines in the `joinChannel(View view)` method according to your requirements:
+
+    ```java
+    channelOptions.audioCodecOpt.audioCodecType
+            = AgoraRtcService.AudioCodecType.AUDIO_CODEC_TYPE_OPUS;
+    channelOptions.audioCodecOpt.pcmSampleRate = 16000;
+    channelOptions.audioCodecOpt.pcmChannelNum = 1;
+    ```
+  
+    Choose from `OPUS`, `G722`, `G711A`, and `G711U` built-in audio codecs in the <Vpd k="SDK" />. 
+    
+    To use your own audio codec, set `channelOptions.audioCodecOpt.audioCodecType` to `AUDIO_CODEC_DISABLED`. When you call `agoraRtcService.sendAudioData`, set the `dataType` parameter of `AudioFrameInfo` to your encoding format. This setting just transmits the audio encoding format to the receiving end. When you disable use of a built-in audio codec, <Vpd k="SDK" /> does not process the audio. The receiving end obtains the encoded audio data and the encoding format in the `onAudioData` callback and decodes it using a custom decoder.
+    
+1. **Configure Bandwidth Estimation**  
+
+    You configure BandWidth Estimation (BWE) parameters before joining a channel. For example, based on the [definition levels of a webcam](#definition-levels-of-a-webcam), the minimum value can be set to 400 kbps, and the maximum value can be set to 4200 kbps. The starting value is between the minimum and the maximum value. If the initial encoding is SD, the initial bit rate can be set to 500 kbps, based on the table.
+
+    To specify these parameters, add the following code to the `joinChannel(View view)` method before `agoraRtcService.joinChannel`.
+    
+    ```java
+    // Configure Bandwidth Estimation. Min, max and starting bit rates, in bps
+    agoraRtcService.setBweParam(connectionId, 400000, 4200000, 500000);
+    ```
+
+1. **Respond to target bit rate changes**
+
+    When network bandwidth changes, <Vpd k="SDK"/> triggers a `onTargetBitrateChanged` callback to prompt the <Vpl k="CLIENT"/> to adjust the sending bit rate. The `targetBps` value returned by the callback is the maximum recommended encoding bit rate of the video encoder.
+
+    In this example, you use [definition levels of a webcam](#definition-levels-of-a-webcam) to switch resolution depending on the reported target bit rate. To do this, replace the `onTargetBitrateChanged` method, under`AgoraRtcEvents`, with the following:
+
+    ```java
+    int curTargetBitrate, diffTargetBitrate, lastTargetBitrate = 500;
+    int lowBitrateL1 = 400, highBitrateL1 = 800;
+    int lowBitrateL2 = 1130 , highBitrateL2 = 2260, highBitrateL3 = 4160;
+    int curResolutionLevel = 1 , lastResolutionLevel = 1;
+
+    @Override
+    public void onTargetBitrateChanged(int connId, int targetBps) {
+        // Adjust the sending code rate in real time
+        // The current code rate is graded according to 100 K, rounded down
+        curTargetBitrate = targetBps/100000 * 100;
+        diffTargetBitrate = abs(curTargetBitrate - lastTargetBitrate);
+
+        // If the difference between the detected bandwidth and the
+        // current encoding rate is more than 100 K, adjust the encoding parameters
+        if ((diffTargetBitrate >= 100) && ((lowBitrateL1 < curTargetBitrate)
+                && (curTargetBitrate < highBitrateL3))) {
+            if ((lowBitrateL1 < curTargetBitrate) && (curTargetBitrate < highBitrateL1)) {
+                curResolutionLevel = 1; // Set resolution to L1
+            } else if ((lowBitrateL2 < curTargetBitrate) && (curTargetBitrate < highBitrateL2)) {
+                curResolutionLevel = 2; // Set resolution to L2
+            } else {
+                curResolutionLevel = 3; // Set resolution to L3
+            }
+
+            // Adjust encoding resolution
+            if (curResolutionLevel != lastResolutionLevel) {
+                //setEncoderResolution(curResolutionLevel);
+            }
+
+            // Set the encoding rate
+            // setEncoderBitrate(curTargetBitrate);
+
+            lastResolutionLevel = curResolutionLevel;
+            lastTargetBitrate = curTargetBitrate;
+        }
+    }
+    ```
+
+1. **Manage audio and video streaming status**
 
     Pause or resume sending local audio and video streams
     `muteLocalAudio`
@@ -51,15 +106,5 @@
     Prompt the local user whether the remote user in the Connection ID should suspend sending the audio/video stream.
     `onUserMuteAudio`
     `onUserMuteVideo`
-
-1. **Configure the <Vpd k="SDK" /> log file**
-
-    To customize the location, and content of the log file, add the following code to `setupAgoraRtcService()` before `agoraRtcService.init(appId, agoraRtcEvents, options);`
-
-    ```java
-    // Configure the log file
-    options.logCfg.logPath = getExternalFilesDir(null).getPath() + "/rtsalog";
-    options.logCfg.logLevel = AgoraRtcService.LogLevel.RTC_LOG_WARNING;
-    ```
 
 </PlatformWrapper>

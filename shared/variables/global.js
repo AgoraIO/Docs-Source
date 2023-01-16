@@ -174,6 +174,7 @@ export const FC_API_REF_ANDROID_ROOT = `${FC_API_REF_ROOT}/android/${FC_VERSION}
 export const FC_API_REF_IOS_ROOT = `${FC_API_REF_ROOT}/ios/${FC_VERSION}/API`;
 export const FC_API_REF_WEB_ROOT = `${FC_API_REF_ROOT}/web/${FC_VERSION}`;
 export const FC_API_REF_ELECTRON_ROOT = `${FC_API_REF_ROOT}/electron/${FC_VERSION}`;
+export const FC_PROCTOR_SDK = 'Proctor SDK' ;
 
 
 export const WEB = 'Web';

@@ -11,7 +11,8 @@ export const VSDK_WEB_RELEASE_API = '4.13.0'
 export const MAJOR_VERSION = '4.x'
 export const VSDK_FLUTTER_PREVIOUS_RELEASE = '5.x';
 
-export const API_ROOT = 'https://api-ref.agora.io/en';
+export const API_ROOT = 'https://api-reference-staging-rden3m2tn-agora-gdxe.vercel.app';
+//export const API_ROOT = 'https://api-ref.agora.io/en';
 
 export const API_REF_ROOT = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VIDEO_SDK = `${API_ROOT}/video-sdk`;
@@ -73,6 +74,7 @@ export const ILS = 'Interactive Live Streaming';
 export const ILSS = 'Interactive Live Streaming Standard';
 export const ILSP = 'Interactive Live Streaming Premium';
 export const VSDK = 'Video SDK';
+export const GET_STARTED = 'SDK quickstart';
 export const VSDK_RELEASE = '4.x';
 // A varible to update the version of SDK in relase notes.
 export const VSDK_LATEST_4_0_0 = '4.0.0';

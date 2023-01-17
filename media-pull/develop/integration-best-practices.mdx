@@ -1,0 +1,194 @@
+---
+title: 'Best Practices in Integrating Media Pull'
+sidebar_position: 1
+type: docs
+description: >
+  Best practices for integrating Media Pull into your app
+---
+
+To ensure reliability of Media Pull, Agora recommends that you follow the advice on this page when integrating Media Pull RESTful APIs.
+
+## Prerequisites
+
+You need the following to start using Media Pull RESTful API:
+
+- The scene of the channel is live, profile set to `BROADCASTING`
+- Media Pull is enabled
+- Message Notification Service is enabled to monitor Media Pull events
+
+## Limitations
+
+### QPS
+
+The Agora server limits the number of queries per second (QPS) to the Media Pull RESTful API. When the QPS is exceeded, the status code `429` (Too Many Requests)
+is returned. If you need a higher QPS limit, contact technical support.
+
+|API      |QPS limit            |
+|:--------|:---------------------|
+|Create|<ul><li>Creating cloud players with names is limited to 2 queries per second. </li><li>Creating cloud players without names is limited to 50 queries per second.</li></ul>|
+|Delete|Deleting cloud players is limited to 100 queries per second.|
+|List|<ul><li>For a project with filter, the limit of the query rate is 2 times per second and 15 times per minute.</li><li>When there is no filter, the limit of query rate is 10 times per second and 20 times per minute.</li></ul>|
+
+### Maximum number of concurrent tasks
+
+The default maximum number of concurrent tasks is 50, which indicates that a maximum of 50 Media Pull tasks can be run simultaneously in one project.
+If a higher quota is required, contact technical support.
+
+## Ensure the high availability of REST services
+
+To ensure the high availability of REST services and prevent downtime caused by regional network faults, Agora provides
+failover and domain name switch.
+
+### Failover
+
+Network failures and risks may be caused by cloud and network software, infrastructure, and other factors that Agora cannot control.
+To provide the best possible user experience, Media Pull provides high availability automatic task migration for failure recovery.
+After a failure is confirmed, the media pull task is migrated within 120 seconds. During this period, the task may be interrupted.
+
+Consider whether you can accept the impact of high availability migration based on your own business characteristics,
+and decide whether to adopt higher quality assurance measures. For example, create multiple media pull tasks for critical
+scenes. Alternatively, you can make periodic API calls and monitor notifications to get the latest
+task status, then create a new task with a different UID once you confirm the task status is unhealthy.
+
+### Multiple media pull tasks
+
+If you need a more reliable solution than fault recovery, you can use a multiple media pull task strategy.
+
+Start a master media pull task and multiple backup tasks at the same time and publish their streams into the same channel.
+Audience subscribes to the master stream. If the master media pull task fails, audience can switch to the backup stream.
+By listening to the following callback events on the client, you can understand when to notify the user to subscribe to the backup task:
+
+    - The callback to the anchor offline is `onUserOffline`
+    - The host audio and callback `onRemoteAudioStateChanged/onRemoteVideoStateChanged` state changes
+
+If you create multiple media pull tasks, you are charged separately for each of them. For details, see [Media Pull pricing](../reference/pricing).
+
+### Switch domain name
+
+Take the following steps to switch a domain name:
+
+1. Set the primary domain name based on the location of your service server:
+    - If the DNS address of the service server is in mainland China, set the primary domain name to `api.sd-rtn.com`.
+    - If the DNS address of the service server is located in a country or region other than mainland China,
+    set the primary domain name to `api.agora.io`.
+2. If the primary domain name fails to initiate a RESTful API request, use the primary domain name to retry.
+3. If the retry in step 2 still fails, use the alternate domain name to retry:
+    - If the current primary domain name is `api.sd-rtn.com`, the alternate domain name is `api.agora.io`.
+    - If the current primary domain name is `api.agora.io`, the alternate domain name is `api.sd-rtn.com`.
+4. If the retry in step 3 still fails, use the domain name adjacent to the current region to retry.
+
+For example, suppose your business server is located in Europe. You set the primary domain name to `api.agora.io`, and
+the business server resolves the primary domain name to Germany. Germany is located in Central Europe (`api-eu-central-1.agora.io`).
+Check the domain name table below - the adjacent area is West Europe (`api-eu-west-1.agora.io` or `api-eu-west-1.sd-rtn.com`).
+
+Therefore, if the network is faulty and the retry in steps 2 and 3 fails, use the `api-eu-west-1.agora.io` or `api-eu-west-1.sd-rtn.com`
+domain name to retry.
+
+- To avoid exceeding the QPS limit with retry requests, Agora recommends that you use a retreat strategy for retries: first retry after 1 second,
+then 3 seconds, then 6 seconds.
+- If the request fails because of a network problem rather than a DNS domain name resolution problem, skip step 3 and proceed to step 4.
+- Before switching to the region domain name, ensure that the REST services you use, for example, cloud recording or channel management, are deployed in that region.
+
+### Domain name table
+
+|Primary domain name  |Region domain name	|Region|
+|:--------------------|:--------------------|:-----|
+|`api.sd-rtn.com`      |`api-us-west-1.sd-rtn.com` |Western United States|
+|                      |`api-us-east-1.sd-rtn.com` |Eastern United States|
+|                      |`api-ap-southeast-1.sd-rtn.com`|Southeast Asia Pacific|
+|                      |`api-ap-northeast-1.sd-rtn.com`| Northeast Asia Pacific|
+|                      |`api-eu-west-1.sd-rtn.com` |Western Europe|
+|                      |`api-eu-central-1.sd-rtn.com` |Central Europe|
+|                      |`api-cn-east-1.sd-rtn.com`|East China|
+|                      |`api-cn-north-1.sd-rtn.com`|North China|
+|`api.agora.io`         |`api-us-west-1.agora.io`|Western United States|
+|                       |`api-us-east-1.agora.io`|Eastern United States|
+|                       |`api.agora.io|api-ap-southeast-1.agora.io`|Southeast Asia Pacific|
+|                       |`api-ap-northeast-1.agora.io`|Northeast Asia Pacific|
+|                	    |`api-eu-west-1.agora.io`|Western Europe|
+|                       |`api-eu-central-1.agora.io`|Central Europe|
+|                       |`api-cn-east-1.agora.io`|East China|
+|                       |`api-cn-north-1.agora.io`|North China|
+
+## Create cloud player
+
+When creating a cloud player with a `create` API call, pay attention to the following:
+
+- Create the cloud player by the region parameter:
+    - The region you set must be in the same area as your media streaming location. For example, if the media stream source is located in
+the US, set region to `na`.
+    - Pass the region value in lowercase.
+- Agora recommends that you assign a value to the `X-Request-ID` field in the request header. The Agora server returns an
+`X-Custom-request-ID` field in the response header for troubleshooting purposes.
+- Choose to set UID or account as the user name of the cloud player. Do not set these two fields at the same time. Ensure that each
+cloud player has a unique user name within the channel.
+- To avoid repeated media streaming due to repeated creation of multiple cloud players, use the `name` field to manage cloud players
+under a specific project. Cloud players with the same names cannot exist in the same project. If you attempt to create a cloud player with
+a name that already exists, you receive the `409` (Conflict) status code.
+- Note the supported audio and video formats and protocols of the cloud player to avoid media streaming failures caused by
+unsupported audio and video formats and protocols.
+- Set an appropriate value for `idleTimeout`. The default value of 300 seconds is recommended. It means that the cloud player
+automatically destroys the media stream after 300 seconds.
+- After listening for a cloud player creation success event, when you successfully create a cloud player,
+the message notification server notifies your server of the event. The status field in the payload of the event is
+`connecting`, indicating that the server is connecting to a media stream address or probing audio and video data.
+
+## Query cloud player
+
+Agora recommends that you paginate all cloud player lists under a project as follows:
+- The query parameter `pageToken` is not used when `List` is invoked for the first time.
+The page query result and `nextPageToken` returned by the Agora server are obtained in the response message.
+- When calling `List` again, pass the `nextPageToken` value into the query parameter `pageToken` to query the cloud player
+list of the next page.
+3. Until `nextPageToken` is `0`, it means that all cloud players under a project have been found.
+Cloud players are listed in ascending order by creation time (`createTs`).
+
+## Troubleshooting and recommended measures
+
+### Retry with retreat strategy
+
+If you receive `404`, `429`, or `5xx` error codes, take an escape strategy. For example, wait 5-6 seconds, 10-11 seconds,
+or 15-16 seconds and try again. If you receive `404` and `5xx` three times in a row or if the `state` field in the body of the
+response to querying the push status is `failed`, then the media pull task has failed. Perform the following steps to rectify the fault:
+
+1. Check whether the media stream address is correct and whether the media stream can be played.
+2. If the media stream address is correct and can be played, destroy the current cloud player and create a new one.
+
+### Troubleshooting by error code
+
+- If the status code is `200`, the request is successful.
+- If the status code is not `200`, the request has failed. See the error message in the response body for clarification.
+
+|Status code               |Possible error message |Possible reason of failure |Measures to take|
+|:-------------------------|:------------|:--------------|:-----------|
+|`400` Bad Request	       |The 'streamUrl' parameter is incorrectly formatted. The `channelName` parameter is invalid. Fix it in your request and retry.|Wrong parameters|Check by referring to the `reason` field in the HTTP response body.|
+|`401` Unauthorized	       |Invalid authentication credentials.	|RESTful API authentication failed. |See [RESTful Authentication](../reference/restful-authentication).|
+|`403` Forbidden	       |Cloud player is not enabled for this project. Contact us to enable it. This project's permission to use cloud player was revoked. Contact us for details.|The service is not enabled. |Enable the service.|
+|`404` Not Found	       |Resource is not found or destroyed.	|The task was not started or is in the process of failover or deletion. |Retry following the retreat strategy.|
+|`409` Conflict	           |Resource with the same name already exists.	|Resource with the same name already exists.|Delete the existing cloud player and create it again.|
+|`429` Too Many Requests   |Request rate limit exceeded. Resource quota exceeded. No available resources.| Too many requests.	| Retry following the retreat strategy.|
+|`500` Unknown	           |Some internal error happened. Contact us to help fix it.	| Internal error.	| Retry following the retreat strategy.|
+|`502` Bad gateway	       |Internal errors. Contact us for troubleshooting. |	Internal error. |	Retry with retreat strategy.|
+|`503` Service Unavailable |Service overload. Retry with the retreat strategy and contact us to help fix it. Service unavailable temporarily. Retry with the retreat strategy.	|Internal error	|Retry following the retreat strategy.|
+|`504` Gateway Timeout	   |Gateway timeout. Query to check whether the player has been created or to create one instead.	|Internal error.	|Retry following the retreat strategy.|
+
+### Contact Agora technical support
+
+If the error persists, print the `X-Request-ID` and `X-Resource-ID` fields in the response header in the log and contact technical support.
+
+## Integration checklist
+Refer to the following table to quickly check whether each check item meets the integration requirements to ensure the
+reliability of Media Pull.
+
+|Required or optional |Item       |Check 	|
+|:--------------------|:----------|:----------------|
+|Required	              |Channel mode	|Ensure that the scene of the channel is live.	|
+|Required	              |Availability	|Enable Media Pull.	|
+|Required	              |QPS limit	| Ensure that the rate of API calls in a project is below the maximum limit.|
+|Required	              |Maximum number of concurrent Tasks| Ensure that the number of concurrent tasks in a project is below 50.|
+|Optional	              |Cloud player user name	|<ul><li>Set UID or account as the user name for cloud player. Do not set both fields at the same time.</li><li>Use the name field to manage the cloud player under the specified project.</li></ul>|
+|Required	              |Region	|<ul><li>Set the region in the same area as your media streaming.</li><li>Pass region value in lowercase.</li></ul>|
+|Required	              |Idle timeout	|Set an appropriate `idleTimeout` value. 300 seconds is recommended.|
+|Optional	              |Troubleshooting	|Rectify the errors as follows: <ul><li>Use the retreat strategy.</li><li>Check the error code.</li></ul>If the preceding troubleshooting methods do not resolve the problem, print the values of the `X-Request-ID` and `X-Resource-ID` fields in the response header and contact Agora technical support.|
+|Optional	              |Message notifications	|Enable message notification service for Media Pull and listen to media pull events.|
+

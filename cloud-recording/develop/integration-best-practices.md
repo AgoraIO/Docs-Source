@@ -77,3 +77,17 @@ In composite recording mode, call `query` 15 seconds after the cloud recording s
 The default value of `maxIdleTime` in the `start` method is 30 seconds. If the host frequently goes online and offline, a brief `maxIdleTime` value causes the recording service to join and exit the channel frequently. For scenarios that require the recording service to be in the channel all the time, it is necessary to increase `maxIdleTime` in case the recording quits after a short idle time.
 
 For example, if there is a fixed 5-minute break in each class, you can set `maxIdleTime` to 10 minutes to ensure uninterrupted recording of the entire class.
+
+## Fault recovery
+
+Network failures and risks may be caused by cloud and network software, infrastructure, and other factors that Agora cannot control. To provide the best possible user experience, Cloud Recording provides high availability automatic task migration for failure recovery. After a failure is confirmed, the recording task is migrated within 90 seconds. 
+During this period, the recording may get interrupted and the files containing the recording may be lost.
+
+For scenes with a large audience in the channel or high availability requirements, consider whether you can 
+accept the impact of high availability migration based on your own business characteristics, and decide whether to adopt 
+higher quality assurance measures. For example, create multiple recording tasks for critical scenes using different UIDs. 
+Alternatively, you can make periodic API calls and monitor notifications to get the latest recording task status, 
+then create a new cloud recording task with a different UID once you confirm the recording task status is unhealthy.
+
+If you create multiple cloud recording tasks, you are charged separately for each of them. For details, see 
+[Media Pull pricing](../reference/pricing).

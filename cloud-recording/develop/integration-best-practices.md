@@ -90,4 +90,4 @@ Alternatively, you can make periodic API calls and monitor notifications to get 
 then create a new cloud recording task with a different UID once you confirm the recording task status is unhealthy.
 
 If you create multiple cloud recording tasks, you are charged separately for each of them. For details, see 
-[Media Pull pricing](../reference/pricing).
+[Pricing](../reference/pricing).

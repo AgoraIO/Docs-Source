@@ -26,4 +26,303 @@ Take the following steps to download and compile the <Vpd k="NAME"/> sample proj
     ```bash
     ./build-x86_64.sh
     ```
+
+1. Verify license
+
+    ```c
+    char *str_certificate = util_get_string_from_file(DEFAULT_CERTIFACTE_FILENAME);
+        if (str_certificate == NULL) {
+            LOGE("Failed to get license certificate frome file:%s", DEFAULT_CERTIFACTE_FILENAME);
+            return -1;
+        }
+        rval = agora_rtc_license_verify(str_certificate, strlen(str_certificate), NULL, 0);
+        if (rval < 0) {
+            LOGE("Failed to verify license, reason: %s", agora_rtc_err_2_str(rval));
+            return -1;
+        }
+        LOGI("Verify license successfully");
+        free(str_certificate);
+    ```
+
+1. Initialize the SDK and create a connection
+
+    ```c
+	int appid_len = strlen(config->p_appid);
+	void *p_appid = (void *)(appid_len == 0 ? NULL : config->p_appid);
+
+	agora_rtc_event_handler_t event_handler = { 0 };
+	app_init_event_handler(&event_handler, config);
+
+	rtc_service_option_t service_opt = { 0 };
+	service_opt.area_code = config->area;
+	service_opt.log_cfg.log_path = config->p_sdk_log_dir;
+
+	rval = agora_rtc_init(p_appid, &event_handler, &service_opt);
+	if (rval < 0) {
+		LOGE("Failed to initialize Agora sdk, reason: %s", agora_rtc_err_2_str(rval));
+		return -1;
+	}
+
+	agora_rtc_set_bwe_param(CONNECTION_ID_ALL, DEFAULT_BANDWIDTH_ESTIMATE_MIN_BITRATE,
+							DEFAULT_BANDWIDTH_ESTIMATE_MAX_BITRATE,
+							DEFAULT_BANDWIDTH_ESTIMATE_START_BITRATE);
+
+    rval = agora_rtc_create_connection(&g_app.conn_id);
+    if (rval < 0) {
+        LOGE("Failed to create connection, reason: %s", agora_rtc_err_2_str(rval));
+        return -1;
+    }
+    ```
+
+1. Handle events
+
+    ```c
+    static void __on_join_channel_success(connection_id_t conn_id, uint32_t uid, int elapsed)
+    {
+    g_app.b_connected_flag = true;
+    connection_info_t conn_info = { 0 };
+    agora_rtc_get_connection_info(g_app.conn_id, &conn_info);
+    LOGI("[conn-%u] Join the channel %s successfully, uid %u elapsed %d ms", conn_id, conn_info.channel_name,
+            uid, elapsed);
+    }
+
+    static void __on_connection_lost(connection_id_t conn_id)
+    {
+        g_app.b_connected_flag = false;
+        LOGW("[conn-%u] Lost connection from the channel", conn_id);
+    }
+
+    static void __on_rejoin_channel_success(connection_id_t conn_id, uint32_t uid, int elapsed_ms)
+    {
+        g_app.b_connected_flag = true;
+        LOGI("[conn-%u] Rejoin the channel successfully, uid %u elapsed %d ms", conn_id, uid, elapsed_ms);
+    }
+
+    static void __on_user_joined(connection_id_t conn_id, uint32_t uid, int elapsed_ms)
+    {
+        LOGI("[conn-%u] Remote user \"%u\" has joined the channel, elapsed %d ms", uid, conn_id, elapsed_ms);
+    }
+
+    static void __on_user_offline(connection_id_t conn_id, uint32_t uid, int reason)
+    {
+        LOGI("[conn-%u] Remote user \"%u\" has left the channel, reason %d", conn_id, uid, reason);
+    }
+
+    static void __on_user_mute_audio(connection_id_t conn_id, uint32_t uid, bool muted)
+    {
+        LOGI("[conn-%u] audio: uid=%u muted=%d", conn_id, uid, muted);
+    }
+
+    static void __on_user_mute_video(connection_id_t conn_id, uint32_t uid, bool muted)
+    {
+        LOGI("[conn-%u] video: uid=%u muted=%d", conn_id, uid, muted);
+    }
+
+    static void __on_error(connection_id_t conn_id, int code, const char *msg)
+    {
+        if (code == ERR_SEND_VIDEO_OVER_BANDWIDTH_LIMIT) {
+            LOGE("Not enough uplink bandwdith. Error msg \"%s\"", msg);
+            return;
+        }
+
+        if (code == ERR_INVALID_APP_ID) {
+            LOGE("Invalid App ID. Please double check. Error msg \"%s\"", msg);
+        } else if (code == ERR_INVALID_CHANNEL_NAME) {
+            LOGE("Invalid channel name for conn_id %u. Please double check. Error msg \"%s\"", conn_id, msg);
+        } else if (code == ERR_INVALID_TOKEN || code == ERR_TOKEN_EXPIRED) {
+            LOGE("Invalid token. Please double check. Error msg \"%s\"", msg);
+        } else if (code == ERR_DYNAMIC_TOKEN_BUT_USE_STATIC_KEY) {
+            LOGE("Dynamic token is enabled but is not provided. Error msg \"%s\"", msg);
+        } else {
+            LOGW("Error %d is captured. Error msg \"%s\"", code, msg);
+        }
+
+        g_app.b_stop_flag = true;
+    }
+
+    static void __on_audio_data(connection_id_t conn_id, const uint32_t uid, uint16_t sent_ts,
+                                const void *data, size_t len, const audio_frame_info_t *info_ptr)
+    {
+        LOGD("[conn-%u] on_audio_data, uid %u sent_ts %u data_type %d, len %zu", conn_id, uid, sent_ts,
+            info_ptr->data_type, len);
+        write_file(g_app.audio_file_writer, info_ptr->data_type, data, len);
+    }
+
+    static void __on_mixed_audio_data(connection_id_t conn_id, const void *data, size_t len,
+                                    const audio_frame_info_t *info_ptr)
+    {
+        LOGD("[conn-%u] on_mixed_audio_data, data_type %d, len %zu", conn_id, info_ptr->data_type, len);
+        write_file(g_app.audio_file_writer, info_ptr->data_type, data, len);
+    }
+
+    static void __on_video_data(connection_id_t conn_id, const uint32_t uid, uint16_t sent_ts, const void *data, size_t len,
+                                const video_frame_info_t *info_ptr)
+    {
+        LOGD("[conn-%u] on_video_data: uid %u sent_ts %u data_type %d frame_type %d stream_type %d len %zu", conn_id,
+            uid, sent_ts, info_ptr->data_type, info_ptr->frame_type, info_ptr->stream_type, len);
+        // write_file(g_app.video_file_writer, data_type, data, len);
+    }
+
+    static void __on_target_bitrate_changed(connection_id_t conn_id, uint32_t target_bps)
+    {
+        LOGI("[conn-%u] Bandwidth change detected. Please adjust encoder bitrate to %u kbps", conn_id,
+            target_bps / 1000);
+    }
+
+    static void __on_key_frame_gen_req(connection_id_t conn_id, uint32_t uid, video_stream_type_e stream_type)
+    {
+        LOGW("[conn-%u] Frame loss detected. Please notify the encoder to generate key frame immediately", conn_id);
+    }
+
+    static void app_init_event_handler(agora_rtc_event_handler_t *event_handler, app_config_t *config)
+    {
+        event_handler->on_join_channel_success = __on_join_channel_success;
+        event_handler->on_connection_lost = __on_connection_lost;
+        event_handler->on_rejoin_channel_success = __on_rejoin_channel_success;
+        event_handler->on_user_joined = __on_user_joined;
+        event_handler->on_user_offline = __on_user_offline;
+        event_handler->on_user_mute_audio = __on_user_mute_audio;
+        event_handler->on_user_mute_video = __on_user_mute_video;
+        event_handler->on_target_bitrate_changed = __on_target_bitrate_changed;
+        event_handler->on_key_frame_gen_req = __on_key_frame_gen_req;
+        event_handler->on_video_data = __on_video_data;
+        event_handler->on_error = __on_error;
+
+        if (config->enable_audio_mixer) {
+            event_handler->on_mixed_audio_data = __on_mixed_audio_data;
+        } else {
+            event_handler->on_audio_data = __on_audio_data;
+        }
+    }    
+    ```
+
+1. Join a channel
+
+    ```c
+	int token_len = strlen(config->p_token);
+	void *p_token = (void *)(token_len == 0 ? NULL : config->p_token);
+
+	rtc_channel_options_t channel_options;
+	memset(&channel_options, 0, sizeof(channel_options));
+	channel_options.auto_subscribe_audio = true;
+	channel_options.auto_subscribe_video = true;
+	channel_options.enable_audio_mixer = config->enable_audio_mixer;
+
+	if (config->audio_data_type == AUDIO_DATA_TYPE_PCM) {
+		/* If we want to send PCM data instead of encoded audio like AAC or Opus, here please enable
+           audio codec, as well as configure the PCM sample rate and number of channels */
+		channel_options.audio_codec_opt.audio_codec_type = config->audio_codec_type;
+		channel_options.audio_codec_opt.pcm_sample_rate = config->pcm_sample_rate;
+		channel_options.audio_codec_opt.pcm_channel_num = config->pcm_channel_num;
+	}
+
+	rval = agora_rtc_join_channel(g_app.conn_id, config->p_channel, config->uid, p_token,
+								  &channel_options);
+	if (rval < 0) {
+		LOGE("Failed to join channel \"%s\", reason: %s", config->p_channel,
+			 agora_rtc_err_2_str(rval));
+		return -1;
+	}    
+    ```
+
+1. Send audio and video data in a loop
+
+    ```c
+	int audio_send_interval_ms = DEFAULT_SEND_AUDIO_FRAME_PERIOD_MS;
+	int video_send_interval_ms = 1000 / config->send_video_frame_rate;
+	void *pacer = pacer_create(audio_send_interval_ms, video_send_interval_ms);
+
+	while (!g_app.b_stop_flag) {
+		// skip sending data if receive_data_only flag is on
+		if (config->receive_data_only) {
+			util_sleep_ms(1000);
+			continue;
+		}
+		if (g_app.b_connected_flag && is_time_to_send_audio(pacer)) {
+			app_send_audio();
+		}
+		if (g_app.b_connected_flag && is_time_to_send_video(pacer)) {
+			app_send_video();
+		}
+		// sleep and wait until time is up for next send
+		wait_before_next_send(pacer);
+	}
+    ```
+
+1. Send audio data
+
+    ```c
+    static int app_send_audio(void)
+    {
+        app_config_t *config = &g_app.config;
+
+        frame_t frame;
+        if (file_parser_obtain_frame(g_app.audio_file_parser, &frame) < 0) {
+            LOGE("The file parser failed to obtain audio frame");
+            return -1;
+        }
+
+        // API: send audio data
+        audio_frame_info_t info = { 0 };
+        info.data_type = config->audio_data_type;
+        int rval = agora_rtc_send_audio_data(g_app.conn_id, frame.ptr, frame.len, &info);
+        if (rval < 0) {
+            LOGE("Failed to send audio data, reason: %s", agora_rtc_err_2_str(rval));
+            file_parser_release_frame(g_app.audio_file_parser, &frame);
+            return -1;
+        }
+
+        file_parser_release_frame(g_app.audio_file_parser, &frame);
+        return 0;
+    }
+    ```
+
+1. Send video data
+
+    ```c
+    static int app_send_video(void)
+    {
+        app_config_t *config = &g_app.config;
+        uint8_t stream_id = 0;
+
+        frame_t frame;
+        if (file_parser_obtain_frame(g_app.video_file_parser, &frame) < 0) {
+            LOGE("The file parser failed to obtain audio frame");
+            return -1;
+        }
+
+        // API: send vido data
+        video_frame_info_t info;
+        info.frame_type = frame.u.video.is_key_frame ? VIDEO_FRAME_KEY : VIDEO_FRAME_DELTA;
+        info.frame_rate = config->send_video_frame_rate;
+        info.data_type = config->video_data_type;
+        info.stream_type = VIDEO_STREAM_HIGH;
+        int rval = agora_rtc_send_video_data(g_app.conn_id, frame.ptr, frame.len, &info);
+        if (rval < 0) {
+            LOGE("Failed to send video data, reason: %s", agora_rtc_err_2_str(rval));
+            file_parser_release_frame(g_app.video_file_parser, &frame);
+            return -1;
+        }
+
+        file_parser_release_frame(g_app.video_file_parser, &frame);
+        return 0;
+    }
+    ```
+
+1. Leave channel
+
+    ```c
+    agora_rtc_leave_channel(g_app.conn_id);    
+    ```
+
+1. Stop the app
+
+    ```c
+    // Destroy connection
+	agora_rtc_destroy_connection(g_app.conn_id);
+
+	// fini rtc sdk
+	agora_rtc_fini();
+    ```
+
 </PlatformWrapper>

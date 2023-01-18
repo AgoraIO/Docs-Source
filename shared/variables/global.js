@@ -74,7 +74,7 @@ export const ILSP = 'Interactive Live Streaming Premium';
 export const VSDK = 'Video SDK';
 export const GET_STARTED = 'SDK quickstart';
 export const VSDK_RELEASE = '4.x';
-// A varible to update the version of SDK in relase notes.
+// A variable to update the version of SDK in release notes.
 export const VSDK_LATEST_4_0_0 = '4.0.0';
 export const VSDK_FLUTTER_LATEST_RELEASE = '6.0.0';
 // A variable to update the version of sdk in release notes.
@@ -83,6 +83,8 @@ export const VSDK_PREVIOUS_RELEASE = '3.7.x';
 export const VSDK_PREVIOUS_RELEASE_WEB = '3.x';
 export const VSDK_RELEASE_FOLDER = 'video-call-4.x-beta';
 export const VSDK_FLUTTER_RELEASE = '6.0.0-rc.2';
+// A variable to update the version of SDK in release notes.
+export const NATIVE_SDK_LATEST_RELEASE = '3.7.0';
 
 export const AV = 'Audio/Video';
 
@@ -216,6 +218,10 @@ export const WEB_UIKIT = 'Agora React Web UI Kit';
 export const IOS_MI_PACKAGE_VERSION = '4.0.0-rc.1';
 export const IOS_PACKAGE = 'NAME: AgoraRtcEngine_iOS';
 export const IOS_VOICE_PACKAGE = 'AgoraRtcEngine_iOS_Voice_Beta';
+
+export const NATIVE = 'Native';
+export const RTC_NATIVE_SDK = `RTC ${NATIVE} SDK`;
+export const RTC_WEB_SDK = `RTC ${WEB} SDK`;
 
 export const UIKIT_GH_HUB = 'https://github.com/AgoraIO-Community/.github/wiki/Agora-Video-UIKit'
 export const UIKIT_PACKAGE_IOS = 'https://github.com/AgoraIO-Community/VideoUIKit-iOS'

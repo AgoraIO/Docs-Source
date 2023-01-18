@@ -213,9 +213,9 @@ export const ANDROID_UIKIT_SDK = 'com.github.agoraio-community:videouikit-androi
 
 export const WEB_UIKIT = 'Agora React Web UI Kit';
 
-export const IOS_MI_PACKAGE_VERSION = '4.0.0-rc.1';
+export const IOS_MI_PACKAGE_VERSION = '4.1.0';
 export const IOS_PACKAGE = 'NAME: AgoraRtcEngine_iOS';
-export const IOS_VOICE_PACKAGE = 'AgoraRtcEngine_iOS_Voice_Beta';
+export const IOS_VOICE_PACKAGE = 'AgoraAudio_iOS';
 
 export const UIKIT_GH_HUB = 'https://github.com/AgoraIO-Community/.github/wiki/Agora-Video-UIKit'
 export const UIKIT_PACKAGE_IOS = 'https://github.com/AgoraIO-Community/VideoUIKit-iOS'

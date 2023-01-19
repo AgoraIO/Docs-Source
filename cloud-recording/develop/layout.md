@@ -118,7 +118,7 @@ See the following pictures for the layouts with different number of users in the
 - For the layout of 1 to 5 users, the regions of users 1 to 4 are tiled along the right edge of the canvas. The width and height of the small region are one-fifth and one-fourth of those of the canvas respectively.
 - For the layout of 6 to 7 users, the regions of users 1 to 6 are tiled along the right edge of the canvas. The width and height of the small region are one-seventh and one-sixth of those of the canvas respectively.
 
-![](https://web-cdn.agora.io/docs-files/1577698564432)
+![](/images/cloud-recording/vertical-layout.png)
 
 - For the layout of 6 to 7 users, the regions of users 1 to 8 are tiled along the right edge of the canvas. The width and height of the small region are one-ninth and one-eighth of those of the canvas respectively.
 - For the layout of 6 to 7 users, the regions of users 1 to 16 are tiled along the right edge of the canvas. The width and height of the small region are one-tenth and one-eighth of those of the canvas respectively.

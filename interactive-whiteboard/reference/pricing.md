@@ -22,6 +22,7 @@ The unit prices for whiteboard features are as follows:
 |                    | 10,000 - 60,000 minutes     | 1.40 US$/1,000 minutes |
 |                    | 60,000 - 120,000 minutes    | 1.30 US$/1,000 minutes |
 |                    | 120,000 - 1,000,000 minutes | 1.10 US$/1,000 minutes |
+|                    | Over 1,000,000 minutes      | Contact Agora Sales    |
 | File conversion    | Under 100,000 images        | Free                   |
 |                    | Over 100,000 images         | 0.50 US$/1,000 images  |
 

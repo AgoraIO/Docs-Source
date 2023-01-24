@@ -18,10 +18,12 @@ The unit prices for whiteboard features are as follows:
 
 | Whiteboard feature | Volume                      | Pricing                |
 |:-------------------|:----------------------------|:-----------------------|
-| Online whiteboard  | 10,000 - 60,000 minutes     | 1.40 US$/1,000 minutes |
+| Online whiteboard  | Under 10,000 minutes        | Free                   |
+|                    | 10,000 - 60,000 minutes     | 1.40 US$/1,000 minutes |
 |                    | 60,000 - 120,000 minutes    | 1.30 US$/1,000 minutes |
 |                    | 120,000 - 1,000,000 minutes | 1.10 US$/1,000 minutes |
-| File conversion    | Over 100,000 images         | 0.50 US$/1,000 images  | 
+| File conversion    | Under 100,000 images        | Free                   |
+|                    | Over 100,000 images         | 0.50 US$/1,000 images  |
 
 If your scenario involves other Agora products or services, such as the <Vg k="VIDEO" />, <Vg k="MESS" />, or <Vg k="CREC" />, expect additional charges for these products or services. For details, see the pricing policy for each Agora product or service.
 
@@ -70,20 +72,6 @@ You can call the [Query file conversion progress](../reference/whiteboard-api/fi
 API to get the result of a file conversion task. 
 
 The file conversion feature can also be charged by QPS. See [QPS-based Pricing](../reference/qps-pricing).
-
-### Free-of-charge usage
-
-Agora gives each whiteboard feature the following free-of-charge usage each month:
-
-| Whiteboard feature   | Monthly free-of-charge usage |
-| :------------------- |:-----------------------------|
-| Online whiteboard    | The first 10,000 minutes     |
-| File conversion      | The first 100,000 images     |
-
-If the monthly total usage of a whiteboard feature does not exceed its free usage allowance, 
-the feature is free of charge for that month. 
-
-The remaining free-of-charge usage is cleared at the end of each calendar month. 
 
 ## Examples
 

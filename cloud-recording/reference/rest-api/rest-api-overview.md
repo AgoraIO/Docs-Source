@@ -525,7 +525,7 @@ eventType 43 indicates that the state of the audio stream has changed, and `deta
 - `msgName: `String. The message name, `"web_recorder_reload"`:
 - `reason: `String. The reason for the page reload:
   - `"audio_silence"`: Audio loss issue.
-  - `"page_load_timeout"`: Web page load timeout; the callback returns this field only if the web page load detection function is enabled and there is a web page load timeout. See [Web page load detection](../../develop/webpage-load-timeout).
+  - `"page_load_timeout"`: Web page load timeout. The callback returns this field only if the web page load detection function is enabled and there is a web page load timeout. See [Web page load detection](../../develop/webpage-load-timeout).
  
 ### <a name="80"></a>80 transcoder_started
 

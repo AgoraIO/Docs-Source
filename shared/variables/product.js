@@ -61,7 +61,7 @@ const data = {
   'media-accelerator': {
     NAME: 'Media Accelerator',
     PATH: 'media-accelerator',
-    SDK: 'RTSA SDK',
+    SDK: 'Media Accelerator SDK',
     PRODUCT: 'Media Accelerator'
   }
   

@@ -2,6 +2,7 @@
 title: "Best Practices in integrating Cloud Recording"
 sidebar_position: 13
 type: docs
+platform_selector: false
 description: >
    Guidelines for integrating cloud recording into your app.
 ---

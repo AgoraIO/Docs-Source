@@ -2,6 +2,7 @@
 title: "Cloud Recording API callback service"
 sidebar_position: 1
 type: docs
+platform_selector: false
 description: >
   Notifies the Message Notification Service, and then the Message Notification Service notifies your server of that event through an HTTP/HTTPS request.
 ---

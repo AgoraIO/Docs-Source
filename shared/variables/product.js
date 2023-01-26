@@ -56,7 +56,15 @@ const data = {
       PATH: 'server-gateway',
       SDK: 'Server Gateway SDK',
       PRODUCT: 'Server Gateway'
+  },
+
+  'iot': {
+    NAME: 'IoT',
+    PATH: 'iot',
+    SDK: 'IoT SDK',
+    PRODUCT: 'IoT'
   }
+  
 };
 
 export default data;

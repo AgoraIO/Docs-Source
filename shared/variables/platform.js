@@ -59,6 +59,12 @@ const data = {
     NAME: 'Windows',
     PATH: 'windows',
     CLIENT: 'app'
+  },
+
+  'linux-cpp': {
+    NAME: 'Linux C++',
+    PATH: 'linux-cpp',
+    CLIENT: 'app'
   }
 };
 

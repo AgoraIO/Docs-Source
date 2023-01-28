@@ -10,8 +10,8 @@ export const VSDK_UNITY_FLUTTER_RN_RELEASE_API = '4.0.0.beta-2'
 export const VSDK_WEB_RELEASE_API = '4.13.0'
 export const MAJOR_VERSION = '4.x'
 export const VSDK_FLUTTER_PREVIOUS_RELEASE = '5.x';
-export const API_ROOT = 'https://api-reference-staging-rden3m2tn-agora-gdxe.vercel.app';
-//export const API_ROOT = 'https://api-ref.agora.io/en';
+
+export const API_ROOT = 'https://api-ref.agora.io/en';
 export const API_REF_ROOT = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VIDEO_SDK = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VOICE_SDK = `${API_ROOT}/voice-sdk`;
@@ -110,11 +110,11 @@ export const API_REF_ROOT_CHAT_SDK = `${API_ROOT}/chat-sdk`;
 export const CHAT_SDK_API_ANDROID  = `${API_REF_ROOT_CHAT_SDK}/android/${CHAT_RELEASE_API}`;
 export const CHAT_SDK_API_WEB  = `${API_REF_ROOT_CHAT_SDK}/web/${CHAT_RELEASE_API}`;
 
-export const MA = `MA`;
-export const MA_RELEASE_API = `1.9`;
-export const MA_SDK_API_REF_ROOT = `https://docs.agora.io/cn/RTSA/API%20Reference`;
-export const MA_SDK_API_REF_ANDROID = `${MA_SDK_API_REF_ROOT}/rtsa_java`
-export const MA_SDK_API_REF_LNX_C = `${MA_SDK_API_REF_ROOT}/rtsa_c`
+export const IOT = `IoT`;
+export const IOT_RELEASE_API = `1.9`;
+export const IOT_SDK_API_REF_ROOT = `https://docs.agora.io/cn/RTSA/API%20Reference`;
+export const IOT_SDK_API_REF_ANDROID = `${IOT_SDK_API_REF_ROOT}/rtsa_java`
+export const IOT_SDK_API_REF_LNX_C = `${IOT_SDK_API_REF_ROOT}/rtsa_c`
 
 export const PS = 'Pub-Sub';
 export const PUSH = 'Push Notifications';
@@ -205,6 +205,7 @@ export const DEMO_BASIC_VIDEO_CALL_URL =
 
 export const DEMO_PAGE_LINK = `<Link to="{{Global.DEMO_BASIC_VIDEO_CALL_URL}}"><Vg k="COMPANY" /> web demo</Link>`;
 
+
 export const AGORA_DYNAMIC_KEY_CODE_BASE_URL =
   'https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey';
 
@@ -216,9 +217,9 @@ export const ANDROID_UIKIT_SDK = 'com.github.agoraio-community:videouikit-androi
 
 export const WEB_UIKIT = 'Agora React Web UI Kit';
 
-export const IOS_MI_PACKAGE_VERSION = '4.0.0-rc.1';
+export const IOS_MI_PACKAGE_VERSION = '4.1.0';
 export const IOS_PACKAGE = 'NAME: AgoraRtcEngine_iOS';
-export const IOS_VOICE_PACKAGE = 'AgoraRtcEngine_iOS_Voice_Beta';
+export const IOS_VOICE_PACKAGE = 'AgoraAudio_iOS';
 
 export const UIKIT_GH_HUB = 'https://github.com/AgoraIO-Community/.github/wiki/Agora-Video-UIKit'
 export const UIKIT_PACKAGE_IOS = 'https://github.com/AgoraIO-Community/VideoUIKit-iOS'

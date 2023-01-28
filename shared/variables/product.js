@@ -58,11 +58,11 @@ const data = {
       PRODUCT: 'Server Gateway'
   },
 
-  'media-accelerator': {
-    NAME: 'Media Accelerator',
-    PATH: 'media-accelerator',
-    SDK: 'RTSA SDK',
-    PRODUCT: 'Media Accelerator'
+  'iot': {
+    NAME: 'IoT',
+    PATH: 'iot',
+    SDK: 'IoT SDK',
+    PRODUCT: 'IoT'
   }
   
 };

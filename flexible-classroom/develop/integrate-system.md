@@ -10,7 +10,7 @@ Flexible Classroom provides a real-time interactive experience in the classroom 
 
 ## Understand the tech
 
-!figure here
+![Image](/images/flexible-classroom/integrate-systems-flexible-classroom.png)
 
 As shown in the figure above, if you need to integrate Smart Classroom with your user system and course scheduling system, you need to implement the following business logic:
 

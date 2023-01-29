@@ -6,7 +6,7 @@ description: >
     Best practices to integrate user system and course scheduling system in Flexible Classroom
 ---
 
-Flexible Classroom provides a real-time interactive experience in the classroom out of the box. This document shows you how to integrate a custom user system and a custom course scheduling system with Flexible Classroom.
+<Vg k="FC"/> provides a real-time interactive experience in the classroom out of the box. This document shows you how to integrate a custom user system and a custom course scheduling system with <Vg k="FC"/>.
 
 ## Understand the tech
 
@@ -19,7 +19,7 @@ As shown in the figure above, if you need to integrate Smart Classroom with your
     1. Verify that the user logged into the App exists in the user system.
     1. If the user exists, obtain the user information and course scheduling information of the user.
     1. Get the <Vg k="SIG"/> token issued by the <Vg k="SIG"/> Token Generator for this user.
-    1. After the client obtains the user ID, classroom ID and <Vg k="SIG"/> Token, it calls the launch method of the Agora Classroom SDK to start the Flexible Classroom, and passes in the user ID, classroom ID, <Vg k="SIG"/> Token and other parameters to start the Smart Classroom.
+    1. After the client obtains the user ID, classroom ID and <Vg k="SIG"/> Token, it calls the launch method of the Agora Classroom SDK to start the <Vg k="FC"/>, and passes in the user ID, classroom ID, <Vg k="SIG"/> Token and other parameters to start the Smart Classroom.
 
 ## Best Practices
 
@@ -27,15 +27,15 @@ As shown in the figure above, if you need to integrate Smart Classroom with your
 
 You need to pass the user ID (or the mapping of the user ID) in your own user system to Smart Classroom as `userUuid`.
 
-Flexible Classroom's `userUuidis` are globally unique, that is, the each `userUuidis` is only allowed to log in on one instance of one device at a time, and logging in again will overwrite the previous device's login status.
+<Vg k="FC"/>'s `userUuidis` are globally unique, that is, the each `userUuidis` is only allowed to log in on one instance of one device at a time, and logging in again will overwrite the previous device's login status.
 
 Each `userUuid` in the same `roomUuiddata` will be retained, that is, if a user changes the device `userUuid` in the same class(such as switching from browser login to mobile App login), the user's information in the class will still exist.
 
 ### Integrated course scheduling system
 
-You need to pass the class ID (or the mapping of the class ID) in your own course scheduling system to the Flexible Classroom as `roomUuid`.
+You need to pass the class ID (or the mapping of the class ID) in your own course scheduling system to the <Vg k="FC"/> as `roomUuid`.
 
-Flexible Classroom `roomUuid` is created when the first user enters and are completely destroyed 1 hour after the last user leaves.
+<Vg k="FC"/> `roomUuid` is created when the first user enters and are completely destroyed 1 hour after the last user leaves.
 
 Agora will not save your user information and classroom information. After the class is destroyed, if you reuse the previous `roomUuid` again to enter the room, you will get a  new classroom instead of the previous one.
 

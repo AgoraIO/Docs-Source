@@ -2,6 +2,7 @@
 title: "Capture screenshots"
 sidebar_position: 4
 type: docs
+platform_selector: false
 description: >
     The key steps in using the Cloud Recording RESTful API to take screenshots of a video stream.
 ---

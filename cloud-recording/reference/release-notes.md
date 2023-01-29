@@ -2,6 +2,7 @@
 title: "Release notes"
 sidebar_position: 3
 type: docs
+platform_selector: false
 description: >
     New features, improvements and resolved issues for Cloud Recording.
 ---

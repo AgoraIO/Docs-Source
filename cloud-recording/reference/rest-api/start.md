@@ -61,6 +61,10 @@ The following parameters are required in the request body.
 - `streamMode`: (Optional) String. The output mode of the media stream in individual recording mode.
 - `default`: Default mode. The Cloud Recording service transcodes the audio stream during recording and generates a M3U8 audio index file and a M3U8 video index file.
 - `standard`: Standard mode. Agora recommends that you use this mode. The Cloud Recording service transcodes the audio stream during recording and generates a M3U8 audio index file, a M3U8 video index file and a combined M3U8 audio and video index file. If VP8 encoding is used on the web side, a combined MPD audio and video index file are generated.
+  When using the standard mode to generate MPD files, the player compatibility is as follows:
+  - macOS: Movist/Chrome (47.0.2526.111+)
+  - Windows: Media Player/KM Player/VLC Player/Chrome (49.0.2623+)
+  - Linux: FFplay
 - `original`: Original encoding mode, which takes effect only when `streamTypes` is `0`. The Cloud Recording service does not transcode the audio stream during recording and generates a M3U8 audio index file.
   The following table compares various aspects of the three modes of `streamMode`:
   | streamMode | Description                                                  | Index file generated                                         | Slice file generated                                         | Video encoded       | Audio encoded       | Features supported                                           |

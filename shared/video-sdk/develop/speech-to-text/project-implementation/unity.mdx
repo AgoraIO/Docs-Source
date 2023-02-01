@@ -1,3 +1,344 @@
-<PlatformWrapper platform="unity">
+<PlatformWrapper platform="android">
 
+### Implement the user interface
+
+To create a simple interface for testing speech to text functionality, you add two buttons to the UI.
+
+    1. Right-click **Sample Scene**, then click **Game Object** > **UI** > **Button - TextMeshPro**. A button appears in the **Scene** Canvas.
+
+    2. In **Inspector**, rename **Button** to `shareScreen`, and then change the following coordinates:
+
+        * **Pos X** - 350
+        * **Pos Y** - 172
+
+    3. Right-click **Sample Scene**, then click **Game Object** > **UI** > **Slider**. A Slider appears in the **Scene** Canvas.
+
+    4. In **Inspector**, rename **Slider** to `mediaProgressBar`, and then change the following coordinates:
+    
+        * **Pos X** - 0
+        * **Pos Y** - 142
+
+    5. Right-click **Canvas**, then click **UI** > **Toggle**. A toggle button appears in the scene canvas.
+
+    6. In **Inspector**, rename **Toggle** to `Mute`, then change **Pos Y** to `30`.
+
+
+You see errors in your IDE. This is because the layout refers to methods that you create later.
+
+### Handle the system logic
+
+To integrate HTTP and JSON capabilities into your app for speech to text:
+
+1. **Integrate a `HTTP` client library into your project**
+
+    To call `HTTP` methods that start, stop, and query a speech-to-text task, you add a `HTTP` client library to your project. Open `/Gradle Scripts/build.gradle (Module: <project name>.app)` and add the following line under `dependencies {`:
+
+    ```csharp
+    using System.IO;
+    using System.Net;
+    using System.Text;
+    using System;
+    ```
+
+1. **Import the required classes**
+
+    To use the relevant `WebRequest` classes in your project, add the following statements after the last `import` statement in your script file:
+
+    ```csharp
+    using System.IO;
+    using System.Net;
+    using System.Text;
+    using System;
+    ```
+
+1. **Define variables to manage a speech-to-text task**
+
+    In `/app/java/com.example.<projectname>/MainActivity`, add the following declarations to the `MainActivity` class:
+
+    ```java
+    private String baseUrl = "https://api.agora.io";
+    private String apiKey = "<your API key from Agora console>";
+    private String apiSecret = "<your API secret from Agora console>";
+    private String instanceID = "Test-1";
+    private String authorizationHeader, builderToken;
+    private String speechToTextTaskId = ""; // Returned by the start method
+    private boolean isSpeechToTextRunning = false;
+    private Button btnSpeechToText;
+    ```
+
+### Manage a speech-to-text task
+
+Take the following steps to start, stop and query a text-to-speech task in your <Vpl k="CLIENT" />.
+
+1. **Get a `builderToken`**
+
+    To use the speech to text RESTful API, you generate a Base64-encoded credential with the API key and secret provided by <Vg k="COMPANY" />. You add this credential to the request header as a parameter named `Authorization`. In the request body, you pass a parameter `instanceID` that you choose to identify the instance. To [acquire a `builderToken`](#acquire-a-buildertoken), add the following method to the `MainActivity` class:
+
+    ```java
+    public void fetchBuilderToken()
+{
+    string url = baseUrl + "/v1/projects/"+ _appID +"/rtsc/speech-to-text/builderTokens";
+    // Concatenate customer key and customer secret and use base64 to encode the concatenated string
+    string plainCredentials = apiKey + ":" + apiSecret;
+    // Encode with base64
+    var plainTextBytes = Encoding.UTF8.GetBytes(plainCredentials);
+    string encodedCredential = Convert.ToBase64String(plainTextBytes);
+    // Create authorization header
+    authorizationHeader = "Authorization: Basic " + encodedCredential;
+    // Create request object
+    WebRequest request = WebRequest.Create(url);
+    request.Method = "POST";
+    // Add authorization header
+    request.Headers.Add(authorizationHeader);
+    request.ContentType = "application/json";
+    using (var streamWriter = new StreamWriter(request.GetRequestStream()))
+    {
+        string json = "{\"instanceId\":\"Test-1\"}";
+        streamWriter.Write(json);
+    }
+    WebResponse response = request.GetResponse();
+    Debug.Log(((HttpWebResponse)response).StatusDescription);
+    using (Stream dataStream = response.GetResponseStream())
+    {
+        StreamReader reader = new StreamReader(dataStream);
+        string responseFromServer = reader.ReadToEnd();
+        Debug.Log(responseFromServer);
+        // Using the Method
+        responseFromServer = responseFromServer.Replace("{", "");
+        responseFromServer = responseFromServer.Replace("}", "");
+        String[] list1 = responseFromServer.Split(",");
+        String[] list2 = list1[2].Split(":");
+        builderToken = list2[1];
+        builderToken = builderToken.Replace("\"", "");
+        Debug.Log(builderToken);
+    }
+    response.Close();
+}
+    ```
+
+    A `builderToken` is usable for 5 minutes. After the time has expired, you must generate a new token.
+
+1. **Start a speech-to-text task**
+
+    To [start a speech-to-text task](#start-a-speech-to-text-task), you create a JSON configuration and pass it in the body of a `POST` request. You add the `builderToken` as a query parameter to the URL. Upon success, the method returns a `taskId` that you use to query or stop the task later on. To start a task, add the following method to the `MainActivity` class:
+
+    ```java
+    public void startSpeechToText() throws JSONException {
+        String url = baseUrl + "/v1/projects/" + appId
+                + "/rtsc/speech-to-text/tasks?" + "builderToken=" + builderToken;
+        // Build Request body JSON
+        JSONObject startConfig = new JSONObject()
+            .put("audio", new JSONObject()
+                .put("subscribeSource", "AGORARTC")
+                .put("agoraRtcConfig", new JSONObject()
+                        .put("channelName", channelName)
+                        .put("uid", String.valueOf(uid))
+                        .put("token", token)
+                        .put("channelType", "LIVE_TYPE")
+                        .put("subscribeConfig", new JSONObject()
+                                .put("subscribeMode", "CHANNEL_MODE"))
+                        .put("maxIdleTime", 60)))
+            .put("config", new JSONObject()
+                .put("features", new JSONArray()
+                        .put("RECOGNIZE"))
+                .put("recognizeConfig", new JSONObject()
+                    .put("language", "ENG")
+                    .put("model", "Model")
+                    .put("output", new JSONObject()
+                            .put("destinations", new JSONArray()
+                                .put("AgoraRTCDataStream")
+                                .put("Storage"))
+                            .put("agoraRTCDataStream", new JSONObject()
+                                .put("channelName", channelName)
+                                .put("uid", String.valueOf(uid))
+                                .put("token", token))
+                            .put("cloudStorage", new JSONArray()
+                                .put(new JSONObject()
+                                    .put("format", "HLS")
+                                    .put("storageConfig", new JSONObject()
+                                        .put("accessKey", "<YourOssAccessKey>")
+                                        .put("secretKey", "<YourOssSecretKey>")
+                                        .put("bucket", "<YourOssBucketName>")
+                                        .put("vendor", 0) // Your Oss Vendor id
+                                        .put("region", 0) // Your Oss Region id
+                                        .put("fileNamePrefix", new JSONArray()
+                                            .put("directory1")
+                                            .put("directory2")
+                                        )
+                                    )
+                                )
+                            )
+                    )
+                )
+            );
+
+        OkHttpClient httpClient = new OkHttpClient().newBuilder().build();
+        MediaType mediaType = MediaType.parse("application/json");
+        RequestBody body = RequestBody.create(startConfig.toString(), mediaType);
+        Request request = new Request.Builder()
+            .addHeader("Authorization", authorizationHeader)
+            .url(url)
+            .method("POST", body)
+            .build();
+
+        httpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(final Call call, IOException e) {
+                showMessage(e.toString());
+            }
+
+            @Override
+            public void onResponse(Call call, final Response response) throws IOException {
+                String result = response.body().string();
+                if (response.isSuccessful()) {
+                    try {
+                        JSONObject jsonObject = new JSONObject(result);
+                        String status = jsonObject.getString("status");
+                        speechToTextTaskId = jsonObject.getString("taskId");
+                        if (status.equals("STARTED") || status.equals("IN_PROGRESS")) {
+                            isSpeechToTextRunning = true;
+                            runOnUiThread(() -> btnSpeechToText.setText("Stop speech to text"));
+                            showMessage("Speech to text task started");
+                        } else {
+                            isSpeechToTextRunning = false;
+                            showMessage("Speech to text status: " + status);
+                        }
+                    } catch (Exception e) {
+                        showMessage("Error parsing query call response: " + result);
+                    }
+                } else {
+                    showMessage("Exception starting speech-to-text task: " + result);
+                }
+            }
+        }
+        );
+    }
+    ```
+
+1. **Query task status**
+
+    You [query the status](#query-the-status-of-speech-to-text) of a speech-to-text task using a `GET` request containing the `taskId` and `builderToken` to notify the user of any change. To do this, add the following method to the `MainActivity`class:
+
+    ```csharp
+    public void querySpeechToText() 
+    {
+        string url = baseUrl + "/v1/projects/" + _appID
+            + "/rtsc/speech-to-text/tasks/" + speechToTextTaskId
+            + "?builderToken=" + builderToken;
+        // Create request object
+        WebRequest request = WebRequest.Create(url);
+        request.Method = "GET";
+        // Add authorization header
+        request.Headers.Add(authorizationHeader);
+        request.ContentType = "application/json";
+        WebResponse response = request.GetResponse();
+        Debug.Log(((HttpWebResponse)response).StatusDescription);
+        using (Stream dataStream = response.GetResponseStream())
+        {  
+            StreamReader reader = new StreamReader(dataStream);
+            string responseFromServer = reader.ReadToEnd();
+            Debug.Log(responseFromServer);
+            if(((HttpWebResponse)response).StatusDescription != "OK")
+            {
+                return;
+            }
+            responseFromServer = responseFromServer.Replace("{", "");
+            responseFromServer = responseFromServer.Replace("}", "");
+            String[] list1 = responseFromServer.Split(",");
+            String[] tempList= list1[1].Split(":");
+            string status = tempList[1];
+            status = status.Replace("\"", "");
+            if(status == "STARTED"|| status == "IN_PROGRESS")
+            {
+                Debug.Log("Speech-to-text service has been enabled");
+                isSpeechToTextRunning = true;
+            }
+            else
+            {
+                isSpeechToTextRunning = false;
+                speechToTextTaskId = "";
+                Debug.Log("Speech to text status: " + status + "");
+            }
+        }
+        response.Close();
+    }
+    ```
+
+1. **Stop the task**
+
+    To [stop speech to text](#stop-speech-to-text), you send a `DELETE` request with the, `appId`, `taskId` and `builderToken` in the URL. In the `MainActivity` class, add the following method:
+
+    ```java
+    public void stopSpeechToText() 
+    {
+        String url = baseUrl + "/v1/projects/" + _appID
+            + "/rtsc/speech-to-text/tasks/" + speechToTextTaskId
+            + "?builderToken=" + builderToken;
+        // Create request object
+        WebRequest request = WebRequest.Create(url);
+        request.Method = "DELETE";
+        // Add authorization header
+        request.Headers.Add(authorizationHeader);
+        request.ContentType = "application/json";
+        WebResponse response = request.GetResponse();
+        Debug.Log(((HttpWebResponse)response).StatusDescription);
+        if(((HttpWebResponse)response).StatusDescription == "OK")
+        {
+            Debug.Log("Speech-to-text task stopped");
+        }
+        else
+        {
+            Debug.Log("Error while stopping speech-to-text:" + ((HttpWebResponse)response).StatusDescription);
+        }
+        response.Close();
+    }
+    ```
+
+1. **Receive and display the text stream**
+
+    When you set one of the `destinations` in the starting configuration as `AgoraRTCDataStream`, the speech-to-text conversion output stream is pushed to your RTC channel. To receive this stream and display the text in your <Vpl k="CLIENT" />, add the following code after `private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {` in the `MainActivity` class:
+
+    ```java
+    @Override
+    public void onStreamMessage(int uid, int streamId, byte[] data) {
+        showMessage(data.toString());
+    }    
+    ```
+
+1. **Enable a user to start, query and stop a task**
+
+    In this example, you use two buttons to manage a speech-to-text task.
+
+        1. When a user presses the first button, the <Vpl k="CLIENT" /> requests a `builderToken`. If the request is successful, the <Vpl k="CLIENT" /> starts a speech-to-text task. If a task is already running, you stop the task. To implement this functionality, add the following method to the `MainActivity` class.
+
+            ```java
+            public void SpeechToText(View view) {
+                if (!isSpeechToTextRunning) {
+                    try {
+                        getBuilderToken();
+                    } catch (Exception e) {
+                        showMessage(e.toString());
+                    }
+                } else {
+                    stopSpeechToText();
+                }
+            }
+            ```
+
+        1. When a user presses the query status button, you call the query method to inform the user of the current task status and update the user interface. To implement this functionality, add the following method to the `MainActivity` class.
+
+            ```java
+            public void query(View view) {
+                if (isSpeechToTextRunning) 
+                    querySpeechToText();
+                else
+                    showMessage("Speech-to-text task is not running");
+            }
+            ```
+
+        1. To access the button from code, add the following line to the `onCreate` method after `setupVideoSDKEngine();`:
+
+            ```java
+            btnSpeechToText = findViewById(R.id.SpeechToTextButton);
+            ```
 </PlatformWrapper>

@@ -29,7 +29,11 @@ It usually follows the following naming convention:
 `milestone-<number>-<milestone_name>`
 
 For example, `milestone-45-video-sdk-4.1.1-native`. Branches for every issue in the milestone are created from 
-the milestone branch and PRs are raised back into it. 
+the milestone branch and PRs are raised back into it. Issue branches usually follow this naming convention: 
+
+`<issue_number>-<doc_type>_<platform>`
+
+For example, `1064-quickstart-android`.
 
 ### Planning the work
 
@@ -54,10 +58,12 @@ a language reviewer (currently [Anastasia](https://github.com/atovpeko)), and a 
 For issues that require technical implementation, the doc team follows this process:
 
 1. The lead technical reviewer (currently [Saud](https://github.com/saudsami) develops implementation for their platform,  
-   raises a PR, and requests a language review from the language reviewer.  
-2. Once all possible comments have been addressed and language review is passed, the lead technical reviewer passes 
+   raises a PR, and requests a review from the TW leading the team and the language reviewer.  
+2. Once all possible comments have been addressed and technical/language review is passed, the lead technical reviewer passes 
    their implementation to other TWs who then adapt the implementation for their respective platforms. 
 3. Each TW then raises a PR and requests a review from the lead technical reviewer and the language reviewer. 
+
+//Specify at which point and how TWs test each other's code.
 
 For issues that do not require technical implementation, for example, adding release notes, only language review is required. 
 

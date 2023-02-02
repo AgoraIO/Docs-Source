@@ -16,7 +16,7 @@ As shown in the figure above, if you need to integrate Smart Classroom with your
 
 1. [Deploy a <Vg k="SIG"/> token server](/signaling/develop/authentication-workflow) in your backend services.
 1. Design a RESTful API for the following three purposes:
-    1. Verify that the user logged into the App exists in the user system.
+    1. Verify that the user logged into the app exists in the user system.
     1. If the user exists, obtain the user information and course scheduling information of the user.
     1. Get the <Vg k="SIG"/> token issued by the <Vg k="SIG"/> Token Generator for this user.
     1. After the client obtains the user ID, classroom ID and <Vg k="SIG"/> Token, it calls the launch method of the Agora Classroom SDK to start the <Vg k="FC"/>, and passes in the user ID, classroom ID, <Vg k="SIG"/> Token and other parameters to start the Smart Classroom.

@@ -158,7 +158,6 @@ export const CGATE_SDK_API_CPP  = `${API_REF_ROOT_CGATE_SDK}/linux-cpp/${CGATE_R
 export const CGATE_SDK_API_JAVA  = `${API_REF_ROOT_CGATE_SDK}/linux-java/${CGATE_RELEASE_API}`
 
 export const UCS = 'Use Cases';
-
 export const AB = 'App Builder';
 export const UIK = 'UI Kit';
 export const vUIK = `${UIK}`;

@@ -12,20 +12,20 @@ description: >
 
 ![Image](/images/flexible-classroom/integrate-systems-flexible-classroom.png)
 
-As shown in the figure above, if you need to integrate <Vg k="FC"/> with your user system and course scheduling system, you need to implement the following business logic:
+As shown in the figure above, if you need to integrate <Vg k="FC"/> with your user system and course scheduling system, implement the following business logic:
 
-1. [Deploy an <Vg k="SIG"/> token server](/signaling/develop/authentication-workflow) in your backend services.
+1. [Deploy a <Vg k="SIG"/> token server](/signaling/develop/authentication-workflow) in your backend services.
 1. Design a RESTful API for the following three purposes:
-    1. Verify that the user logged into the App exists in the user system.
+    1. Verify that the user logged into the app exists in the user system.
     1. If the user exists, obtain the user information and course scheduling information of the user.
-    1. Get the <Vg k="SIG"/> token issued by the <Vg k="SIG"/> Token Generator for this user.
+    1. Get the <Vg k="SIG"/> token issued by the <Vg k="SIG"/> token generator for this user.
     1. After the client obtains the user ID, classroom ID and <Vg k="SIG"/> Token, it calls the launch method of the Agora Classroom SDK to start the <Vg k="FC"/>, and passes in the user ID, classroom ID, <Vg k="SIG"/> Token and other parameters to start the <Vg k="FC"/>.
 
 ## Integrate user system
 
 You need to pass either the user ID or the mapping of the user ID in your user system to <Vg k="FC"/> as `userUuid`.
 
-<Vg k="FC"/>'s `userUuidis` are globally unique, that is, the each `userUuidis` is only allowed to log in on one instance of one device at a time, and logging in again will overwrite the previous device's login status.
+<Vg k="FC"/>'s `userUuidi`s are globally unique, that is, each `userUuidi` is only allowed to log in on one instance of one device at a time, and logging in again overwrites the previous device's login status.
 
 Each `userUuid` in the same `roomUuiddata` will be retained, that is, if a user changes the device `userUuid` in the same class(such as switching from browser login to mobile App login), the user's information in the class will still exist.
 
@@ -33,8 +33,8 @@ Each `userUuid` in the same `roomUuiddata` will be retained, that is, if a user 
 
 You need to pass the class ID (or the mapping of the class ID) in your own course scheduling system to the <Vg k="FC"/> as `roomUuid`.
 
-<Vg k="FC"/> `roomUuid` is created when the first user enters and are completely destroyed 1 hour after the last user leaves.
+<Vg k="FC"/> `roomUuid` is created when the first user enters and is completely destroyed 1 hour after the last user leaves.
 
 Agora will not save your user information and classroom information. After the class is destroyed, if you reuse the previous `roomUuid` again to enter the room, you will get a  new classroom instead of the previous one.
 
-Note: Agora does not recommend that you reuse `roomUuid`, as this will make it impossible to distinguish between two sessions. For example, to arrange mathematics classes for the first grade students, it is recommended to use a new `roomUuid`, instead of reusing the same one for each math class in an institute.
+Note: Agora does not recommend that you reuse `roomUuid`, as this makes it impossible to distinguish between two sessions. For example, use a new `roomUuid` for each math class instead of reusing the same one for math classes of all grades.

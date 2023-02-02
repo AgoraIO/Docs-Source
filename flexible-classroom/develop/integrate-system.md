@@ -14,7 +14,7 @@ description: >
 
 As shown in the figure above, if you need to integrate Smart Classroom with your user system and course scheduling system, implement the following business logic:
 
-1. [Deploy an <Vg k="SIG"/> token server](/signaling/develop/authentication-workflow) in your backend services.
+1. [Deploy a <Vg k="SIG"/> token server](/signaling/develop/authentication-workflow) in your backend services.
 1. Design a RESTful API for the following three purposes:
     1. Verify that the user logged into the App exists in the user system.
     1. If the user exists, obtain the user information and course scheduling information of the user.

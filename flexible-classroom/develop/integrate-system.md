@@ -35,7 +35,7 @@ Each `userUuid` in the same `roomUuiddata` will be retained, that is, if a user 
 
 You need to pass the class ID (or the mapping of the class ID) in your own course scheduling system to the <Vg k="FC"/> as `roomUuid`.
 
-<Vg k="FC"/> `roomUuid` is created when the first user enters and are completely destroyed 1 hour after the last user leaves.
+<Vg k="FC"/> `roomUuid` is created when the first user enters and is completely destroyed 1 hour after the last user leaves.
 
 Agora will not save your user information and classroom information. After the class is destroyed, if you reuse the previous `roomUuid` again to enter the room, you will get a  new classroom instead of the previous one.
 

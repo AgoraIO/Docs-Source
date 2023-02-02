@@ -39,4 +39,4 @@ You need to pass the class ID (or the mapping of the class ID) in your own cours
 
 Agora will not save your user information and classroom information. After the class is destroyed, if you reuse the previous `roomUuid` again to enter the room, you will get a  new classroom instead of the previous one.
 
-Note: Agora does not recommend that you reuse `roomUuid`, as this will make it impossible to distinguish between two sessions. For example, to arrange mathematics classes for the first grade students, it is recommended to use a new `roomUuid`, instead of reusing the same one for each math class in an institute.
+Note: Agora does not recommend that you reuse `roomUuid`, as this makes it impossible to distinguish between two sessions. For example, use a new `roomUuid` for each math class instead of reusing the same one for math classes of all grades.

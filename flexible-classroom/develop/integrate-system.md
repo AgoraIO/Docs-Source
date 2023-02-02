@@ -12,7 +12,7 @@ description: >
 
 ![Image](/images/flexible-classroom/integrate-systems-flexible-classroom.png)
 
-As shown in the figure above, if you need to integrate Smart Classroom with your user system and course scheduling system, you need to implement the following business logic:
+As shown in the figure above, if you need to integrate Smart Classroom with your user system and course scheduling system, implement the following business logic:
 
 1. [Deploy an <Vg k="SIG"/> token server](/signaling/develop/authentication-workflow) in your backend services.
 1. Design a RESTful API for the following three purposes:

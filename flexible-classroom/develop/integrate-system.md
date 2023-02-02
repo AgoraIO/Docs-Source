@@ -27,7 +27,7 @@ As shown in the figure above, if you need to integrate Smart Classroom with your
 
 You need to pass the user ID (or the mapping of the user ID) in your own user system to Smart Classroom as `userUuid`.
 
-<Vg k="FC"/>'s `userUuidis` are globally unique, that is, the each `userUuidis` is only allowed to log in on one instance of one device at a time, and logging in again will overwrite the previous device's login status.
+<Vg k="FC"/>'s `userUuidi`s are globally unique, that is, each `userUuidi` is only allowed to log in on one instance of one device at a time, and logging in again overwrites the previous device's login status.
 
 Each `userUuid` in the same `roomUuiddata` will be retained, that is, if a user changes the device `userUuid` in the same class(such as switching from browser login to mobile App login), the user's information in the class will still exist.
 

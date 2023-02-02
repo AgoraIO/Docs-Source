@@ -7,8 +7,7 @@ documentation activities.
 ### Milestones 
 
 The doc team uses GitHub [milestones](https://docs.github.com/en/issues/using-labels-and-milestones-to-track-work/about-milestones) 
-to plan, track, and deliver documentation. A milestone represents the full list of documentation issues 
-associated with a certain project. 
+to plan, track, and deliver documentation. A milestone represents the full list of documentation issues associated with a certain project. 
 
 Project examples include: 
 
@@ -18,8 +17,7 @@ Project examples include:
 * Documentation improvements. For example, fixing broken links or aligning pricing pages across all docs.
 * Generally, any combination of activities that would serve a single purpose. 
 
-The need to start a documentation project may rise from the roadmap of product releases, requests from product or 
-development teams, customer feedback on documentation, documentation analysis, or else. 
+The need to start a documentation project may rise from the roadmap of product releases, requests from product or development teams, customer feedback on documentation, documentation analysis, or else. 
 
 ### Branches
 
@@ -28,8 +26,7 @@ It usually follows the following naming convention:
 
 `milestone-<number>-<milestone_name>`
 
-For example, `milestone-45-video-sdk-4.1.1-native`. Branches for every issue in the milestone are created from 
-the milestone branch and PRs are raised back into it. Issue branches usually follow this naming convention: 
+For example, `milestone-45-video-sdk-4.1.1-native`. Branches for every issue in the milestone are created from the milestone branch and PRs are raised back into it. Issue branches usually follow this naming convention: 
 
 `<issue_number>-<doc_type>_<platform>`
 
@@ -42,11 +39,17 @@ Whenever a need arises to start a documentation project, the responsible TWs (cu
 (currently [Iain](https://github.com/billy-the-fish)) create a milestone, open related issues, and assign those depending 
 on the areas of responsibility:
 
-* <Platform 1>: <Name>
-* <Platform 2>: <Name>
-* <Platform 3>: <Name>
-* General improvement tickets: <Name>
-* Release notes, API reference, and SDK downloads: <Name>
+* Android: [Saud](https://github.com/saudsami)
+* Flutter: [Saud](https://github.com/saudsami)
+* iOS: [Dasun](https://github.com/nirm2009)
+* macOS: [Dasun](https://github.com/nirm2009)
+* Unity: [Hussain](https://github.com/hussain-khalid)
+* Windows: [Hussain](https://github.com/hussain-khalid) / [Pankaj](https://github.com/Pankajg123)
+* Web: [Kishan](https://github.com/Kishan-Dhakan) / [Hussain](https://github.com/hussain-khalid)
+* Electron: [Kishan](https://github.com/Kishan-Dhakan)
+* React Native: [Kishan](https://github.com/Kishan-Dhakan)
+* General improvement tickets: As appropriate
+* Release notes, API reference, and SDK downloads: As appropriate
 
 ### Writing and reviewing 
 

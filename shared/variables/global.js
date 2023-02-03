@@ -127,6 +127,7 @@ export const RTEE_DRM = `${COMPANY} DRM`;
 export const RTEE_DRM_FRAMEWORK = `AgoraDrmLoader.framework`;
 export const RTEE_NS = 'AI Noise Suppression';
 export const RTEE_VB = 'Vitual Background';
+export const RTEE_FU = 'FaceUnity';
 export const AA = `${COMPANY} Analytics`;
 export const WHITE = 'Interactive Whiteboard';
 export const WHITE_SDK = `${WHITE} SDK`

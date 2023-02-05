@@ -1,79 +1,181 @@
 
-## Way of Working
+# Way of Working
 
-This document describes how the EN doc team plans and carries out 
-documentation activities. 
+Documentation is a crucial part of Agora's offering to customers. This document describes how the EN doc team
+plans and carries out documentation activities to make sure that everything on Agora's
+[documentation website](docs.agora.io) is up to standard and released in a timely manner.
 
-### Milestones 
+## EN doc team structure
 
-The doc team uses GitHub [milestones](https://docs.github.com/en/issues/using-labels-and-milestones-to-track-work/about-milestones) 
-to plan, track, and deliver documentation. A milestone represents the full list of documentation issues associated with a certain project. 
+Currently, the EN doc team includes the following roles and members:
 
-Project examples include: 
+* Documentation Architect: [Iain](https://github.com/billy-the-fish)
+* Technical Writer Lead: [Saud](https://github.com/saudsami)
+* Editor: [Anastasia](https://github.com/atovpeko)
+* Technical Writers: [Dasun](https://github.com/nirm2009), [Hussain](https://github.com/hussain-khalid),
+* [Pankaj](https://github.com/Pankajg123), and [Kishan](https://github.com/Kishan-Dhakan).
+
+## Documentation work lifecycle
+
+Working on documentation includes the following stages:
+
+1. Documentation request
+2. Project planning and management
+3. Writing
+4. Review
+5. Publishing
+
+### Prerequisites
+
+Agora uses [Docusaurus](https://docusaurus.io/) to generate a static documentation website.
+To be able to contribute to Agora documentation, follow [this procedure](https://github.com/AgoraIO/Docs/edit/staging/README.md)
+and then clone [all other repositories](#repositories) that the EN doc team works in.
+
+//Clarify environment setup for implementation per platform
+
+### 1. Documentation request
+
+The need to deliver new or update the existing documentation may arise from the [roadmap of product releases](insert link to the roadmap,
+if possible), requests from product or development teams, customer feedback on documentation, or internal
+documentation analysis.
+
+//Insert a matrix of stakeholders (PMs, devs, etc.) with the products/areas they are responsible for.
+
+### 2. Project planning and management
+
+The TW Lead and Editor analyze the documentation request and, with help and consult of the Documentation Architect, plan and
+assign the work in the form of milestones and related issues.
+
+//Clarify whether we need to do costing before we start on a milestone
+
+#### Milestones
+
+The doc team uses GitHub [milestones](https://docs.github.com/en/issues/using-labels-and-milestones-to-track-work/about-milestones)
+to plan, track, and deliver documentation. A milestone represents the full list of documentation issues
+associated with a certain project.
+
+Milestone examples include:
 
 * A new release of an existing Agora product. For example, release of Signaling v1.6.0.
 * A new release of an existing Agora product for certain platforms only. For example, release of Video SDK v4.1.1 for web.
-* A new Agora product release. 
+* A new Agora product release.
 * Documentation improvements. For example, fixing broken links or aligning pricing pages across all docs.
-* Generally, any combination of activities that would serve a single purpose. 
+* Generally, any combination of activities that would serve a single purpose.
 
-The need to start a documentation project may rise from the roadmap of product releases, requests from product or development teams, customer feedback on documentation, documentation analysis, or else. 
+#### Issues
 
-### Branches
+After a milestone is created, the TW Lead and Editor create issues for each smaller documentation task using
+the following logic:
 
-When a milestone is created, an associated branch is created from the `staging` branch as well. 
-It usually follows the following naming convention: 
+//Do we create a separate issue for each platform or one issue with subtasks for each platform? Clarify general
+logic of splitting up work into issues.
+
+#### Branches
+
+The milestone creator also creates a milestone branch from the `staging` branch and specifies it in the milestone description.
+It usually follows this naming convention:
 
 `milestone-<number>-<milestone_name>`
 
-For example, `milestone-45-video-sdk-4.1.1-native`. Branches for every issue in the milestone are created from the milestone branch and PRs are raised back into it. Issue branches usually follow this naming convention: 
+For example, `milestone-45-video-sdk-4.1.1-native`.
+
+//Specify how long we need to keep milestones after they are merged.
+
+TWs create branches for their assigned issues from
+the milestone branch and raise PRs back into it. Issue branches usually follow this naming convention:
 
 `<issue_number>-<doc_type>_<platform>`
 
-For example, `1064-quickstart-android`.
+For example, `1064-quickstart-android`. When all the issue branches are merged, the milestone branch is then merged to
+`staging`.
 
-### Planning the work
+//Clarify how and when it goes to `main`.
 
-Whenever a need arises to start a documentation project, the responsible TWs (currently [Saud](https://github.com/saudsami) and 
-[Anastasia](https://github.com/atovpeko)) with help and supervision from the TW leading the EN doc team 
-(currently [Iain](https://github.com/billy-the-fish)) create a milestone, open related issues, and assign those depending 
-on the areas of responsibility:
+#### Repositories
 
-* Android: [Saud](https://github.com/saudsami)
-* Flutter: [Saud](https://github.com/saudsami)
-* iOS: [Dasun](https://github.com/nirm2009)
-* macOS: [Dasun](https://github.com/nirm2009)
-* Unity: [Hussain](https://github.com/hussain-khalid)
-* Windows: [Hussain](https://github.com/hussain-khalid) / [Pankaj](https://github.com/Pankajg123)
-* Web: [Kishan](https://github.com/Kishan-Dhakan) / [Hussain](https://github.com/hussain-khalid)
-* Electron: [Kishan](https://github.com/Kishan-Dhakan)
-* React Native: [Kishan](https://github.com/Kishan-Dhakan)
-* General improvement tickets: As appropriate
-* Release notes, API reference, and SDK downloads: As appropriate
+//Insert a list of repositories with submodules and nuances and whether we create milestones in all of them.
 
-### Writing and reviewing 
+#### Assignment
 
-The review process ideally includes the lead technical reviewer (currently [Saud](https://github.com/saudsami)), 
-a language reviewer (currently [Anastasia](https://github.com/atovpeko)), and a PM reviewer on the need-only basis.
+Issues in a milestone are assigned to TWs depending on their areas of responsibility and rotation.
 
-//Clarify requirements for PM review and a list of PMs to talk to 
+Every platform has a primary writer and a backup writer who is assigned the ticket if the primary writer is unavailable.
+The backup writer also acts as a primary reviewer.
+
+Backup writers change their platform every quarter.
+
+| Platform                                        | Primary writer                               | Backup writer/Primary reviewer               |
+|-------------------------------------------------|----------------------------------------------|----------------------------------------------|
+| Android                                         | [Saud](https://github.com/saudsami)          | TBC                                          |
+| Flutter                                         | [Saud](https://github.com/saudsami)          | TBC                                          |
+| iOS                                             | [Dasun](https://github.com/nirm2009)         | [Iain](https://github.com/billy-the-fish)    |
+| macOS                                           | [Dasun](https://github.com/nirm2009)         | [Iain](https://github.com/billy-the-fish)    |
+| Unity                                           | [Hussain](https://github.com/hussain-khalid) | TBC                                          |
+| Windows C++                                     | [Pankaj](https://github.com/Pankajg123)      | [Hussain](https://github.com/hussain-khalid) |     
+| Windows C#                                      | [Pankaj](https://github.com/Pankajg123)      | [Hussain](https://github.com/hussain-khalid) |
+| Web                                             | [Kishan](https://github.com/Kishan-Dhakan)   | [Hussain](https://github.com/hussain-khalid) | 
+| Electron                                        | [Kishan](https://github.com/Kishan-Dhakan)   ||
+| React Native                                    | [Kishan](https://github.com/Kishan-Dhakan)   ||
+| Linux Java                                      | TBC                                          | TBC                                          |
+| Linux C++                                       | TBC                                          | TBC                                          |
+| General improvement tickets                     | Every TW in turn                             | Every TW in turn                             |                |
+| Release notes, API reference, and SDK downloads | [Anastasia](https://github.com/atovpeko)     | [Dasun](https://github.com/nirm2009)         |
+
+### Writing
+
+All Agora documentation is written in a clear, consistent American English,
+following [Google developer documentation style guide](https://developers.google.com/style).
 
 For issues that require technical implementation, the doc team follows this process:
 
-1. The lead technical reviewer (currently [Saud](https://github.com/saudsami) develops implementation for their platform,  
-   raises a PR, and requests a review from the TW leading the team and the language reviewer.  
-2. Once all possible comments have been addressed and technical/language review is passed, the lead technical reviewer passes 
-   their implementation to other TWs who then adapt the implementation for their respective platforms. 
-3. Each TW then raises a PR and requests a review from the lead technical reviewer and the language reviewer. 
+1. The TW Lead develops implementation for their platform, raises a PR, and requests a review from the Documentation Architect and the Editor.
+2. Once all possible comments have been addressed and technical/language review is passed, the TW Lead passes
+   their implementation to other TWs who then adapt the implementation for their respective platforms.
 
-//Specify at which point and how TWs test each other's code.
+For issues that do not require technical implementation, TWs use their judgement or input from dev teams or other SMEs.
 
-For issues that do not require technical implementation, for example, adding release notes, only language review is required. 
+For API reference, if the HTML files are not provided by SMEs, the TWs follow this procedure to generate them:
 
-Once all the issues in the milestone have been closed and PRs merged, <insert_role> raises a PR from the milestone branch 
-to the staging branch and does the final visual check. <insert_role> reviews the PR. 
+//Clarify the procedure and criteria for when the HTML files have to be re-generated.
 
-//Specify when and how it then goes to `main`.
+### Review
+
+The review stage includes self-review, team review, and PM review, if needed.
+
+#### Self-review
+
+Before raising a PR, every TW does a self-review in the local build:
+
+//Clarify the procedure with `yarn start`/`yarn build`/`yarn clear`
+
+#### Team review
+
+Each TW raises a PR and requests reviews following this logic:
+
+| Review type | Reviewer | Mandatory or optional                                      |
+| ----------- | -------- |------------------------------------------------------------|
+| Language    | Editor   | Mandatory                                                  |
+| Technical   | Primary writer requests a review from the backup writer for their platform. Backup writer requests a review from the primary writer, if available, or the Documentation Architect.| Mandatory for issues that require technical implementation |
+
+#### Stakeholder review
+
+//Clarify requirements for PM review
+//Clarify Vercel procedure
+
+### Publishing
+
+//Clarify publishing procedure
+
+
+
+
+
+
+
+
+
+
+
 
 
 

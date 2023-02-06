@@ -90,8 +90,8 @@ For example, `1064-quickstart-android`.
 
 When all the issue branches in a milestone are merged, the milestone branch is merged as follows: 
 
-* For products that are GA, the milestone branch is merged to `staging`.
-* For product that in beta, the milestone branch is merged to `beta`.
+* For a product that is GA, the milestone branch is merged to `staging`.
+* For a product in beta, the milestone branch is merged to `beta`.
 
 //Clarify how and when it goes to `main`.
 

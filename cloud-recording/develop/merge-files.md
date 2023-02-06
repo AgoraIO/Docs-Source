@@ -2,6 +2,7 @@
 title: "Merge audio and video files"
 sidebar_position: 8
 type: docs
+platform_selector: false
 description: >
   Merge each user's audio and video files into one file.
 ---

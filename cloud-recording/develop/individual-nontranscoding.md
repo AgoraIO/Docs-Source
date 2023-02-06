@@ -2,6 +2,7 @@
 title: "Individual audio non-transcoding recording"
 sidebar_position: 12
 type: docs
+platform_selector: false
 description:
   Make an individual audio non-transcoding recording or postpone audio mixing
 ---

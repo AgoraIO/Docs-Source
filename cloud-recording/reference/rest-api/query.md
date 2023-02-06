@@ -2,6 +2,7 @@
 title: "Query the recording status"
 sidebar_position: 6
 type: docs
+platform_selector: false
 description: >
   After you start a recording, you can call `query` method to check its status.
 ---

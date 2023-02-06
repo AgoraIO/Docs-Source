@@ -152,10 +152,11 @@ Before raising a PR, every TW does a self-review in the local build:
 
 Each TW raises a PR and requests reviews following this logic:
 
-| Review type | Reviewer | Mandatory or optional                                      |
-| ----------- | -------- |------------------------------------------------------------|
-| Language    | Editor   | Mandatory                                                  |
-| Technical   | Primary writer requests a review from the backup writer for their platform. Backup writer requests a review from the primary writer, if available, or the Documentation Architect.| Mandatory for issues that require technical implementation |
+| Review type  | Reviewer                                                                                                                                                           | Mandatory or optional                                       |
+|--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
+| Language     | Editor                                                                                                                                                             | Mandatory                                                   |
+| Code testing | Primary writer requests a review from the backup writer for their platform. Backup writer requests a review from the primary writer, if available, or the Lead TW. | Mandatory for issues that require technical implementation  |
+| Technical    | Lead TW | Mandatory for issues that require technical implementation | 
 
 #### Stakeholder review
 

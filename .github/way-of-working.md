@@ -86,8 +86,12 @@ the milestone branch and raise PRs back into it. Issue branches usually follow t
 
 `<issue_number>-<doc_type>_<platform>`
 
-For example, `1064-quickstart-android`. When all the issue branches are merged, the milestone branch is then merged to
-`staging`.
+For example, `1064-quickstart-android`. 
+
+When all the issue branches in a milestone are merged, the milestone branch is merged as follows: 
+
+* For products that are GA, the milestone branch is merged to `staging`.
+* For product that in beta, the milestone branch is merged to `beta`.
 
 //Clarify how and when it goes to `main`.
 
@@ -155,7 +159,7 @@ Each TW raises a PR and requests reviews following this logic:
 | Review type  | Reviewer                                                                                                                                                           | Mandatory or optional                                       |
 |--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
 | Language     | Editor                                                                                                                                                             | Mandatory                                                   |
-| Code testing | Primary writer requests a review from the backup writer for their platform. Backup writer requests a review from the primary writer, if available, or the Lead TW. | Mandatory for issues that require technical implementation  |
+| Code testing | Primary writer requests a code review from the backup writer for their platform. | Mandatory for issues that require technical implementation  |
 | Technical    | Lead TW | Mandatory for issues that require technical implementation | 
 
 #### Stakeholder review

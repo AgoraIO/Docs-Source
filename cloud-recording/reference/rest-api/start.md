@@ -785,46 +785,44 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>
 }
 ```
 
-### Postpone transcoding 
-```
-Request example:
-  ``` json
-    {
+### Postpone transcoding
+```json
+{
     "uid": "527841",
     "cname": "httpClient463224",
     "clientRequest": {
-    "token": "",
-    "appsCollection": {
-    "combinationPolicy": "postpone_transcoding"
-    },
-    "recordingConfig": {
-    "maxIdleTime": 30,
-    "streamTypes": 2,
-    "channelType": 0,
-    "videoStreamType": 1,
-    "subscribeVideoUids": [
-    "123",
-    "456"
-    ],
-    "subscribeAudioUids": [
-    "123",
-    "456"
-    ],
-    "subscribeUidGroup": 0
-    },
-    "storageConfig": {
-    "accessKey": "xxxxxxf",
-    "region": 3,
-    "bucket": "xxxxx",
-    "secretKey": "xxxxx",
-    "vendor": 2,
-    "fileNamePrefix": [
-    "directory1",
-    "directory2"
-    ]
+        "token": "",
+        "appsCollection": {
+            "combinationPolicy": "postpone_transcoding"
+        },
+        "recordingConfig": {
+            "maxIdleTime": 30,
+            "streamTypes": 2,
+            "channelType": 0,
+            "videoStreamType": 1,
+            "subscribeVideoUids": [
+                "123",
+                "456"
+            ],
+            "subscribeAudioUids": [
+                "123",
+                "456"
+            ],
+            "subscribeUidGroup": 0
+        },
+        "storageConfig": {
+            "accessKey": "xxxxxxf",
+            "region": 3,
+            "bucket": "xxxxx",
+            "secretKey": "xxxxx",
+            "vendor": 2,
+            "fileNamePrefix": [
+                "directory1",
+                "directory2"
+            ]
+        }
     }
-    }
-    }
+}
 ```
 
 ## HTTP response

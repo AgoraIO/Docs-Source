@@ -16,8 +16,8 @@ Compared with Agora On-Premise Recording, Agora Cloud Recording is more efficien
 
 Agora Cloud Recording is compatible with the following SDKs:
 
-- Agora SDK for Android, iOS, macOS, and Windows v1.7.0 or later.
-- Agora SDK for Web v1.12 or later.
+- Agora Video SDK for Android, iOS, macOS, and Windows v1.7.0 or later.
+- Agora Video SDK for Web v1.12 or later.
 
 ## 2022.11.20
 
@@ -46,7 +46,7 @@ This release adds mobile web page mode for web page recording. The API changes a
 
 **Transcoder script for high availability mechanism**
 
-In composite recording mode, Agora provides a Transcoder script for merging the old M3U8 file with the new M3U8 file generated after the service enables the high availability mechanism into an MP4 file. For details, see [Manage Recorded Files](./develop/manage-files#when-a-server-is-disconnected-or-the-process-killed).
+In composite recording mode, Agora provides a transcoder script for merging the old M3U8 file with the new M3U8 file generated after the service enables the high availability mechanism into an MP4 file. For details, see [Manage Recorded Files](./develop/manage-files#when-a-server-is-disconnected-or-the-process-killed).
 
 ## 2022.1.20
 #### New features

@@ -56,7 +56,14 @@ const data = {
       PATH: 'server-gateway',
       SDK: 'Server Gateway SDK',
       PRODUCT: 'Server Gateway'
-  }
+  },
+
+  'agora-chat': {
+    NAME: 'Agora Chat',
+    PATH: 'agora-chat',
+    SDK: 'Agora Chat SDK',
+    PRODUCT: 'Peer-to-peer messaging'
+}
 };
 
 export default data;

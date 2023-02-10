@@ -2,27 +2,44 @@
 
 ### Update the user interface
 
-In a real-word application, you report your local spatial position to a server in your environment and receive positions of remote users in the channel from your server. In this simple example, you use a single button to set the spatial position of a remote user.
+In a real-word application, you report your local spatial position to a server in your environment and receive positions of remote users in the channel from your server. In this simple example, you use two buttons to set the spatial position of a remote user or the media player.
 
-To add the button to the UI, in `index.html`, add the following code after `<button type="button" id="leave">Leave</button>`:
+To add these buttons to the UI, in `index.html`, add the following code after `<button type="button" id="leave">Leave</button>`:
 
 ```html
-<button type="button" id="updateRemotePosition">Update Remote User Position</button>
+<p>
+  <button type="button" id="playAudioFile">Play audio file</button>
+<p> 
+  Distance:
+  <button type="button" id="decreaseDistance">-</button>
+  <label id="distanceLabel"> 0 </label>
+  <button type="button" id="increaseDistance">+</button>
 ```
 
 ### Handle the system logic
 
 1. **Declare the variables you need**
 
-    You create an instance of `spatialAudioExtension` to implement audio effects. To initialize the extension, specify `assetsPath` that contains the  `Wasm` and `JS` files.
-    
-    To keep track of `SpatialAudioProcessor`s that you create for each remote user, you use a `Map` object. Add the following lines to your `main.js` file after the `import` statements:
+    You create an instance of `spatialAudioExtension` to implement audio effects. To initialize the extension, you specify the `assetsPath` to the  `Wasm` and `JS` files. To keep track of the spatial distance, media player state, and the `SpatialAudioProcessor`s that you create, add the following declarations to your `main.js` file after the `import` statements:
 
     ```javascript
+    var distance = 0; // Used to define and change the the spatial position
+    var isMediaPlaying = false; 
+    const processors = new Map();
     const spatialAudioExtension = new SpatialAudioExtension({
         assetsPath: "./node_modules/agora-extension-spatial-audio/external/",
     });
-    const processors = new Map();
+    ```
+
+    For details on how to [Dynamically load `wasm` and `js` files](#dynamically-load-wasm-and-js-file-dependencies) in a production environment, see the references section.
+
+1. **Update channel parameters**
+
+    To reference the media player track you create, add the following under `let channelParameters = {`
+
+    ```javascript
+    // A variable to hold the media file track.
+    mediaPlayerTrack: null,
     ```
 
 1. **Register the spatial audio extension**
@@ -31,10 +48,10 @@ To add the button to the UI, in `index.html`, add the following code after `<but
 
     ```javascript
     async function setupSpatial() {
-        // Register the extension
         AgoraRTC.registerExtensions([spatialAudioExtension]);
     }
     ```
+
     To execute this code at startup, add the following after `startBasicCall();` in `main.js`:
 
     ```javascript
@@ -45,7 +62,7 @@ To add the button to the UI, in `index.html`, add the following code after `<but
 
 1. **Update position of the local user**
 
-    To update spatial position of the local user, add the following code to `setupSpatial()` after you register the extension:
+    To the update spatial position of the local user, add the following code to `setupSpatial()` after `AgoraRTC.registerExtensions(...)`:
 
     ```javascript
     const mockLocalUserNewPosition = {
@@ -78,27 +95,84 @@ To add the button to the UI, in `index.html`, add the following code after `<but
     // Inject the SpatialAudioProcessor into the audio track
     const track = user.audioTrack;
     track.pipe(processor).pipe(track.processorDestination);
-
+    
     // Play the remote audio track.
     track.play();
-    channelParameters.remoteAudioTrack = track;
+    channelParameters.remoteAudioTrack = user.audioTrack;
     ```
 
-1. **Update position of a remote user**
+1. **Update position of a remote user or the media player**
 
-    In a real world application, you receive notification of change in a remote user's position through your server. You then update the spatial position of the remote user in the corresponding `SpatialAudioProcessor`. In this simple example, you change the position of a remote user when the local user presses a button. To do this, add the following function to `main.js`:
+    In a real world application, you receive notification of change in a remote user's position through your server. You then update the spatial position of the remote user in the corresponding `SpatialAudioProcessor`. In this simple example, you change the position of a remote user or the media player when the local user uses UI buttons to increase or decrease the distance. To do this, add the following code to `main.js`:
 
     ```javascript
-    document.getElementById("updateRemotePosition").onclick = async function () {
-        // Retrieve the SpatialAudioProcessor for this user
-        const processor = processors.get(channelParameters.remoteUid);
+    document.getElementById("decreaseDistance").onclick = async function () {
+        distance -= 5;
+        updatePosition();
+    };
 
-        // Update remote position
-        processor.updateRemotePosition({
-            position: [10, 1, 1], 
-            forward: [1, 0, 0] 
+    document.getElementById("increaseDistance").onclick = async function () { 
+        distance += 5;
+        updatePosition();
+    };
+
+    function updatePosition(){
+        document.getElementById("distanceLabel").textContent = distance;
+
+        if (isMediaPlaying){
+            const processor = processors.get("media-player");
+            processor.updatePlayerPositionInfo({
+            position: [distance, 0, 0],
+            forward: [1, 0, 0],
+            });
+        } else {
+            const processor = processors.get(channelParameters.remoteUid);
+            processor.updateRemotePosition({
+            position: [distance, 0, 0],
+            forward: [1, 0, 0],
+            });
+        }
+    };
+    ```
+
+1. **Play an audio file**
+
+    Create a `resources` folder in `agora_project` and copy a sample audio file to this folder. When a local user clicks **Play audio file**, you create an audio track from the this file, inject a `SpatialAudioProcessor` into the track, update the player position info, and play the track. To do this, add the following function to `main.js`:
+
+    ```javascript
+    document.getElementById("playAudioFile").onclick =
+    async function localPlayerStart() {
+        if (isMediaPlaying) {
+            channelParameters.mediaPlayerTrack.setEnabled(false);
+            isMediaPlaying = false;
+            document.getElementById("playAudioFile").textContent = "Play audio file";
+            return;
+        }
+
+        const processor = spatialAudioExtension.createProcessor();
+        processors.set("media-player", processor);
+
+        const track = await AgoraRTC.createBufferSourceAudioTrack({
+            source: "./resources/<yourAudioFile.wav>",
         });
-    }
+
+        // Define the spatial position for the local audio player.
+        const mockLocalPlayerNewPosition = {
+            position: [0, 0, 0],
+            forward: [0, 0, 0],
+        };
+
+        // Update the spatial position for the local audio player.
+        processor.updatePlayerPositionInfo(mockLocalPlayerNewPosition);
+
+        track.startProcessAudioBuffer({ loop: true });
+        track.pipe(processor).pipe(track.processorDestination);
+        track.play();
+
+        isMediaPlaying = true;
+        document.getElementById("playAudioFile").textContent = "Stop playing audio";
+        channelParameters.mediaPlayerTrack = track;
+    };  
     ```
 
 </PlatformWrapper>

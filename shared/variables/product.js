@@ -62,7 +62,7 @@ const data = {
     NAME: 'Agora Chat',
     PATH: 'agora-chat',
     SDK: 'Agora Chat SDK',
-    PRODUCT: 'Peer-to-peer messaging'
+    PRODUCT: 'Peer-to-Peer Messaging'
 }
 };
 

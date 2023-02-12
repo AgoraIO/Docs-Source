@@ -21,7 +21,7 @@ As shown in the figure above, if you need to integrate <Vg k="FC"/> with your us
     1. Get the <Vg k="SIG"/> token issued by the <Vg k="SIG"/> token generator for this user.
     1. Upon getting the user ID, classroom ID and <Vg k="SIG"/> token, the app calls the launch method of the Agora Classroom SDK. This starts the <Vg k="FC"/>, and passes in the user ID, classroom ID, <Vg k="SIG"/> token and other parameters.
 
-## Integrate user system
+## Integrated user system
 
 You need to pass either the user ID or the mapping of the user ID in your user system to <Vg k="FC"/> as `userUuid`.
 

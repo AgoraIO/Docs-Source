@@ -2,6 +2,7 @@
 title: "Set Video Layout"
 sidebar_position: 7
 type: docs
+platform_selector: false
 description: >
   Explains the layout types you can choose in a composite recording.
 ---

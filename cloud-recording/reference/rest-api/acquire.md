@@ -2,6 +2,7 @@
 title: "Get a resource ID"
 sidebar_position: 2
 type: docs
+platform_selector: false
 description: >
   Before starting a cloud recording, you need to call the `acquire` method get a resource ID.
 ---

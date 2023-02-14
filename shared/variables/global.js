@@ -74,15 +74,16 @@ export const ILSP = 'Interactive Live Streaming Premium';
 export const VSDK = 'Video SDK';
 export const GET_STARTED = 'SDK quickstart';
 export const VSDK_RELEASE = '4.x';
-// A varible to update the version of SDK in relase notes.
+// A variable to update the version of SDK in release notes.
 export const VSDK_LATEST_4_0_0 = '4.0.0';
 export const VSDK_FLUTTER_LATEST_RELEASE = '6.0.0';
 // A variable to update the version of sdk in release notes.
 export const VSDK_LATEST_4_0_1 = '4.0.1';
 export const VSDK_PREVIOUS_RELEASE = '3.7.x';
 export const VSDK_PREVIOUS_RELEASE_WEB = '3.x';
-export const VSDK_RELEASE_FOLDER = 'video-call-4.x-beta';
 export const VSDK_FLUTTER_RELEASE = '6.0.0-rc.2';
+// A variable to update the version of SDK in release notes.
+export const VSDK_LATEST_RELEASE = '4.1.0';
 
 export const AV = 'Audio/Video';
 
@@ -126,6 +127,7 @@ export const RTEE_DRM = `${COMPANY} DRM`;
 export const RTEE_DRM_FRAMEWORK = `AgoraDrmLoader.framework`;
 export const RTEE_NS = 'AI Noise Suppression';
 export const RTEE_VB = 'Vitual Background';
+export const RTEE_FU = 'FaceUnity';
 export const AA = `${COMPANY} Analytics`;
 export const WHITE = 'Interactive Whiteboard';
 export const WHITE_SDK = `${WHITE} SDK`
@@ -157,7 +159,6 @@ export const CGATE_SDK_API_CPP  = `${API_REF_ROOT_CGATE_SDK}/linux-cpp/${CGATE_R
 export const CGATE_SDK_API_JAVA  = `${API_REF_ROOT_CGATE_SDK}/linux-java/${CGATE_RELEASE_API}`
 
 export const UCS = 'Use Cases';
-
 export const AB = 'App Builder';
 export const UIK = 'UI Kit';
 export const vUIK = `${UIK}`;

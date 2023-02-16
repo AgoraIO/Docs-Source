@@ -31,7 +31,7 @@ Agora uses [Docusaurus](https://docusaurus.io/) to generate a static documentati
 To be able to contribute to Agora documentation, follow [this procedure](https://github.com/AgoraIO/Docs/edit/staging/README.md)
 and then clone [all other repositories](#repositories) that the EN doc team works in.
 
-//Clarify environment setup for implementation per platform
+To set up your development environment, refer to the prerequisites section of the SDK quickstart for the relevant product and platform. For example, you can find Video Calling prerequisites for Android development [here](https://docs.agora.io/en/video-calling/get-started/get-started-sdk?platform=android#prerequisites).
 
 ### 1. Documentation request
 
@@ -67,8 +67,9 @@ Milestone examples include:
 After a milestone is created, the TW Lead and Editor create issues for each smaller documentation task using
 the following logic:
 
-//Do we create a separate issue for each platform or one issue with subtasks for each platform? Clarify general
-logic of splitting up work into issues.
+* The milestone is broken down into issues based on individual documents that need to be created or updated.
+* For new documents or a complete document rewrite, create a separate issue for each platform.
+* For minor updates that span multiple platforms or multiple documents, create a single issue with subtasks for each platform or document.
 
 #### Branches
 
@@ -97,7 +98,19 @@ When all the issue branches in a milestone are merged, the milestone branch is m
 
 #### Repositories
 
-//Insert a list of repositories with submodules and nuances and whether we create milestones in all of them.
+The [Docs](https://github.com/AgoraIO/Docs.git) repository contains the basic website framework. Only issues that require addition or modification of products, product platforms, product availability, API reference links, SDK links should be created in this repository. It has the following submodules:
+
+* [Docs-Source-Private](https://github.com/AgoraIO/Doc-Source-Private/)
+   
+   This repository contains documentation content for various products and platforms. Most new milestones and documentation issues are created in this repository. It replaces the [Docs-Source](https://github.com/AgoraIO/Docs-Source/) public repository that is currently being phased out. 
+
+* [Docs-Source-Legacy](https://github.com/AgoraIO/Docs-Source-Legacy)
+
+   Contains legacy documents for older product versions.
+
+* [Docs-Help](https://github.com/AgoraIO/Docs-Help)
+
+   Contains documents under the Help menu.
 
 #### Assignment
 
@@ -120,8 +133,8 @@ Backup writers change their platform every quarter.
 | Web                                             | [Kishan](https://github.com/Kishan-Dhakan)   | [Hussain](https://github.com/hussain-khalid) | 
 | Electron                                        | [Kishan](https://github.com/Kishan-Dhakan)   ||
 | React Native                                    | [Kishan](https://github.com/Kishan-Dhakan)   ||
-| Linux Java                                      | TBC                                          | TBC                                          |
-| Linux C++                                       | TBC                                          | TBC                                          |
+| Linux Java                                      | [Saud](https://github.com/)                                          | TBC                                          |
+| Linux C++                                       | [Pankaj](https://github.com/Pankajg123)                                          | TBC                                          |
 | General improvement tickets                     | Every TW in turn                             | Every TW in turn                             |                |
 | Release notes, API reference, and SDK downloads | [Anastasia](https://github.com/atovpeko)     | [Dasun](https://github.com/nirm2009)         |
 
@@ -132,9 +145,11 @@ following [Google developer documentation style guide](https://developers.google
 
 For issues that require technical implementation, the doc team follows this process:
 
-1. The TW Lead develops implementation for their platform, raises a PR, and requests a review from the Documentation Architect and the Editor.
-2. Once all possible comments have been addressed and technical/language review is passed, the TW Lead passes
-   their implementation to other TWs who then adapt the implementation for their respective platforms.
+1. The TW Lead develops implementation for their platform
+1. The TW Lead raises a PR, and requests a review from the Documentation Architect and the Editor.
+1. Once all possible comments have been addressed and technical/language review is passed, the TW Lead passes
+   their implementation to other TWs.
+1. TWs adapt the implementation for their respective platforms.
 
 For issues that do not require technical implementation, TWs use their judgement or input from dev teams or other SMEs.
 
@@ -149,6 +164,11 @@ The review stage includes self-review, team review, and PM review, if needed.
 #### Self-review
 
 Before raising a PR, every TW does a self-review in the local build:
+
+* Build the docs site using `yarn start` to ensure that there are no build errors.
+* Follow the procedure in the document step by step. Copy/paste code from the built site to check that the code still works as intended.
+* Read the document from top to bottom and then bottom up to fix any language or technical issues.
+* Click through all links to identify and fix any broken links.
 
 //Clarify the procedure with `yarn start`/`yarn build`/`yarn clear`
 

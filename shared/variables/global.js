@@ -104,6 +104,7 @@ export const SIG_SDK_API_MACOS = `${SIG_SDK_API_REF_ROOT}/macos/${SIG_RELEASE_AP
 export const SIG_SDK_API_WEB = `${SIG_SDK_API_REF_ROOT}/web/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/reference/user-channel-events`;
 
+export const SPATIAL = '3D Spatial Audio';
 
 export const CHAT = `Chat`;
 export const CHAT_RELEASE_API = `1.x`;

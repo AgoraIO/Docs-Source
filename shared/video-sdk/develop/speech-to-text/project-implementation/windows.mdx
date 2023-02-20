@@ -20,7 +20,7 @@ To integrate HTTP and JSON capabilities into your app for speech-to-text:
 
 1. **Add cJSON library in your project**
 
-    In **Visual Studio**, go to **Tools** > **Options**, and then click **NuGet Package Manager**. The **NuGet: AgoraImplementation** window opens. Go to the **Browse** tab and type `CppRequests` and install the package in your project.
+    In **Solution Explorer**, right-click **AgoraImplementation**, and then click **Manage NuGet Packages**. The **NuGet: AgoraImplementation** window opens. Go to the **Browse** tab and type `CppRequests` and install the package in your project.
 
 1. **Import the required classes**
 
@@ -28,8 +28,7 @@ To integrate HTTP and JSON capabilities into your app for speech-to-text:
 
     ```cpp
     #include <afxinet.h>
-    #include <atlenc.h>
-    #include <cJSON.h>
+    #include <requests.h>
     ```
 
 1. **Define variables to manage a speech-to-text task**
@@ -38,13 +37,26 @@ To integrate HTTP and JSON capabilities into your app for speech-to-text:
 
     ```cpp
     CString baseUrl = L"api.agora.io";
-	CString apiKey = L"<Your API key>";
-	CString apiSecret = L"<Your secret key>";
-	std::string instanceID = "Test-1";
+	std::string apiKey = "<Your API key>";
+	std::string apiSecret = "<Your secret key>";
+	CString instanceID = L"Test-1";
 	CString authorizationHeader, builderToken;
 	CString speechToTextTaskId; // Returned by the start method
 	BOOL isSpeechToTextRunning = false;
 	std::string Uid = "1";
+    CButton* speechToText;
+	CButton* querySpeechToText;
+    ```
+
+1. **Access the buttons programmatically**
+
+    In `AgoraImplementationDlg.cpp`, add the following code at the end of `OnInitDialog`:
+
+    ```cpp
+    speechToText = (CButton*)GetDlgItem(IDC_BUTTON3);
+	speechToText->MoveWindow(510, 737, 250, 60, TRUE);
+	querySpeechToText = (CButton*)GetDlgItem(IDC_BUTTON4);
+	querySpeechToText->MoveWindow(510, 663, 252, 60, TRUE);
     ```
 
 ### Manage a speech-to-text task
@@ -61,31 +73,65 @@ Take the following steps to start, stop and query a speech-to-text task in your 
 
     To [acquire a `builderToken`](#acquire-a-buildertoken), do the following:
 
-    1. Convert the secret key and API key to Base64 format. 
+    1. Convert the secret key and API key to Base64 format: 
     
         1. In `AgoraImplementationDlg.h`, add the following declaration to `CAgoraImplementationDlg`:
 
             ```cpp
-       	    CString ConvertToBase64(CString str);
+            std::string Encode(const std::string data);
             ```
 
         1. In `AgoraImplementationDlg.cpp`, add the following before `setupVideoSDKEngine`:
 
             ```cpp
-            CString CAgoraImplementationDlg::ConvertToBase64(CString str)
+            std::string CAgoraImplementationDlg::Encode(const std::string data) 
             {
-                CT2AEX<1024> ansi = str;
-                int len = strlen(ansi);
-                int encodedLen = Base64EncodeGetRequiredLength(len);
-                CStringA base64;
-                Base64Encode((BYTE*)(LPSTR)ansi, len, base64.GetBuffer(encodedLen), &encodedLen);
-                base64.ReleaseBuffer(encodedLen);
-                CString CBase64(base64);
-                return CBase64;
+                static constexpr char sEncodingTable[] = 
+                {
+                    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+                    'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+                    'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+                    'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+                    'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
+                    'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+                    'w', 'x', 'y', 'z', '0', '1', '2', '3',
+                    '4', '5', '6', '7', '8', '9', '+', '/'
+                };
+                size_t in_len = data.size();
+                size_t out_len = 4 * ((in_len + 2) / 3);
+                std::string ret(out_len, '\0');
+                size_t i = 0;
+                char* p = const_cast<char*>(ret.c_str());
+                if (in_len >= 2) 
+                {
+                    for (i = 0; i < in_len - 2; i += 3) 
+                    {
+                        *p++ = sEncodingTable[(data[i] >> 2) & 0x3F];
+                        *p++ = sEncodingTable[((data[i] & 0x3) << 4) | ((int)(data[i + 1] & 0xF0) >> 4)];
+                        *p++ = sEncodingTable[((data[i + 1] & 0xF) << 2) | ((int)(data[i + 2] & 0xC0) >> 6)];
+                        *p++ = sEncodingTable[data[i + 2] & 0x3F];
+                    }
+                }
+                if (i < in_len) 
+                {
+                    *p++ = sEncodingTable[(data[i] >> 2) & 0x3F];
+                    if (i == (in_len - 1)) 
+                    {
+                        *p++ = sEncodingTable[((data[i] & 0x3) << 4)];
+                        *p++ = '=';
+                    }
+                    else 
+                    {
+                        *p++ = sEncodingTable[((data[i] & 0x3) << 4) | ((int)(data[i + 1] & 0xF0) >> 4)];
+                        *p++ = sEncodingTable[((data[i + 1] & 0xF) << 2)];
+                    }
+                    *p++ = '=';
+                }
+                return ret;
             }
             ```
     
-    1. Retrieve a token from the server. 
+    1. Retrieve a token from the server:
     
         1. In `AgoraImplementationDlg.h`, add the following method to `CAgoraImplementationDlg`:
 
@@ -103,7 +149,9 @@ Take the following steps to start, stop and query a speech-to-text task in your 
                 CString path(temp.c_str());
                 CString Url = baseUrl + path;
                 // Concatenate the key and secret and use base64 encoding
-                CString plainCredentials = apiKey + ":" + apiSecret;
+                std::string plainCredentials = apiKey + ":" + apiSecret;
+                std::string base64 = Encode(plainCredentials);
+                CString CBase64(base64.c_str());
                 CHttpConnection* pConnection = NULL;
                 try
                 {
@@ -111,8 +159,9 @@ Take the following steps to start, stop and query a speech-to-text task in your 
                     if (pConnection)
                     {
                         CHttpFile* pHTTPFile = NULL;
+                        CString strHeaders = _T("Content-Type: application/json\r\n");
                         authorizationHeader = L"Authorization : Basic ";
-                        authorizationHeader += ConvertToBase64(plainCredentials);
+                        authorizationHeader += CBase64;
                         authorizationHeader += L"\r\n";
                         pHTTPFile = pConnection->OpenRequest(CHttpConnection::HTTP_VERB_POST, path);
                         cJSON* root = cJSON_CreateObject();
@@ -175,7 +224,7 @@ Take the following steps to start, stop and query a speech-to-text task in your 
      1. Make a POST call to  <Vg k="AGORA_BACKEND" />.
     On success, the method returns a `taskId` that you use to query or stop the task.
 
-    To start a task, in **Dialog Editor**, double-click **Query speech-to-text**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener you just created:
+    To start a task, in **Dialog Editor**, double-click **Start speech-to-text**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener you just created:
 
     ```cpp
     std::string temp = "/v1/projects/" + appId +"/rtsc/speech-to-text/tasks?" + "builderToken=";
@@ -261,6 +310,7 @@ Take the following steps to start, stop and query a speech-to-text task in your 
 					cJSON* root = cJSON_Parse(result);
 					cJSON* success = cJSON_GetObjectItem(root, "taskId");
 					speechToTextTaskId = success->valuestring;
+                    AfxMessageBox(L"Speech-to-text serivice has been started successfully");
 				}
 				else
 				{
@@ -291,7 +341,7 @@ Take the following steps to start, stop and query a speech-to-text task in your 
     ```cpp
     std::string temp = "/v1/projects/" + appId + +"/rtsc/speech-to-text/tasks/";
 	CString path(temp.c_str());
-	path += speechToTextTaskId + "builderToken=" + builderToken;
+	path += speechToTextTaskId + "?builderToken=" + builderToken;
 	CInternetSession session;
 	CHttpConnection* pConnection = NULL;
 	try
@@ -312,9 +362,13 @@ Take the following steps to start, stop and query a speech-to-text task in your 
 				pHTTPFile->QueryInfoStatusCode(dwRet);
 				if (dwRet == HTTP_STATUS_OK)
 				{
+					pHTTPFile->Read((void*)result, 1024);
 					cJSON* root = cJSON_Parse(result);
 					cJSON* status = cJSON_GetObjectItem(root, "status");
-					AfxMessageBox((LPCTSTR)status->valuestring);
+					TRACE(status->valuestring);
+					CString CStatus = L"Current status: ";
+					CStatus += status->valuestring;
+					AfxMessageBox(CStatus);
 				}
 				else
 				{
@@ -355,7 +409,7 @@ Take the following steps to start, stop and query a speech-to-text task in your 
         {
             std::string temp = "/v1/projects/" + appId + +"/rtsc/speech-to-text/tasks/";
             CString path(temp.c_str());
-            path += speechToTextTaskId + "builderToken=" + builderToken;
+            path += speechToTextTaskId + "?builderToken=" + builderToken;
             CInternetSession session;
             CHttpConnection* pConnection = NULL;
             try

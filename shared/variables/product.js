@@ -56,7 +56,14 @@ const data = {
       PATH: 'server-gateway',
       SDK: 'Server Gateway SDK',
       PRODUCT: 'Server Gateway'
-  }
+  },
+
+  'broadcast-streaming': {
+    NAME: 'Broadcast Streaming',
+    PATH: 'broadcast-streaming',
+    SDK: 'Video SDK',
+    PRODUCT: 'Broadcast Streaming'
+  },
 };
 
 export default data;

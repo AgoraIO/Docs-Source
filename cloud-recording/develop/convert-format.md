@@ -2,6 +2,7 @@
 title: "Convert the file format"
 sidebar_position: 9
 type: docs
+platform_selector: false
 description: >
   Use FFmpeg to convert an M3U8 file to MP4 or use Agora's Format Converter script to batch convert multiple TS files into MP4 or audio formats.
 ---

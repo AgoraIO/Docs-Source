@@ -2,6 +2,7 @@
 title: "Web page load timeout detection"
 sidebar_position: 12
 type: docs
+platform_selector: false
 description: >
   Call the specified interface to notify the browser that the web page has been loaded
 ---

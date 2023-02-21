@@ -2,6 +2,7 @@
 title: "Best Practices in integrating web page recording"
 sidebar_position: 15
 type: docs
+platform_selector: false
 description: >
    Guidelines for integrating web page recording into your app.
 ---

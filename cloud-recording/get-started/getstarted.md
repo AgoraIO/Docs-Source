@@ -1,6 +1,7 @@
 ---
 title: "REST quickstart"
 sidebar_position: 1
+platform_selector: false
 description: >
   Start cloud recording, query cloud recording status, and stop cloud recording by sending a RESTful API request.
 ---

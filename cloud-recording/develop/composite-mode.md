@@ -2,6 +2,7 @@
 title: "Composite recording"
 sidebar_position: 2
 type: docs
+platform_selector: false
 description: >
    Use the Cloud Recording RESTful API to make a composite recording.
 ---

@@ -2,6 +2,7 @@
 title: "Update a recording"
 sidebar_position: 4
 type: docs
+platform_selector: false
 description:  >
   Change recordings.
 ---

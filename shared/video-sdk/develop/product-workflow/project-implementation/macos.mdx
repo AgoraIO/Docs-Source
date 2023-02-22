@@ -1,8 +1,153 @@
-import Source from './swift.mdx';
+import CreateUI from '@docs/assets/code/video-sdk/product-workflow/swift/create-ui.mdx';
+import ConfigureButtons from '@docs/assets/code/video-sdk/product-workflow/swift/configure-buttons.mdx';
+import AdjustMuteVolume from '@docs/assets/code/video-sdk/product-workflow/swift/adjust-mute-volume.mdx';
 
 
 <PlatformWrapper platform="macos">
 
-<Source />
+To implement this functionality for a UIKit based app, retrieve an <Vg k="ENGINE" /> instance with a call to `agoraView.agkit`.
+
+### Implement the user interface
+
+In a real-world application, for each volume setting you want to control, you typically add a volume control UI element such as a <Link target="_blank" to="https://developer.apple.com/documentation/appkit/nsslider">NSSlidier</Link> to the audio configuration panel. To enable the user to mute local or remote audio, you add an <Link target="_blank" to="https://developer.apple.com/documentation/appkit/nsswitch">NSSwitch</Link> to the interface for each user. In this example, you add a `UISlider` and a `UISwitch` to the UI to test different volume settings. For screen sharing, you add a button to start and stop sharing.
+
+To create this user interface, in the `ViewController` class:
+
+1. **Add UI elements to manage volume,  muting, and screen share**
+
+    Add the following variables at the head of the class with the other declarations:
+
+    <CreateUI />
+
+1. **Configure the buttons in your interface**
+
+    Add the following lines to the `initViews` function:
+
+    <ConfigureButtons />
+
+    Xcode presents some build time errors. Worry not, these are for functions that you add to your project a bit later on.
+
+
+
+### Implement screen sharing, volume control and mute
+
+To implement these features in your <Vpl k="CLIENT" />, take the following steps:
+
+1. **Declare the variables you need**
+
+    To read, store, and apply workflow settings, add the following variables to the declarations at the top of the `ViewController` class:
+
+    ```swift
+    // Volume Control
+    var volume: Int = 50
+    var isMuted: Bool = false
+    var remoteUid: UInt = 0 // Stores the uid of the remote user
+
+    // Screen sharing
+    var isScreenSharing: Bool = false
+    ```
+
+1. **Setup volume control and mute**
+
+    To change the volume or mute local or remote users:
+
+    1. Store the `uid` of the remote user
+
+        To adjust the volume or mute a specific remote user, you need the `uid` of that user. Add the following line at the beginning of the `func rtcEngine(_ engine: AgoraRtcEngineKit, didJoinedOfUid uid: UInt, elapsed: Int) {` delegate to store the `uid` of the remote user:
+
+        ```swift
+        remoteUid = uid
+        ```
+
+    2. Adjust or mute the volume
+
+        You use the `volumeSliderValueChanged` and `muteSwitchValueChanged` callbacks to handle the volume change actions taken by the user. Add the following callbacks to the <Vg k="ENGINE" /> event handler, `extension ViewController: AgoraRtcEngineDelegate {`:
+
+        <AdjustMuteVolume />
+
+1. **Enable screen sharing**
+
+    In an  <Vg k="ENGINE" /> instance you stream either the camera or the screen.
+
+    1. In `ViewController` enable your <Vg k="ENGINE" /> to choose between camera or screen. Replace `setupLocalVideo` with the following code:
+
+        ```swift
+        func setupLocalVideo() {
+            // Enable the video modul
+            agoraEngine.stopPreview()
+            agoraEngine.enableVideo()
+            let videoCanvas = AgoraRtcVideoCanvas()
+            videoCanvas.uid = 0
+            videoCanvas.renderMode = .hidden
+            videoCanvas.view = localView
+            // Set the local video view
+
+            videoCanvas.sourceType = isScreenSharing ? .screen : .camera
+            // changing sourceType need to set mirrorMode accordingly
+            videoCanvas.mirrorMode = isScreenSharing ? .disabled : .enabled
+            agoraEngine.setupLocalVideo(videoCanvas)
+            // Start the local video preview
+            agoraEngine.startPreview()
+
+        }
+        ```
+
+    1. Add a function to start and stop screen sharing.
+
+        ```swift
+        func onScreenShare() {
+            if !isScreenSharing {
+
+                let screenParams = AgoraScreenCaptureParameters()
+                screenParams.dimensions = CGSize(width: 640, height: 480)
+                screenParams.frameRate = 15
+                screenParams.bitrate = 1000
+                screenParams.captureMouseCursor = true
+                // The 0 display Id captures the whole screen.
+                // In a production environment, retrieve a list of available resources using:
+                // self.agkit.getScreenCaptureSources(withThumbSize: <#T##NSSize#>, iconSize: <#T##NSSize#>, includeScreen: <#T##Bool#>)
+                // Then enable the user to choose a resource with a picker.
+                let result = agoraEngine.startScreenCapture(byDisplayId: 0, regionRect: .zero, captureParams: screenParams)
+                if result != 0 {
+                    // This usually happens with invalid parameters
+                    showMessage(title: "Error", text: "Screen capture failed")
+                } else {
+                    isScreenSharing = true
+                    let mediaOptions = AgoraRtcChannelMediaOptions()
+                    mediaOptions.publishCameraTrack = false
+                    mediaOptions.publishScreenTrack = true
+                    agoraEngine.updateChannel(with: mediaOptions)
+                    setupLocalVideo()
+                }
+            } else {
+                agoraEngine.stopScreenCapture()
+                isScreenSharing = false
+                let mediaOptions = AgoraRtcChannelMediaOptions()
+                mediaOptions.publishCameraTrack = true
+                mediaOptions.publishScreenTrack = false
+                agoraEngine.updateChannel(with: mediaOptions)
+                setupLocalVideo()
+            }
+        }
+        ```
+
+    1. Start and stop screen sharing when the user clicks `screenShareButton`.
+
+            In `ViewController`, add the following function after `buttonAction`:
+
+        ``` swift
+            @objc func screenShareAction(sender: NSButton!) {
+                if !joined {
+                    // Check if successfully joined the channel and set button title accordingly
+                    showMessage(title: "Whups", text: "Please join a channel before trying to share your screen")
+                } else {
+                    //If the user has already joined a channel
+                    onScreenShare()
+                    if isScreenSharing { screenShareButton.title = "Stop" }
+                    else { screenShareButton.title = "Share"}
+                }
+            }
+        ```
+
 
 </PlatformWrapper>

@@ -2,6 +2,7 @@
 title: "Individual recording"
 sidebar_position: 1
 type: docs
+platform_selector: false
 description: >
   Use the Cloud Recording RESTful API to make an individual recording
 ---

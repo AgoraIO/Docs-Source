@@ -2,6 +2,7 @@
 title: "Set up subscription lists"
 sidebar_position: 6
 type: docs
+platform_selector: false
 description: >
   Create a whitelist or blacklist for audio and video subscriptions.
 ---

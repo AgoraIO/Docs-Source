@@ -1,0 +1,285 @@
+<PlatformWrapper platform="unreal">
+<ProductWrapper notAllowed = "voice-calling">
+### Implement a custom video source
+
+In this section you create the basic framework required to push video frames from a custom source. Depending on the type of your source, you add your own code to this framework that converts the source data to `VideoFrame` data. To create the basic framework, take the following steps:
+
+1. **Define variables to push the video frames**
+
+    In `MyUserWidget.h`, add the following declarations to the `UMyUserWidget` class:
+
+    ```cpp
+	agora::media::IMediaEngine* MediaEngine;
+    FString VIDEO_FILE = "";
+    ```
+
+1. **Add a raw video file to the project**
+
+    In this example, you use a video file as the source of your custom video data. To add the video file to your project:
+    1. Create a folder called `Video` in the `<Your_project_folder>/Content` directory
+    1. Add a sample video file in `*.mp4` format to this folder.
+    1. Update the value of the `VIDEO_FILE` variable to show the audio file name.
+
+1. **Setup an instance of the media engine**
+
+    <Vg k = "VSDK"/> provides `IMediaEngine` for video source customization. To push the customized video frames in the channel, initialize an instance of the media engine. To implement this workflow, in `MyUserWidget.cpp`, add the following at the end of `setupVideoSDKEngine`:
+
+        ```cpp
+        agoraEngine->queryInterface(AGORA_IID_MEDIA_ENGINE, (void**)&MediaEngine);
+        ```
+
+1. **Setup a method to push video frames**
+
+    To push the customized video frames in the channel, your <Vpl k = "CLIENT"/>:
+
+    1. Loads the video file from the project directory in a `TArray`.
+    2. Calls `createCustomVideoTrack` to create a custom video rack.
+    3. Calls `setExternalVideoSource` to setup the source of external video stream.
+    4. Creates an external video frame and passes the video file data to the frame buffer.
+    5. Updates the channel media options and publishes the custom video track.
+    5. Calls `pushVideoFrame` and pushes the external video frame into the channel.
+
+    To implement this logic, do the following:
+
+        1. In `MyUserWidget.h`, add the following method declaration before `void NativeConstruct();`:
+
+            ```cpp
+            void startPushVideo();
+            ```
+
+        2. In `MyUserWidget.cpp`, add the following method definition before `setupVideosSDKEngine`:
+
+            ```cpp
+            void UMyUserWidget::startPushVideo()
+            {
+                FString LoadDir = FPaths::ProjectContentDir() / TEXT("Video/");
+                LoadDir += VIDEO_FILE;
+                TArray<uint8> result;
+                FFileHelper::LoadFileToArray(result, *LoadDir, 0);
+                if (result.IsEmpty())
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("File is empty"));
+                }
+                agora::rtc::video_track_id_t trackID = agoraEngine->createCustomVideoTrack();
+                SenderOptions sendoptions;
+                MediaEngine->setExternalVideoSource(true, false, agora::media::EXTERNAL_VIDEO_SOURCE_TYPE::VIDEO_FRAME, sendoptions);
+                agora::media::base::ExternalVideoFrame externalVideoFrame;
+                externalVideoFrame.buffer = FMemory::Malloc(result.Num() * sizeof(uint8));
+                FMemory::Memcpy(externalVideoFrame.buffer, result.GetData(), result.Num() * sizeof(uint8));
+                externalVideoFrame.type = agora::media::base::ExternalVideoFrame::VIDEO_BUFFER_RAW_DATA;
+                externalVideoFrame.format = agora::media::base::VIDEO_PIXEL_RGBA;
+                std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+                externalVideoFrame.timestamp = tp.time_since_epoch().count();
+                ChannelMediaOptions options;
+                options.clientRoleType = CLIENT_ROLE_BROADCASTER;
+                options.autoSubscribeAudio = true;
+                options.autoSubscribeVideo = true;
+                options.publishCameraTrack = false; // Disable publishing video track.
+                options.publishCustomVideoTrack = true; // Enable publishing custom video track.
+                options.publishMicrophoneTrack = false;
+                agoraEngine->updateChannelMediaOptions(options);
+                MediaEngine->pushVideoFrame(&externalVideoFrame, trackID);
+            }
+            ```
+</ProductWrapper>
+### Implement a custom audio source
+
+To push audio from a custom source to a channel, take the following steps:
+
+1. **Import the required libraries**
+
+    To read and push the audio data, in `MyUserWidget.h`, add the following statements before `#include "MyUserWidget.generated.h"`:
+
+    ```cpp
+    // Multithreading library.
+    #include "HAL/Runnable.h"
+    // TimeStamp library.
+    #include "__msvc_chrono.hpp"
+    ```
+
+1. **Define variables to push the audio frames**
+
+    In `MyUserWidget.h`, add the following declarations to the `UMyUserWidget` class:
+
+    ```cpp
+    TArray<uint8> RecordingBuffer;
+	agora::media::IMediaEngine* MediaEngine;
+	int AudioDataLength;
+	int sampleRate = 48000;
+	int numOfChannel = 2;
+	FRunnable* Runnable;
+    FString AUDIO_FILE = "";
+    void startPushAudio();
+    ```
+
+1. **Add a raw audio file to the project**
+
+    In this example, you use an audio file as the source of your custom audio data. To add the audio file to your project:
+
+    1. Create a folder called `Audio` in the `<Your_project_folder>/Content` directory
+    1. Add a [sample audio file](\files\applause.wav) in `*.wav` or `*.raw` format to this folder.
+    1. Update the value of the `AUDIO_FILE` variable to show the audio file name.
+
+1. **Enable custom audio track publishing**
+
+    When a user presses **Join**, you set the `ChannelMediaOptions` to disable the microphone audio track and enable the custom audio track. You also enable custom audio local playback and set the external audio source. To implement this workflow, in `MyUserWidget.cpp`, add the following at the end of `OnJoinButtonClick`:
+
+    ```cpp
+    ChannelMediaOptions options;
+    options.publishMicrophoneTrack = false; // Disable publishing microphone audio
+    options.publishCustomAudioTrack = true; // Enable publishing custom audio
+    options.enableAudioRecordingOrPlayout = true;
+    agoraEngine->enableCustomAudioLocalPlayback(0, true);
+    MediaEngine->setExternalAudioSource(true, sampleRate, numOfChannel, 1);
+    agoraEngine->updateChannelMediaOptions(options);
+    ```
+
+1. **Setup a class to push audio frames**
+
+    To push the audio frame, you use a runnable class. To add this class in your code, in `MyUserWidget.h`, add the following after `UMyUserWidget`:
+
+    ```cpp
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE(FAgoraOnCompleteSignature);
+    class FAgoraCaptureRunnable : public FRunnable
+    {
+        public:
+        FAgoraCaptureRunnable(agora::media::IMediaEngine* MediaEngine, const uint8* audioData, int dataLength); 
+        virtual uint32 Run() override; // Override the Run method to push the audio frames from the custom source.
+        virtual void Exit() override; // Clean up the resource when a thread
+        FAgoraOnCompleteSignature OnCompleteDelegate;
+        protected:
+        // Required variables to customize the audio source.
+        TArray<int32> ProcessedNumbers;
+        bool bStopThread = false; // A boolean variable to track the thread state.
+        agora::media::IMediaEngine* MediaEngine; // An instance of IMediaEngine to push the audio frames.
+        uint8* audioData; // A pointe to hold the reference of audio data.
+        int dataLength; // The audio file length in bytes.
+        int numOfChannel = 2; // Number of channels
+        int sampleRate = 48000; // Sample rate of the audio frames.
+        int PUSH_FREQ_PER_SEC = 100; // The number of frames you push in a second. 
+        void* sendByte;
+    };
+    ```
+1. **Setup an instance of the media engine**
+
+    <Vg k = "VSDK"/> provides `IMediaEngine` for audio source customization. To push the audio frames, initialize an instance of the media engine and pass the audio file data and the media engine to `FAgoraCaptureRunnable` via its constructor. To implement this workflow, do the following:
+    
+        1. In `MyUserWidget.cpp`, add the following at the end of `setupVideosSDKEngine`:
+
+            ```cpp
+            agoraEngine->queryInterface(AGORA_IID_MEDIA_ENGINE, (void**)&MediaEngine);
+            ```
+
+        2. In `MyUserWidget.cpp`, add the following before `setupVideosSDKEngine`:
+
+            ```cpp
+            FAgoraCaptureRunnable::FAgoraCaptureRunnable(agora::media::IMediaEngine* MediaEngine, const uint8* audioData, int dataLength)
+            {
+                sendByte = nullptr;
+                this->MediaEngine = MediaEngine;
+                this->audioData = new uint8[dataLength];
+                this->dataLength = dataLength;
+                FMemory::Memcpy(this->audioData, audioData, dataLength * sizeof(uint8));
+            }
+            ```
+
+1. **Start the task to push audio frames**
+
+    When a user successfully joins a channel, you run the thread that pushes audio frames. To implement this logic, in `MyUserWidget.cpp` ,add the following before `setupVideosSDKEngine`:   
+    ```cpp
+    void UMyUserWidget::startPushAudio()
+    {
+        MediaEngine->setExternalAudioSource(true, sampleRate, numOfChannel, 1);
+        FString LoadDir = FPaths::ProjectContentDir() / TEXT("Audio/");
+        LoadDir += AUDIO_FILE;
+        UE_LOG(LogTemp, Warning, TEXT("%s"), *LoadDir);
+        TArray<uint8> result;
+        FFileHelper::LoadFileToArray(result, *LoadDir, 0);
+        Runnable = new FAgoraCaptureRunnable(MediaEngine, result.GetData(), result.Num() * sizeof(uint8));
+        FRunnableThread* RunnableThread = FRunnableThread::Create(Runnable, TEXT("Agora"));
+    }
+    
+    ``` 
+    You execute this method after joining a channel. In `MyUserWidget.cpp`, add the following line at the end of `OnJoinButtonClick`:
+
+    ```cpp
+    startPushAudio();
+    ```
+
+1. **Push the audio frames**
+
+    To push the audio frame in the channel, your <Vpl k = "CLIENT"/>:
+
+        * Dynamically allocates a memory segment using `FMemory`.
+        * Creates an external audio frame.
+        * Passes the reference of first byte to the frame `buffer` which reads only two bytes.
+        * Calls `pushAudioFrame` and push the frame in channel.
+        * Increments the pointer by two bytes to send next two bytes in the channel.
+        The <Vpl k = "CLIENT"/> keep sending the frames till to the last byte.
+
+    To implement this workflow, in `MyUserWidget.cpp`, add the following method before `setupVideosSDKEngine`:
+
+    ```cpp
+    uint32 FAgoraCaptureRunnable::Run()
+    {
+        std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+        auto tic = tp.time_since_epoch().count();
+        bStopThread = false;
+        const uint8* Ptr = reinterpret_cast<const uint8*>(audioData);
+        while (!bStopThread)
+        {
+            if (MediaEngine == nullptr)
+            {
+                break;
+            }
+            auto toc = getTimeStamp();
+            if ((toc - tic) >= 10)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("FAgoraCaptureRunnable TimeStamp ====== %d"), toc - tic);
+                if (dataLength != 0)
+                {
+                    if (dataLength < 0)
+                    {
+                        OnCompleteDelegate.Broadcast();
+                        break;
+                    }
+                    if (sendByte == nullptr)
+                    {
+                        sendByte = FMemory::Malloc(sampleRate / PUSH_FREQ_PER_SEC * agora::rtc::BYTES_PER_SAMPLE::TWO_BYTES_PER_SAMPLE * numOfChannel);
+                    }
+                    FMemory::Memcpy(sendByte, Ptr, sampleRate / PUSH_FREQ_PER_SEC * agora::rtc::BYTES_PER_SAMPLE::TWO_BYTES_PER_SAMPLE * numOfChannel);
+                    agora::media::IAudioFrameObserverBase::AudioFrame externalAudioFrame;
+                    externalAudioFrame.bytesPerSample = BYTES_PER_SAMPLE::TWO_BYTES_PER_SAMPLE;
+                    externalAudioFrame.type = agora::media::IAudioFrameObserver::FRAME_TYPE_PCM16;
+                    externalAudioFrame.samplesPerChannel = sampleRate / PUSH_FREQ_PER_SEC;
+                    externalAudioFrame.samplesPerSec = sampleRate;
+                    externalAudioFrame.channels = numOfChannel;
+                    externalAudioFrame.buffer = (void*)sendByte;
+                    externalAudioFrame.renderTimeMs = 10;
+                    int ret = MediaEngine->pushAudioFrame(agora::media::AUDIO_PLAYOUT_SOURCE, &externalAudioFrame);
+                    // UE_LOG(LogTemp, Warning, TEXT("FAgoraCaptureRunnable pushAudioFrame ====== %d"), ret);
+                    Ptr += sampleRate / PUSH_FREQ_PER_SEC * 2 * numOfChannel;
+                    dataLength -= sampleRate / PUSH_FREQ_PER_SEC * 2 * numOfChannel;
+                    tic = toc;
+                }
+            }
+            FPlatformProcess::Sleep(0.001f);
+        }
+        return 0;
+    }
+    ```
+
+1. **Clean up the resources**
+
+    When the <Vpl k="CLIENT" /> is closed, you clean up the resources that you allocated in the `Run` method. To do this, in `MyUserWidget.cpp`, add the following before `setupVideosSDKEngine`:
+
+    ```java
+    void FAgoraCaptureRunnable::Exit()
+    {
+        sendByte = nullptr;
+        bStopThread = true;
+        FMemory::Free(sendByte);
+    }
+    ```
+
+</PlatformWrapper>

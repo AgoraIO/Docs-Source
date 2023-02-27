@@ -65,7 +65,7 @@ const data = {
   'unreal': {
     NAME: 'Unreal Engine',
     PATH: 'unreal',
-    CLIENT: 'app'
+    CLIENT: 'game'
   }
 };
 

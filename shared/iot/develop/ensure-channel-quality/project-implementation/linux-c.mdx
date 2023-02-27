@@ -1,3 +1,133 @@
 <PlatformWrapper platform="linux-c">
 
+### Implement channel quality features
+
+To implement channel quality features, take the following steps:
+
+1. **Configure the <Vpd k="SDK" /> log file**
+
+    To customize the location, and content of the log file, add the following code to `main(...)` before `rval = agora_rtc_init(p_appid, &event_handler, &service_opt);`
+
+    ```cpp
+    // Configure log file location and logging level
+    service_opt.log_cfg.log_path = config->p_sdk_log_dir;
+    service_opt.log_cfg.log_level = RTC_LOG_DEBUG;
+    ```
+
+1. **Specify the audio codec, sampling rate and the number of channels**
+
+    You set the audio codec, sampling rate, and the number of channels in `channel_options` that you pass to `agora_rtc_join_channel`. To set these parameters, modify the following lines in `main(...)` method according to your requirements:
+
+    ```cpp
+    channel_options.audio_codec_opt.audio_codec_type = config->audio_codec_type;
+    channel_options.audio_codec_opt.pcm_sample_rate = config->pcm_sample_rate;
+    channel_options.audio_codec_opt.pcm_channel_num = config->pcm_channel_num;
+    ```
+  
+    Choose from `AUDIO_CODEC_TYPE_OPUS`, `AUDIO_CODEC_TYPE_G722`, `AUDIO_CODEC_TYPE_G711A`, and `AUDIO_CODEC_TYPE_G711U` built-in audio codecs in the <Vpd k="SDK" />. 
+    
+    To use your own audio codec, set `channel_options.audio_codec_opt.audio_codec_type` to `AUDIO_CODEC_DISABLED`. When you call `agora_rtc_send_audio_data`, set the `data_type` parameter of `audio_frame_info` to your encoding format. This setting transmits the audio encoding format as is to the receiving end. When you disable use of a built-in audio codec, <Vpd k="SDK" /> does not process the audio. The receiving end obtains the encoded audio data and the encoding format through the `__on_audio_data` callback and decodes it using a custom decoder.
+    
+1. **Configure Bandwidth Estimation**  
+
+    You configure BandWidth Estimation (BWE) parameters before joining a channel. For example, based on the [definition levels of a webcam](#definition-levels-of-a-webcam), the minimum value can be set to 400 kbps, and the maximum value can be set to 4200 kbps. The starting value is between the minimum and the maximum value. If the initial encoding is SD, the initial bit rate can be set to 500 kbps, based on the table.
+
+    To specify these parameters, add the following code to the `joinChannel(View view)` method before `agoraEngine.joinChannel`.
+    
+    ```cpp
+    // Configure Bandwidth Estimation. Min, max and starting bit rates in bps
+    agoraEngine.setBweParam(connectionId, 400000, 4200000, 500000);
+    ```
+
+1. **Respond to target bit rate changes**
+
+    When network bandwidth changes, <Vpd k="SDK"/> triggers the `onTargetBitrateChanged` callback to prompt the <Vpl k="CLIENT"/> to adjust the sending bit rate. The `targetBps` value returned by the callback is the maximum recommended encoding bit rate of the video encoder.
+
+    In this example, you use [definition levels of a webcam](#definition-levels-of-a-webcam) to switch resolution depending on the reported target bit rate. To do this, replace the `onTargetBitrateChanged` method under `agoraRtcEvents` with the following:
+
+    ```cpp
+    int curTargetBitrate, diffTargetBitrate, lastTargetBitrate = 500;
+    int lowBitrateL1 = 400, highBitrateL1 = 800;
+    int lowBitrateL2 = 1130 , highBitrateL2 = 2260, highBitrateL3 = 4160;
+    int curResolutionLevel = 1 , lastResolutionLevel = 1;
+
+    @Override
+    public void onTargetBitrateChanged(int connId, int targetBps) {
+        // Adjust the sending code rate in real time
+        // The current code rate is graded according to 100 K, rounded down
+        curTargetBitrate = targetBps/100000 * 100;
+        diffTargetBitrate = Math.abs(curTargetBitrate - lastTargetBitrate);
+
+        // If the difference between the detected bandwidth and the
+        // current encoding rate is more than 100K, adjust the encoding parameters
+        if ((diffTargetBitrate >= 100) && ((lowBitrateL1 < curTargetBitrate)
+                && (curTargetBitrate < highBitrateL3))) {
+            if ((lowBitrateL1 < curTargetBitrate) && (curTargetBitrate < highBitrateL1)) {
+                curResolutionLevel = 1; // Set resolution to L1
+            } else if ((lowBitrateL2 < curTargetBitrate) && (curTargetBitrate < highBitrateL2)) {
+                curResolutionLevel = 2; // Set resolution to L2
+            } else {
+                curResolutionLevel = 3; // Set resolution to L3
+            }
+
+            // Adjust encoding resolution
+            if (curResolutionLevel != lastResolutionLevel) {
+                //setEncoderResolution(curResolutionLevel);
+            }
+
+            // Set the encoding bit rate
+            // setEncoderBitrate(curTargetBitrate);
+
+            lastResolutionLevel = curResolutionLevel;
+            lastTargetBitrate = curTargetBitrate;
+        }
+    }
+    ```
+
+1. **Manage audio and video streaming status**
+
+    When a user taps a `Checkbox`, you pause or resume sending local audio and video streams. To do this, add the following code to the `onCreate` method in the `MainActivity` class:
+    
+    ```cpp
+    checkMuteLocalAudio = findViewById(R.id.MuteLocalAudio);
+    checkMuteLocalVideo = findViewById(R.id.MuteLocalVideo);
+
+    checkMuteLocalAudio.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        @Override
+        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+            if (isJoined) {
+                agoraEngine.muteLocalAudio(connectionId, checkMuteLocalAudio.isChecked());
+            }
+        }
+    });
+
+    checkMuteLocalVideo.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        @Override
+        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+            if (isJoined) {
+                agoraEngine.muteLocalVideo(connectionId, checkMuteLocalVideo.isChecked());
+            }
+        }
+    });
+    ```
+    To pause and resume playing remote audio or video streams call `agoraEngine.muteRemoteAudio(connectionId, remoteUid, isMuted)` or `agoraEngine.muteRemoteVideo(connectionId, remoteUid, isMuted)`.
+
+1. **Handle muting and unmuting notifications of remote streams**
+
+    When a remote user mutes or unmutes their audio or video stream, you receive notification of these changes. In this example, you inform the user of these events by displaying a message. To do this, replace the `onUserMuteAudio` and `onUserMuteVideo` methods under `agoraRtcEvents` with the following:
+
+    ```cpp
+    @Override
+    public void onUserMuteAudio(int connId, int uid, boolean muted) {
+        // A remote user paused or resumed sending the audio stream
+        showMessage("Remote user " + uid + (muted ? " muted" : " unmuted") + " audio");
+    }
+
+    @Override
+    public void onUserMuteVideo(int connId, int uid, boolean muted) {
+        // A remote user paused or resumed sending the video stream
+        showMessage("Remote user " + uid + (muted ? " muted" : " unmuted") + " video");
+    }
+    ```
+
 </PlatformWrapper>

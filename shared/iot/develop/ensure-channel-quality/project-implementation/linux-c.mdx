@@ -32,11 +32,15 @@ To implement channel quality features, take the following steps:
 
     You configure BandWidth Estimation (BWE) parameters before joining a channel. For example, based on the [definition levels of a webcam](#definition-levels-of-a-webcam), the minimum value can be set to 400 kbps, and the maximum value can be set to 4200 kbps. The starting value is between the minimum and the maximum value. If the initial encoding is SD, the initial bit rate can be set to 500 kbps, based on the table.
 
-    To specify these parameters, add the following code to the `joinChannel(View view)` method before `agoraEngine.joinChannel`.
+    To specify these parameters, replace the `agora_rtc_set_bwe_param` call in `main(...)` with the following:
     
     ```cpp
-    // Configure Bandwidth Estimation. Min, max and starting bit rates in bps
-    agoraEngine.setBweParam(connectionId, 400000, 4200000, 500000);
+    // Configure Bandwidth Estimation
+    // Min, max and starting bit rates in bps
+    uint32_t min_bps = 400000;
+    uint32_t max_bps = 4200000;
+    uint32_t start_bps = 500000;
+    rval = agora_rtc_set_bwe_param(min_bps,  max_bps,  start_bps);
     ```
 
 1. **Respond to target bit rate changes**
@@ -46,37 +50,36 @@ To implement channel quality features, take the following steps:
     In this example, you use [definition levels of a webcam](#definition-levels-of-a-webcam) to switch resolution depending on the reported target bit rate. To do this, replace the `onTargetBitrateChanged` method under `agoraRtcEvents` with the following:
 
     ```cpp
-    int curTargetBitrate, diffTargetBitrate, lastTargetBitrate = 500;
-    int lowBitrateL1 = 400, highBitrateL1 = 800;
-    int lowBitrateL2 = 1130 , highBitrateL2 = 2260, highBitrateL3 = 4160;
-    int curResolutionLevel = 1 , lastResolutionLevel = 1;
-
-    @Override
-    public void onTargetBitrateChanged(int connId, int targetBps) {
-        // Adjust the sending code rate in real time
+    // Adjust the sending code rate in real time
+    static void __on_target_bitrate_changed(const char *channel, uint32_t target_bps)
+    {
         // The current code rate is graded according to 100 K, rounded down
-        curTargetBitrate = targetBps/100000 * 100;
-        diffTargetBitrate = Math.abs(curTargetBitrate - lastTargetBitrate);
+        curTargetBitrate = target_bps/100000 * 100;
+        diffTargetBitrate = abs(curTargetBitRate - lastTargetBitrate);
 
-        // If the difference between the detected bandwidth and the
-        // current encoding rate is more than 100K, adjust the encoding parameters
-        if ((diffTargetBitrate >= 100) && ((lowBitrateL1 < curTargetBitrate)
-                && (curTargetBitrate < highBitrateL3))) {
-            if ((lowBitrateL1 < curTargetBitrate) && (curTargetBitrate < highBitrateL1)) {
-                curResolutionLevel = 1; // Set resolution to L1
-            } else if ((lowBitrateL2 < curTargetBitrate) && (curTargetBitrate < highBitrateL2)) {
-                curResolutionLevel = 2; // Set resolution to L2
-            } else {
-                curResolutionLevel = 3; // Set resolution to L3
+        // If the difference between the detected bandwidth and the set encoding rate is more than 100 K, rewrite and adjust the encoding parameters
+        if ( (diffTargetBitrate >= 100 ) && (lowBitrateL1 < curTargetBitrate < highBitrateL3) )
+        {
+            if (lowBitrateL1 < curTargetBitrate < highBitrateL1)
+            {
+                curResolutionLevel = L1;
             }
-
+            else if (lowBitrateL2 < curTargetBitrate < highBitrateL2)
+            {
+                curResolutionLevel = L2;
+            }
+            else
+            {
+                curResolutionLevel = L3;
+            }
+            
             // Adjust encoding resolution
-            if (curResolutionLevel != lastResolutionLevel) {
-                //setEncoderResolution(curResolutionLevel);
+            if (curResolutionLevel != lastResolutionLevel)
+            {
+                // setEncodeResolution(curResolutionLevel);
             }
-
-            // Set the encoding bit rate
-            // setEncoderBitrate(curTargetBitrate);
+            // Set the encoding rate
+            // setEncodeBitrate(curTargetBitrate);
 
             lastResolutionLevel = curResolutionLevel;
             lastTargetBitrate = curTargetBitrate;
@@ -89,8 +92,8 @@ To implement channel quality features, take the following steps:
     When a user taps a `Checkbox`, you pause or resume sending local audio and video streams. To do this, add the following code to the `onCreate` method in the `MainActivity` class:
     
     ```cpp
-    checkMuteLocalAudio = findViewById(R.id.MuteLocalAudio);
-    checkMuteLocalVideo = findViewById(R.id.MuteLocalVideo);
+    agora_rtc_mute_local_audio ( connection_id_t conn_id, bool mute)
+    agora_rtc_mute_local_video ( connection_id_t conn_id, bool mute)
 
     checkMuteLocalAudio.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
         @Override
@@ -114,19 +117,17 @@ To implement channel quality features, take the following steps:
 
 1. **Handle muting and unmuting notifications of remote streams**
 
-    When a remote user mutes or unmutes their audio or video stream, you receive notification of these changes. In this example, you inform the user of these events by displaying a message. To do this, replace the `onUserMuteAudio` and `onUserMuteVideo` methods under `agoraRtcEvents` with the following:
+    When a remote user mutes or unmutes their audio or video stream, you receive notification of these changes. In this example, you write log messages when you receive the `__on_user_mute_audio` and `__on_user_mute_video` callbacks:
 
     ```cpp
-    @Override
-    public void onUserMuteAudio(int connId, int uid, boolean muted) {
-        // A remote user paused or resumed sending the audio stream
-        showMessage("Remote user " + uid + (muted ? " muted" : " unmuted") + " audio");
+    static void __on_user_mute_audio(connection_id_t conn_id, uint32_t uid, bool muted)
+    {
+    LOGI("[conn-%u] audio: uid=%u muted=%d", conn_id, uid, muted);
     }
 
-    @Override
-    public void onUserMuteVideo(int connId, int uid, boolean muted) {
-        // A remote user paused or resumed sending the video stream
-        showMessage("Remote user " + uid + (muted ? " muted" : " unmuted") + " video");
+    static void __on_user_mute_video(connection_id_t conn_id, uint32_t uid, bool muted)
+    {
+    LOGI("[conn-%u] video: uid=%u muted=%d", conn_id, uid, muted);
     }
     ```
 

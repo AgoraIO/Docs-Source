@@ -10,16 +10,17 @@ To improve application robustness, Agora recommends that you do the following wh
 
 ## Use dual domain names
 
-If you send a Cloud Recording RESTful API request to `api.agora.io` and the request fails, retry with the same domain name first. If it fails again, replace the domain name with `api.sd-rtn.com` and retry. Agora recommends that you use a backoff strategy, for example, retry after 1, 3, and 6 seconds successively, to avoid exceeding the Queries Per Second (QPS) limits.
+If you send a Cloud Recording RESTful API request to `api.agora.io` and the request fails, retry with the same domain name first. If it fails again, replace the domain name with `api.sd-rtn.com` and retry. Best practice is to first try the DNS domain close to your server. See the [domain name table](#domain-name-table) for a list of DNS servers.
 
-## Acquire service status
+Agora recommends that you use a backoff strategy, for example, retry after 1, 3, and 6 seconds successively, to avoid exceeding the Queries Per Second (QPS) limits.
 
-You can use Cloud Recording RESTful APIs to acquire the status of the recording service.  Apart from Cloud Recording RESTful APIs. 
+The initial QPS limit is 10 per API per CID when you register. You can estimate the QPS quota your project needs according to your peak current worker (PCW) quota and query frequency. The initial peak current worker (PCW) limit is 50 per AppID when you register. If the RESTful API returns QPS limitation error code `429`, or PCW quota limitation error code `406`, then retry, or contact support@agora.io to increase your QPS or PCW quota.
 
+## Get service status
+
+You can use Cloud Recording RESTful APIs to get the status of the recording service. 
 
 Agora recommends that core apps should not rely on the Message Notification Service. If your apps already rely heavily on the Message Notification Service, Agora recommends that you contact <a href="mailto:support@agora.io">support@agora.io</a> to enable the redundant message notification function, which doubles the received notifications and reduces the probability of message loss. After enabling the redundant message notification function, you need to deduplicate messages based on `sid`. Redundant message notification still cannot guarantee a 100% arrival rate.
-
-The queries per second (QPS) quota is 10 requests per second for each App ID. You can estimate the QPS quota your project needs according to your peak current worker (PCW) quota (300) and query frequency, and contact <a href="mailto:support@agora.io">support@agora.io</a> to increase your quota if necessary.
 
 ### Ensure the recording service starts successfully
 
@@ -85,9 +86,32 @@ During this period, the recording may get interrupted and the files containing t
 
 For scenes with a large audience in the channel or high availability requirements, consider whether you can 
 accept the impact of high availability migration based on your own business characteristics, and decide whether to adopt 
-higher quality assurance measures. For example, create multiple recording tasks for critical scenes using different UIDs. 
+higher quality assurance measures. For example, create multiple recording tasks for critical scenes using distinct UIDs, and ensure use of servers in different geographical regions through geofencing. 
 Alternatively, you can make periodic API calls and monitor notifications to get the latest recording task status, 
 then create a new cloud recording task with a different UID once you confirm the recording task status is unhealthy.
 
 If you create multiple cloud recording tasks, you are charged separately for each of them. For details, see 
 [Pricing](../reference/pricing).
+
+## Reference
+
+### Domain name table
+
+|Primary domain name  |Region domain name	|Region|
+|:--------------------|:--------------------|:-----|
+|`api.sd-rtn.com`      |`api-us-west-1.sd-rtn.com` |Western United States|
+|                      |`api-us-east-1.sd-rtn.com` |Eastern United States|
+|                      |`api-ap-southeast-1.sd-rtn.com`|Southeast Asia Pacific|
+|                      |`api-ap-northeast-1.sd-rtn.com`| Northeast Asia Pacific|
+|                      |`api-eu-west-1.sd-rtn.com` |Western Europe|
+|                      |`api-eu-central-1.sd-rtn.com` |Central Europe|
+|                      |`api-cn-east-1.sd-rtn.com`|East China|
+|                      |`api-cn-north-1.sd-rtn.com`|North China|
+|`api.agora.io`         |`api-us-west-1.agora.io`|Western United States|
+|                       |`api-us-east-1.agora.io`|Eastern United States|
+|                       |`api-ap-southeast-1.agora.io`|Southeast Asia Pacific|
+|                       |`api-ap-northeast-1.agora.io`|Northeast Asia Pacific|
+|                	    |`api-eu-west-1.agora.io`|Western Europe|
+|                       |`api-eu-central-1.agora.io`|Central Europe|
+|                       |`api-cn-east-1.agora.io`|East China|
+|                       |`api-cn-north-1.agora.io`|North China|

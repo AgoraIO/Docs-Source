@@ -81,17 +81,28 @@ For example, if there is a fixed 5-minute break in each class, you can set `maxI
 
 ## Fault recovery
 
-Network failures and risks may be caused by cloud and network software, infrastructure, and other factors that Agora cannot control. To provide the best possible user experience, Cloud Recording provides high availability automatic task migration for failure recovery. After a failure is confirmed, the recording task is migrated within 90 seconds. 
-During this period, the recording may get interrupted and the files containing the recording may be lost.
+Network failures and potential risks may occur due to factors such as cloud and network software, infrastructure, and other elements outside of <Vg k="COMPANY"/>'s control. To enhance the user experience, Cloud Recording offers automatic high availability task migration for failure recovery. When a failure is detected, the recording task will be migrated within 90 seconds. During this time, the recording may be disrupted and recorded files may be lost.
 
-For scenes with a large audience in the channel or high availability requirements, consider whether you can 
-accept the impact of high availability migration based on your own business characteristics, and decide whether to adopt 
-higher quality assurance measures. For example, create multiple recording tasks for critical scenes using distinct UIDs, and ensure use of servers in different geographical regions through geofencing. 
-Alternatively, you can make periodic API calls and monitor notifications to get the latest recording task status, 
-then create a new cloud recording task with a different UID once you confirm the recording task status is unhealthy.
+For scenes with a large audience in the channel or high availability requirements, consider whether you can accept the impact of high availability migration based on your own business characteristics, and decide whether to adopt higher quality assurance measures. For example, create multiple recording tasks for critical scenes using distinct UIDs, and ensure use of servers in different geographical regions through geofencing. Alternatively, you can make periodic API calls and monitor notifications to get the latest recording task status, then create a new cloud recording task with a different UID once you confirm the recording task status is unhealthy.
 
-If you create multiple cloud recording tasks, you are charged separately for each of them. For details, see 
-[Pricing](../reference/pricing).
+If you create multiple cloud recording tasks, you are charged separately for each of them. For details, see [Pricing](../reference/pricing).
+
+## Integration requirements checklist
+
+To ensure reliability of the cloud recording service, refer to the following checklist to confirm that your solution meets the integration requirements:
+
+| Serial | Importance | Item | Description |
+|--|----------|----------|----------|
+| 1 | required | Subscribe to a service | Make sure you have activated the cloud recording service. | 
+| 2 | required | request method | <ul><li>To query, use the `POST` request method; to query the recording status use `GET`. </li> <li>Request URLs and request body content are case-sensitive.</li></ul> |
+| 3 | required | Get recording resources | <ul><li>The passed in `uid` cannot duplicate any UID within the current channel.</li><li>For page recording, make sure an appid + cname + uid corresponds to a resource ID.</li><li>Make sure that a resource ID is only used for one cloud recording service.</li><li>Make sure to call the `start` method.</li></ul> |
+| 4 | required | channel scene | Make sure that the channel scene (`channelType`) is consistent with the settings of the <Vg k="VSDK" />. |
+| 5 | required | recording parameters | <ul><li>Make sure that the type, case, and value range of all the parameters passed in when starting the recording are correct, and the required parameters are filled; otherwise, error code 2 is returned.</li><li>Set the layout and video bit rate of the combined recording by referring to the combined layout document and the recording bit rate comparison table.</li></ul> |
+| 6 | required | Confirm that the recording service has started successfully | <ul><li>Make sure that the start request is successful, that is, the `sid` (recording ID) is successfully obtained.</li><li>Make sure to be or within 90 seconds `sid` of getting status 4 5</li></ul> |
+| 7 | required | PCW & QPS limits | <ul><li>Make sure that each App ID does not exceed 10 requests per second (QPS).</li><li>Ensure that the maximum number of concurrent tasks (PCW) in China does not exceed 1,000, and that in other regions does not exceed 300. To increase the QPS and PCW limits, please contact technical support.</li></ul> |
+| 8 | optional | NCS Service Activation | Activate the cloud recording callback service and subscribe to the following events as an auxiliary means of monitoring the recording service status: <ul><li>`40 recorder_started`: The recording service has started.</li><li>`11 session_exit`: The recording service ended the task and exited.</li><li>`1 cloud_recording_error`: An error occurred in the recording service.</li><li>`12 session_failover`: Enable high availability mechanism for recording.</li><li>`31 uploaded`: All recorded files have been uploaded to the specified third-party cloud storage.</li></ul> |
+| 9 | optional | Use dual domain names | If the request fails with the primary domain name `api.agora.io`, try again with the primary domain name; if it fails again, switch to the secondary domain name `api.sd-rtn.com` and send the request again. |
+| 10 | optional | timeout logic | Make sure that the `maxIdleTime` setting is reasonable. The recommended value is 300 seconds. |
 
 ## Reference
 

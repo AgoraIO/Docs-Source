@@ -1,12 +1,10 @@
 <PlatformWrapper platform="linux-c">
 
-### Implement channel quality features
-
 To implement channel quality features, take the following steps:
 
 1. **Configure the <Vpd k="SDK" /> log file**
 
-    To customize the location, and content of the log file, add the following code to `main()` before `rval = agora_rtc_init(p_appid, &event_handler, &service_opt);`
+    To customize the location, and content of the log file, add the following code to `main()` before `agora_rtc_init()`:
 
     ```cpp
     // Configure log file location and logging level
@@ -16,7 +14,7 @@ To implement channel quality features, take the following steps:
 
 1. **Specify the audio codec, sampling rate, and the number of channels**
 
-    You set the audio codec, sampling rate, and the number of channels in `channel_options` that you pass to `agora_rtc_join_channel`. To set these parameters, modify the following lines in `main()` according to your requirements:
+    You set the audio codec, sampling rate, and the number of channels in `channel_options` that you pass to `agora_rtc_join_channel`. To set these parameters according to your requirements, use the `config` object or modify the following lines in `main()`:
 
     ```cpp
     channel_options.audio_codec_opt.audio_codec_type = config->audio_codec_type;
@@ -31,11 +29,11 @@ To implement channel quality features, take the following steps:
     * `AUDIO_CODEC_TYPE_G711A`
     * `AUDIO_CODEC_TYPE_G711U` 
     
-    To use your own audio codec, set `channel_options.audio_codec_opt.audio_codec_type` to `AUDIO_CODEC_DISABLED`. When you call `agora_rtc_send_audio_data`, set the `data_type` parameter of `audio_frame_info` to your encoding format. This setting transmits the audio encoding format as is to the receiving end. When you disable use of a built-in audio codec, <Vpd k="SDK" /> does not process the audio. The receiving end obtains the encoded audio data and the encoding format through the `__on_audio_data` callback and decodes it using a custom decoder.
+    To use your own audio codec, set `channel_options.audio_codec_opt.audio_codec_type` to `AUDIO_CODEC_DISABLED`. When you call `agora_rtc_send_audio_data`, set the `data_type` parameter of `audio_frame_info` to your encoding format. This setting transmits the audio encoding format as is to the receiving end. When you disable use of a built-in audio codec, <Vpd k="SDK" /> does not process the audio. The receiving end obtains the encoded audio data and the encoding format through the `on_audio_data` callback and decodes it using a custom decoder.
     
-1. **Configure Bandwidth Estimation**  
+1. **Configure bandwidth estimation parameters**  
 
-    You configure BandWidth Estimation (BWE) parameters before joining a channel. For example, based on the [definition levels of a webcam](#definition-levels-of-a-webcam), the minimum value can be set to 400 kbps, and the maximum value can be set to 4200 kbps. The starting value is between the minimum and the maximum value. If the initial encoding is SD, the initial bit rate can be set to 500 kbps, based on the table.
+    You configure bandwidth estimation parameters before joining a channel. For example, based on the [definition levels of a webcam](#definition-levels-of-a-webcam), the minimum bit rate value can be set to 400 kbps, and the maximum value can be set to 4200 kbps. The starting value is between the minimum and the maximum value. If the initial encoding is SD, the initial bit rate can be set to 500 kbps, based on the table.
 
     To specify these parameters, replace the `agora_rtc_set_bwe_param` call in `main()` with the following:
     
@@ -55,12 +53,16 @@ To implement channel quality features, take the following steps:
     In this example, you use [definition levels of a webcam](#definition-levels-of-a-webcam) to switch resolution depending on the reported target bit rate. To do this, replace the `__on_target_bitrate_changed` handler with the following:
 
     ```cpp
-    // Adjust the sending code rate in real time
+    int curTargetBitrate, diffTargetBitrate, lastTargetBitrate = 500;
+    int lowBitrateL1 = 400, highBitrateL1 = 800;
+    int lowBitrateL2 = 1130 , highBitrateL2 = 2260, highBitrateL3 = 4160;
+    int curResolutionLevel = 1 , lastResolutionLevel = 1;
+
     static void __on_target_bitrate_changed(const char *channel, uint32_t target_bps)
-    {
+    { // Adjust the sending code rate in real time
         // The current code rate is graded according to 100 K, rounded down
         curTargetBitrate = target_bps/100000 * 100;
-        diffTargetBitrate = abs(curTargetBitRate - lastTargetBitrate);
+        diffTargetBitrate = abs(curTargetBitrate - lastTargetBitrate);
 
         // If the difference between the detected bandwidth and the set 
         // encoding rate is more than 100K, adjust the encoding parameters
@@ -68,15 +70,15 @@ To implement channel quality features, take the following steps:
         {
             if (lowBitrateL1 < curTargetBitrate < highBitrateL1)
             {
-                curResolutionLevel = L1;
+                curResolutionLevel = 1;
             }
             else if (lowBitrateL2 < curTargetBitrate < highBitrateL2)
             {
-                curResolutionLevel = L2;
+                curResolutionLevel = 2;
             }
             else
             {
-                curResolutionLevel = L3;
+                curResolutionLevel = 3;
             }
             
             if (curResolutionLevel != lastResolutionLevel)
@@ -96,18 +98,46 @@ To implement channel quality features, take the following steps:
 
 1. **Manage audio and video streaming status**
 
-    To pause or resume sending local audio and video streams. To do this, add the following code to the `onCreate` method in the `MainActivity` class:
+    To pause or resume sending local audio and video streams when a key is pressed, add the following code to `main()` after `while (!g_app.b_stop_flag) {`:
     
     ```cpp
-    agora_rtc_mute_local_audio (connection_id_t conn_id, bool mute);
-    agora_rtc_mute_local_video (connection_id_t conn_id, bool mute);
+    char c; // Input character
+    int i = kbhit(); // Check if a key was pressed
+
+    if (i != 0) // A key was pressed
+    {
+      c = fgetc(stdin); // Get the input character
+      if (c == 'a')
+      { // mute/unmute audio
+        is_audio_muted = !is_audio_muted;
+        agora_rtc_mute_local_audio(g_app.conn_id, is_audio_muted);
+        if (is_audio_muted)
+          printf("\nAudio muted\n");
+        else
+          printf("\nAudio unmuted\n");
+      }
+      else if (c == 'v')
+      { // mute/unmute audio
+        is_video_muted = !is_video_muted;
+        agora_rtc_mute_local_video(g_app.conn_id, is_video_muted);
+        if (is_video_muted)
+          printf("\nVideo muted\n");
+        else
+          printf("\nVideo unmuted\n");
+      }
+      else
+      {
+        printf("\nPress <a> to mute/unmute audio \nPress <v> to mute/unmute video\n");
+      }
+      i = 0;
+    }
     ```
     
-    To pause and resume playing remote audio or video streams call `agora_rtc_mute_local_audio (connection_id_t conn_id, bool mute);`  `agora_rtc_mute_local_video (connection_id_t conn_id, bool mute);`.
+    To pause and resume playing remote audio or video streams use `agora_rtc_mute_local_audio` and `agora_rtc_mute_local_video`.
 
-1. **Handle muting and unmuting notifications of remote streams**
+1. **Handle muting and unmuting notifications for remote streams**
 
-    When a remote user mutes or unmutes their audio or video stream, you receive notification of these changes. In this example, you write log messages when you receive the `__on_user_mute_audio` and `__on_user_mute_video` callbacks:
+    When a remote user mutes or unmutes their audio or video stream, you receive notification of these changes. In this example, you write log messages when you receive the `on_user_mute_audio` and `on_user_mute_video` callbacks. Add the following code to `main()`:
 
     ```cpp
     static void __on_user_mute_audio(connection_id_t conn_id, uint32_t uid, bool muted)
@@ -120,5 +150,22 @@ To implement channel quality features, take the following steps:
     LOGI("[conn-%u] video: uid=%u muted=%d", conn_id, uid, muted);
     }
     ```
+
+1. **Request and send key frames**
+
+    When you call `agora_rtc_send_video_data` to send a video frame, you specify if this frame is a key frame by setting the `is_key_frame` parameter.
+
+    When a sender does not send a key frame for a long time, or the key frame is lost or damaged during transmission, <Vpd k="SDK" /> triggers the `on_key_frame_gen_req` callback to advise the sender to generate a key frame. In this example, you log a message when you receive the `on_key_frame_gen_req` callback. Add the following code to `main()`:
+
+    ```cpp
+    static void __on_key_frame_gen_req(connection_id_t conn_id, uint32_t uid,
+                                   video_stream_type_e stream_type)
+    {
+    LOGW("[conn-%u] Frame loss detected. Set a flag for the encoder to generate a key frame",
+        conn_id);
+    }
+    ```
+
+    If the receiver encounters an error when decoding frames, it calls the `agora_rtc_request_video_key_frame` method to request a remote user to generate a fresh key frame.
 
 </PlatformWrapper>

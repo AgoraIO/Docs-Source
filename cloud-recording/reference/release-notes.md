@@ -2,14 +2,51 @@
 title: "Release notes"
 sidebar_position: 3
 type: docs
+platform_selector: false
 description: >
     New features, improvements and resolved issues for Cloud Recording.
 ---
 
 ## Overview
 
-Agora Cloud Recording is an add-on service to record and save voice calls, video calls, and interactive streaming on your cloud storage. Compared with Agora On-Premise Recording, Agora Cloud Recording is more efficient and convenient as it does not require deploying Linux servers.
+Agora Cloud Recording is an add-on service to record and save voice calls, video calls, and interactive streaming on your cloud storage. 
+Compared with Agora On-Premise Recording, Agora Cloud Recording is more efficient and convenient as it does not require deploying Linux servers.
 
+### Compatibility
+
+Agora Cloud Recording is compatible with the following SDKs:
+
+- Agora Video SDK for Android, iOS, macOS, and Windows v1.7.0 or later.
+- Agora Video SDK for Web v1.12 or later.
+
+## 2022.11.20
+
+This release adds the following improvements:
+
+- Improves player compatibility for MPD files generated in individual recording `standard` mode, see [Recording configuration](../reference/rest-api/start#recording-configuration).
+- Optimizes the Agora Format Converter Script for individual recording, you can refer to [Merge audio and video files](../develop/merge-files) to get the latest Agora Format Converter Script.
+
+## 2022.10.20
+
+This release supports the postpone transcoding feature globally. You need to set the scene field to `2` (postpone transcoding) when calling the `acquire`. After setting this scene, the recording service transcodes the recorded file within 24 hours after recording to generate an MP4 file, and uploads the MP4 file to the third-party cloud storage you specify. Please note that the `region` of the third-party cloud storage must be consistent with the `region` set when calling `acquire`. For details, see [Individual recording](../develop/individual-mode).
+
+## 2022.8.12
+This release adds support for Amazon S3 in some regions. See [Cloud storage configuration](../reference/rest-api/start?platform=RESTful#cloud-storage-configuration).
+
+## 2022.5.20
+
+This release adds the following new feature and API changes:
+
+**Mobile web page mode for web page recording**
+
+This release adds mobile web page mode for web page recording. The API changes are as follows:
+
+- Adds the `mobile` field in `extensionServiceConfig`. After setting `mobile` to `true`, the recording service uses the mobile web page mode to record the current web page.
+- The value range of the `videoWidth` and `videoHeight` fields in `extensionServiceConfig` is changed to [240, 1920].
+
+**Transcoder script for high availability mechanism**
+
+In composite recording mode, Agora provides a transcoder script for merging the old M3U8 file with the new M3U8 file generated after the service enables the high availability mechanism into an MP4 file. For details, see [Manage Recorded Files](./develop/manage-files#when-a-server-is-disconnected-or-the-process-killed).
 
 ## 2022.1.20
 #### New features

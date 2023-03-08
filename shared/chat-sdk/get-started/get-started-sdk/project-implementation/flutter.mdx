@@ -1,308 +1,379 @@
 <PlatformWrapper platform="flutter">
 
-## Implement peer-to-peer messaging
+### Handle the system logic
 
-At the top lines of the `quick_start/lib/main.dart` file, add the following to import packages:
+Import the <Vpd k="SDK" /> package and set up the app framework.
 
-<a name="sign-in"></a>
+1. **Add the <Vpd k="SDK" /> package**
+
+    Open the file `/lib/main.dart` and add the following `import` statement at the top of the file:
+
+    ```dart
+    import 'package:agora_chat_sdk/agora_chat_sdk.dart';
+    ```
+
+1. **Declare global variables**
+
+    In `/lib/main.dart` add the following declaration after the `import` statements:
+
+    ```dart
+    // Global key to access the scaffold messenger
+    final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+        GlobalKey<ScaffoldMessengerState>(); 
+    ```
+
+1. **Enable SnackBar messages**
+
+    Update the root widget to add the `scaffoldMessengerKey` for showing SnackBar messages, and set the background color. In `/lib/main.dart`, replace the `MyApp` class with the following:
+
+    ```dart
+    class MyApp extends StatelessWidget {
+      const MyApp({Key? key}) : super(key: key);
+      // This widget is the root of your application.
+      @override
+      Widget build(BuildContext context) {
+        return MaterialApp(
+          title: 'Flutter Demo',
+          scaffoldMessengerKey: scaffoldMessengerKey,
+          theme: ThemeData(
+            scaffoldBackgroundColor: const Color(0xFFECE5DD),
+          ),
+          home: const MyHomePage(title: 'Agora Chat Quickstart'),
+        );
+      }
+    }
+    ```
+
+1. **Set up the app framework**
+
+    To set up a Flutter app framework for <Vpd k="NAME"/>, you do the following:
+
+    * Create a stateful widget
+    * Declare variables to manage the connection and access UI elements
+    * Add a method to display information to the user
+
+    To do this, replace the `_MyHomePageState` class with the following:
+
+    ```dart
+    class _MyHomePageState extends State<MyHomePage> {
+      static const String appKey = "<App key from Agora console>";
+      static const String userId = "<User ID of the local user>";
+      String token = "<Your authentication token>";
+      
+      late ChatClient agoraChatClient;
+      bool isJoined = false;
+
+      ScrollController scrollController = ScrollController();
+      TextEditingController messageBoxController = TextEditingController();
+      String messageContent = "", recipientId = "";
+      final List<Widget> messageList = [];
+      
+      showLog(String message) {
+        scaffoldMessengerKey.currentState?.showSnackBar(SnackBar(
+          content: Text(message),
+        ));
+      }
+
+    }
+    ```
+
+### Build the UI
+
+In the quickstart app, you create a simple UI that consists of the following elements:
+
+* An `ElevatedButton` to log in or out of the <Vg k="CHAT_SERVER" />
+* A `TextField` to specify the recipient user ID
+* A `TextField` to enter a text message
+* An `ElevatedButton` to send the text message
+* A `ListView.builder` to display sent and received messages
+
+To create this UI, add the following `build` method to the `_MyHomePageState` class:
 
 ```dart
-import 'package:flutter/material.dart';
-import 'package:agora_chat_sdk/agora_chat_sdk.dart';
-
-// Replaces <#Your app key#>, <#Your created user#>, and <#User Token#> and with your own App Key, user ID, and user token generated in Agora Console.
-class AgoraChatConfig {
-  static const String appKey = "<#Your app key#>";
-  static const String userId = "<#Your created user#>";
-  static const String agoraToken = "<#User Token#>";
-}
-```
-
-Replace the lines of the `_MyHomePageState` class with the following:
-
-```dart
-class _MyHomePageState extends State<MyHomePage> {
-
-  ScrollController scrollController = ScrollController();
-  String? _messageContent, _chatId;
-  final List<String> _logText = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _initSDK();
-    _addChatListener();
-  }
-  @override
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
       ),
       body: Container(
-        padding: const EdgeInsets.only(left: 10, right: 10),
+        padding: const EdgeInsets.all(10),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.max,
           children: [
-            const SizedBox(height: 10),
-            const Text("login userId: ${AgoraChatConfig.userId}"),
-            const Text("agoraToken: ${AgoraChatConfig.agoraToken}"),
-            const SizedBox(height: 10),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 Expanded(
-                  flex: 1,
-                  child: TextButton(
-                    onPressed: _signIn,
-                    child: const Text("SIGN IN"),
-                    style: ButtonStyle(
-                      foregroundColor: MaterialStateProperty.all(Colors.white),
-                      backgroundColor:
-                          MaterialStateProperty.all(Colors.lightBlue),
+                  child: SizedBox(
+                    height: 40,
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        filled: true,
+                        fillColor: Colors.white,
+                        hintText: "Enter recipient's userId",
+                      ),
+                      onChanged: (chatUserId) => recipientId = chatUserId,
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: TextButton(
-                    onPressed: _signOut,
-                    child: const Text("SIGN OUT"),
-                    style: ButtonStyle(
-                      foregroundColor: MaterialStateProperty.all(Colors.white),
-                      backgroundColor:
-                          MaterialStateProperty.all(Colors.lightBlue),
-                    ),
+                SizedBox(
+                  width: 80,
+                  height: 40,
+                  child: ElevatedButton(
+                    onPressed: joinLeave,
+                    child: Text(isJoined ? "Leave" : "Join"),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            TextField(
-              decoration: const InputDecoration(
-                hintText: "Enter recipient's userId",
-              ),
-              onChanged: (chatId) => _chatId = chatId,
-            ),
-            TextField(
-              decoration: const InputDecoration(
-                hintText: "Enter message",
-              ),
-              onChanged: (msg) => _messageContent = msg,
-            ),
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: _sendMessage,
-              child: const Text("SEND TEXT"),
-              style: ButtonStyle(
-                foregroundColor: MaterialStateProperty.all(Colors.white),
-                backgroundColor: MaterialStateProperty.all(Colors.lightBlue),
-              ),
-            ),
-            Flexible(
+            Expanded(
               child: ListView.builder(
                 controller: scrollController,
                 itemBuilder: (_, index) {
-                  return Text(_logText[index]);
+                  return messageList[index];
                 },
-                itemCount: _logText.length,
+                itemCount: messageList.length,
               ),
             ),
+            Row(children: [
+              Expanded(
+                child: SizedBox(
+                  height: 40,
+                  child: TextField(
+                    controller: messageBoxController,
+                    decoration: const InputDecoration(
+                      filled: true,
+                      fillColor: Colors.white,
+                      hintText: "Message",
+                    ),
+                    onChanged: (msg) => messageContent = msg,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 50,
+                height: 40,
+                child: ElevatedButton(
+                  onPressed: sendMessage,
+                  child: const Text(">>"),
+                ),
+              ),
+            ]),
           ],
         ),
       ),
     );
   }
-
-  void _initSDK() async {
-  }
-  void _addChatListener() {
-  }
-  void _signIn() async {
-  }
-  void _signOut() async {
-  }
-  void _sendMessage() async {
-  }
-  void _addLogToConsole(String log) {
-    _logText.add(_timeString + ": " + log);
-    setState(() {
-      scrollController.jumpTo(scrollController.position.maxScrollExtent);
-    });
-  }
-  String get _timeString {
-    return DateTime.now().toString().split(".").first;
-  }
-}
 ```
 
-### 1. Initialize the SDK
+### Send and receive messages
 
-In the `_initSDK` method, add the following to initialize the SDK:
+When a user opens the app, you instantiate and initialize a `ChatClient`. When the user taps the **Join** button, the app logs in to the <Vg k="CHAT_SERVER" />. When a user types a message in the text box and then presses **Send**, the typed message is sent to the <Vg k="CHAT_SERVER" />. When the <Vpl k="CLIENT"/> receives a message from the server, the message is displayed in the message list. This simple workflow enables you to rapidly build a <Vpd k="NAME" /> client with basic functionality. 
 
-```dart
-  void _initSDK() async {
-    ChatOptions options = ChatOptions(
-      appKey: AgoraChatConfig.appkey,
-      autoLogin: false,
-    );
-    await ChatClient.getInstance.init(options);
-  }
-```
+The following figure shows the API call sequence for implementing this workflow.
 
-### 2. Log in to an account
+![image](/images/chat/chat-call-logic-flutter.svg)
 
-In the `_signIn` method, add the following to add the login logic:
+To implement this workflow in your <Vpl k="CLIENT" />, take the following steps:
 
-```dart
-    void _signIn() async {
-      try {
-        await ChatClient.getInstance.loginWithAgoraToken(
-          AgoraChatConfig.userId,
-          AgoraChatConfig.agoraToken,
-        );
-        _addLogToConsole("login succeed, userId: ${AgoraChatConfig.userId}");
-      } on ChatError catch (e) {
-        _addLogToConsole("login failed, code: ${e.code}, desc: ${e.description}");
-      }
-  }
-```
+1. **Set up <Vpd k="NAME" /> when the app starts**
 
-### 3. Log out of an account
+    When the app starts, you create an instance of the `ChatClient` and set up callbacks to handle <Vpd k="NAME" /> events.
+    To do this, add the following `initState` method to the `_MyHomePageState` class:
 
-In the `_signOut` method, add the following to add the logout logic:
-
-```dart
-  void _signOut() async {
-    try {
-      await ChatClient.getInstance.logout(true);
-      _addLogToConsole("sign out succeed");
-    } on ChatError catch (e) {
-      _addLogToConsole(
-          "sign out failed, code: ${e.code}, desc: ${e.description}");
+    ```dart
+    @override
+    void initState() {
+      super.initState();
+      setupChatClient();
+      setupListeners();
     }
-  }
-```
+    ```
+   
+1. **Instantiate the `ChatClient`**   
 
-### 4. Send messages
+    To implement peer-to-peer messaging, you use <Vpd k="SDK" /> to initialize a `ChatClient` instance. In the `_MyHomePageState` class, add the following method after `initState`.
 
-In the `_sendMessage` method, add the following to add the creating and sending logics for messages:
+    ```dart
+    void setupChatClient() async {
+      ChatOptions options = ChatOptions(
+        appKey: appKey,
+        autoLogin: false,
+      );
+      agoraChatClient = ChatClient.getInstance;
+      await agoraChatClient.init(options);
+    }
+    ```
 
-```dart
-  void _sendMessage() async {
-    if (_chatId == null || _messageContent == null) {
-      _addLogToConsole("single chat id or message content is null");
-      return;
+1.  **Handle and respond to <Vpd k="NAME" /> events**
+
+    To receive notification of <Vpd k="NAME" /> events such as connection, disconnection, and token expiration, you add a `ConnectionEventHandler`. To handle message delivery and new message notifications, you add a `ChatEventHandler`. When you receive the `onMessageReceived` notification, you display the message to the user.
+
+    In the `_MyHomePageState` class, add the following methods after `setupChatClient`:
+
+    ```dart
+    void setupListeners() {
+
+      agoraChatClient.addConnectionEventHandler(
+        "CONNECTION_HANDLER",
+        ConnectionEventHandler(
+          onConnected: onConnected,
+          onDisconnected: onDisconnected,
+          onTokenWillExpire: onTokenWillExpire,
+          onTokenDidExpire: onTokenDidExpire
+        ),
+      );
+
+      agoraChatClient.chatManager.addEventHandler(
+        "MESSAGE_HANDLER",
+        ChatEventHandler(onMessagesReceived: onMessagesReceived),
+      );
     }
 
-    var msg = ChatMessage.createTxtSendMessage(
-      targetId: _chatId!,
-      content: _messageContent!,
-    );
-    msg.setMessageStatusCallBack(MessageStatusCallBack(
-      onSuccess: () {
-        _addLogToConsole("send message: $_messageContent");
-      },
-      onError: (e) {
-        _addLogToConsole(
-          "send message failed, code: ${e.code}, desc: ${e.description}",
-        );
-      },
-    ));
-    ChatClient.getInstance.chatManager.sendMessage(msg);
-  }
-```
-
-### 5. Receive messages
-
-1. Add the following callback events in your class:
-
-```dart
-  void onMessagesReceived(List<ChatMessage> messages) {
-    for (var msg in messages) {
-      switch (msg.body.type) {
-        case MessageType.TXT:
-          {
-            ChatTextMessageBody body = msg.body as ChatTextMessageBody;
-            _addLogToConsole(
-              "receive text message: ${body.content}, from: ${msg.from}",
-            );
-          }
-          break;
-        case MessageType.IMAGE:
-          {
-            _addLogToConsole(
-              "receive image message, from: ${msg.from}",
-            );
-          }
-          break;
-        case MessageType.VIDEO:
-          {
-            _addLogToConsole(
-              "receive video message, from: ${msg.from}",
-            );
-          }
-          break;
-        case MessageType.LOCATION:
-          {
-            _addLogToConsole(
-              "receive location message, from: ${msg.from}",
-            );
-          }
-          break;
-        case MessageType.VOICE:
-          {
-            _addLogToConsole(
-              "receive voice message, from: ${msg.from}",
-            );
-          }
-          break;
-        case MessageType.FILE:
-          {
-            _addLogToConsole(
-              "receive image message, from: ${msg.from}",
-            );
-          }
-          break;
-        case MessageType.CUSTOM:
-          {
-            _addLogToConsole(
-              "receive custom message, from: ${msg.from}",
-            );
-          }
-          break;
-        case MessageType.CMD:
-          {
-            // Receiving command messages does not trigger the `onMessagesReceived` event, but triggers the `onCmdMessagesReceived` event instead.
-          }
-          break;
+    void onMessagesReceived(List<ChatMessage> messages) {
+      for (var msg in messages) {
+        if (msg.body.type == MessageType.TXT) {
+          ChatTextMessageBody body = msg.body as ChatTextMessageBody;
+          displayMessage(body.content, false);
+          showLog("Message from ${msg.from}");
+        } else {
+          String msgType = msg.body.type.name;
+          showLog("Received $msgType message, from ${msg.from}");
+        }
       }
     }
-  }
-```
 
-2. In the `_addChatListener` method, add the following to add the chat event handler:
+    void onTokenWillExpire() {
+      // The token is about to expire. Get a new token
+      // from the token server and renew the token.
+    }
+    void onTokenDidExpire() {
+      // The token has expired
+    }
+    void onDisconnected () {
+      // Disconnected from the Chat server
+    }
+    void onConnected() {
+      showLog("Connected");
+    }   
+    ```
 
-```dart
-  void _addChatListener() {
-    ChatClient.getInstance.chatManager.addEventHandler(
-      "UNIQUE_HANDLER_ID",
-      ChatEventHandler(onMessagesReceived: onMessagesReceived),
-    );
-  }
-```
+1. **Log in to the <Vg k="CHAT_SERVER" />**  
 
-3. Under the `initState` method, add the `dispose` method to remove the chat event handler, as shown in the following:
+    When a user presses **Join**, your <Vpl k="CLIENT"/> logs in to the <Vg k="CHAT_SERVER" />. When a user presses **Leave**, the <Vpl k="CLIENT"/> log out of the <Vg k="CHAT_SERVER" />.
 
-```dart
-  @override
-  void dispose() {
-    ChatClient.getInstance.chatManager.removeEventHandler("UNIQUE_HANDLER_ID");
-    super.dispose();
-  }
-```
+    To implement this logic, in the `_MyHomePageState` class, add the following method before `showLog`:
 
-<a name="test"></a>
+    ```dart
+    void joinLeave() async {
+      if (!isJoined) { // Log in
+        try {
+          await agoraChatClient.loginWithAgoraToken(userId, token);
+          showLog("Logged in successfully as $userId");
+          setState(() {
+            isJoined = true;
+          });
+        } on ChatError catch (e) {
+          if (e.code == 200) { // Already logged in
+            setState(() {
+              isJoined = true;
+            });
+          } else {
+            showLog("Login failed, code: ${e.code}, desc: ${e.description}");
+          }
+        }
+      } else { // Log out
+        try {
+          await agoraChatClient.logout(true);
+          showLog("Logged out successfully");
+          setState(() {
+            isJoined = false;
+          });
+        } on ChatError catch (e) {
+          showLog("Logout failed, code: ${e.code}, desc: ${e.description}");
+        }
+      }
+    }
+  
+    ```
 
+1. **Send a message**
+    
+    To send a message to the <Vg k="CHAT_SERVER" /> when a user presses the **Send** button, add the following method to the `_MyHomePageState` class, after `joinLeave`:
+
+    ```dart
+    void sendMessage() async {
+      if (recipientId.isEmpty || messageContent.isEmpty) {
+        showLog("Enter recipient user ID and type a message");
+        return;
+      }
+
+      var msg = ChatMessage.createTxtSendMessage(
+        targetId: recipientId,
+        content: messageContent,
+      );
+      msg.setMessageStatusCallBack(MessageStatusCallBack(
+        onSuccess: () {
+          displayMessage(messageContent, true);
+          messageBoxController.text = "";
+          messageContent = "";
+          FocusManager.instance.primaryFocus?.unfocus();
+        },
+        onError: (e) {
+          showLog(
+            "Send message failed, code: ${e.code}, desc: ${e.description}",
+          );
+        },
+      ));
+      agoraChatClient.chatManager.sendMessage(msg);
+    }
+    ```
+
+1. **Display chat messages**
+    
+    To display the messages the current user has sent and received in your <Vpl k="CLIENT"/>, add the following method to the `_MyHomePageState` class:
+
+    ```dart   
+    void displayMessage(String text, bool isSentMessage) {
+      messageList.add(Row(children: [
+        Expanded(
+          child: Align(
+            alignment:
+            isSentMessage ? Alignment.centerRight : Alignment.centerLeft,
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.fromLTRB(
+                  (isSentMessage ? 50 : 0), 5, (isSentMessage ? 0 : 50), 5),
+              decoration: BoxDecoration(
+                color: isSentMessage
+                    ? const Color(0xFFDCF8C6)
+                    : const Color(0xFFFFFFFF),
+              ),
+              child: Text(text),
+            ),
+          ),
+        ),
+      ]));
+
+      setState(() {
+        scrollController.jumpTo(scrollController.position.maxScrollExtent + 50);
+      });
+    }    
+    ```
+
+1. **Remove event handlers on exit**    
+
+    When a user closes the <Vpl k="CLIENT" />, you remove the message and connection event handlers. To do this, add the following `dispose` method to the `_MyHomePageState` class:
+
+    ```dart
+    @override
+    void dispose() {
+      agoraChatClient.chatManager.removeEventHandler("MESSAGE_HANDLER");
+      agoraChatClient.removeConnectionEventHandler("CONNECTION_HANDLER");
+      super.dispose();
+    }
+    ```
 </PlatformWrapper>

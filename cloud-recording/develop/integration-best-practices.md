@@ -1,5 +1,5 @@
 ---
-title: "Best Practices in integrating Cloud Recording"
+title: "Best practice in integrating Cloud Recording"
 sidebar_position: 13
 type: docs
 platform_selector: false

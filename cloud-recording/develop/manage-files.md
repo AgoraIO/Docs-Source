@@ -2,6 +2,7 @@
 title: "Manage recorded files"
 sidebar_position: 11
 type: docs
+platform_selector: false
 description: >
   Know the naming conventions of the recorded files, how to parse the information in the M3U8 file, and when slicing occurs
 ---

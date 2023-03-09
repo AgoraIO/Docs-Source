@@ -15,7 +15,6 @@ If you send a Cloud Recording RESTful API request to `api.agora.io` and the requ
 
 Agora recommends that you use a backoff strategy, for example, retry after 1, 3, and 6 seconds successively, to avoid exceeding the Queries Per Second (QPS) limits.
 
-
 ## Get service status
 
 You use Cloud Recording RESTful APIs to get the status of the recording service.

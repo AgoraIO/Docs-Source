@@ -14,13 +14,14 @@ If you send a Cloud Recording RESTful API request to `api.agora.io` and the requ
 
 Agora recommends that you use a backoff strategy, for example, retry after 1, 3, and 6 seconds successively, to avoid exceeding the Queries Per Second (QPS) limits.
 
-The initial QPS limit is 10 per API per CID when you register. You can estimate the QPS quota your project needs according to your peak current worker (PCW) quota and query frequency. The initial peak current worker (PCW) limit is 50 per AppID when you register. If the RESTful API returns QPS limitation error code `429`, or PCW quota limitation error code `406`, then retry, or contact support@agora.io to increase your QPS or PCW quota.
 
 ## Get service status
 
-You can use Cloud Recording RESTful APIs to get the status of the recording service. 
+You use Cloud Recording RESTful APIs to get the status of the recording service.
 
-Agora recommends that core apps should not rely on the Message Notification Service. If your apps already rely heavily on the Message Notification Service, Agora recommends that you contact <a href="mailto:support@agora.io">support@agora.io</a> to enable the redundant message notification function, which doubles the received notifications and reduces the probability of message loss. After enabling the redundant message notification function, you need to deduplicate messages based on `sid`. Redundant message notification still cannot guarantee a 100% arrival rate.
+Agora recommends that core apps should not rely on the <Vg k="NCS_LONG" /> (<Vg k="NCS" />). If your apps already rely heavily on the <Vg k="NCS" />, Agora recommends that you contact <a href="mailto:support@agora.io">support@agora.io</a> to enable the message notification function, which doubles the received notifications and reduces the probability of message loss. After enabling the message notification function, you need to deduplicate messages based on `sid`. Message notification still cannot guarantee a 100% arrival rate.
+
+The initial QPS limit is 10 per API per CID when you register. You can estimate the QPS quota your project needs according to your Peak Current Worker (PCW) quota and query frequency. The initial PWC limit is 50 per AppID when you register. If the RESTful API returns QPS limitation error code `429`, or PCW quota limitation error code `406`, then retry, or contact support@agora.io to increase your QPS or PCW quota.
 
 ### Ensure the recording service starts successfully
 
@@ -38,7 +39,7 @@ Take the following steps to ensure that the recording service starts successfull
 
 ### Monitor service status during a recording
 
-You can periodically call `query` to ensure that the recording service is in progress and in a normal state. Apart from `query`, you can use the Message Notification Service as a complementary method to monitor the service status. See [Comparison Between the Message Notification Service and the `query` Method](../reference/rest-api/query#what-are-the-differences-between-the-message-notification-service-and-the-query-method) for detailed comparison between the two methods.
+You can periodically call `query` to ensure that the recording service is in progress and in a normal state. Apart from `query`, you can use the <Vg k="NCS" /> as a complementary method to monitor the service status. See [Comparison Between the <Vg k="NCS" /> and the `query` Method](../reference/rest-api/query#what-are-the-differences-between-the-message-notification-service-and-the-query-method) for detailed comparison between the two methods.
 
 #### Periodically query service status
 
@@ -83,9 +84,16 @@ For example, if there is a fixed 5-minute break in each class, you can set `maxI
 
 Network failures and potential risks may occur due to factors such as cloud and network software, infrastructure, and other elements outside of <Vg k="COMPANY"/>'s control. To enhance the user experience, Cloud Recording offers automatic high availability task migration for failure recovery. When a failure is detected, the recording task will be migrated within 90 seconds. During this time, the recording may be disrupted and recorded files may be lost.
 
-For scenes with a large audience in the channel or high availability requirements, consider whether you can accept the impact of high availability migration based on your own business characteristics, and decide whether to adopt higher quality assurance measures. For example, create multiple recording tasks for critical scenes using distinct UIDs, and ensure use of servers in different geographical regions through geofencing. Alternatively, you can make periodic API calls and monitor notifications to get the latest recording task status, then create a new cloud recording task with a different UID once you confirm the recording task status is unhealthy.
+To guarantee high availability of important scenes with a large audience, best practice is to:
 
-If you create multiple cloud recording tasks, you are charged separately for each of them. For details, see [Pricing](../reference/pricing).
+1. Monitor recording tasks with calls to [ /v1/apps/\<appid>/cloud_recording/resourceid/\<resourceid>/sid/\<sid>/mode/\<mode>/query ](/en/cloud-recording/reference/rest-api/query).
+
+   If the call returns a `404` error, create a new recording task with a different UID.
+
+1. Use the Notification Center Service (NCS) to [Handle notifications for specific events](https://docs-beta.agora.io/en/video-calling/develop/receive-notifications#handle-notifications-for-specific-events). If event 13 `High availability register success` is missing, create a new recording task. 
+
+These fault recovery methods may result in multiple recording tasks. You are charged separately for each task. For more information, see [Pricing](../reference/pricing).
+ 
 
 ## Integration requirements checklist
 

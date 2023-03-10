@@ -134,4 +134,3 @@ To ensure reliability of the cloud recording service, refer to the following che
 |                       |`api-eu-central-1.agora.io`|Central Europe|
 |                       |`api-cn-east-1.agora.io`|East China|
 |                       |`api-cn-north-1.agora.io`|North China|
-

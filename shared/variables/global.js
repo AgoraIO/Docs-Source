@@ -111,6 +111,8 @@ export const CHAT_SDK_API_ANDROID  = `${API_REF_ROOT_CHAT_SDK}/android/${CHAT_RE
 export const CHAT_SDK_API_WEB  = `${API_REF_ROOT_CHAT_SDK}/web/${CHAT_RELEASE_API}`;
 
 export const IOT = `IoT`;
+
+export const IOT_SDK = `${IOT} SDK`;
 export const IOT_RELEASE_API = `1.9`;
 export const IOT_SDK_API_REF_ROOT = `https://docs.agora.io/cn/RTSA/API%20Reference`;
 export const IOT_SDK_API_REF_ANDROID = `${IOT_SDK_API_REF_ROOT}/rtsa_java`

@@ -48,7 +48,9 @@ const data = {
       NAME: 'Signaling',
       PATH: 'signaling',
       SDK: 'Signaling SDK',
-      PRODUCT: 'Signalling'
+      PRODUCT: 'Signalling',
+      IOS_PACKAGE_NAME: 'AgoraRTM_iOS',
+      MACOS_PACKAGE_NAME: 'AgoraRTM_macOS'
   },
 
   'server-gateway': {

@@ -110,6 +110,7 @@ export const CHAT_RELEASE_API = `1.x`;
 export const API_REF_ROOT_CHAT_SDK = `${API_ROOT}/chat-sdk`;
 export const CHAT_SDK_API_ANDROID  = `${API_REF_ROOT_CHAT_SDK}/android/${CHAT_RELEASE_API}`;
 export const CHAT_SDK_API_UNITY  = `${API_REF_ROOT_CHAT_SDK}/unity/${CHAT_RELEASE_API}`;
+export const CHAT_SDK_API_FLUTTER  = `${API_REF_ROOT_CHAT_SDK}/flutter/${CHAT_RELEASE_API}`;
 export const CHAT_SDK_API_WEB  = `${API_REF_ROOT_CHAT_SDK}/web/${CHAT_RELEASE_API}`;
 export const CHAT_SERVER = `${COMPANY} Chat Server`
 

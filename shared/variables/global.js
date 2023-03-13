@@ -113,11 +113,12 @@ export const CHAT_SDK_API_WEB  = `${API_REF_ROOT_CHAT_SDK}/web/${CHAT_RELEASE_AP
 export const IOT = `IoT`;
 
 export const IOT_SDK = `${IOT} SDK`;
-export const IOT_RELEASE_API = `1.9`;
-export const IOT_SDK_API_REF_ROOT = `https://docs.agora.io/cn/RTSA/API%20Reference`;
-export const IOT_SDK_API_REF_ANDROID = `${IOT_SDK_API_REF_ROOT}/rtsa_java`
-export const IOT_SDK_API_REF_LNX_C = `${IOT_SDK_API_REF_ROOT}/rtsa_c`
+export const IOT_RELEASE_API = `1.x`;
 
+//export const IOT_SDK_API_REF_ROOT = `${API_ROOT}/iot-sdk`;
+export const IOT_SDK_API_REF_ROOT = `https://api-reference-staging-git-milestone43-media-s-08dfa0-agora-gdxe.vercel.app/iot-sdk`
+export const IOT_SDK_API_REF_ANDROID = `${IOT_SDK_API_REF_ROOT}/android/${IOT_RELEASE_API}`
+export const IOT_SDK_API_REF_LNX_C = `${IOT_SDK_API_REF_ROOT}/linux/${IOT_RELEASE_API}`
 export const PS = 'Pub-Sub';
 export const PUSH = 'Push Notifications';
 

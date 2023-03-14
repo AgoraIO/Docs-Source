@@ -1,7 +1,7 @@
 
 export const COMPANY = 'Agora';
 export const URL_ROOT = 'docs.agora.io/en';
-export const AGORA_BACKEND = `${COMPANY} SD-RTN™`;
+  export const AGORA_BACKEND = `${COMPANY} SD-RTN™`;
 export const CLIENT = platform => (platform === 'unity' ? 'game' : 'app');
 export const VSDK_RELEASE_API = '4.x'
 export const VSDK_PREVIOUS_RELEASE_API = '3.x'
@@ -92,7 +92,7 @@ export const AV = 'Audio/Video';
 export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
 export const NCS = `NCS`;
-export const NCS_LONG = `Notification Center Service`;
+export const NCS_LONG = `Notifications`;
 export const SIG = `${MESS}`;
 export const SIG_RELEASE_API = `1.x`;
 export const SIG_SDK_API_REF_ROOT = `${API_ROOT}/signaling-sdk`;

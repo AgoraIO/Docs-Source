@@ -90,7 +90,7 @@ To guarantee high availability of important scenes with a large audience, best p
 
    If the call returns a `404` error, create a new recording task with a different UID.
 
-1. Use the Notification Center Service (NCS) to [Handle notifications for specific events](https://docs-beta.agora.io/en/video-calling/develop/receive-notifications#handle-notifications-for-specific-events). After starting the recording, if you don't receive event `13` `High availability register success` within 10 seconds, create a new recording task with a different UID.
+1. Use Notifications to [Handle notifications for specific events](https://docs-beta.agora.io/en/video-calling/develop/receive-notifications#handle-notifications-for-specific-events). After starting the recording, if you don't receive event `13` `High availability register success` within 10 seconds, create a new recording task with a different UID.
 
 These fault recovery methods may result in multiple recording tasks. You are charged separately for each task. For more information, see [Pricing](../reference/pricing).
  

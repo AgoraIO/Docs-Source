@@ -80,7 +80,6 @@ The default value of `maxIdleTime` in the `start` method is 30 seconds. If the h
 
 For example, if there is a fixed 5-minute break in each class, you can set `maxIdleTime` to 10 minutes to ensure uninterrupted recording of the entire class.
 
-
 ## Fault recovery
 
 Network failures and potential risks may occur due to factors such as cloud and network software, infrastructure, and other elements outside of <Vg k="COMPANY"/>'s control. To enhance the user experience, Cloud Recording offers automatic high availability task migration for failure recovery. When a failure is detected, the recording task will be migrated within 90 seconds. During this time, the recording may be disrupted and recorded files may be lost.

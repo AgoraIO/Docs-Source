@@ -1,0 +1,216 @@
+<PlatformWrapper platform="web">
+
+### Implement the user interface
+
+To show a list of users in the channel and enable the local user to update their status, you add the following elements to the user interface:
+
+* A `label` to display the status
+* A `label` to display selected user's metadata
+* A `Button` to switch the local user status
+* An unordered list to display a list of users in the channel and their status
+
+To update the UI:
+
+    1. In `/index.html`, add the following after `<button type="button" id="logout">LOGOUT</button>`:
+
+        ```html
+        <button type="button" id="changeStatus">Change My Status</button>
+        ```
+    
+    1. In `/index.html`, add the following `<div>` element inside `<div class="row card-content" style="margin-bottom: 0px; margin-top: 10px;">`:
+        
+        ```html
+        <div class="row">
+            <label id= "statusLabel">Current Status: </label>
+            <label id= "statusIndicator"></label>
+        </div>
+        ```
+    1. In `index.js`, add the following top level declaration:
+
+        ```javascript
+        var isUserBusy = false; // track user status
+        ```
+    
+    1. In `/index.html`, add the following inside `<div class="row card-content" style="margin-bottom: 0px; margin-top: 10px;">`:
+
+        ```html
+        <div class="row">
+            <ul id="member-list"></ul>
+        </div>
+        ```
+
+### Handle the system logic
+
+### Read and write metadata
+
+To implement the use of metadata, take the following steps:
+
+1. **Set local user metadata**
+
+    After a user successfully logs in to the <Vpd k="PRODUCT" /> server, you clear unwanted metadata from a previous login, and add fresh metadata that you want to share with other users. To do this:
+
+    1. Add the following method to `index.js`:
+        ```javascript
+            const setLocalUserMetaData = async function () {
+            // Clear previous metadata
+            try{
+                await client.clearLocalUserMetadata();
+            }catch(status){
+                if (status){
+                    const {code,message} = status;
+                    console.log(code,message);
+                }
+            }
+            // Set local user metadata
+            const item1 = client.createMetadataItem();
+            item1.setKey("myStatus");
+            item1.setValue("busy");
+
+            try{
+                await client.setLocalUserMetadata([item1]);
+            }catch(status){
+                if (status){
+                    console.log("set local catch")
+                    const {code,message} = status;
+                    console.log(code,message);
+                }
+            }
+        }
+        ```
+
+    1. Call `setLocalUserMetaData` after login succeeds
+
+        In `document.getElementById("login").onclick`, add the following after `await client.login(options)`:
+
+        ```javascript
+        setLocalUserMetaData()
+        ```
+
+1. **Update local user metadata**
+
+    When the local user clicks the button to switch their status, you update the user's metadata. To do this, add the following method after `document.getElementById("logout").onclick`:
+
+    ```javascript
+    // Change status
+    document.getElementById("changestatus").onclick = async function () {
+        isUserBusy = !isUserBusy; // Switch status
+        if (isUserBusy) {
+            document.getElementById("statusIndicator").innerHTML = "Busy"
+        } else {
+            document.getElementById("statusIndicator").innerHTML = "Available"
+        }
+        const statusMetadata = client.createMetadataItem();
+        statusMetadata.setKey("myStatus");
+        statusMetadata.setValue(isUserBusy ? "busy" : "available");
+
+        try{
+            await client.updateLocalUserMetadata([statusMetadata]);
+        }catch(status){
+            if (status){
+                const {code,message} = status;
+                console.log(code,message);
+            }
+        }
+    }
+    ```
+
+1. **Handle the `onUserMetadataUpdated` callback**
+
+    When you receive the notification of change in a user's metadata, you update the status of the user in the user list. In `onCreate`, replace the `onUserMetadataUpdated` method under `new RtmClientListener() {` with the following:
+
+    ```javascript
+    client.on('UserMetaDataUpdated', function (uid, rtmMetadata) {
+        if(typeof rtmMetadata.items !== 'undefined') {
+            updateUserInList(uid, rtmMetadata.items[0].getValue() == "busy");
+        }
+    })
+    ```
+
+1. **Show the list of users in a channel**
+
+    When the local user successfully joins a <Vpd k="PRODUCT" /> channel, you call `channel.getMembers` to obtain a list of users in the channel and add each user to the user list. To do this:
+
+    1. In `index.js`, add the following method:
+
+        ```javascript
+        const updateChannelMemberList = async function () {
+            // Retrieve a list of users in the channel
+            members = await channel.getMembers();
+            for(i = 0; i < members.length; i++) {
+                updateUserInList(member[i], false)
+            }
+        }
+        ```
+
+    1. Call `updateChannelMemberList` after the user successfully joins a channel
+
+        In `index.js`, add the following to the `channel.on('MemberJoined', function (memberId) {}` callback:
+
+        ```javascript
+        updateChannelMemberList();
+        ```
+
+1. **Display a user in the list**
+
+    To fill the channel user list, you create a `<li>` item for each user. At this time, you subscribe to the user's metadata to receive notification of changes. To add or update an item in the user list:
+    
+    1. Add the following method to the `index.js`:
+
+        ```javascript
+        const updateUserInList = async function (userID, busy) {
+            var doesUserExist = false; // check if userID is in members list
+            var userData = ""; // User data, `user ID: Busy` or `User ID: Available`
+            var member;
+            var ul = document.getElementById("members-list");
+            var members = ul.getElementsByTagName("li");
+
+            for (var i = 0; i < members.length; i++){
+                if(members[i].innerHTML.includes(userID)){
+                    userData = members[i].innerHTML;
+                    member = members[i];
+                    doesUserExist = true;
+                    break;
+                }
+            }
+
+            if (doesUserExist) {// User already in the list, update the status
+                // switch the status if needed
+                if (busy && userData.includes("Available")) {
+                    member.innerHTML = userData.replace("Available", "Busy");
+                }
+                if (!busy && userData.includes("Busy")){
+                    member.innerHTML =  userData.replace("Busy", "Available");
+                }
+            } else { // Add a new user to the list
+                // Create a li item
+                var li = document.createElement("li");
+                li.setAttribute('id', userID);
+                li.appendChild(document.createTextNode(userID + ": " + (busy ? "Busy" : "Available")));
+                ul.appendChild(li)
+
+                // Subscribe to metadata change event for the user
+                await client.subscribeUserMetadata(userID);        
+            }
+        }
+        ```
+
+1.  **Remove a user from the list**
+
+    When a remote user leaves the channel, you remove the corresponding `li` item from the user list. To do this:
+
+    1. Add the following method to the `index.js` class:
+
+        ```javascript
+        const removeUserFromList = function (userID) {
+            var member = ul.getElementById(userID);
+            ul.removeChild(member);
+        }   
+        ```
+
+    1. Add the following to the `channel.on('MemberLeft', function (memberId)` callback:
+
+        ```javascript
+        removeUserFromList(memberId);
+        ```
+
+</PlatformWrapper>

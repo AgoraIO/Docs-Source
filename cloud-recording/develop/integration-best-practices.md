@@ -21,7 +21,7 @@ You use Cloud Recording RESTful APIs to get the status of the recording service.
 
 Agora recommends that core apps should not rely on the <Vg k="NCS_LONG" /> (<Vg k="NCS" />). If your apps already rely heavily on the <Vg k="NCS" />, Agora recommends that you contact <a href="mailto:support@agora.io">support@agora.io</a> to enable the message notification function, which doubles the received notifications and reduces the probability of message loss. After enabling the message notification function, you need to deduplicate messages based on `sid`. Message notification still cannot guarantee a 100% arrival rate.
 
-The initial QPS limit is 10 per API per CID when you register. You can estimate the QPS quota your project needs according to your Peak Current Worker (PCW) quota and query frequency. The initial PWC limit is 50 per AppID when you register. If the RESTful API returns QPS limitation error code `429`, or PCW quota limitation error code `406`, then retry, or contact support@agora.io to increase your QPS or PCW quota.
+The initial QPS limit is 10 per App ID when you register. You can estimate the QPS quota your project needs according to your Peak Concurrent Worker (PCW) quota and query frequency. The initial PCW limit is 50 per AppID when you register. If the RESTful API returns QPS limitation error code `429`, or PCW quota limitation error code `406`, then retry, or contact support@agora.io to increase your QPS or PCW quota.
 
 ### Ensure the recording service starts successfully
 
@@ -86,11 +86,11 @@ Network failures and potential risks may occur due to factors such as cloud and 
 
 To guarantee high availability of important scenes with a large audience, best practice is to:
 
-1. Monitor recording tasks with calls to [ /v1/apps/\<appid>/cloud_recording/resourceid/\<resourceid>/sid/\<sid>/mode/\<mode>/query ](/en/cloud-recording/reference/rest-api/query).
+1. Monitor recording tasks with calls to the [query](/en/cloud-recording/reference/rest-api/query) method.
 
    If the call returns a `404` error, create a new recording task with a different UID.
 
-1. Use the Notification Center Service (NCS) to [Handle notifications for specific events](https://docs-beta.agora.io/en/video-calling/develop/receive-notifications#handle-notifications-for-specific-events). If event 13 `High availability register success` is missing, create a new recording task. 
+1. Use the Notification Center Service (NCS) to [Handle notifications for specific events](https://docs-beta.agora.io/en/video-calling/develop/receive-notifications#handle-notifications-for-specific-events). After starting the recording, if you don't receive event `13` `High availability register success` within 10 seconds, create a new recording task with a different UID.
 
 These fault recovery methods may result in multiple recording tasks. You are charged separately for each task. For more information, see [Pricing](../reference/pricing).
  

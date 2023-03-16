@@ -1,0 +1,154 @@
+---
+title: 'Best practice integrating Media Pull'
+sidebar_position: 1
+type: docs
+description: >
+  Best practices for integrating Media Pull into your app
+---
+
+import SwitchDomainName from '@docs/shared/common/_switch-domain-name.mdx';
+
+To ensure reliability of <Vg k="MPULL" />, follow the advice on this page when integrating <Vg k="MPULL" /> RESTful APIs.
+
+## Prerequisites
+
+You need the following to start using <Vg k="MPULL" /> RESTful API:
+
+- The scene of the channel is live, profile set to `BROADCASTING`
+- <Vg k="MPULL" /> is enabled
+- Message Notification Service is enabled to monitor <Vg k="MPULL" /> events
+
+## Limitations
+
+You are limited in the number of queries per second and concurrent tasks for <Vg k="MPULL" />
+
+### QPS
+
+The following table shows the limits the number of queries per second (QPS) to the <Vg k="MPULL" /> RESTful API.
+
+|API      |QPS limit            |
+|:--------|:---------------------|
+|Create|<ul><li>Creating cloud players with names is limited to 2 queries per second. </li><li>Creating cloud players without names is limited to 50 queries per second.</li></ul>|
+|Delete|Deleting cloud players is limited to 100 queries per second.|
+|List|<ul><li>For a project with filter, the limit of the query rate is 2 times per second and 15 times per minute.</li><li>When there is no filter, the limit of query rate is 10 times per second and 20 times per minute.</li></ul>|
+
+When the QPS is exceeded, the status code `429` (Too Many Requests) is returned. If you need a higher QPS limit, contact technical support.
+
+### Maximum number of concurrent tasks
+
+The default maximum number of concurrent tasks is 50, which indicates that a maximum of 50 <Vg k="MPULL" /> tasks can be run simultaneously in one project.
+If a higher quota is required, contact technical support.
+
+## Ensure the high availability of REST services
+
+To ensure the high availability of REST services and prevent downtime caused by regional network faults, Agora provides
+failover and domain name switch.
+
+### Failover
+
+Network failures and risks may be caused by cloud and network software, infrastructure, and other factors that Agora cannot control.
+To provide the best possible user experience, <Vg k="MPULL" /> provides high availability automatic task migration for failure recovery.
+After a failure is confirmed, the <Vg k="MPULL" /> task is migrated within 240 seconds. During this period, the task may be interrupted.
+
+If you cannot accept the impact of high availability migration based on your own business characteristics, adopt higher quality assurance measures. For example, create multiple <Vg k="MPULL" /> tasks for critical
+scenes. Alternatively, you can make periodic API calls and monitor notifications to get the latest
+task status, then create a new task with a different UID once you confirm the task status is unhealthy.
+
+### Multiple <Vg k="MPULL" /> tasks
+
+If you need a more reliable solution than fault recovery, use multiple <Vg k="MPULL" /> tasks.
+
+Start a master <Vg k="MPULL" /> task and multiple backup tasks at the same time, then publish their streams into the same channel.
+In your app, subscribe audience members to the master stream and listen to the following callback events:
+
+  - `onUserOffline` - The callback saying that the anchor is offline
+  - `onRemoteAudioStateChanged/onRemoteVideoStateChanged` - The host audio and callback state has changed
+
+When you receive these notification, notify the apps where users are subscribed to the channel as audience members so that they switch to a backup stream.
+
+When you create multiple <Vg k="MPULL" /> tasks, you are charged separately for each of them. For details, see [Media Pull pricing](../reference/pricing).
+
+<SwitchDomainName/>
+
+## Create cloud player
+
+When creating a cloud player with a `create` API call, pay attention to the following:
+
+- Create the cloud player by the region parameter:
+    - The region you set must be in the same area as your media streaming location. For example, if the media stream source is located in
+the US, set region to `na`.
+    - Pass the region value in lowercase.
+- Agora recommends that you assign a string value to the `X-Request-ID` field in the request header. The Agora server returns an
+`X-Custom-request-ID` field in the response header for troubleshooting purposes.
+- Choose to set UID or account as the user name of the cloud player. Do not set these two fields at the same time. Ensure that each
+cloud player has a unique user name within the channel.
+- To avoid repeated media streaming due to repeated creation of multiple cloud players, use the `name` field to manage cloud players
+under a specific project. Cloud players with the same names cannot exist in the same project. If you attempt to create a cloud player with
+a name that already exists, you receive the `409` (Conflict) status code.
+- Note the supported audio and video formats and protocols of the cloud player to avoid media streaming failures caused by
+unsupported audio and video formats and protocols.
+- Set an appropriate value for `idleTimeout`. The default value of 300 seconds is recommended. It means that the cloud player
+automatically destroys the media stream after 300 seconds.
+- After listening for a cloud player creation success event, when you successfully create a cloud player,
+the message notification server notifies your server of the event. The status field in the payload of the event is
+`connecting`, indicating that the server is connecting to a media stream address or probing audio and video data.
+
+## Query cloud player
+
+Agora recommends that you paginate all cloud player lists under a project as follows:
+- The query parameter `pageToken` is not used when `List` is invoked for the first time.
+The page query result and `nextPageToken` returned by the Agora server are obtained in the response message.
+- When calling `List` again, pass the `nextPageToken` value into the query parameter `pageToken` to query the cloud player
+list of the next page.
+3. Until `nextPageToken` is `0`, it means that all cloud players under a project have been found.
+Cloud players are listed in ascending order by creation time (`createTs`).
+
+## Troubleshooting and recommended measures
+
+### Retry with retreat strategy
+
+If you receive `404`, `429`, or `5xx` error codes, take an escape strategy. For example, wait 5-6 seconds, 10-11 seconds,
+or 15-16 seconds and try again. 
+If you get three consecutive `404` or `5xx` error codes, or if the `state` field in the response to checking the status of a media push task says `failed`, it means that the <Vg k="MPULL" /> task has failed. To fix this problem, follow these steps:
+
+1. Check whether the media stream address is correct and whether the media stream can be played.
+2. If the media stream address is correct and can be played, destroy the current cloud player and create a new one.
+
+### Troubleshooting by error code
+
+- If the status code is `200`, the request is successful.
+- If the status code is not `200`, the request has failed. See the error message in the response body for clarification.
+
+|Status code               |Possible error message |Possible reason of failure |Measures to take|
+|:-------------------------|:------------|:--------------|:-----------|
+|`400` Bad Request	       |The 'streamUrl' parameter is incorrectly formatted. The `channelName` parameter is invalid. Fix it in your request and retry.|Wrong parameters|Check by referring to the `reason` field in the HTTP response body.|
+|`401` Unauthorized	       |Invalid authentication credentials.	|RESTful API authentication failed. |See [RESTful Authentication](../reference/restful-authentication).|
+|`403` Forbidden	       |Cloud player is not enabled for this project. Contact us to enable it. This project's permission to use cloud player was revoked. Contact us for details.|The service is not enabled. |Enable the service.|
+|`404` Not Found	       |Resource is not found or destroyed.	|The task was not started or is in the process of failover or deletion. |Retry following the retreat strategy.|
+|`409` Conflict	           |Resource with the same name already exists.	|Resource with the same name already exists.|Delete the existing cloud player and create it again.|
+|`429` Too Many Requests   |Request rate limit exceeded. Resource quota exceeded. No available resources.| Too many requests.	| Retry following the retreat strategy.|
+|`500` Unknown	           |Some internal error happened. Contact us to help fix it.	| Internal error.	| Retry following the retreat strategy.|
+|`502` Bad gateway	       |Internal errors. Contact us for troubleshooting. |	Internal error. |	Retry with retreat strategy.|
+|`503` Service Unavailable |Service overload. Retry with the retreat strategy and contact us to help fix it. Service unavailable temporarily. Retry with the retreat strategy.	|Internal error	|Retry following the retreat strategy.|
+|`504` Gateway Timeout	   |Gateway timeout. Query to check whether the player has been created or to create one instead.	|Internal error.	|Retry following the retreat strategy.|
+
+### Contact Agora technical support
+
+If the error persists, print the `X-Request-ID` and `X-Resource-ID` fields in the response header in the log and contact technical support.
+
+## Integration checklist
+Refer to the following table to quickly check whether each check item meets the integration requirements to ensure the
+reliability of <Vg k="MPULL" />.
+
+|Required or optional |Item       |Check 	|
+|:--------------------|:----------|:----------------|
+|Required	              |Channel mode	|Ensure that the scene of the channel is live.	|
+|Required	              |Availability	|Enable <Vg k="MPULL" />.	|
+|Required	              |QPS limit	| Ensure that the rate of API calls in a project is below the maximum limit.|
+|Required	              |Maximum number of concurrent Tasks| Ensure that the number of concurrent tasks in a project is below 50.|
+|Optional	              |Cloud player user name	|<ul><li>Set UID or account as the user name for cloud player. Do not set both fields at the same time.</li><li>Use the name field to manage the cloud player under the specified project.</li></ul>|
+|Required	              |Region	|<ul><li>Set the region in the same area as your media streaming.</li><li>Pass region value in lowercase.</li></ul>|
+|Required	              |Idle timeout	|Set an appropriate `idleTimeout` value. 300 seconds is recommended.|
+|Optional	              |Troubleshooting	|Rectify the errors as follows: <ul><li>Use the retreat strategy.</li><li>Check the error code.</li></ul>If the preceding troubleshooting methods do not resolve the problem, print the values of the `X-Request-ID` and `X-Resource-ID` fields in the response header and contact Agora technical support.|
+|Optional	              |Message notifications	|Enable message notification service for <Vg k="MPULL" /> and listen to <Vg k="MPULL" /> events.|
+

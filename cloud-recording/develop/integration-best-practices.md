@@ -82,6 +82,7 @@ For example, if there is a fixed 5-minute break in each class, you can set `maxI
 
 ## Fault recovery
 
+
 Network failures and potential risks may occur due to factors such as cloud and network software, infrastructure, and other elements outside of <Vg k="COMPANY"/>'s control. To enhance the user experience, Cloud Recording offers automatic high availability task migration for failure recovery. When a failure is detected, the recording task will be migrated within 90 seconds. During this time, the recording may be disrupted and recorded files may be lost.
 
 To guarantee high availability of important scenes with a large audience, best practice is to:

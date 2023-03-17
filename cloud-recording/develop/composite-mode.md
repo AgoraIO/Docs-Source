@@ -17,7 +17,7 @@ In composite recording mode, the audio and video of multiple user IDs in a chann
 
 For example, if a channel has two users, and you choose to record both audio and video, Agora Cloud Recording generates files as shown in the following diagram:
 
-![](https://web-cdn.agora.io/docs-files/1619530186898)
+![](/images/cloud-recording/composite-recording-example-diagram.svg)
 
 The recording service generates one M3U8 file and multiple TS files. If you set `avFileType` as `["hls","mp4"]` when calling the [`start`](../reference/rest-api/start) method, the recording service also generates MP4 files, which include the audio and video of all users in the channel.
 

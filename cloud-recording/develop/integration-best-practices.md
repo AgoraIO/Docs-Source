@@ -80,6 +80,7 @@ The default value of `maxIdleTime` in the `start` method is 30 seconds. If the h
 
 For example, if there is a fixed 5-minute break in each class, you can set `maxIdleTime` to 10 minutes to ensure uninterrupted recording of the entire class.
 
+
 ## Fault recovery
 
 Network failures and potential risks may occur due to factors such as cloud and network software, infrastructure, and other elements outside of <Vg k="COMPANY"/>'s control. To enhance the user experience, Cloud Recording offers automatic high availability task migration for failure recovery. When a failure is detected, the recording task will be migrated within 90 seconds. During this time, the recording may be disrupted and recorded files may be lost.
@@ -90,7 +91,7 @@ To guarantee high availability of important scenes with a large audience, best p
 
    If the call returns a `404` error, create a new recording task with a different UID.
 
-1. Use Notifications to [Handle notifications for specific events](https://docs-beta.agora.io/en/video-calling/develop/receive-notifications#handle-notifications-for-specific-events). After starting the recording, if you don't receive event `13` `High availability register success` within 10 seconds, create a new recording task with a different UID.
+1. Use Notifications to [Handle notifications for specific events](/en/cloud-recording/develop/receive-notifications#cloud-recording-callback-events). After starting the recording, if you don't receive event `13` `High availability register success` within 10 seconds, create a new recording task with a different UID.
 
 These fault recovery methods may result in multiple recording tasks. You are charged separately for each task. For more information, see [Pricing](../reference/pricing).
  

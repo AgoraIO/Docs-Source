@@ -26,111 +26,67 @@ Hive Visual Moderation API and Agora SDK work together as follows:
 
 ![](/images/extensions-marketplace/hive-diagram.png)
 
-1. The Hive Visual Moderation SDK intercepts the content from the video stream in the channel, encrypts and transmits it to the Hive server.
-2. The Hive server encapsulates the video stream information, and then encrypts and transmits it to the third-party audit service provider.
-3. The third-party audit service provider returns the audio and video stream information and audit results to your callback server.
-4. You implement your own business logic based on thes audit results.
+1. The video stream from the channel is encrypted and transmitted to the Agora proxy server.
+2. The proxy server encapsulates the video stream information, encrypts it, and transmits it to Hive, a third-party moderation service provider.
+3. The moderation service provider returns the audio and video stream information and review results to your callback server.
+4. You implement your own business logic based on the review results.
 
-The server-server transmission scheme simplifies monitoring and ensures security of the service. In addition, it gives you complete control over the business logic. When your business server receives a review result indicating content violation, you can close the channel, show a prompt in the UI, ban the user, or deduct points for the client. The intercepted content from the channel is stored using OSS storage services provided by third-party audit providers.
+The server-server transmission scheme simplifies monitoring and ensures security of the service. In addition, it gives you complete control over the business logic. When your business server receives a review result indicating content violation, you can close the channel, show a prompt in the UI, ban the user, or deduct points for the client. The intercepted content from the channel is stored using OSS storage services provided by the moderation service provider.
 
 ## Prerequisites
 
 In order to add Hive content moderation you must have:
 
-- Implemented <Link to="../../../interactive-live-streaming/get-started/get-started-sdk"><Vg k="GET_STARTED"/> for <Vg k="ILS" /></Link> using <Vg k="VSDK" /> `4.x` special edition.
+- Implemented <Link to="../../../interactive-live-streaming/get-started/get-started-sdk"><Vg k="GET_STARTED"/> for <Vg k="ILS" /></Link> using <Vg k="VSDK" /> `4.0.1.5` special edition.
 - Activated <Link to="{{Global.AGORA_CONSOLE_URL}}/marketplace/extension/introduce?serviceName=hive">Hive Visual Moderation API</Link> on <Vg k="CONSOLE" />.
 - Configured Hive Visual Moderation API by sending an email to support@agora.io with the following information:
     - **App ID**: Your App ID from <Vg k="CONSOLE"/>.
     - **Detection interval**: The time interval between capturing content from a video stream and submitting it for review. 
     - **Content preservation preference**:	Whether to store all the content submitted for review for later manual review. The default setting is storage for 7 days.
-    - **Callback server address**:	The address of your `HTTPS` callback server that you use to receive audit results.
+    - **Callback server address**:	The address of your `HTTPS` callback server that you use to receive review results.
 
-## Integrate Hive Visual Moderation API
+## Integrate Hive visual moderation
 
-To use Hive, you enable content moderation on your client, and set up an `HTTPS` business server to receive callbacks from the third-party audit service provider.
+To use Hive, you set up an `HTTPS` business server to receive callbacks from the moderation service provider.
 
-1. **Enable content moderation on the client**
+**Receive the review result from Hive**
 
-    To enable Hive Visual Moderation API in Agora SDK, you call `enableContentInspect` and specify the desired configuration. To do this, add the following code after you initialize Agora engine:
+Hive returns review results to your callback URL in the form of an `HTTPS` request. The `callbackData` contains the following parameters:
 
-    <PlatformWrapper platform="android">
-    ```java
-    ContentInspectConfig contentInspectConfig = new ContentInspectConfig();
-    contentInspectConfig.extraInfo = "try Hive";
-    contentInspectConfig.moduleCount = 1;
-    contentInspectConfig.modules[0].type = ContentInspectConfig.CONTENT_INSPECT_TYPE_MODERATION; 
-    contentInspectConfig.modules[0].interval = 2; // Set content moderation to run every 2 seconds
-    agoraEngine.enableContentInspect(true, contentInspectConfig);
-    ```
-    </PlatformWrapper>
+| Parameter |	Type |	Description |
+|-----------|--------|--------------|
+| `source`	| String | It is fixed to `agora`. |
+| `cname`	    | String |	The channel name corresponding to the review result. |
+| `uid`	    | Int    | User ID corresponding to the review result. |
+| `sid`       | String | The user session corresponding to the review result. |
+| `requestId` |	String | Identifies the review request sent by Agora to the moderation service provider. |
+| `timestamp` |	Int | The result corresponds to the start time of the segment. The format is UTC time, the time zone is UTC+0, and it consists of year, month, day, hour, minute, second, and millisecond. For example, `20230110080616876` means January 10, 2023 at 08:06:16:876 milliseconds. |
 
-    <PlatformWrapper platform="ios">
+A callback body looks similar to the following:
 
-    ```swift
-    let inspectExtraConfig = AgoraContentInspectConfig()
-    inspectExtraConfig.extraInfo = "try Hive "
-    var modules = [AgoraContentInspectModule]()
-    let module1 = AgoraContentInspectModule()
-    module1.type = .moderation  
-    module1.interval = 2  // Set content moderation to run every 2 seconds
-    modules.append(module1)
-    inspectExtraConfig.modules = modules
-    agoraKit.enableContentInspect(true, config:inspectExtraConfig)
-    ```
-    </PlatformWrapper>
-
-2. **Receive the audit result from Hive**
-
-    Hive returns the audit results to your callback URL in the form of an `HTTPS` request. The `callbackData` contains the following audit parameters:
-
-    | Parameter |	Type |	Description |
-    |-----------|--------|--------------|
-    | `source`	| String | It is fixed to `agora`. |
-    | `cname`	    | String |	The channel name corresponding to the audit result. |
-    | `uid`	    | Int    | User ID corresponding to the audit result. |
-    | `sid`       | String | The user session corresponding to the audit result. |
-    | `requestId` |	String | Identifies the review request sent by Agora to the third-party service provider. |
-    | `timestamp` |	Int | The audit result corresponds to the start time of the segment. The format is UTC time, the time zone is UTC+0, and it consists of year, month, day, hour, minute, second, and millisecond. For example, `20230110080616876` means January 10, 2023 at 08:06:16:876 milliseconds. |
-
-    A callback body looks similar to the following:
-
-    ```json
-    {
-        "rtn": 0,
-        "message": "SAAS_SUCC",
-        "requestId": "cf646c7fed244114adb352a0798c75f3",
-        "timestamp": 1673345308272,
-        "clientInfo": {
-            "userId": "123456",
-            "roomId": "test-hive",
-            "deviceId": "",
-            "callbackData": "{\"callbackData\":\"test-callbackData\",\"cname\":\"test-hive\",\"requestId\":\"B05EE55820AF449EBC007EB1E17A450F\",\"sid\":\"B05EE55820AF449EBC007EB1E17A4511\",\"source\":\"agora\",\"timestamp\":20230110100827580,\"uid\":123456}"
-        },
-        "tasks": [
-            {
-                "rtn": 4504,
-                "message": "SAAS_ANTISPAM_IMAGE_DECODE_ERROR",
-                "imageId": "B05EE55820AF449EBC007EB1E17A450F",
-                "responseId": "2b56b78555b04621b4021719e38304e9",
-                "result": "failed"
-            }
-        ]
-    }
-    ```
-
-## Reference
-
-This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
-
-### API Reference
-
-<PlatformWrapper platform="android">
-- <Link to="{{Global.API_REF_ANDROID_ROOT}}/class_irtcengine.html#api_irtcengine_enablecontentinspect">enableContentInspect</Link>
-</PlatformWrapper>
-
-<PlatformWrapper platform="ios">
-- <Link to="{{Global.API_REF_IOS_ROOT}}/class_irtcengine.html#api_irtcengine_enablecontentinspect">enableContentInspect</Link>
-</PlatformWrapper>
+```json
+{
+    "rtn": 0,
+    "message": "SAAS_SUCC",
+    "requestId": "cf646c7fed244114adb352a0798c75f3",
+    "timestamp": 1673345308272,
+    "clientInfo": {
+        "userId": "123456",
+        "roomId": "test-hive",
+        "deviceId": "",
+        "callbackData": "{\"callbackData\":\"test-callbackData\",\"cname\":\"test-hive\",\"requestId\":\"B05EE55820AF449EBC007EB1E17A450F\",\"sid\":\"B05EE55820AF449EBC007EB1E17A4511\",\"source\":\"agora\",\"timestamp\":20230110100827580,\"uid\":123456}"
+    },
+    "tasks": [
+        {
+            "rtn": 4504,
+            "message": "SAAS_ANTISPAM_IMAGE_DECODE_ERROR",
+            "imageId": "B05EE55820AF449EBC007EB1E17A450F",
+            "responseId": "2b56b78555b04621b4021719e38304e9",
+            "result": "failed"
+        }
+    ]
+}
+```
 
 </PlatformWrapper>
 </PlatformWrapper>

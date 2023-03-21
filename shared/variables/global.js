@@ -1,7 +1,7 @@
 
 export const COMPANY = 'Agora';
 export const URL_ROOT = 'docs.agora.io/en';
-export const AGORA_BACKEND = `${COMPANY} SD-RTN™`;
+  export const AGORA_BACKEND = `${COMPANY} SD-RTN™`;
 export const CLIENT = platform => (platform === 'unity' ? 'game' : 'app');
 export const VSDK_RELEASE_API = '4.x'
 export const VSDK_PREVIOUS_RELEASE_API = '3.x'
@@ -10,6 +10,7 @@ export const VSDK_UNITY_FLUTTER_RN_RELEASE_API = '4.0.0.beta-2'
 export const VSDK_WEB_RELEASE_API = '4.13.0'
 export const MAJOR_VERSION = '4.x'
 export const VSDK_FLUTTER_PREVIOUS_RELEASE = '5.x';
+
 export const API_ROOT = 'https://api-ref.agora.io/en';
 export const API_REF_ROOT = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VIDEO_SDK = `${API_ROOT}/video-sdk`;
@@ -49,6 +50,7 @@ export const API_REF_WEB_WHITE = `${API_REF_ROOT_WHITE}/web/2.x`;
 export const API_REF_WEB_ROOT_PREV_SDK = `${API_REF_ROOT}/web/3.x`;
 export const API_REF_FLUTTER_ROOT_PREV_SDK = `${API_REF_ROOT}/flutter/5.x/API`;
 export const API_REF_WINDOWS_ROOT_CPP  = `${API_REF_ROOT}/cpp/${VSDK_RELEASE_API}/API`;
+export const API_REF_UE_ROOT_VOICE_SDK  = `${API_REF_ROOT_VOICE_SDK}/unreal-engine/${VSDK_RELEASE_API}/API`;
 export const API_REF_WINDOWS_ROOT_CPP_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/cpp/${VSDK_FLUTTER_RELEASE_API}/API`;
 
 export const CONSOLE = `${COMPANY} Console`;
@@ -59,12 +61,11 @@ export const RTE = 'Real-Time Engagement';
 export const RTEC = `${RTE} Core`;
 export const RTES = `${RTE} SDK`;
 export const APP_ID_LINK = `http://agora.io`;
-export const AGORA_CONSOLE_URL = `http://console.agora.io`;
+export const AGORA_CONSOLE_URL = `https://console.agora.io`;
 export const AGORA_WEBDEMO_URL = `https://webdemo.agora.io`;
 export const API_REF_ANDROID = `http://api.agora.io/android`;
 
-export const PLATFORM = 'dummy';
-
+export const PLATFORM = `${AGORA_BACKEND}`;
 export const VIDEO = 'Video Calling';
 export const AUDIO = 'Voice Calling';
 export const ASDK = 'Voice SDK';
@@ -72,21 +73,26 @@ export const ILS = 'Interactive Live Streaming';
 export const ILSS = 'Interactive Live Streaming Standard';
 export const ILSP = 'Interactive Live Streaming Premium';
 export const VSDK = 'Video SDK';
+export const GET_STARTED = 'SDK quickstart';
 export const VSDK_RELEASE = '4.x';
-// A varible to update the version of SDK in relase notes.
+// A variable to update the version of SDK in release notes.
 export const VSDK_LATEST_4_0_0 = '4.0.0';
 export const VSDK_FLUTTER_LATEST_RELEASE = '6.0.0';
 // A variable to update the version of sdk in release notes.
 export const VSDK_LATEST_4_0_1 = '4.0.1';
 export const VSDK_PREVIOUS_RELEASE = '3.7.x';
 export const VSDK_PREVIOUS_RELEASE_WEB = '3.x';
-export const VSDK_RELEASE_FOLDER = 'video-call-4.x-beta';
 export const VSDK_FLUTTER_RELEASE = '6.0.0-rc.2';
+// A variable to update the version of SDK in release notes.
+export const VSDK_LATEST_RELEASE = '4.1.0';
 
 export const AV = 'Audio/Video';
 
 export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
+export const EASEMOB_SDK = `Easemob IM SDK`;
+export const NCS = `NCS`;
+export const NCS_LONG = `Notifications`;
 export const SIG = `${MESS}`;
 export const SIG_RELEASE_API = `1.x`;
 export const SIG_SDK_API_REF_ROOT = `${API_ROOT}/signaling-sdk`;
@@ -100,13 +106,13 @@ export const SIG_SDK_API_MACOS = `${SIG_SDK_API_REF_ROOT}/macos/${SIG_RELEASE_AP
 export const SIG_SDK_API_WEB = `${SIG_SDK_API_REF_ROOT}/web/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/reference/user-channel-events`;
 
+export const SPATIAL = '3D Spatial Audio';
 
 export const CHAT = `Chat`;
 export const CHAT_RELEASE_API = `1.x`;
 export const API_REF_ROOT_CHAT_SDK = `${API_ROOT}/chat-sdk`;
 export const CHAT_SDK_API_ANDROID  = `${API_REF_ROOT_CHAT_SDK}/android/${CHAT_RELEASE_API}`;
 export const CHAT_SDK_API_WEB  = `${API_REF_ROOT_CHAT_SDK}/web/${CHAT_RELEASE_API}`;
-
 
 
 
@@ -120,8 +126,11 @@ export const ACCG = 'Global Accelerator';
 export const TEMPL = 'Templates';
 
 export const RTEE = 'Extensions';
+export const RTEE_DRM = `${COMPANY} DRM`;
+export const RTEE_DRM_FRAMEWORK = `AgoraDrmLoader.framework`;
 export const RTEE_NS = 'AI Noise Suppression';
 export const RTEE_VB = 'Vitual Background';
+export const RTEE_FU = 'FaceUnity';
 export const AA = `${COMPANY} Analytics`;
 export const WHITE = 'Interactive Whiteboard';
 export const WHITE_SDK = `${WHITE} SDK`
@@ -141,6 +150,7 @@ export const OPREC_RELEASE_API = `3.x`;
 export const API_REF_ROOT_OPREC_SDK = `${API_ROOT}/on-premise-recording-sdk`;
 export const OPREC_SDK_API_CPP  = `${API_REF_ROOT_OPREC_SDK}/linux-cpp/${OPREC_RELEASE_API}`;
 export const OPREC_SDK_API_JAVA  = `${API_REF_ROOT_OPREC_SDK}/linux-java/${OPREC_RELEASE_API}`;
+export const EXTAPP = 'ExtApp';
 
 
 export const CREC = 'Cloud Recording';
@@ -148,16 +158,19 @@ export const CREC = 'Cloud Recording';
 export const CGATE = 'Cloud Gateway';
 
 export const CGATE_RELEASE_API = `3.x`;
-export const API_REF_ROOT_CGATE_SDK = `${API_ROOT}/cloud-gateway-sdk`;
+export const API_REF_ROOT_CGATE_SDK = `${API_ROOT}/server-gateway-sdk`;
 export const CGATE_SDK_API_CPP  = `${API_REF_ROOT_CGATE_SDK}/linux-cpp/${CGATE_RELEASE_API}`;
 export const CGATE_SDK_API_JAVA  = `${API_REF_ROOT_CGATE_SDK}/linux-java/${CGATE_RELEASE_API}`
 
 export const UCS = 'Use Cases';
-
 export const AB = 'App Builder';
 export const UIK = 'UI Kit';
 export const vUIK = `${UIK}`;
+export const FC_UIB = 'UI Builder';
+
 export const FC = 'Flexible Classroom';
+export const AC = `${COMPANY} Classroom`;
+export const ACS = `${AC} SDK`;
 
 export const FC_VERSION = '2.x' ;
 export const FC_API_REF_ROOT = `${API_ROOT}/flexible-classroom-sdk`;
@@ -165,6 +178,7 @@ export const FC_API_REF_ANDROID_ROOT = `${FC_API_REF_ROOT}/android/${FC_VERSION}
 export const FC_API_REF_IOS_ROOT = `${FC_API_REF_ROOT}/ios/${FC_VERSION}/API`;
 export const FC_API_REF_WEB_ROOT = `${FC_API_REF_ROOT}/web/${FC_VERSION}`;
 export const FC_API_REF_ELECTRON_ROOT = `${FC_API_REF_ROOT}/electron/${FC_VERSION}`;
+export const FC_PROCTOR_SDK = 'Proctor SDK' ;
 
 
 export const WEB = 'Web';
@@ -196,6 +210,7 @@ export const DEMO_BASIC_VIDEO_CALL_URL =
 
 export const DEMO_PAGE_LINK = `<Link to="{{Global.DEMO_BASIC_VIDEO_CALL_URL}}"><Vg k="COMPANY" /> web demo</Link>`;
 
+
 export const AGORA_DYNAMIC_KEY_CODE_BASE_URL =
   'https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey';
 
@@ -207,9 +222,9 @@ export const ANDROID_UIKIT_SDK = 'com.github.agoraio-community:videouikit-androi
 
 export const WEB_UIKIT = 'Agora React Web UI Kit';
 
-export const IOS_MI_PACKAGE_VERSION = '4.0.0-rc.1';
+export const IOS_MI_PACKAGE_VERSION = '4.1.0';
 export const IOS_PACKAGE = 'NAME: AgoraRtcEngine_iOS';
-export const IOS_VOICE_PACKAGE = 'AgoraRtcEngine_iOS_Voice_Beta';
+export const IOS_VOICE_PACKAGE = 'AgoraAudio_iOS';
 
 export const UIKIT_GH_HUB = 'https://github.com/AgoraIO-Community/.github/wiki/Agora-Video-UIKit'
 export const UIKIT_PACKAGE_IOS = 'https://github.com/AgoraIO-Community/VideoUIKit-iOS'

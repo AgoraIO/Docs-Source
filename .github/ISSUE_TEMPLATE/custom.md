@@ -1,6 +1,6 @@
 ---
 name: Agora documentation issue
-about: Describe this issue template's purpose here.
+about: Template for documentation tasks.
 title: ''
 labels: ''
 assignees: ''
@@ -9,16 +9,15 @@ assignees: ''
 
 **Business case**: How will this issue help our customers.
 
-**Subject Matter Expert**: Who the doc team can ask technical questions.
+**Subject Matter Expert**:
+- *Technical*:
+- *Language*: Iain
+- *PM*: only if essential
 
-**Reviewers**:
-  - *Technical*: 
-  - *Language*: Iain
-  - *PM*: only if essential
+**Scope**: The products and documents to be updated. If you are not sure, leave it to Iain.
 
-**Scope**: The products and documents to be updated. If you are not sure, leave it to Iain. 
-
-**Acceptance criteria**: Criteria for this issue to be approved.
+**Acceptance criteria**: The documentation is technically correct, easy to use, follows the template structure and
+follows the Google Developer Style Guide.
 
 **Additional valuable information**: Anything else that will help with this issue.
 

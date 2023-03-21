@@ -251,3 +251,4 @@ export const AGORA_API_EXAMPLES_IOS_BLOB = `${AGORA_API_EXAMPLES_BASE_URL}/blob/
 export const AGORA_API_EXAMPLES_IOS_COMMON = `${AGORA_API_EXAMPLES_BASE_URL}/blob/main/iOS/APIExample/APIExample/Common`
 export const AGORA_API_EXAMPLES_MACOS_BLOB = `${AGORA_API_EXAMPLES_BASE_URL}/blob/main/macOS/APIExample/Examples`
 export const AGORA_API_EXAMPLES_MACOS_TREE = `${MACOS_API_EXAMPLES_ROOT}/APIExample/Examples`
+export const AGORA_CHAT_POSTMAN_APIS = `https://documenter.getpostman.com/view`

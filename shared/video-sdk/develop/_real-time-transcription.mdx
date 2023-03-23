@@ -8,62 +8,112 @@ import Reference from '@docs/shared/video-sdk/develop/real-time-transcription/re
 } from '../../../../src/mdx-components/PlatformWrapper';
 
 <Vg k="RTT" /> takes the audio content of a host's media stream and transcribes it into written words in real time.
-This page explains how to start and stop speech recognition in your <Vpl k="CLIENT" />, then download and present the transcript.
+This page shows you how to start and stop <Vg k="RTT" /> in your <Vpl k="CLIENT" />, through a business server, then
+display the text in your <Vpl k="CLIENT" />.
 
 ## Understand the tech
 
-To start transcription in real time, you send an `HTTP` request to the <Vg k="AGORA_BACKEND" />  through your
-business server. <Vg k="RTT" /> provides the following modes:
+To start transcring the audio in a channel in real time, you send an `HTTP` request to the <Vg k="AGORA_BACKEND" />
+through your business server. <Vg k="RTT" /> provides the following modes:
 
-* Transcribe speech in real time, then stream this data to the channel.
-* Transcribe speech in real time, store the text in the `WebVTT` format, and upload the file to third-party cloud storage.
+* Transcribe speech in real-time, then stream this data to the channel.
+* Transcribe speech in real-time, store the text in the `WebVTT` format, and upload the file to third-party cloud
+storage.
 
-In order to use the RESTful API to transcribe speech, take the following steps:
+The following figure shows the workflow to start, query, and stop a <Vg k="RTT" /> task:
 
-1. Call `acquire`: Request a `builderToken` for transcription. Each `buildToken` is valid for 5 minutes.
-1. Call `start`: Begin the transcription task. You must call `start` within five minutes of receiving the `builderToken`.
-1. Call `query`: Check the task status.
-1. Call `stop`: Stop the transcription task.
+![Real-Time Transcription business server](/images/video-sdk/real-time-transcription-server.svg)
 
-The following figure shows the workflow to integrate <Vg k="RTT" /> functionality into your <Vpl k="CLIENT" />:
+In order to use the RESTful API to transcribe speech, make the following calls:
 
-![Real-Time Transcription](/images/video-sdk/real-time-transcription.svg)
+1. `acquire`: Request a `builderToken` that authenticates the user and gives permission to start <Vg k="RTT" /> . You must call
+`start` using this `builderToken` within five minutes.
+1. `start`: Begin the transcription task. Once you start a task, `builderToken` remains valid for the entire
+session. Use the same `builderToken` to query and stop the task.
+1. `query`: Check the task status.
+1. `stop`: Stop the transcription task.
 
 ## Prerequisites
 
-In order to follow this procedure you must have:
+In order to set up <Vg k="RTT" /> in your <Vpl k="CLIENT" />, you must have:
 
 * Implemented <Link to="../get-started/get-started-sdk">Get Started with <Vpd k="NAME"/></Link>
 * Enabled <Vg k="RTT" /> for your project. Contact sales@agora.io
 * Activated a [supported cloud storage service](#supported-third-party-cloud-storage-services) to record and store <Vg k="RTT" /> videos and texts
+* Installed the [Protobuf package](https://protobuf.dev/downloads) to generate code classes for displaying transcription text.
 * To run the post-processing script:
   * Python 3.0
   * [`ffmpeg`](https://ffmpeg.org/download.html) and `ffplay`
 
+## Implement a business server
 
-## Project setup
+You create a business server as a bridge between your <Vpl k="CLIENT" /> and <Vg k="COMPANY"/> <Vg k="RTT" />.
+Implementing a business server to manage <Vg k="RTT" /> provides the following benefits:
 
-To create the environment necessary to play media files in your <Vpl k="CLIENT" />, open the project you created in <Link to="../get-started/get-started-sdk">Get Started with <Vpd k="NAME"/></Link>.
+* Improved security as your `apiKey`, `apiSecret`, `builderToken`, and `taskId`, are not exposed to the client.
+* Token processing is securely handled on the business server.
+* Avoid splicing complex request body strings on the client side to reduce the probability of errors.
+* Implement additional functionality on the business server. For example, billing for  <Vg k="RTT" /> use, checking
+user privileges and payment status of a user.
+* If the REST API is updated, you do not need to update the client.
 
-<ProjectSetup />
+To import the API collection for testing and to obtain sample code for your business server, see the [Postman Collection
+](https://documenter.getpostman.com/view/6319646/SVSLr9AM#69bd200a-7543-4104-8ccc-415741abbeb7). 
 
-## Implement <Vg k="RTT" /> in your <Vpl k="CLIENT" />
+## Use Google Protobuffer Generator to parse text data
 
-This section shows how to create a user interface, handle the system logic, and manage a transcription task in your <Vpl k="CLIENT" />, step-by-step.
+Google Protocol buffers are an extensible and language-neutral mechanism for serializing transcription data.
+Protobuffer enables you to generate source code in multiple languages, based on a specified structure. For more information about Google protocol buffers, see [protobuf.dev](https://protobuf.dev/).
 
-The code provided in this section is for demonstration purposes only. Best practice is to [Implement a business
-server](#implement-a-business-server) to manage your <Vg k="RTT" /> tasks rather than hardcode the customer secret
-in your <Vpl k="CLIENT" />
+<Vg k="COMPANY"/> provides the following protobuffer template for parsing <Vg k="RTT" /> data:
 
-<ProjectImplement />
+```
+syntax = "proto3";
 
-## Synchronize transcription files  with the cloud recording
+package agora.audio2text;
+option java_package = "io.agora.rtc.audio2text";
+option java_outer_classname = "Audio2TextProtobuffer";
 
-The `m3u8+vtt` file generated by <Vg k="RTT" />, and the `m3u8+ts` file generated by [Cloud Recording](../../..
-/cloud-recording/overview/product-overview.mdx) are two independent files. The time stamp references in these media
-files are different, and not synchronized. The cloud recording time stamp starts at 0, the `m3u8+vtt` uses the system
-time stamp. If either process starts abnormally, it the media files generated by the two
-services to be out of sync during playback.
+message Text {
+  int32 vendor = 1;
+  int32 version = 2;
+  int32 seqnum = 3;
+  int32 uid = 4;
+  int32 flag = 5;
+  int64 time = 6;
+  int32 lang = 7;
+  int32 starttime = 8;
+  int32 offtime = 9;
+  repeated Word words = 10;
+}
+message Word {
+  string text = 1;
+  int32 start_ms = 2;
+  int32 duration_ms = 3;
+  bool is_final = 4;
+  double confidence = 5;
+}
+```
+
+To read and display the <Vg k="RTT" /> text in your client:
+
+1. Copy the protobuffer template to a local file.
+
+1. In your local file, edit the following properties to match your project:
+
+    *	`package` : The source code package namespace.
+    *	`option` : The language for which you want to generate the class. For example, Java or Javascript.
+
+2. [Generate a Protobuffer class](https://protobuf.dev/programming-guides/proto3/#generating).
+
+    You invoke the `protoc` protocol compiler on your local file.
+
+<Vg k="COMPANY"/> also provides Protobuf sample code to parse and display transcription text. To obtain the sample code, contact sales@agora.io
+
+## Synchronize transcription files with the cloud recording
+
+The `m3u8+vtt` file generated by <Vg k="RTT" />, and the `m3u8+ts` file generated by [Cloud Recording](../../../cloud-recording/overview/product-overview.mdx) are two independent files. The time stamp references in these media
+files are different, and not synchronized. The cloud recording time stamp starts at `0`, while the `m3u8+vtt` uses the system time stamp. If either process starts abnormally, the media files generated by the two services may be out of sync during playback.
 
 Post-processing ensures synchronization of subtitles and recorded audio. It enables you to associate the `m3u8+ts` file generated by cloud recording with the `m3u8+vtt` file generated by <Vg k="RTT" />.
 
@@ -97,36 +147,6 @@ To synchronize files generated by <Vg k="RTT" />, take the following steps:
        http://127.0.0.1:8000/player_demo.html
        ```
 
-## Implement a business server
-
-Implementing a business server (API Server) for managing your <Vg k="RTT" /> tasks provides the following benefits:
-
-* Improved security as your `apiKey`, `apiSecret`, `builderToken`, and `taskId`, are not exposed to the client.
-* Token processing is securely handled on the API Server.
-* Avoid splicing complex request body strings on the client side to reduce the probability of errors.
-* Implement additional functionality on the API Server, such as billing for the use of <Vg k="RTT" />, and checking the privileges, and payment status of the user.
-* If the REST API is updated, you do not need to update the client.
-
-To import the API collection for testing and to obtain sample code for your business server, see the [Postman Collection
-](https://documenter.getpostman.com/view/6319646/SVSLr9AM#69bd200a-7543-4104-8ccc-415741abbeb7). The following figure shows how the API
-Server acts as a bridge between your client and the <Vg k="COMPANY"/> <Vg k="RTT" /> API Server:
-
-![Real-Time Transcription API Server](/images/video-sdk/real-time-transcription-server.svg)
-
-
-
-
-## Test your implementation
-
-To ensure that you have implemented <Vg k="RTT" /> features into your <Vpl k="CLIENT" />:
-
-1. [Generate a temporary token](../reference/manage-agora-account#generate-a-temporary-token) in <Vg k="CONSOLE" />.
-
-2. In your browser, navigate to the <Link target="_blank" to="{{Global.DEMO_BASIC_VIDEO_CALL_URL}}"><Vg k="COMPANY" /> web demo</Link> and update _App ID_, _Channel_, and _Token_ with the values for your temporary token, then click **Join**.
-
-<ProjectTest />
-
-
 ## Reference
 
 This section contains information that completes the information in this page, or points you to documentation that explains other aspects to this product.
@@ -137,7 +157,9 @@ Refer to the <Vg k="RTT" /> [REST API documentation](/en/api-reference?platform=
 
 ### List of supported languages
 
-| Language                         | Code*  | 
+Use the following language codes in the `recognizeConfig.language` parameter of the start request. The current version supports at most two languages, separated by commas. 
+
+| Language                         | Code  | 
 | -------------------------------- | ----- |
 | Chinese (Cantonese, Traditional) | zh-HK |
 | Indonesian (Indonesia)           | id-ID |
@@ -158,8 +180,6 @@ Refer to the <Vg k="RTT" /> [REST API documentation](/en/api-reference?platform=
 | Chinese (Mandarin, Simplified)   | zh-CN |
 | Portuguese (Portugal)            | pt-PT |
 
-*Use Code in request body of Start API
-
 ### Supported third-party cloud storage services
 
 The following third-party cloud storage service providers are supported:
@@ -174,4 +194,4 @@ The following third-party cloud storage service providers are supported:
 * [Qiniu Cloud](https://www.qiniu.com/en/products/kodo)
 * [Tencent Cloud](https://intl.cloud.tencent.com/product/cos)
 
-<Reference />
+

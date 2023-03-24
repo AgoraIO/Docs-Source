@@ -202,6 +202,9 @@ export const DEMO_BASIC_VIDEO_CALL_URL =
 
 export const DEMO_PAGE_LINK = `<Link to="{{Global.DEMO_BASIC_VIDEO_CALL_URL}}"><Vg k="COMPANY" /> web demo</Link>`;
 
+export const DEMO_TOKEN_BUILDER_URL =
+  'https://webdemo.agora.io/token-builder';
+
 
 export const AGORA_DYNAMIC_KEY_CODE_BASE_URL =
   'https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey';

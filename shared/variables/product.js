@@ -21,8 +21,8 @@ const data = {
     PATH: 'interactive-live-streaming',
     SDK: 'Video SDK',
     PRODUCT: 'Interactive Live Streaming',
-    IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS'
-
+    IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
+    STREAM: 'live streaming',
   },
 
   'agora-analytics': {
@@ -62,7 +62,8 @@ const data = {
     NAME: 'Broadcast Streaming',
     PATH: 'broadcast-streaming',
     SDK: 'Video SDK',
-    PRODUCT: 'Broadcast Streaming'
+    PRODUCT: 'Broadcast Streaming',
+    STREAM: 'broadcast streaming',
   },
 };
 

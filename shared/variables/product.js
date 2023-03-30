@@ -5,15 +5,16 @@ const data = {
     SDK: 'Video SDK',
     PRODUCT: 'Video Calling',
     BETA_API_FOLDER: 'video-call-4.x-beta',
-    IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS'
-
+    IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
+    STREAM: 'interactive live streaming or broadcast streaming',
   },
 
   'voice-calling': {
     NAME: 'Voice Calling',
     PATH: 'voice-calling',
     SDK: 'Voice SDK',
-    PRODUCT: 'Voice Calling'
+    PRODUCT: 'Voice Calling',
+    STREAM: 'interactive live streaming or broadcast streaming',
   },
 
   'interactive-live-streaming': {
@@ -22,40 +23,45 @@ const data = {
     SDK: 'Video SDK',
     PRODUCT: 'Interactive Live Streaming',
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
-    STREAM: 'live streaming',
+    STREAM: 'interactive live streaming',
   },
 
   'agora-analytics': {
       NAME: 'Agora Analytics',
       PATH: 'agora-analytics',
       SDK: 'Agora Analytics',
-      PRODUCT: 'Agora Analytics'
+      PRODUCT: 'Agora Analytics',
+      STREAM: 'interactive live streaming or broadcast streaming',
   },
     'extensions-marketplace': {
         NAME: 'Extensions Marketplace',
         PATH: 'extensions-marketplace',
-        PRODUCT: 'Extensions Marketplace'
+        PRODUCT: 'Extensions Marketplace',
+        STREAM: 'interactive live streaming or broadcast streaming',
     },
 
   'cloud-recording': {
       NAME: 'Cloud Recording',
       PATH: 'cloud-recording',
       SDK: 'Cloud Recording',
-      PRODUCT: 'Cloud Recording'
+      PRODUCT: 'Cloud Recording',
+      STREAM: 'interactive live streaming or broadcast streaming',
   },
 
   'signaling': {
       NAME: 'Signaling',
       PATH: 'signaling',
       SDK: 'Signaling SDK',
-      PRODUCT: 'Signalling'
+      PRODUCT: 'Signalling',
+      STREAM: 'interactive live streaming or broadcast streaming',
   },
 
   'server-gateway': {
       NAME: 'Server Gateway',
       PATH: 'server-gateway',
       SDK: 'Server Gateway SDK',
-      PRODUCT: 'Server Gateway'
+      PRODUCT: 'Server Gateway',
+      STREAM: 'interactive live streaming or broadcast streaming',
   },
 
   'broadcast-streaming': {

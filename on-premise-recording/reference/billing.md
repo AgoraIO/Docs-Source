@@ -20,7 +20,6 @@ Billing for the on-premise recording service begins once you use the Agora On-Pr
 
 On the first day of each month, Agora sends you the bill via email, and five days later deducts the payment from your account. For details, see [Billing, fee deduction, and account suspension](../../video-calling/reference/billing-policies).
 
-
 <div class="alert note">Agora gives each Agora account 10,000 free-of-charge minutes each month. For more information on the deduction sequence and applicable products, see<a href="https://docs.agora.io/en/faq/billing_free"> Agora's free-of-charge policy for the first 10,000 minutes</a>.</div>
 
 ## Composition
@@ -86,7 +85,7 @@ The unit pricing for audio and video is as follows:
                     </tr>
                 </tbody>
             </table>      
-						
+
 >① Agora determines video category based on aggregate video resolution, which is the sum of resolutions of all the video streams a user subscribes to at the same time. For details, see <a href="#aggregate">Aggregate video resolution</a>.
 
 
@@ -103,6 +102,7 @@ Agora adds up the resolution of all the video streams recorded at the same time 
 | 2K+                            | From greater than 3,686,400 (2560 × 1440) to 8,847,360 (4096 × 2160)  |
 
 For example, if the recording server records two 960 × 720 video streams at the same time, the aggregate resolution is 960 × 720 + 960 × 720 = 1,382,400. The recording service is charged based on the Full HD video pricing.
+
 
 ## Examples
 
@@ -425,16 +425,8 @@ When the user being recorded enables [dual-stream mode](../../video-calling/refe
 
 When calculating the aggregate resolution, Agora counts the resolution of 225,280 (640 × 352) as 640 × 360.
 
-
-
-
-
 <a name="question"></a>
 ## Q&A
-
-
-
-
 
 
 

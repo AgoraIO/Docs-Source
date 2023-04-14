@@ -62,7 +62,7 @@ export const RTE = 'Real-Time Engagement';
 export const RTEC = `${RTE} Core`;
 export const RTES = `${RTE} SDK`;
 export const APP_ID_LINK = `http://agora.io`;
-export const AGORA_CONSOLE_URL = `http://console.agora.io`;
+export const AGORA_CONSOLE_URL = `https://console.agora.io`;
 export const AGORA_WEBDEMO_URL = `https://webdemo.agora.io`;
 export const API_REF_ANDROID = `http://api.agora.io/android`;
 
@@ -70,6 +70,7 @@ export const PLATFORM = `${AGORA_BACKEND}`;
 export const VIDEO = 'Video Calling';
 export const AUDIO = 'Voice Calling';
 export const ASDK = 'Voice SDK';
+export const BS = 'Broadcast Streaming';
 export const ILS = 'Interactive Live Streaming';
 export const ILSS = 'Interactive Live Streaming Standard';
 export const ILSP = 'Interactive Live Streaming Premium';
@@ -91,6 +92,7 @@ export const AV = 'Audio/Video';
 
 export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
+export const EASEMOB_SDK = `Easemob IM SDK`;
 export const NCS = `NCS`;
 export const NCS_LONG = `Notifications`;
 export const SIG = `${MESS}`;
@@ -150,6 +152,7 @@ export const OPREC_RELEASE_API = `3.x`;
 export const API_REF_ROOT_OPREC_SDK = `${API_ROOT}/on-premise-recording-sdk`;
 export const OPREC_SDK_API_CPP  = `${API_REF_ROOT_OPREC_SDK}/linux-cpp/${OPREC_RELEASE_API}`;
 export const OPREC_SDK_API_JAVA  = `${API_REF_ROOT_OPREC_SDK}/linux-java/${OPREC_RELEASE_API}`;
+export const EXTAPP = 'ExtApp';
 
 
 export const CREC = 'Cloud Recording';
@@ -165,8 +168,11 @@ export const UCS = 'Use Cases';
 export const AB = 'App Builder';
 export const UIK = 'UI Kit';
 export const vUIK = `${UIK}`;
-export const FC = 'Flexible Classroom';
 export const FC_UIB = 'UI Builder';
+
+export const FC = 'Flexible Classroom';
+export const AC = `${COMPANY} Classroom`;
+export const ACS = `${AC} SDK`;
 
 export const FC_VERSION = '2.x' ;
 export const FC_API_REF_ROOT = `${API_ROOT}/flexible-classroom-sdk`;
@@ -174,6 +180,7 @@ export const FC_API_REF_ANDROID_ROOT = `${FC_API_REF_ROOT}/android/${FC_VERSION}
 export const FC_API_REF_IOS_ROOT = `${FC_API_REF_ROOT}/ios/${FC_VERSION}/API`;
 export const FC_API_REF_WEB_ROOT = `${FC_API_REF_ROOT}/web/${FC_VERSION}`;
 export const FC_API_REF_ELECTRON_ROOT = `${FC_API_REF_ROOT}/electron/${FC_VERSION}`;
+export const FC_PROCTOR_SDK = 'Proctor SDK' ;
 
 
 export const WEB = 'Web';

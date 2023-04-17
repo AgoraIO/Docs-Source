@@ -1,9 +1,149 @@
 <PlatformWrapper platform="flutter">
 
-If your target platform is Android, your app must run as a foreground service so that it is not killed when minimized. To add the `FOREGROUND_SERVICE` permission, in `\android\app\src\main\AndroidManifest.xml`, add the following line after `</application>`.
+Depending on your target platform, follow these steps:
 
-    ```xml
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    ```
+* **Android**
+
+    Your app must run as a foreground service so that it is not killed when minimized. To add the `FOREGROUND_SERVICE` permission, in `\android\app\src\main\AndroidManifest.xml`, add the following line after `</application>`.
+
+        ```xml
+        <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+        ```
+
+* **iOS**
+
+    Since iOS does not support capturing the screen in the main app process, you create an extension for the screen sharing stream. To realize screen sharing, you use the iOS native `ReplayKit` framework in the Extension to record the screen, and then send the stream to the main process. This screen sharing implementation has higher device performance requirements, and is recommended for use only on the iPhone X and later models. Due to system limitations, screen sharing is only supported on iOS 12.0 and later systems.
+    
+    ![](/images/video-sdk/ios-screen-sharing.png)
+
+    To set up a screen sharing extension for iOS, take the following steps:
+
+    1. Navigate to your project folder and open it with Xcode `ios/.xcodeproj`.
+
+    1. Create a Broadcast Upload Extension:
+        1. On the Xcode menu bar, click **File > New > Target...**, in the pop-up window select **Broadcast Upload
+       Extension**, then click **Next** .
+
+            ![](https://web-cdn.agora.io/docs-files/1669197671714)
+        
+        1. Fill in the Product Name and other information, clear **Include UI Extension**, then click **Finish** .
+
+            ![](https://web-cdn.agora.io/docs-files/1669197908653)
+
+            Xcode automatically creates the Extension folder, which contains the `SampleHandler.h` file.
+
+        1. Under **Target**, select the newly created Extension, and click **General**, then set the iOS version to
+       `12.0` or above.
+       .
+
+            ![](https://web-cdn.agora.io/docs-files/1669199079385)
+
+            The memory usage of the Broadcast Upload Extension is limited to 50 MB. Make sure that the memory usage of the Screen Sharing Extension does not exceed this limit.
+
+    1. Modify the `Podfile`
+        
+        If you use Cocoapods, add the following content to the `Podfile` file to add dependencies for your screen sharing Extension.
+
+        ```
+        target '<Your Extension Name>' do
+                pod 'AgoraRtcEngine_iOS', 'x.x.x.x'
+        end
+        ```
+        Ensure that the pod dependency version is consistent with the SDK dependency version in the `agora_rtc_engine/ios/agora_rtc_engine.podspec` file.
+
+    1. Modify the `SampleHandler.h` file to customize the code logic for screen sharing
+
+        If you only need to use the functions provided by `AgoraReplayKitExtension.xcframework`, select the extension you just created as **Target**, and change the **Value** corresponding to **NSExtension > NSExtensionPrincipalClass** from `SampleHandler` to `AgoraReplayKitHandler` in **Info**.
+
+        ![](https://web-cdn.agora.io/docs-files/1669346575589)
+
+        If you need to further customize the business logic, replace the following code in the `SampleHandler.h` file:
+
+        ```c
+        // Objective-C
+        #import "SampleHandler.h"
+        #import "AgoraReplayKitExt.h"
+        #import <sys/time.h>
+
+        @interface SampleHandler ()<AgoraReplayKitExtDelegate>
+
+        @end
+
+        @implementation SampleHandler
+
+        - (void)broadcastStartedWithSetupInfo:(NSDictionary<NSString *,NSObject *> *)setupInfo {
+            // User has requested to start the broadcast. Setup info from the UI extension can be supplied but optional.
+            [[AgoraReplayKitExt shareInstance] start:self];
+
+        }
+
+        - (void)broadcastPaused {
+            // User has requested to pause the broadcast. Samples will stop being delivered.
+            NSLog(@"broadcastPaused");
+            [[AgoraReplayKitExt shareInstance] pause];
+        }
+
+        - (void)broadcastResumed {
+            // User has requested to resume the broadcast. Samples delivery will resume.
+            NSLog(@"broadcastResumed");
+            [[AgoraReplayKitExt shareInstance] resume];
+
+        }
+
+        - (void)broadcastFinished {
+            // User has requested to finish the broadcast.
+            NSLog(@"broadcastFinished");
+            [[AgoraReplayKitExt shareInstance] stop];
+
+        }
+
+        - (void)processSampleBuffer:(CMSampleBufferRef)sampleBuffer withType:(RPSampleBufferType)sampleBufferType {
+            [[AgoraReplayKitExt shareInstance] pushSampleBuffer:sampleBuffer withType:sampleBufferType];
+        }
+
+        #pragma mark - AgoraReplayKitExtDelegate
+
+        - (void)broadcastFinished:(AgoraReplayKitExt *_Nonnull)broadcast reason:(AgoraReplayKitExtReason)reason {
+            switch (reason) {
+                case AgoraReplayKitExtReasonInitiativeStop:
+                    {
+                    // NSDictionary *userInfo = @{NSLocalizedDescriptionKey : @"Host app stop screen capture"};
+                    // NSError *error = [NSError errorWithDomain:NSCocoaErrorDomain code:0 userInfo:userInfo];
+                    // [self finishBroadcastWithError:error];
+                        NSLog(@"AgoraReplayKitExtReasonInitiativeStop");
+                    }
+                    break;
+                case AgoraReplayKitExtReasonConnectFail:
+                    {
+                    // NSDictionary *userInfo = @{NSLocalizedDescriptionKey : @"Connect host app fail need startScreenCapture in host app"};
+                    // NSError *error = [NSError errorWithDomain:NSCocoaErrorDomain code:0 userInfo:userInfo];
+                    // [self finishBroadcastWithError:error];
+                        NSLog(@"AgoraReplayKitExReasonConnectFail");
+                    }
+                    break;
+
+                case AgoraReplayKitExtReasonDisconnect:
+                    {
+                    // NSDictionary *userInfo = @{NSLocalizedDescriptionKey : @"disconnect with host app"};
+                    // NSError *error = [NSError errorWithDomain:NSCocoaErrorDomain code:0 userInfo:userInfo];
+                    // [self finishBroadcastWithError:error];
+                        NSLog(@"AgoraReplayKitExReasonDisconnect");
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        @end
+        ``` 
+    
+    1. Start screen sharing
+
+        To start screen sharing, you call `startScreenCapture`, combined with user's action. There are two ways to do this:
+
+        * Prompt the user to press and hold the **Screen Recording** button in the control center of the iOS system, and select the Extension to start recording.
+        
+        * Use Apple's `RPSystemBroadcastPickerView` in iOS 12.0 to make the app interface pop up the **Enable Screen Sharing** button and prompt the user to start recording by clicking the button.
 
 </PlatformWrapper>

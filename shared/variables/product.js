@@ -59,7 +59,7 @@ const data = {
   },
 
   'iot': {
-    NAME: 'IoT',
+    NAME: 'IoT SDK',
     PATH: 'iot',
     SDK: 'IoT SDK',
     PRODUCT: 'IoT'

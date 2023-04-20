@@ -71,6 +71,16 @@ const data = {
     PRODUCT: 'Broadcast Streaming',
     STREAM: 'broadcast streaming',
   },
+      PRODUCT: 'Server Gateway'
+  },
+
+  'iot': {
+    NAME: 'IoT SDK',
+    PATH: 'iot',
+    SDK: 'IoT SDK',
+    PRODUCT: 'IoT'
+  }
+
 };
 
 export default data;

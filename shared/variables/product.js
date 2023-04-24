@@ -76,7 +76,8 @@ const data = {
     NAME: 'Chat',
     PATH: 'agora-chat',
     SDK: 'Chat SDK',
-    PRODUCT: 'Peer-to-Peer Messaging'
+    PRODUCT: 'Peer-to-Peer Messaging',
+    IOS_PACKAGE_NAME: 'AgoraChat_iOS'
 }
 };
 

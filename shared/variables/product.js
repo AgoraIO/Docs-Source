@@ -71,8 +71,6 @@ const data = {
     PRODUCT: 'Broadcast Streaming',
     STREAM: 'broadcast streaming',
   },
-      PRODUCT: 'Server Gateway'
-  },
 
   'agora-chat': {
     NAME: 'Chat',

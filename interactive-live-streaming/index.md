@@ -1,6 +1,8 @@
 ---
 id: ils-intro
 title: Interactive Live Streaming
+sidebar_label: " "
+sidebar_position: -1
 ---
 
 # Interactive Live Streaming

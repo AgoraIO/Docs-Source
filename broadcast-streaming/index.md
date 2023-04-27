@@ -1,6 +1,8 @@
 ---
 id: bs-intro
 title: Broadcast Streaming
+sidebar_label: " "
+sidebar_position: -1
 ---
 
 # Broadcast Streaming

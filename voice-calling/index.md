@@ -1,6 +1,8 @@
 ---
 id: voice-calling-intro
 title: Voice Calling
+sidebar_label: " "
+sidebar_position: -1
 ---
 
 # Voice Calling

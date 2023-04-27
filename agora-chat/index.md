@@ -1,6 +1,8 @@
 ---
 id: chat-intro
 title: Chat
+sidebar_label: " "
+sidebar_position: -1
 ---
 
 # Chat

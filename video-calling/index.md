@@ -1,6 +1,8 @@
 ---
 id: video-calling-intro
 title: Video Calling
+sidebar_label: " "
+sidebar_position: -1
 ---
 
 # Video Calling

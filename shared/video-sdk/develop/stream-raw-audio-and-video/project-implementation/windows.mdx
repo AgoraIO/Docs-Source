@@ -24,173 +24,188 @@ This sections describes the steps required to use the relevant libraries and dec
 
 1.  **Define a variable to manage video processing**
 
-        From **Solution Explorer**, open `AgoraImplementationDlg.cpp` and add the following variable after the list of header includes:
+        In **Solution Explorer**, open `AgoraImplementationDlg.cpp` and add the following variable after the list of header includes:
         
         ```cpp
         bool isZoomed = false;
         ```
 2.  **Start and stop video processing**
     
-    When the user presses the **Zoom In** button, the current state of the `isZoomed` variable is updated. This variable controls the behavior of the `onCaptureVideoFrame` callback, either enabling or disabling frame cropping. To implement this workflow, double-click on the **Zoom In** button in the **Dialog Editor**, which creates an event listener for you. Add the following code to the event listener:
-    ```cpp
-    // Toggle the zoom state and get a handle to the button control
-    isZoomed = !isZoomed;
-    // We implemented the Agora Windows Get Started guide, using the button with ID 'IDC_BUTTON3' for zoom in and zoom out functionality. However, please note that the button ID may differ in your specific scenario.
-    CButton* pButtonCtrl = static_cast<CButton*>(GetDlgItem(IDC_BUTTON3));
+    When the user presses **Zoom In**, update the state of `isZoomed`. This variable
+  controls the behavior of the `onCaptureVideoFrame` callback to enable or disable frame cropping. To implement
+  this workflow:
 
-    // Set the button text based on the zoom state
-	pButtonCtrl->SetWindowText(isZoomed ? L"Zoom Out" : L"Zoom In");
-    ```
+    1. In **Dialog Editor**, double-click **Zoom In**; this creates an event listener.
+    1. Add the following code to the event listener:
+        ```cpp
+        // Toggle the zoom state and get a handle to the button control
+        isZoomed = !isZoomed;
+        // We implemented the Agora Windows Get Started guide, using the button with ID 'IDC_BUTTON3' for zoom in and zoom out functionality. However, please note that the button ID may differ in your specific scenario.
+        CButton* pButtonCtrl = static_cast<CButton*>(GetDlgItem(IDC_BUTTON3));
+
+        // Set the button text based on the zoom state
+        pButtonCtrl->SetWindowText(isZoomed ? L"Zoom Out" : L"Zoom In");
+        ```
+
 ### Implement processing of raw video and audio data
 
-<Vg k = "COMPANY"/> provides `IVideoFrameObserver` and `IAudioFrameObserver` interfaces for real-time video and audio processing. These interfaces allow developers to capture and process raw video and audio data before it's sent over the network for <Vpd k = "PRODUCT"/>. To implement video and audio frame observer interfaces `IVideoFrameObserver` and `IAudioFrameObserver`, do the following:
+<Vg k = "COMPANY"/> provides the `IVideoFrameObserver` and `IAudioFrameObserver` interfaces for real-time video and
+  audio processing. These interfaces enable developers to capture and process raw video and audio data before it is sent
+  over the network. To implement these interfaces:
 
 1.  **Implement the video frame observer**
     
-    `IVideoFrameObserver` provides access to each local video frame after it is captured, as well as to each remote video frame before it is played back. In this example, the `onCaptureVideoFrame` callback is used to modify the captured video frame buffer for cropping and scaling, resulting in a modified version of the frame that is played back. To implement this workflow, in `AgoraImplementation.cpp`, add the following class:
-    ```cpp
-    class CustomVideoFrameObserver : public IVideoFrameObserver
-    {
-        // IVideoFrameObserver Implementation
-        public:
-        CustomVideoFrameObserver() : originalYBuffer(nullptr), originalUBuffer(nullptr), originalVBuffer(nullptr) {}
-        ~CustomVideoFrameObserver() 
+    `IVideoFrameObserver` provides access to each local video frame after it is captured, as well as to each remote
+  video frame before it is played back. In this sample, the `onCaptureVideoFrame` callback is used to modify the
+  captured video frame buffer for cropping and scaling, resulting in a modified version of the frame that is played back.
+
+    To implement this workflow, in `AgoraImplementation.cpp`, add the following class:
+      ```cpp
+      class CustomVideoFrameObserver : public IVideoFrameObserver
+      {
+          // IVideoFrameObserver Implementation
+          public:
+          CustomVideoFrameObserver() : originalYBuffer(nullptr), originalUBuffer(nullptr), originalVBuffer(nullptr) {}
+          ~CustomVideoFrameObserver()
+          {
+              delete[] originalYBuffer;
+              delete[] originalUBuffer;
+              delete[] originalVBuffer;
+          }
+        // This callback is triggered by the SDK when a video frame is captured. It processes the raw video frame data, crops the frame if necessary, and returns a boolean value to indicate whether the pre-processing was successful.
+        bool CustomVideoFrameObserver::onCaptureVideoFrame(VideoFrame& videoFrame) override
         {
-            delete[] originalYBuffer;
-            delete[] originalUBuffer;
-            delete[] originalVBuffer;
+          // Check if zooming is enabled
+          if (isZoomed)
+          {
+            // Store the original width and height
+            int originalWidth = videoFrame.width;
+            int originalHeight = videoFrame.height;
+
+            // Calculate the new width and height after zooming (in this case, halving the dimensions)
+            int newWidth = originalWidth / 2;
+            int newYStride = newWidth;
+            int newHeight = originalHeight / 2;
+
+            // Create temporary buffers for the cropped frame data
+            uint8_t* newYBuffer = new uint8_t[newWidth * newHeight];
+            uint8_t* newUBuffer = new uint8_t[newWidth * newHeight / 4];
+            uint8_t* newVBuffer = new uint8_t[newWidth * newHeight / 4];
+
+            // Loop over the new frame data and copy the appropriate pixels from the original frame
+            for (int y = 0; y < newHeight; ++y)
+            {
+              for (int x = 0; x < newWidth; ++x)
+              {
+                // Copy Y plane
+                newYBuffer[y * newYStride + x] = videoFrame.yBuffer[y * videoFrame.yStride + x];
+
+                // Copy U and V planes for every 2x2 block of pixels
+                if (y % 2 == 0 && x % 2 == 0)
+                {
+                  int newIndexUV = (y / 2) * (newWidth / 2) + (x / 2);
+                  int originalIndexUV = (y / 2) * (videoFrame.uStride) + (x / 2);
+
+                  newUBuffer[newIndexUV] = videoFrame.uBuffer[originalIndexUV];
+                  newVBuffer[newIndexUV] = videoFrame.vBuffer[originalIndexUV];
+                }
+              }
+            }
+
+            // Update videoFrame with the new width, height, and strides
+            videoFrame.width = newWidth;
+            videoFrame.height = newHeight;
+            videoFrame.yStride = newYStride;
+            videoFrame.uStride = newWidth / 2;
+            videoFrame.vStride = newWidth / 2;
+
+            // Check if the original buffers have already been stored
+            if (!originalYBuffer)
+            {
+              originalYBuffer = videoFrame.yBuffer;
+              originalUBuffer = videoFrame.uBuffer;
+              originalVBuffer = videoFrame.vBuffer;
+            }
+
+            // Update videoFrame to reference the new buffers
+            videoFrame.yBuffer = newYBuffer;
+            videoFrame.uBuffer = newUBuffer;
+            videoFrame.vBuffer = newVBuffer;
+          }
+
+          // Return true to indicate that pre-processing is successful and the frame should not be ignored
+          return true;
         }
-	    // This callback is triggered by the SDK when a video frame is captured. It processes the raw video frame data, crops the frame if necessary, and returns a boolean value to indicate whether the pre-processing was successful.
-	    bool CustomVideoFrameObserver::onCaptureVideoFrame(VideoFrame& videoFrame) override
-	    {
-		    // Check if zooming is enabled
-		    if (isZoomed)
-		    {
-			    // Store the original width and height
-			    int originalWidth = videoFrame.width;
-			    int originalHeight = videoFrame.height;
+        // Note that `getVideoFrameProcessMode()` is need to override with 'PROCESS_MODE_READ_WRITE' to get updated video frames
+        IVideoFrameObserver::VIDEO_FRAME_PROCESS_MODE getVideoFrameProcessMode()
+        {
+          return VIDEO_FRAME_PROCESS_MODE::PROCESS_MODE_READ_WRITE;
+        }
 
-			    // Calculate the new width and height after zooming (in this case, halving the dimensions)
-			    int newWidth = originalWidth / 2;
-			    int newYStride = newWidth;
-			    int newHeight = originalHeight / 2;
+        // Rest the below functions are dummy "do-nothing" implentaion just to sake for overriding of interface pure virtual functions.
+        bool onSecondaryCameraCaptureVideoFrame(VideoFrame& videoFrame)
+        {
+          return false;
+        }
 
-			    // Create temporary buffers for the cropped frame data
-			    uint8_t* newYBuffer = new uint8_t[newWidth * newHeight];
-			    uint8_t* newUBuffer = new uint8_t[newWidth * newHeight / 4];
-			    uint8_t* newVBuffer = new uint8_t[newWidth * newHeight / 4];
+        bool onSecondaryPreEncodeCameraVideoFrame(VideoFrame& videoFrame)
+        {
+          return false;
+        }
 
-			    // Loop over the new frame data and copy the appropriate pixels from the original frame
-			    for (int y = 0; y < newHeight; ++y)
-			    {
-				    for (int x = 0; x < newWidth; ++x)
-				    {
-					    // Copy Y plane
-					    newYBuffer[y * newYStride + x] = videoFrame.yBuffer[y * videoFrame.yStride + x];
+        bool onScreenCaptureVideoFrame(VideoFrame& videoFrame)
+        {
+          return false;
+        }
 
-					    // Copy U and V planes for every 2x2 block of pixels
-					    if (y % 2 == 0 && x % 2 == 0)
-					    {
-						    int newIndexUV = (y / 2) * (newWidth / 2) + (x / 2);
-						    int originalIndexUV = (y / 2) * (videoFrame.uStride) + (x / 2);
+        bool onPreEncodeScreenVideoFrame(VideoFrame& videoFrame)
+        {
+          return false;
+        }
 
-						    newUBuffer[newIndexUV] = videoFrame.uBuffer[originalIndexUV];
-						    newVBuffer[newIndexUV] = videoFrame.vBuffer[originalIndexUV];
-					    }
-				    }
-			    }
+        bool onSecondaryScreenCaptureVideoFrame(VideoFrame& videoFrame)
+        {
+          return false;
+        }
 
-			    // Update videoFrame with the new width, height, and strides
-			    videoFrame.width = newWidth;
-			    videoFrame.height = newHeight;
-			    videoFrame.yStride = newYStride;
-			    videoFrame.uStride = newWidth / 2;
-			    videoFrame.vStride = newWidth / 2;
+        bool CustomVideoFrameObserver::onSecondaryPreEncodeScreenVideoFrame(VideoFrame& videoFrame)
+        {
+          return false;
+        }
 
-			    // Check if the original buffers have already been stored
-			    if (!originalYBuffer)
-			    {
-				    originalYBuffer = videoFrame.yBuffer;
-				    originalUBuffer = videoFrame.uBuffer;
-				    originalVBuffer = videoFrame.vBuffer;
-			    }
+        bool onRenderVideoFrame(const char* channelId, rtc::uid_t remoteUid, VideoFrame& videoFrame)
+        {
+          return false;
+        }
 
-			    // Update videoFrame to reference the new buffers
-			    videoFrame.yBuffer = newYBuffer;
-			    videoFrame.uBuffer = newUBuffer;
-			    videoFrame.vBuffer = newVBuffer;
-		    }
+        bool onPreEncodeVideoFrame(VideoFrame& videoFrame)
+        {
+          return false;
+        }
 
-		    // Return true to indicate that pre-processing is successful and the frame should not be ignored
-		    return true;
-	    }
-	    // Note that `getVideoFrameProcessMode()` is need to override with 'PROCESS_MODE_READ_WRITE' to get updated video frames
-	    IVideoFrameObserver::VIDEO_FRAME_PROCESS_MODE getVideoFrameProcessMode() 
-	    {
-		    return VIDEO_FRAME_PROCESS_MODE::PROCESS_MODE_READ_WRITE;
-	    }
+        bool onMediaPlayerVideoFrame(VideoFrame& videoFrame, int mediaPlayerId)
+        {
+          return false;
+        }
 
-	    // Rest the below functions are dummy "do-nothing" implentaion just to sake for overriding of interface pure virtual functions.
-	    bool onSecondaryCameraCaptureVideoFrame(VideoFrame& videoFrame)
-	    {
-		    return false;
-	    }
+        bool onTranscodedVideoFrame(VideoFrame& videoFrame)
+        {
+          return false;
+        }
 
-	    bool onSecondaryPreEncodeCameraVideoFrame(VideoFrame& videoFrame)
-	    {
-		    return false;
-	    }
+          private:
+        uint8_t* originalYBuffer;
+        uint8_t* originalUBuffer;
+        uint8_t* originalVBuffer;
+      };
+      ```
+    You must override `getVideoFrameProcessMode()` with `PROCESS_MODE_READ_WRITE` to ensure that any modifications made to the raw data take effect.
 
-	    bool onScreenCaptureVideoFrame(VideoFrame& videoFrame)
-	    {
-		    return false;
-	    }
-
-	    bool onPreEncodeScreenVideoFrame(VideoFrame& videoFrame)
-	    {
-		    return false;
-	    }
-
-	    bool onSecondaryScreenCaptureVideoFrame(VideoFrame& videoFrame)
-	    {
-		    return false;
-	    }
-
-     	bool CustomVideoFrameObserver::onSecondaryPreEncodeScreenVideoFrame(VideoFrame& videoFrame)
-	    {
-		    return false;
-	    }
-
-	    bool onRenderVideoFrame(const char* channelId, rtc::uid_t remoteUid, VideoFrame& videoFrame)
-	    {
-		    return false;
-	    }
-
-	    bool onPreEncodeVideoFrame(VideoFrame& videoFrame)
-	    {
-		    return false;
-	    }
-
-	    bool onMediaPlayerVideoFrame(VideoFrame& videoFrame, int mediaPlayerId)
-	    {
-		    return false;
-	    }
-
-	    bool onTranscodedVideoFrame(VideoFrame& videoFrame)
-	    {
-		    return false;
-	    }
-
-        private:
-	    uint8_t* originalYBuffer;
-	    uint8_t* originalUBuffer;
-	    uint8_t* originalVBuffer;
-    };
-    ```
-    Note that the function `getVideoFrameProcessMode()` needs to be overridden with `PROCESS_MODE_READ_WRITE` to ensure that any modifications made to the raw data take effect.
 2. **Implement audio frame observer callbacks**
             
-    `IAudioFrameObserver` provides access to each captured or played back audio frame, allowing you to process the audio frames according to your needs. To override `IAudioFrameObserver` callbacks, add the following to `AgoraImplementationDlg.cpp`:  
+    `IAudioFrameObserver` provides access to each captured or played back audio frame, allowing you to process the audio frames according to your needs.
+
+    To override `IAudioFrameObserver` callbacks, add the following to `AgoraImplementationDlg.cpp`:
     ```cpp
     class CustomAudioFrameObserver : public IAudioFrameObserver 
     {
@@ -256,7 +271,9 @@ This sections describes the steps required to use the relevant libraries and dec
 
 2.  **Register the video and audio frame observers**
 
-    To receive callbacks declared in `IVideoFrameObserver` and `IAudioFrameObserver`, you register the video and audio frame observers with the <Vg k="ENGINE" /> before joining a channel. To specify the format of audio frames captured by each `IAudioFrameObserver` callback, use the `setRecordingAudioFrameParameters`, `setPlaybackAudioFrameParameters` and `setMixedAudioFrameParameters` methods. To do this, follow the below steps:
+    To receive callbacks declared in `IVideoFrameObserver` and `IAudioFrameObserver`, you register the video and audio frame observers with <Vg k="ENGINE" /> before joining a channel. To specify the format of audio frames captured by each `IAudioFrameObserver` callback, use the `setRecordingAudioFrameParameters`, `setPlaybackAudioFrameParameters` and `setMixedAudioFrameParameters` methods.
+
+    To register the observers, do the following:
 
     1. Setup a function to register and unregister observers for audio and video frames. In `AgoraImplementationDlg.h`, add the following code after `void setupVideoSDKEngine();`:
       
@@ -301,7 +318,8 @@ This sections describes the steps required to use the relevant libraries and dec
         }
         ```
 
-    1. To register the observers at startup, in `AgoraImplementationDlg.cpp`, add the following at the of `setupVideoSDKEngine()`:
+    1. To register the observers at startup, in `AgoraImplementationDlg.cpp`, add the following at the start of
+  `setupVideoSDKEngine()`:
 
         ```cpp
         // Enable and register observers for audio and video frames
@@ -309,7 +327,10 @@ This sections describes the steps required to use the relevant libraries and dec
         ```
 3. **Unregister the video and audio frame observers when you close the <Vpl k="CLIENT"/>**
     
-    When you quit the <Vpl k="CLIENT"/>, unregister the frame observers by disabling the `EnableAudioVideoCapture()` method with a `false` argument. To implement this workflow, in `AgoraImplementationDlg.cpp`, add the following to `OnClose` before `	agoraEngine->release();`:
+    When you quit the <Vpl k="CLIENT"/>, to unregister the frame observers, set
+  `EnableAudioVideoCapture()` to `false`.
+
+    To implement this workflow, in `AgoraImplementationDlg.cpp`, add the following to `OnClose` before `	agoraEngine->release();`:
 
     ```cpp
     // Unregister observers for audio and video frames

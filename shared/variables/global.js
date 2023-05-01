@@ -75,6 +75,8 @@ export const ILS = 'Interactive Live Streaming';
 export const ILSS = 'Interactive Live Streaming Standard';
 export const ILSP = 'Interactive Live Streaming Premium';
 export const VSDK = 'Video SDK';
+
+export const RTT = 'Real-Time Transcription';
 export const GET_STARTED = 'SDK quickstart';
 export const VSDK_RELEASE = '4.x';
 // A variable to update the version of SDK in release notes.
@@ -111,6 +113,7 @@ export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/referenc
 export const SPATIAL = '3D Spatial Audio';
 
 export const CHAT = `Chat`;
+export const CHAT_SDK = `${CHAT} SDK`;
 export const CHAT_RELEASE_API = `1.x`;
 export const API_REF_ROOT_CHAT_SDK = `${API_ROOT}/chat-sdk`;
 export const CHAT_SDK_API_ANDROID  = `${API_REF_ROOT_CHAT_SDK}/android/${CHAT_RELEASE_API}`;
@@ -156,6 +159,8 @@ export const EXTAPP = 'ExtApp';
 
 
 export const CREC = 'Cloud Recording';
+export const CREC_FCS = 'https://download.agora.io/acrsdk/release/cloud_recording_tools.v3.8.0.69-202302061216-release-prod.tar.gz'
+
 
 export const CGATE = 'Cloud Gateway';
 

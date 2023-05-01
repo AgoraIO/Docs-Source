@@ -71,6 +71,14 @@ const data = {
     PRODUCT: 'Broadcast Streaming',
     STREAM: 'broadcast streaming',
   },
+
+  'iot': {
+    NAME: 'IoT SDK',
+    PATH: 'iot',
+    SDK: 'IoT SDK',
+    PRODUCT: 'IoT'
+  },
+
 };
 
 export default data;

@@ -2,6 +2,7 @@
 title: "Play recorded files online"
 sidebar_position: 5
 type: docs
+platform_selector: false
 description: >
    Get the URL of the M3U8 file and play it online.
 

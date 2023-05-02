@@ -2,6 +2,7 @@
 title: "Stop recording"
 sidebar_position: 6
 type: docs
+platform_selector: false
 description: 
   Stop recording
 ---

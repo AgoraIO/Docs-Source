@@ -13,7 +13,7 @@ To implement the user interface, create code with:
 
 -   A button for the user to **Join** or **Leave** the channel.
 
-<ProductWrapper product="interactive-live-streaming">
+<ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
 -   A selector so the user can join a channel as host or audience.
 </ProductWrapper>
 
@@ -40,42 +40,27 @@ When your <Vpl k="CLIENT" /> launches, ensure that the permissions necessary to 
     In `ViewController`, add the following lines after the `buttonAction(sender: UIButton!)` function:
 
     ``` swift
-    func checkForPermissions() -> Bool {
-        var hasPermissions = false
-
-        switch AVCaptureDevice.authorizationStatus(for: .video) {
-            case .authorized: hasPermissions = true
-            default: hasPermissions = requestCameraAccess()
-        }
+    func checkForPermissions() async -> Bool {
+        var hasPermissions = await self.avAuthorization(mediaType: .video)
         // Break out, because camera permissions have been denied or restricted.
         if !hasPermissions { return false }
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-            case .authorized: hasPermissions = true
-            default: hasPermissions = requestAudioAccess()
-        }
+        hasPermissions = await self.avAuthorization(mediaType: .audio)
         return hasPermissions
     }
 
-    func requestCameraAccess() -> Bool {
-        var hasCameraPermission = false
-        let semaphore = DispatchSemaphore(value: 0)
-        AVCaptureDevice.requestAccess(for: .video, completionHandler: { granted in
-            hasCameraPermission = granted
-            semaphore.signal()
-        })
-        semaphore.wait()
-        return hasCameraPermission
-    }
-
-    func requestAudioAccess() -> Bool {
-        var hasAudioPermission = false
-        let semaphore = DispatchSemaphore(value: 0)
-        AVCaptureDevice.requestAccess(for: .audio, completionHandler: { granted in
-            hasAudioPermission = granted
-            semaphore.signal()
-        })
-        semaphore.wait()
-        return hasAudioPermission
+    func avAuthorization(mediaType: AVMediaType) async -> Bool {
+        let mediaAuthorizationStatus = AVCaptureDevice.authorizationStatus(for: mediaType)
+        switch mediaAuthorizationStatus {
+        case .denied, .restricted: return false
+        case .authorized: return true
+        case .notDetermined:
+            return await withCheckedContinuation { continuation in
+                AVCaptureDevice.requestAccess(for: mediaType) { granted in
+                    continuation.resume(returning: granted)
+                }
+            }
+        @unknown default: return false
+        }
     }
     ```
 3.  **Show status updates to your users**
@@ -93,7 +78,7 @@ When your <Vpl k="CLIENT" /> launches, ensure that the permissions necessary to 
 </PlatformWrapper>
 
 
-### Implement the <Vpd k="PRODUCT" /> logic
+### Implement the channel logic
 
 When a user opens this <Vpl k="CLIENT" />, you initialize the  <Vg k="ENGINE" />. When the user taps a button, the <Vpl k="CLIENT" /> joins or leaves a channel.
 
@@ -102,7 +87,7 @@ The following figure shows the <Vpd k="SDK" /> call sequence of implementing   <
 <ProductWrapper product="video-calling">
 ![video call logic ios](/images/video-sdk/video-call-logic-ios.svg)
 </ProductWrapper>
-  <ProductWrapper product="interactive-live-streaming">
+  <ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
 ![ils call logic ios](/images/video-sdk/ils-call-logic-ios.svg)
 </ProductWrapper>
 
@@ -182,12 +167,19 @@ To implement this logic, take the following steps:
     }
     ```
 
+    <PlatformWrapper platform="ios">
+    <div class="note alert">You can enable both cameras using <Link to="{{Global.API_REF_IOS_ROOT}}/class_irtcengine.html#api_irtcengine_enablemulticamera">enableMultiCamera</Link>.</div>
+    </PlatformWrapper>
+    <PlatformWrapper platform="macos">
+    <div class="note alert">You can enable both cameras using <Link to="{{Global.API_REF_MACOS_ROOT}}/class_irtcengine.html#api_irtcengine_enablemulticamera">enableMultiCamera</Link>.</div>
+    </PlatformWrapper>
+
 5.  **Join and leave a channel**
 
     <ProductWrapper product="video-calling">
     You assign all users in the channel the `.broadcaster` role. This role has rights to stream video and audio to a channel. For  <Vpd k="PRODUCT" />, set all users as `.broadcaster`.
     </ProductWrapper>
-      <ProductWrapper product="interactive-live-streaming">
+      <ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
     You assign event hosts the `.broadcaster` role. This role has rights to stream video and audio to a channel, the audience views content streamed to the channel by the broadcaster, For   <Vpd k="PRODUCT" />, set the role chosen by the <Vpl k="CLIENT" /> user.
     </ProductWrapper>
 
@@ -195,7 +187,7 @@ To implement this logic, take the following steps:
 
     <JoinAndLeave />
 
-<ProductWrapper product="interactive-live-streaming">
+<ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
 6.  **Enable the user to join a channel as the host or the audience**
     In `ViewController`, replace the existing `func roleAction(sender: UISegmentedControl!)` function with the following:
 

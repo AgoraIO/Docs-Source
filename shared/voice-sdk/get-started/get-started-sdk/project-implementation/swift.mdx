@@ -30,25 +30,24 @@ When your <Vpl k="CLIENT" /> launches, ensure that the permissions necessary to 
     In `ViewController`, add the following lines after the `buttonAction(sender: UIButton!)` function:
 
     ``` swift
-    func checkForPermissions() -> Bool {
-        var hasPermissions = false
-
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-            case .authorized: hasPermissions = true
-            default: hasPermissions = requestAudioAccess()
-        }
+    func checkForPermissions() async -> Bool {
+        let hasPermissions = await self.avAuthorization(mediaType: .audio)
         return hasPermissions
     }
 
-    func requestAudioAccess() -> Bool {
-        var hasAudioPermission = false
-        let semaphore = DispatchSemaphore(value: 0)
-        AVCaptureDevice.requestAccess(for: .audio, completionHandler: { granted in
-            hasAudioPermission = granted
-            semaphore.signal()
-        })
-        semaphore.wait()
-        return hasAudioPermission
+    func avAuthorization(mediaType: AVMediaType) async -> Bool {
+        let mediaAuthorizationStatus = AVCaptureDevice.authorizationStatus(for: mediaType)
+        switch mediaAuthorizationStatus {
+        case .denied, .restricted: return false
+        case .authorized: return true
+        case .notDetermined:
+            return await withCheckedContinuation { continuation in
+                AVCaptureDevice.requestAccess(for: mediaType) { granted in
+                    continuation.resume(returning: granted)
+                }
+            }
+        @unknown default: return false
+        }
     }
     ```
     3.  **Show status updates to your users**
@@ -135,7 +134,7 @@ To implement this logic, take the following steps:
 
     ``` swift
     func joinChannel() {
-        if !self.checkForPermissions() {
+        if await !self.checkForPermissions() {
             showMessage(title: "Error", text: "Permissions were not granted")
             return
         }
@@ -168,7 +167,7 @@ To implement this logic, take the following steps:
     func leaveChannel() {
         let result = agoraEngine.leaveChannel(nil)
         // Check if leaving the channel was successful and set joined Bool accordingly
-        if (result == 0) { joined = false }
+        if result == 0 { joined = false }
     }
     ```
 

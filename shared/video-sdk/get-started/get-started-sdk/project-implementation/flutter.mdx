@@ -23,6 +23,8 @@ Import the necessary <Vpl k="NAME" /> libraries and set up the <Vpl k="CLIENT" /
     * Create a stateful widget
     * Declare the connection variables including the `appId`, `channelName`, and `token`.
     * Add a method to display information to the user
+
+    Note: To allow `AgoraVideoView` to render the local video, you need to set uid to `0`.
         
     To create this framework, paste the following code in `/lib/main.dart` after the import statements:
 
@@ -61,7 +63,7 @@ Import the necessary <Vpl k="NAME" /> libraries and set up the <Vpl k="CLIENT" /
     ```
     </ProductWrapper>
 
-    <ProductWrapper product="interactive-live-streaming">
+    <ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
     ```dart
     const String appId = "<--Insert app ID here-->";
 
@@ -105,7 +107,7 @@ To implement the user interface, you create the following UI elements:
 
 * An `AgoraVideoView` widget to display the local video preview.
 * An `AgoraVideoView` widget to render the remote video.
-<ProductWrapper product="interactive-live-streaming">
+<ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
 * Two radio buttons to enable users to switch client role.
 </ProductWrapper>
 * A button to **Join** a channel.
@@ -170,7 +172,7 @@ To implement this user interface, copy the following code into `_MyAppState` cla
         return AgoraVideoView(
             controller: VideoViewController(
             rtcEngine: agoraEngine,
-            canvas: VideoCanvas(uid: uid),
+            canvas: VideoCanvas(uid: 0),
             ),
         );
         } else {
@@ -203,7 +205,7 @@ To implement this user interface, copy the following code into `_MyAppState` cla
     ```
     </ProductWrapper>
 
-    <ProductWrapper product="interactive-live-streaming">
+    <ProductWrapper product={"interactive-live-streaming"}>
     ``` dart
     // Build UI
     @override
@@ -269,15 +271,116 @@ To implement this user interface, copy the following code into `_MyAppState` cla
                 textAlign: TextAlign.center,
             );
         } else if (_isHost) {
-            // Local user joined as a host
+            // Show local video preview
             return AgoraVideoView(
                 controller: VideoViewController(
                 rtcEngine: agoraEngine,
-                canvas: VideoCanvas(uid: uid),
+                canvas: VideoCanvas(uid: 0),
                 ),
             );
         } else {
-            // Local user joined as audience
+            // Show remote video
+            if (_remoteUid != null) {
+                return AgoraVideoView(
+                controller: VideoViewController.remote(
+                    rtcEngine: agoraEngine,
+                    canvas: VideoCanvas(uid: _remoteUid),
+                    connection: RtcConnection(channelId: channelName),
+                ),
+                );
+            } else {
+                return const Text(
+                'Waiting for a host to join',
+                textAlign: TextAlign.center,
+                );
+            }
+        }
+    }
+
+    // Set the client role when a radio button is selected
+    void _handleRadioValueChange(bool? value) async {
+        setState(() {
+        _isHost = (value == true);
+        });
+        if (_isJoined) leave();
+    }
+    ```
+    </ProductWrapper>
+    <ProductWrapper product={"broadcast-streaming"}>
+    ``` dart
+    // Build UI
+    @override
+    Widget build(BuildContext context) {
+        return MaterialApp(
+        scaffoldMessengerKey: scaffoldMessengerKey,
+        home: Scaffold(
+            appBar: AppBar(
+                title: const Text('Get started with Broadcast Streaming'),
+            ),
+            body: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                children: [
+                // Container for the local video
+                Container(
+                    height: 240,
+                    decoration: BoxDecoration(border: Border.all()),
+                    child: Center(child: _videoPanel()),
+                ),
+                // Radio Buttons
+                Row(children: <Widget>[
+                    Radio<bool>(
+                        value: true,
+                        groupValue: _isHost,
+                        onChanged: (value) => _handleRadioValueChange(value),
+                    ),
+                    const Text('Host'),
+                    Radio<bool>(
+                        value: false,
+                        groupValue: _isHost,
+                        onChanged: (value) => _handleRadioValueChange(value),
+                    ),
+                    const Text('Audience'),
+                ]),
+                // Button Row
+                Row(
+                    children: <Widget>[
+                    Expanded(
+                        child: ElevatedButton(
+                        child: const Text("Join"),
+                        onPressed: () => {join()},
+                        ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                        child: ElevatedButton(
+                        child: const Text("Leave"),
+                        onPressed: () => {leave()},
+                        ),
+                    ),
+                    ],
+                ),
+                // Button Row ends
+                ],
+            )),
+        );
+    }
+
+    Widget _videoPanel() {
+        if (!_isJoined) {
+            return const Text(
+                'Join a channel',
+                textAlign: TextAlign.center,
+            );
+        } else if (_isHost) {
+            // Show local video preview
+            return AgoraVideoView(
+                controller: VideoViewController(
+                rtcEngine: agoraEngine,
+                canvas: VideoCanvas(uid: 0),
+                ),
+            );
+        } else {
+            // Show remote video
             if (_remoteUid != null) {
                 return AgoraVideoView(
                 controller: VideoViewController.remote(
@@ -314,7 +417,7 @@ The following figure shows the API call sequence of implementing  <Vpd k="PRODUC
 <ProductWrapper product="video-calling">
 ![image](/images/video-sdk/video-call-logic-flutter.svg)
 </ProductWrapper>
-<ProductWrapper product="interactive-live-streaming">
+<ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
 ![image](/images/video-sdk/ils-call-logic-flutter.svg)
 </ProductWrapper>
 
@@ -410,7 +513,7 @@ To implement this logic, take the following steps:
     ```
     </ProductWrapper>
 
-    <ProductWrapper product="interactive-live-streaming">
+    <ProductWrapper product={"interactive-live-streaming"}>
     ``` dart
     void join() async {
 
@@ -440,10 +543,47 @@ To implement this logic, take the following steps:
     }
     ```
     </ProductWrapper>
+    <ProductWrapper product="broadcast-streaming">
+    ``` dart
+    void join() async {
+
+        // Set channel options
+        ChannelMediaOptions options;
+
+        // Set channel profile and client role
+        if (_isHost) {
+            options = const ChannelMediaOptions(
+                clientRoleType: ClientRoleType.clientRoleBroadcaster,
+                channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+            );
+            await agoraEngine.startPreview();
+        } else {
+            options = const ChannelMediaOptions(
+                clientRoleType: ClientRoleType.clientRoleAudience,
+                channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+            );
+            // Set the latency level
+            audienceLatencyLevel: AudienceLatencyLevelType.audienceLatencyLevelLowLatency,
+
+        }
+
+        await agoraEngine.joinChannel(
+            token: token,
+            channelId: channelName,
+            options: options,
+            uid: uid,
+        );
+    }
+    ```
+
+
+    For <Vg k="BS" /> choose `audienceLatencyLevelLowLatency`. Low latency is a feature of <Vg k="BS" /> and its use is subject to special [pricing](../reference/pricing#unit-pricing).
+
+    </ProductWrapper>
 
 1.  **Leave the channel when a user ends the call**
 
-    When a user clicks **Leave**, you call `leave()` to exit the channel. In `_MyAppState` class, add the following code before `showMessage`:
+    When a user presses **Leave**, you call `leave()` to exit the channel. In `_MyAppState` class, add the following code before `showMessage`:
 
     ``` dart
     void leave() {
@@ -455,15 +595,16 @@ To implement this logic, take the following steps:
     }
     ```
 
-1.  **Clean up the resources used by your <Vpl k="CLIENT" />**
+1.  **Release the resources used by your <Vpl k="CLIENT" />**
 
     When a user closes the <Vpl k="CLIENT" />, use the `dispose` callback to clean up the resources you created. In `_MyAppState` class, add the following code before `showMessage`:
 
     ``` dart
-    // Clean up the resources when you leave
+    // Release the resources when you leave
     @override
     void dispose() async {
         await agoraEngine.leaveChannel();
+        agoraEngine.release();
         super.dispose();
     }
     ```

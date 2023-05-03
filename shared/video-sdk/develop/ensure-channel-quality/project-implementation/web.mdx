@@ -1,4 +1,4 @@
-<PlatformWrapper platform="web">
+  <PlatformWrapper platform="web">
 
 ### Implement the user interface
 
@@ -6,12 +6,18 @@ To integrate the call-quality optimization features into your <Vpl k="CLIENT" />
 
 * Labels to show the last-mile uplink and downlink network quality. 
 * Two buttons, one to start and stop mixing an audio file and one to enable call quality statistics.
+* Two dropdowns to display the list of available audio/video devices.
 
 To do this, open `index.html` and add the following lines after `<button type="button" id="leave">Leave</button>`:
 
 ```html
 <button type="button" id="audioMixing">Start audio mixing</button>
 <button type="button" id="statistics">Show Statistics</button><br>
+<label>Audio Devices: </label>
+<select id = "audioDevices" ></select><br>
+<label>Video Devices: </label>
+<select id = "videoDevices" ></select>
+<button type="button" id="testDevices">Start Audio/Video device test</button><br>
 <label id= "upLinkLabel">UplinkQuality :</label>
 <label id= "upLinkIndicator">Good</label><br>
 <label id= "downLinkLabel">DownlinkQuality :</label>
@@ -27,6 +33,15 @@ To do this, open `index.html` and add the following lines after `<button type="b
     ```javascript
     // A variable to track the state of remote video quality.
     var isHighRemoteVideoQuality = false;
+    // A variable to track the state of device test.
+    var isDeviceTestRunning = false;
+    // Variables to hold the Audio/Video tracks for device testing.
+    var videoTrack;
+    var audioTrack;
+    // A variable to reference the audio devices dropdown.
+    var audioDevicesDropDown;
+    // A variable to reference the video devices dropdown.
+    var videoDevicesDropDown;
     ```
 
 ### Implement features to ensure quality
@@ -35,9 +50,16 @@ To do this, open `index.html` and add the following lines after `<button type="b
 
     When you start your <Vpl k="CLIENT" />, it does the following:
 
+    <PlatformWrapper platform="web">
+    - _Display the available audio and video devices_: Populate the dropdowns with the list of available audio/video devices connected to the user's device.
+    - _Set an audio profile_: Setting an audio profile is optional and only required if you have special requirements such as streaming  music. If you do not set an audio profile, the default audio profile for web is `music_standard`.
+    </PlatformWrapper>
+    <PlatformWrapper notAllowed="web">
     - _Set an audio profile_: Setting an audio profile is optional and only required if you have special requirements such as streaming  music.
-    - _Set a video profile_: Setting a video profile is also optional. It is useful when you want to change one or more of  `frameRate`, `bitrate`, `width`, and `height` from default setting to custom values.
-    - _Set a transmission optimization mode_: Required to ensure video quality and smoothness under poor network conditions. 
+    </PlatformWrapper>
+    - _Set a video profile_: Setting a video profile is also optional. It is useful when you want to change one or more of  `frameRate`, `bitrate`, `width`, and `height` from the default setting to custom values.
+       For more information, see  [video profile table](#video-profile-table).
+    - _Set a transmission optimization mode_: Required to ensure video quality and smoothness under poor network conditions.
     - _Enable dual stream mode_: Required for fallback and multi-user scenarios.
     - _Set video stream fallback_: Define fallback for publishing the local video stream and subscription to remote streams.
 
@@ -101,6 +123,73 @@ To do this, open `index.html` and add the following lines after `<button type="b
         // Set a stream fallback option to automatically switch remote video quality when network conditions degrade. 
         agoraEngine.setStreamFallbackOption(channelParameters.remoteUid, 1);
         ```
+    1. **Display the available audio and video devices**
+
+       You use `getDevices` to retrieve the list of available audio and video devices connected to the user's device. You then filters the list to separate audio and video devices, create an HTML option element for each device and appends it to the appropriate dropdown list in the web page. To implement this logic, in `main.js`, add the following before `agoraEngine.on("user-published", async (user, mediaType) =>`
+
+        ```javascript
+        AgoraRTC.getDevices()
+        .then(devices => 
+        {
+            const audioDevices = devices.filter(function(device)
+            {
+                return device.kind === "audioinput";
+            });
+            const videoDevices = devices.filter(function(device)
+            {
+                return device.kind === "videoinput";
+            });
+            audioDevicesDropDown = document.getElementById("audioDevices");
+            videoDevicesDropDown = document.getElementById("videoDevices");
+            for (let i = 0; i < audioDevices.length; i++) 
+            {
+                var option = document.createElement("option");
+                option.text = audioDevices[i].label;
+                option.value = audioDevices[i].deviceId;
+                audioDevicesDropDown.appendChild(option)
+            }
+            for (let i = 0; i < videoDevices.length; i++) 
+            {
+                var option = document.createElement("option");
+                option.text = videoDevices[i].label;
+                option.value = videoDevices[i].deviceId;
+                videoDevicesDropDown.appendChild(option)
+            }
+        });
+        ```
+
+1. **Enable the user to test the selected audio/video devices**
+
+    Create a video track and an audio track using the selected device IDs and append a container element to the body of the document and play the video and audio tracks in that container. To implement this logic, in `main.js`, add the following before `document.getElementById("join").onclick = async function ()`:
+
+    ```javascript
+    document.getElementById('testDevices').onclick = async function ()
+    {
+        if(isDeviceTestRunning == false)
+        {
+            videoTrack = AgoraRTC.createCameraVideoTrack({ cameraId: videoDevicesDropDown.value});
+            audioTrack = AgoraRTC.createMicrophoneAudioTrack({ microphoneId: audioDevicesDropDown.value });
+            document.body.append(localPlayerContainer);
+            (await videoTrack).play(localPlayerContainer);
+            (await audioTrack).play();
+            isDeviceTestRunning = true;
+            document.getElementById("testDevices").innerHTML = "Stop test";
+        }
+        else
+        {
+            document.getElementById("testDevices").innerHTML = "Start audio/video device test";
+            isDeviceTestRunning = false;
+            let Div = document.getElementById(localPlayerContainer.id);
+            Div.remove();
+            (await videoTrack).close();
+            (await audioTrack).close();
+        }
+    }
+    ```
+    Due to browser security limitations, the <Vg k="COMPANY" /> Web SDK does not provide any API method for testing the audio playback device. You can test the audio playback device in either of the following ways:
+
+      1. Use the HTML5 `<audio>` element to create an audio player on the web page for users to play an online audio file and confirm whether they can hear the sound.
+      2. After creating a microphone audio track, call `MicrophoneAudioTrack.play` to play the audio and check whether they can hear the audio.
 
 1. **Add the connection state monitoring callback function**
 

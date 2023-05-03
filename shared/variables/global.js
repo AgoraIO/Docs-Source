@@ -120,7 +120,7 @@ export const IOT = `IoT SDK`;
 export const IOT_RELEASE_API = `1.x`;
 
 //export const IOT_SDK_API_REF_ROOT = `${API_ROOT}/iot-sdk`;
-export const IOT_SDK_API_REF_ROOT = `https://api-reference-staging-git-milestone43-media-s-08dfa0-agora-gdxe.vercel.app/iot-sdk`
+export const IOT_SDK_API_REF_ROOT = `https://api-ref.agora.io/en/iot-sdk`
 export const IOT_SDK_API_REF_ANDROID = `${IOT_SDK_API_REF_ROOT}/android/${IOT_RELEASE_API}`
 export const IOT_SDK_API_REF_LNX_C = `${IOT_SDK_API_REF_ROOT}/linux/${IOT_RELEASE_API}`
 export const PS = 'Pub-Sub';

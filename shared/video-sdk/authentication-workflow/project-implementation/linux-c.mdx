@@ -1,0 +1,200 @@
+<PlatformWrapper platform="linux-c">
+
+1.  **Add an HTTPS library to your project**
+
+    To send requests to your token server, you add an HTTPS library to your project. In this example, you use the [`libcurl`](https://curl.se/libcurl/) file transfer library.
+
+    1.  [Download and install](https://curl.se/download.html#Linux) a suitable `libcurl` package for your hardware and Linux distribution.
+
+    1. On Ubuntu Linux, use the following commands to install the package:
+
+        ```bash
+        sudo apt update && sudo apt upgrade
+
+        sudo apt-get install libcurl4-gnutls-dev
+        ```
+
+    1. Integrate the `libcurl` library into your project. Open  `<extracted-folder>/agora_rtsa_sdk/example/hello_rtsa/CMakeLists.txt` and add the following line after `target_link_libraries(hello_rtsa agora-rtc-sdk file_parser ${LIBS})`:
+    
+        ```bash
+        target_link_libraries(hello_rtsa -lcurl)
+        ```
+
+    1. Include the header in your code. Open `<extracted-folder>/agora_rtsa_sdk/example/hello_rtsa/hello_rtsa.c` and add the following to the list of `#include` statements:
+    
+        ```c
+        #include <curl/curl.h>
+        ```
+
+1.  **Add variables for your connection to the token server**
+
+    Declare the variables you need to specify the token role, the token server base URL, and the token expire time. Add the following declarations to `main()` after `char params[512];`:
+
+    ```c 
+    int token_role = 1; // The token role: Broadcaster or Audience
+    char* server_url = "<Token Server URL>"; // The base URL to your token server. For example, "https://agora-token-service-production-xxxx.up.railway.app".
+    int token_expire_time = 60; // Time in seconds after which the token will expire.
+    ```
+
+    Make sure you specify the token server URL in exactly the same format as shown in the example.
+
+1. **Retrieve a token from the server**
+
+    To retrieve a token, you build the URL and send your request to the token server. In `hello_rtsa.c`, add the following `fetch_token()` and helper methods before `main()`:
+
+    ```c 
+    size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream) 
+    {
+        size_t realsize = size * nmemb;
+        char *buffer = (char*)stream;
+        memcpy(buffer, ptr, realsize);
+        return realsize;
+    }
+
+    char *request_token_from_server(const char * request_url) 
+    {
+        CURL *tcurl;
+        char *buffer = NULL;
+        CURLcode res;
+        tcurl = curl_easy_init();
+        if (tcurl) {
+            curl_easy_setopt(tcurl, CURLOPT_URL, request_url);
+            curl_easy_setopt(tcurl, CURLOPT_WRITEFUNCTION, write_data);
+            buffer = malloc(1024);  // Allocate memory for the buffer
+            if (buffer == NULL) {
+                fprintf(stderr, "Failed to allocate memory\n");
+                return NULL;
+            }
+            curl_easy_setopt(tcurl, CURLOPT_WRITEDATA, buffer);  // Pass pointer to buffer
+            res = curl_easy_perform(tcurl);
+            if(res != CURLE_OK){
+            fprintf(stderr, "curl_easy_perform() failed: %s\n",   curl_easy_strerror(res));
+            curl_easy_cleanup(tcurl);
+            return NULL;
+            }
+            curl_easy_cleanup(tcurl);
+        }
+        
+        const char *delim = ":";
+        char *token = strtok(buffer, delim);  // Tokenize the input string
+        while (token != NULL) {
+            token = strtok(NULL, delim);  // Get the next token
+            if (token != NULL && token[0] == '"') { // Check if the value is a string
+                    token++; // Skip the opening quote
+                    char *value = strchr(token, '"'); // Find the closing quote
+                    if (value != NULL) {
+                        *value = '\0'; // Replace closing quote with null character
+                        return token; // Return the value
+                    }
+            }
+        }
+        free(buffer);
+        return NULL;
+    } 
+
+    char *fetch_token(const char * server_url,const char* channel_name, int token_role, size_t uid, int token_expire_time)
+    {
+        // Prepare the URL
+        char request_url[512];
+        memset(request_url, '\0', sizeof(request_url));
+        snprintf(request_url, sizeof(request_url), "%s/rtc/%s/%d/uid/%zu/?expiry=%d",server_url,channel_name,token_role,uid,token_expire_time);
+        
+        // Return the token
+        return request_token_from_server(request_url);
+    }
+    ```
+
+1.  **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
+
+    A token expires after the `token_expire_time` specified in the call to the token server or expires after 24 hours, if the time is not specified. The `on_token_privilege_will_expire` event receives a callback when the current token is about to expire so that a fresh token may be retrieved and used.
+    To implement this callback, make the following changes in `hello_rtsa.c`:
+
+    1. Declare a global boolean variable to indicate that the current token is about to expire. To do this, in `hello_rtsa.c` add the following code before function `static void app_signal_handler(int sig)`:
+
+        ```c 
+        bool token_privilege_will_expire = false;
+        ```
+
+    1. To register the `on_token_privilege_will_expire` event to an event handler, add the following line to `app_init_event_handler` after `event_handler->on_license_validation_failure = __on_license_failed;`:
+
+        ```c 
+        event_handler->on_token_privilege_will_expire = __on_token_privilege_will_expire;
+        ```
+
+    1. To handle the `on_token_privilege_will_expire` event, add the following code before the `app_init_event_handler` function:
+
+        ```c
+        static void __on_token_privilege_will_expire(connection_id_t conn_id, const char *token)
+        {
+            LOGW("[conn-%u] on_token_privilege_will_expire: Current Token = \"%s\"", conn_id,token);
+            token_privilege_will_expire = true;
+        }
+        ```
+
+1.  **Join a channel using a fetched token**
+
+    Use `fetch_token` to retrieve a token from the server before joining a channel.
+    In `main()`, replace the line with the call to `agora_rtc_join_channel` with the following: 
+
+    ```c 
+    if (p_token) 
+    {
+	    rval = agora_rtc_join_channel(g_app.conn_id, config->p_channel, config->uid, p_token, &channel_options);
+    } 
+    else
+    {
+        // Fetch a token
+        char * first_token = fetch_token(server_url, config->p_channel, token_role, config->uid, token_expire_time);
+
+        // Join a channel with the token
+        if (first_token)
+        {
+            rval = agora_rtc_join_channel(g_app.conn_id, config->p_channel, config->uid, first_token, &channel_options);
+        }
+        else
+        {
+            LOGI("Failed to fetch the initial token; cannot join the channel");
+        } 
+    }
+    ```	
+
+1.  **Renew the token when it is about to expire**
+
+    When the `on_token_privilege_will_expire` event fires, you set the `token_privilege_will_expire` flag to `true` to indicate that the token must be renewed. In your streaming loop, you check this flag and renew the token when required. To do this, add the following code inside the `while (!g_app.b_stop_flag)` loop before `if (config->receive_data_only)`:
+
+    ```c 
+    if (token_privilege_will_expire) 
+    {
+        // Fetch a new token 
+        char * new_token = fetch_token(server_url, config->p_channel, token_role, config->uid, token_expire_time);
+        if (new_token)
+        {
+            if (!g_app.b_connected_flag) // Not connected
+            { 
+                // Join the channel with the new token
+                rval = agora_rtc_join_channel(g_app.conn_id, config->p_channel, config->uid, new_token, &channel_options);
+                if (rval < 0) 
+                {
+                    LOGE("Failed to join channel \"%s\", reason: %s", config->p_channel, agora_rtc_err_2_str(rval));
+                    return -1;
+                }
+                LOGI("Connection lost. Join the channel again with new token.New Token = \"%s\" ", new_token);
+            } 
+            else 
+            { // Already joined, renew the token 
+                rval = agora_rtc_renew_token(g_app.conn_id,new_token);
+                if (rval < 0) {
+                    LOGE("Failed to renew the token, reason: %s",agora_rtc_err_2_str(rval));
+                    return -1;
+                }
+                LOGI("Token renewed successfully. New Token = \"%s\" ", new_token);
+            }
+        }
+        else 
+        {
+            LOGI("Failed to fetch a new token. The current token will expire soon.");
+        }
+        token_privilege_will_expire = false; // Set the renew flag to false
+    }
+    ```
+</PlatformWrapper>

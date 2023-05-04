@@ -1,38 +1,182 @@
+<ProductWrapper product="video-calling, voice-calling, interactive-live-streaming, broadcast-streaming">
 
-When using <Vg k="NCS_LONG" /> to maintain the online status of your app users, your server might experience the following issues:
+### Implement online user status tracking
 
-* **Message notifications are redundant**. You receive multiple notifications because the Agora <Vg k="NCS_LONG" /> server can send more than one notification callback for each channel event to ensure reliability of the service.
+This section provides sample Java code to show how to use channel event callbacks to maintain online user status at your app server.
 
-* **Message notifications arrive out of order**. Network issues cause callbacks to arrive at your server in a different order than the order of event occurrence.
+To maintain a user registry, take the following steps:
 
-To accurately maintain the online status of users, your server needs to be able to deal with redundant notifications and handle received notifications in the same order as events occur. The following section shows you how to use channel event callbacks to accomplish this.
+1. Create a new file in you JAVA project folder named `UserRegistry.java` containing the following code.
 
-#### Handle redundant or out of order notifications
+    ```java
+    import java.util.HashMap;
+    import java.util.Timer;
+    import java.util.TimerTask;
 
-Agora <Vg k="NCS_LONG" /> sends RTC channel event callbacks to your server. All channel events, except for `101` and `102` events, contain the `clientSeq` field (Unit64) in `payload`, which represents the sequence number of an event. This field is used to identify the order in which events occur on the app client. For notification callbacks reporting the activities of the same user, the value of the `clientSeq` field increases as events happen.
+    public class UserRegistry {
+        public static int EVENT_BROADCASTER_JOIN = 103;
+        public static int EVENT_BROADCASTER_QUIT = 104;
+        public static int EVENT_AUDIENCE_JOIN = 105;
+        public static int EVENT_AUDIENCE_QUIT = 106;
+        public static int EVENT_CHANGE_ROLE_TO_BROADCASTER = 111;
+        public static int EVENT_CHANGE_ROLE_TO_AUDIENCE = 112;
+        
+        public static int ROLE_BROADCASTER = 1;
+        public static int ROLE_AUDIENCE = 2;
+        public static int WAIT_TIMEOUT_MS = 60 * 1000;
+        private static Timer timer = new Timer();
 
-Refer to the following steps to use the `clientSeq` field to enable your server to handle redundant messages, and messages arriving out of order:
+        class User { // Holds user information
+            int uid; // user ID
+            int role; // user role
+            boolean isOnline; // whether the user is in a channel
+            long lastClientSeq; // clientSeq of the last event handled by your server
 
-1. Enable Agora <Vg k="NCS_LONG" />, and subscribe to RTC channel event callbacks. Best practice is to subscribe to the following event types according to your scenario:
+            public User(int uid, int role, boolean isOnline, long clientSeq) {
+                this.uid = uid;
+                this.role = role;
+                this.isOnline = isOnline;
+                this.lastClientSeq = clientSeq;
+            }
+        };
 
-    * In the `LIVE_BROADCASTING` profile: `103`, `104`, `105`, `106`, `111`, and `112`.
-    * In the `COMMUNICATION` profile: `103`, `104`, `111`, and `112`.
+        // Channel list
+        private static HashMap<String, Channel> channels = new HashMap<>();;
 
-1. Use the channel event callbacks to get the latest status updates about the following at your server:
+        class Channel { // Holds the list of users in each channel
+            HashMap<Integer, User> users = new HashMap<>();
+        };
 
-    * Channel lists
-    * User lists in each channel
-    * Data for each user, including the user ID, user role, whether the user is in a channel, and `clientSeq` of channel events
+        // Process Agora Notifications  callbacks to update user registry
+        public void HandleNcsEvent(String channelName, int uid, int eventType, long clientSeq) {
+            // Check the eventType to process events that notify of users joining or
+            // leaving a channel or a change in the user role
+            if (eventType != EVENT_BROADCASTER_JOIN &&
+                eventType != EVENT_BROADCASTER_QUIT &&
+                eventType != EVENT_AUDIENCE_JOIN &&
+                eventType != EVENT_AUDIENCE_QUIT &&
+                eventType != EVENT_CHANGE_ROLE_TO_BROADCASTER &&
+                eventType != EVENT_CHANGE_ROLE_TO_AUDIENCE) {
+                
+                return;
+            }
 
-1. When receiving notification callbacks of a user, search for the user in the user lists. If there is no data for the user, create data specific to the user.
+            // Determine whether a user is online
+            boolean isOnlineInNotice = IsUserOnlineInNotice(eventType);
+            // Get the user role from eventType
+            int roleInNotice = GetUserRoleInNotice(eventType);
 
-1. Compare the value in the `clientSeq` field of the latest notification callback you receive with that of the last notification callback handled by your server:
+            Channel channel = channels.get(channelName);
+            if (channel == null) {
+                // If a channel does not exist, create a channel and add it to the list
+                channel = new Channel();
+                channels.put(channelName, channel);
+                System.out.println("New channel " + channelName + " created");
+            }
 
-    * If the former is greater than the latter, the notification callback needs to be handled.
-    * If the former is less than the latter, the notification callback should be ignored.
+            User user = channel.users.get(uid);
+            // Get whether a user has left a channel
+            boolean isQuit = !isOnlineInNotice && (user == null || user.isOnline);
+            if (user == null) {
+                // Create a new user and add it to the user list of the corresponding channel
+                user = new User(uid, roleInNotice, isOnlineInNotice, clientSeq);
+                channel.users.put(uid, user);
 
-1. When receiving notification callbacks reporting a user leaving a channel, wait for one minute before deleting the user data. If it is deleted immediately, your server cannot handle notifications in the same order as channel events happen when receiving redundant notifications or notifications out of order.
+                if (isOnlineInNotice) {
+                    System.out.println("New User " + uid + " joined channel " + channelName);
+                } else {
+                    // Set a timer for deleting a user's data after the user leaves a channel
+                    DelayedRemoveUserFromChannel(channelName, uid, clientSeq);
+                }
+            } else if (clientSeq > user.lastClientSeq) {
+                /*
+                * If the data for a user already exists, compare the clientSeq
+                * of the latest notification with that of the last notification
+                * callback handled by your server. If the latest value is greater,
+                * update the user data; otherwise, ignore the notification callback.
+                */
+                user.role = roleInNotice;
+                user.isOnline = isOnlineInNotice;
+                user.lastClientSeq = clientSeq;
 
-#### Deal with abnormal user activities
+                if (isQuit) {
+                    // Mark the status of a user as offline, and delete the user after one minute
+                    System.out.println("User " + uid + " quit channel " + channelName);
+                    DelayedRemoveUserFromChannel(channelName, uid, clientSeq);
+                }
+            }
+        }
 
-When your server receives a notification callback of event `104` with reason as `999`, it means that the user is considered to have abnormal activities due to frequent login and logout actions. In this case, best practice is that your server calls the Banning user privileges API to remove the user from the current channel one minute after receiving such notification callback; otherwise, the notification callbacks your server receives about the user's events might be redundant or arrive out of order, which makes it hard for you to accurately maintain the online status of this user.
+        // Set a timer for deleting the data of an offline user
+        private void DelayedRemoveUserFromChannel(final String channelName, final int uid, final long clientSeq) {
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    Channel channel = channels.get(channelName);
+                    if (channel == null) return;
+                    User user = channel.users.get(uid);
+                    if (user == null) return;
+
+                    // If the value in the clientSeq field changes, do not delete data
+                    if (user.lastClientSeq != clientSeq) return;
+
+                    if (!user.isOnline) {
+                        // Delete user data only when the user is offline
+                        channel.users.remove(uid);
+                        System.out.println("Removed user " + uid + " from channel " + channelName);
+                    } else {
+                        System.out.println("User " + uid + " is online while delayed removing, cancelled");
+                    }
+
+                    // If there are no users left in the channel, delete the channel
+                    if (channel.users.isEmpty()) {
+                        channels.remove(channelName);
+                        System.out.println("Removed channel " + channelName);
+                    }
+                }
+            }, WAIT_TIMEOUT_MS);
+        }
+
+        // Determine whether a user is online.
+        private static boolean IsUserOnlineInNotice(int eventType) {
+            return eventType == EVENT_BROADCASTER_JOIN ||
+                eventType == EVENT_AUDIENCE_JOIN ||
+                eventType == EVENT_CHANGE_ROLE_TO_BROADCASTER ||
+                eventType == EVENT_CHANGE_ROLE_TO_AUDIENCE;
+        }
+
+        // Get the user role.
+        private static int GetUserRoleInNotice(int eventType) {
+            if (eventType == EVENT_BROADCASTER_JOIN ||
+                eventType == EVENT_BROADCASTER_QUIT ||
+                eventType == EVENT_CHANGE_ROLE_TO_BROADCASTER) {
+            return ROLE_BROADCASTER;
+            } else {
+                return ROLE_AUDIENCE;
+            }
+        }
+    }
+    ```
+
+1. Instantiate the `UserRegistry` class
+
+    Add the following code to the `Handlers` class after `public class Handlers ` :
+
+    ```java
+      public static UserRegistry userRegistry = new UserRegistry();
+    ```
+
+
+1. To update the user registry when you receive a <Vg k="NCS_LONG" /> callback, add the following code to the `handle` method in the `NcsHandler` class after `os.close();`:
+
+    ```java
+    // Maintain user registry
+    userRegistry.HandleNcsEvent(channelName, uid, eventType, clientSeq);
+    ```
+
+When adopting the solutions recommended by <Vg k="COMPANY" /> to maintain user online status, you need to recognize the following:
+
+* The solutions only guarantee eventual consistency of user status.
+* To improve accuracy, notification callbacks specific to one channel must be handled in a single process.
+
+</ProductWrapper>

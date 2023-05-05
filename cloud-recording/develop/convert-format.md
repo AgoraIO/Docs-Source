@@ -44,7 +44,7 @@ Ensure that the recorded files are stored in an accessible directory.
 
 #### 1. Get the Format Converter Script
 
-Download the [Agora Format Converter Script](https://download.agora.io/acrsdk/release/Agora_Cloud_Recording_Tools_v2.8.0_20210820-1629467741_274.tar.gz) script and decompress it.
+Download the <Link target="_blank" to="{{Global.CREC_FCS}}">Agora Format Converter Script</Link> script and decompress it.
 
 #### 2. Execute the Format Converter script
 

@@ -49,17 +49,25 @@ const data = {
     PATH: 'windows',
     CLIENT: 'app'
   },
+
   'flutter': {
     NAME: 'Flutter',
     PATH: 'flutter',
     CLIENT: 'app'
   },
 
-  'windows': {
-    NAME: 'Windows',
-    PATH: 'windows',
+  'linux-cpp': {
+    NAME: 'Linux C++',
+    PATH: 'linux-cpp',
+    CLIENT: 'app'
+  },
+
+  'linux-c': {
+    NAME: 'Linux C',
+    PATH: 'linux-c',
     CLIENT: 'app'
   }
+  
 };
 
 export default data;

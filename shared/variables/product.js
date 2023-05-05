@@ -72,6 +72,14 @@ const data = {
     STREAM: 'broadcast streaming',
   },
 
+  'iot': {
+    NAME: 'IoT SDK',
+    PATH: 'iot',
+    SDK: 'IoT SDK',
+    PRODUCT: 'IoT'
+  },
+
+
   'agora-chat': {
     NAME: 'Chat',
     PATH: 'agora-chat',

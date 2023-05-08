@@ -9,9 +9,9 @@ description: >
 
 import SignatureVerification from '@docs/shared/notification-center-service/signature-verification.mdx';
 
-Agora provides the Message Notification Service. You can set up an HTTP/HTTPS server to receive the event notifications of Agora Cloud Recording. When an event occurs, the Agora Cloud Recording service notifies the Message Notification Service, and then the Message Notification Service notifies your server of that event through an HTTP/HTTPS request.
+Agora provides <Vg k="NCS_LONG" /> (<Vg k="NCS" />). You can set up an HTTP/HTTPS server to receive the event notifications of Agora Cloud Recording. When an event occurs, the Agora Cloud Recording service notifies the Message Notification Service, and then the Message Notification Service notifies your server of that event through an HTTP/HTTPS request.
 
-Agora recommends that core apps should not rely on the Message Notification Service. If your apps already rely heavily on the Message Notification Service, Agora recommends that you contact [support@agora.io](mailto:support@agora.io) to enable the redundant message notification function, which doubles the received notifications and reduces the probability of message loss. Redundant message notification still cannot guarantee a 100% arrival rate.
+Best practice is that core apps do not rely on <Vg k="NCS_LONG" /> (<Vg k="NCS" />). If your apps already rely heavily on the <Vg k="NCS" />, contact <a href="mailto:support@agora.io">support@agora.io</a> and enable the redundant message notification function. This doubles the received notifications and reduces the probability of message loss. After enabling the message notification function, you need to deduplicate messages based on `sid`. Message notification still cannot guarantee a 100% arrival rate.
 
 ## Callback information
 

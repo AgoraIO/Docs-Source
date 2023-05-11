@@ -1,0 +1,328 @@
+<PlatformWrapper platform="android">
+
+To implement either of the two multi-streaming methods, [update the UI](#implement-the-user-interface) and then follow the step-by-step procedure in the relevant section.
+
+### Implement the user interface
+
+ You add two buttons to the UI to enable users to start and stop sending two streams. 
+ 
+ 1. In `/app/res/layout/activity_main.xml`, add the following code before `</RelativeLayout>`:
+
+    ```xml
+    <Button
+        android:id="@+id/StreamButton1"
+        android:layout_margin="5dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/JoinButton"
+        android:onClick="stream1"
+        android:text="Start Stream 1" />
+
+    <Button
+        android:id="@+id/StreamButton2"
+        android:layout_margin="5dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/StreamButton1"
+        android:onClick="stream2"
+        android:text="Start Stream 2" />
+    ```
+
+    You see errors in your IDE. This is because this layout refers to methods that you create later.
+
+1.  To access and modify the buttons from your code, add the following to the list of `import` statements in `MainActivity.java`:
+
+    ``` java
+    import android.widget.Button;
+    ```
+### Push multiple streams to a single channel
+
+To send multiple audio and video streams to a single channel, take the following steps:
+
+1.  **Declare the variables you need**
+
+    To manage a second connection and a second stream, in `/app/java/com.example.<projectname>/MainActivity`, add the following variable declarations to the `MainActivity` class:
+
+    ```java
+    private int connectionId2; // Id of the second connection
+    private boolean isJoined2 = false; // Status of the second connection 
+    private int uid2 = 2; // User id for the second connection 
+    private VideoSendThread videoThread2 = null; // A second video thread
+    ```
+
+1. **Create multiple connections**
+
+    When the <Vpl k="CLIENT"/> starts, you create multiple connections. You can use each connection to send an audio and a video stream. To create two connections, in `setupAgoraRtcService` **replace** the code after `// Create a connection` with the following:
+
+    ```java
+    connectionId = agoraEngine.createConnection();
+    if (connectionId == AgoraRtcService.ConnectionIdSpecial.CONNECTION_ID_INVALID) {
+        showMessage("Failed to create connection 1");
+    } else {
+        showMessage("Connection1 created");
+    }
+
+    // Create a second connection
+    connectionId2 = agoraEngine.createConnection();
+    if (connectionId2 == AgoraRtcService.ConnectionIdSpecial.CONNECTION_ID_INVALID) {
+        showMessage("Failed to create connection 2");
+    } else {
+        showMessage("Connection2 created");
+    }
+    ```
+
+1. **Join the same channel multiple times**
+
+    When a user presses the **Join** button, you join the same channel twice with different user Ids and different connection Ids. To join the channel a second time, add the following code at the end of `joinChannel(View view)`:
+
+    ```java
+    // Join the same channel using the second connection
+    ret = agoraEngine.joinChannel(connectionId2, channelName,
+            uid2, token, channelOptions);
+    if (ret != AgoraRtcService.ErrorCode.ERR_OKAY) {
+        showMessage("joinChannel on connection2 failed!");
+        isJoined2 = false;
+    } else {
+        isJoined2 = true;
+    }
+    ```
+
+1. **Set joined status**
+
+    When your call to `agoraEngine.joinChannel` succeeds, you receive a notification through the `onJoinChannelSuccess` callback. You use connection Id to identify the connection and set the corresponding `isJoined` variable to true. To do this, **replace** the `onJoinChannelSuccess` method under `agoraRtcEvents` with the following: 
+
+    ```java
+    @Override
+    public void onJoinChannelSuccess(int connId, int uid, int elapsed_ms) {
+        if (connId == connectionId) {
+            // Successfully joined channel 1
+            isJoined = true;
+            showMessage("Successfully joined channel on connection1");
+        } else if (connId == connectionId2) {
+            // Successfully joined channel 2
+            isJoined2 = true;
+            showMessage("Successfully joined channel on connection2");
+        }
+    }
+    ```
+
+1. **Stream video over the first connection**
+
+    In this example, you start a video stream over the first connection and a second video stream over the second connection to the same channel. To start or stop the first stream when a user taps the **Start stream 1** button, add the following method to the `MainActivity` class:
+
+    ```java
+    public void stream1(View view) {
+        Button button = (Button) view;
+
+        if (!isJoined) {
+            showMessage("Join a channel first");
+            return;
+        } else if (videoThread != null && videoThread.isAlive()) {
+            videoThread.sendStop();
+            videoThread = null;
+            button.setText("Start stream 1");
+            return;
+        }
+        // Create a thread to send video frames
+        videoThread = new VideoSendThread(getApplicationContext(), agoraEngine,
+                channelName, connectionId);
+        // Start the video thread
+        videoThread.sendStart();
+        showMessage("Video thread started on connection1");
+        button.setText("Stop video stream on connection1");
+    }
+    ```
+
+1. **Stream video over the second connection**
+
+    To push another video stream to the same channel when a user taps the **Start stream 2** button, add the following method to the `MainActivity` class:
+
+    ```java
+    public void stream2(View view) {
+        Button button = (Button) view;
+
+        if (!isJoined2) {
+            showMessage("Join a channel first");
+            return;
+        } else if (videoThread2 != null && videoThread2.isAlive()) {
+            videoThread2.sendStop();
+            videoThread2 = null;
+            button.setText("Start stream 2");
+            return;
+        }
+        // Create a second thread to send video frames
+        videoThread2 = new VideoSendThread(getApplicationContext(), agoraEngine,
+                channelName, connectionId2);
+        // Start the second video thread
+        videoThread2.sendStart();
+        showMessage("Video thread started on connection2");
+        button.setText("Stop video stream on connection2");
+    }
+    ```
+
+1. **Leave all connections to a channel**
+
+    To leave the channel on the second connection when a user taps **Leave**, add the following lines to `leaveChannel(View view)` after `int ret = agoraEngine.leaveChannel(connectionId);`:
+
+    ```java
+    agoraEngine.leaveChannel(connectionId2);
+    isJoined2 = false;
+    ```
+
+1. **Destroy all connections**
+
+    To close all connections when a user exits the <Vpl k="CLIENT"/>, add the following lines to `onDestroy` after `agoraEngine.destroyConnection(connectionId);`
+
+    ```java
+    agoraEngine.destroyConnection(connectionId2);
+    connectionId2 = AgoraRtcService.ConnectionIdSpecial.CONNECTION_ID_INVALID;
+    ```
+
+
+
+
+### Stream to multiple channels
+
+To send audio and video streams to multiple channels, take the following steps:
+
+1.  **Declare the variables you need**
+
+    To manage a second connection and join an additional channel, in `/app/java/com.example.<projectname>/MainActivity`, add the following variable declarations to the `MainActivity` class:
+
+    ```java
+    private int connectionId2; // Id of the second connection
+    private final String channelName2 = "demo2"; // Name of the second channel
+    private String token2 = "<Authentication token generated using channelName2>";
+    private boolean isJoined2 = false;
+    ```
+
+1. **Create multiple connections**
+
+    When the <Vpl k="CLIENT"/> starts, you create multiple connections. You can use each connection to send an audio and a video stream. To create two connections, in `setupAgoraEngine` **replace** the code after `// Create a connection` with the following:
+
+    ```java
+    connectionId = agoraEngine.createConnection();
+    if (connectionId == AgoraRtcService.ConnectionIdSpecial.CONNECTION_ID_INVALID) {
+        showMessage("Failed to create connection 1");
+    } else {
+        showMessage("Connection1 created");
+    }
+
+    // Create a second connection
+    connectionId2 = agoraEngine.createConnection();
+    if (connectionId2 == AgoraRtcService.ConnectionIdSpecial.CONNECTION_ID_INVALID) {
+        showMessage("Failed to create connection 2");
+    } else {
+        showMessage("Connection2 created");
+    }
+    ```
+
+1. **Join multiple channels**
+
+    When a user presses the **Join** button, you join two channels. To join a second channel, add the following code at the end of `joinChannel(View view)`:
+
+    ```java
+    // Join a second channel
+    ret = agoraEngine.joinChannel(connectionId2, channelName2,
+            uid, token2, channelOptions);
+    if (ret != AgoraRtcService.ErrorCode.ERR_OKAY) {
+        showMessage("Join channel2 failure!");
+        isJoined2 = false;
+    } else {
+        isJoined2 = true;
+    }
+    ```
+
+1. **Set joined status**
+
+    When your call to `agoraEngine.joinChannel` succeeds, you receive a notification through the `onJoinChannelSuccess` callback. You use connection Id to identify the channel and set the corresponding `isJoined` variable to true. To do this, **replace** the `onJoinChannelSuccess` method under `agoraRtcEvents` with the following: 
+
+    ```java
+    @Override
+    public void onJoinChannelSuccess(int connId, int uid, int elapsed_ms) {
+        if (connId == connectionId) {
+            // Successfully joined channel 1
+            isJoined = true;
+            showMessage("Successfully joined channel " + channelName);
+        } else if (connId == connectionId2) {
+            // Successfully joined channel 2
+            isJoined2 = true;
+            showMessage("Successfully joined channel " + channelName2);
+        }
+    }
+    ```
+
+1. **Stream audio to the first channel**
+
+    In this example, you stream audio to the first channel and video to the second channel. To start or stop the audio stream when a user taps the **Start stream 1** button, add the following method to the `MainActivity` class:
+
+    ```java
+    public void stream1(View view) {
+        Button button = (Button) view;
+        
+        if (!isJoined) {
+            showMessage("Join a channel first");
+            return;
+        } else if (audioThread != null && audioThread.isAlive()) {
+            // Audio thread is already running
+            audioThread.sendStop();
+            audioThread = null;
+            button.setText("Start stream 1");
+            return;
+        }
+        // Create a thread to send audio frames
+        audioThread = new AudioSendThread(getApplicationContext(), agoraEngine,
+                channelName, connectionId, 16000, 1, 2);
+        audioThread.sendStart();
+        showMessage("Audio thread started on channel " + channelName);
+        button.setText("Stop audio stream on channel " + channelName);
+    }
+    ```
+
+1. **Stream video to the second channel**
+
+    To stream video to the second channel when a user taps the **Start stream 2** button, add the following method to the `MainActivity` class:
+
+    ```java
+    public void stream2(View view) {
+        Button button = (Button) view;
+
+        if (!isJoined2) {
+            showMessage("Join a channel first");
+            return;
+        } else if (videoThread != null && videoThread.isAlive()) {
+            // Video thread is already running
+            videoThread.sendStop();
+            videoThread = null;
+            button.setText("Start stream 2");
+            return;
+        }
+        // Create a thread to send video frames
+        videoThread = new VideoSendThread(getApplicationContext(), agoraEngine,
+                channelName2, connectionId2);
+        // Start the audio and video threads
+        videoThread.sendStart();
+        showMessage("Video thread started on channel " + channelName2);
+        button.setText("Stop video stream on channel " + channelName2);
+    }
+    ```
+
+1. **Leave all channels**
+
+    To leave both channels when a user taps **Leave**, add the following lines to `leaveChannel(View view)` after `int ret = agoraEngine.leaveChannel(connectionId);`:
+
+    ```java
+    agoraEngine.leaveChannel(connectionId2);
+    isJoined2 = false;
+    ```
+
+1. **Destroy all connections**
+
+    To close all connections when a user exits the <Vpl k="CLIENT"/>, add the following lines to `onDestroy` after `agoraEngine.destroyConnection(connectionId);`
+
+    ```java
+    agoraEngine.destroyConnection(connectionId2);
+    connectionId2 = AgoraRtcService.ConnectionIdSpecial.CONNECTION_ID_INVALID;
+    ```
+
+</PlatformWrapper>

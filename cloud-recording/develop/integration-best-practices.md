@@ -19,7 +19,7 @@ Agora recommends that you use a backoff strategy, for example, retry after 1, 3,
 
 You use Cloud Recording RESTful APIs to get the status of the recording service.
 
-Agora recommends that core apps should not rely on the <Vg k="NCS_LONG" /> (<Vg k="NCS" />). If your apps already rely heavily on the <Vg k="NCS" />, Agora recommends that you contact <a href="mailto:support@agora.io">support@agora.io</a> to enable the message notification function, which doubles the received notifications and reduces the probability of message loss. After enabling the message notification function, you need to deduplicate messages based on `sid`. Message notification still cannot guarantee a 100% arrival rate.
+Best practice is that core apps do not rely on <Vg k="NCS_LONG" /> (<Vg k="NCS" />). If your apps already rely heavily on the <Vg k="NCS" />, contact <a href="mailto:support@agora.io">support@agora.io</a> and enable the redundant message notification function. This doubles the received notifications and reduces the probability of message loss. After enabling the message notification function, you need to deduplicate messages based on `sid`. Message notification still cannot guarantee a 100% arrival rate.
 
 The initial QPS limit is 10 per App ID when you register. You can estimate the QPS quota your project needs according to your Peak Concurrent Worker (PCW) quota and query frequency. The initial PCW limit is 50 per AppID when you register. If the RESTful API returns QPS limitation error code `429`, or PCW quota limitation error code `406`, then retry, or contact support@agora.io to increase your QPS or PCW quota.
 

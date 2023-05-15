@@ -1,0 +1,127 @@
+<ProductWrapper product="cloud-recording">
+
+```java
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.util.stream.Collectors;
+
+import com.sun.net.httpserver.Headers;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+
+public class Handlers {
+
+    public static class RootHandler implements HttpHandler {
+
+        @Override
+        public void handle(HttpExchange he) throws IOException {
+            String response = "<h1>Agora NCS Demo</h1>" + "<h2>Port: " + Main.port + "</h2>";
+            he.sendResponseHeaders(200, response.length());
+            OutputStream os = he.getResponseBody();
+            os.write(response.getBytes());
+            os.close();
+        }
+    }
+
+    public static class NcsHandler implements HttpHandler {
+
+        @Override
+        public void handle(HttpExchange he) throws IOException {
+            Headers headers = he.getRequestHeaders();
+            String agoraSignature = headers.getFirst("Agora-Signature");
+            // String agoraSignatureV2 = headers.getFirst("Agora-Signature-V2");
+
+            InputStreamReader isr = new InputStreamReader(he.getRequestBody(), "utf-8");
+            BufferedReader br = new BufferedReader(isr);
+
+            String body = br.lines()
+                    .collect(Collectors.joining(System.lineSeparator()));
+
+            // Parse request body
+            String noticeId, channelName = "";
+            long productId, clientSeq = 0;
+            int uid = 0, eventType;
+
+            try {
+                JSONObject jsonObj = (JSONObject) new JSONParser().parse(body);
+
+                noticeId = (String) jsonObj.get("noticeId");
+                productId = (long) jsonObj.get("productId");
+                eventType = (int) (long) jsonObj.get("eventType");
+                JSONObject payload = (JSONObject) jsonObj.get("payload");
+
+                if (productId == 3) { // Cloud Recording
+
+                    // Read payload parameters
+                    if (payload.containsKey("sequence"))
+                        clientSeq = (long) payload.get("sequence");
+
+                    if (payload.containsKey("uid"))
+                        uid = Integer.parseInt(payload.get("uid").toString());
+
+                    if (payload.containsKey("cname"))
+                        channelName = (String) payload.get("cname");
+
+                    System.out.println(
+                            "Event code: " + eventType
+                                    + " Uid: " + uid
+                                    + " Channel: " + channelName
+                                    + " ClientSeq: " + clientSeq);
+
+                    // Read and print event details
+                    System.out.println(eventDetails(eventType, (JSONObject) payload.get("details")));
+                }
+            } catch (Exception e) {
+                System.out.println("Error parsing JSON: " + e.toString());
+                return;
+            }
+
+            // send response
+            String response = "Ok";
+            he.sendResponseHeaders(200, response.length());
+            OutputStream os = he.getResponseBody();
+            os.write(response.toString().getBytes());
+            os.close();
+        }
+
+        String eventDetails(int eventType, JSONObject details) {
+            String info;
+
+            switch (eventType) {
+                case 1: // cloud_recording_error
+                    info = "ERROR: " + details.get("errorMsg").toString();
+                    break;
+                case 2: // cloud_recording_warning
+                    info = "WARNING: " + details.get("warnCode").toString();
+                    break;
+                case 40: // recorder_started
+                    info = "Recorder started, Status code: " + details.get("status").toString();
+                    break;
+                case 41: // recorder_leave
+                    info = "Recorder has left the channel, Code: " + details.get("leaveCode").toString();
+                    break;
+                case 11: // session_exit
+                    info = "Session exit status: " + details.get("exitStatus").toString();
+                    break;
+                case 30: // uploader_started
+                    info = "Recorder video stream state: " + details.get("status").toString();
+                    break;					
+                case 31: // uploaded
+                    info = "Recorded file uploaded: " + details.get("status").toString();
+                    break;
+                default:
+                    info = details.toString();
+            }
+
+            return info;
+        }
+    }
+
+}
+```
+
+</ProductWrapper>

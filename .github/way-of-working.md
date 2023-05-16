@@ -12,8 +12,7 @@ Currently, the EN doc team includes the following roles and members:
 * Documentation Architect: [Iain](https://github.com/billy-the-fish)
 * Technical Writer Lead: [Saud](https://github.com/saudsami)
 * Editor: [Anastasia](https://github.com/atovpeko)
-* Technical Writers: [Dasun](https://github.com/nirm2009), [Hussain](https://github.com/hussain-khalid),
-* [Pankaj](https://github.com/Pankajg123), and [Kishan](https://github.com/Kishan-Dhakan).
+* Technical Writers: [Dasun](https://github.com/nirm2009), [Hussain](https://github.com/hussain-khalid), [Pankaj](https://github.com/Pankajg123), and [Kishan](https://github.com/Kishan-Dhakan).
 
 ## Documentation work lifecycle
 
@@ -184,8 +183,34 @@ Each TW raises a PR and requests reviews following this logic:
 
 #### Stakeholder review
 
-//Clarify requirements for PM review
-//Clarify Vercel procedure
+[Vercel](https://vercel.com/agora-gdxe) is used for creating a staging instance so that the responsible PMs and SMEs can review and comment on doc updates before they are published. Access to Vercel is required to be able to create such instance. This review stage includes the following steps:
+
+1. Create the initial instance for review
+
+   Vercel creates an instance automatically for every branch pushed to the [Docs repository](https://github.com/AgoraIO/Docs) and then rebuilds it every time additional updates are pushed to it. Because most doc updates are made in the submodules Docs-Source or Doc-Source-Private, and not in the Docs repo itself, some extra steps are required: 
+
+    1. Create and checkout a branch in Docs with the same name as the branch containing doc updates in Docs-Source or Doc-Source-Private.
+    1. Make sure the `.gitmodules` file in Docs points to the correct docs submodule. Change if necessary. 
+    1. Make sure the docs submodule is on the branch containing your updates. 
+    1. In the Docs repo, commit and push the docs submodule.
+    
+    Your branch has now appeared in Vercel/docs-staging and the build is in the process. It usually takes a couple of minutes for the docs to build. 
+
+1. Share the staging instance with stakeholders. 
+
+    1. Follow the staging instance URL provided in Vercel and log in. 
+    1. Click on the share icon in the popup Vercel menu and select **Anyone with the link**. 
+    1. Copy the URL and email it to reviewers with the default password `@gora_dev`.
+
+1. Make updates per comments. 
+
+   The reviewers log in and leave comments using the Vercel commenting tool.  
+   
+    1. To see all comments, click on the comment icon in the Vercel popup menu at the bottom. You can filter them by page and resolved/unresolved status. 
+    1. Make updates per comments, where appropriate. Commit and push your updates in the docs submodule, then commit and push the docs submodule in the Docs repo. Vercel rebuilds the instance. 
+    1. Reply to ALL comments in Vercel. Resolve comment threads that have been implemented and ask for additional input or provide suggestions in others. 
+    1. Email the reviewers to let them know the staging instance has been updated and is again ready for their review.
+    1. Repeat steps 1-4 for all new and unresolved comments until the reviewers give their explicit consent to publish the docs. 
 
 ### Publishing
 

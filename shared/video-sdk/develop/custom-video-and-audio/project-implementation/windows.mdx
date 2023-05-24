@@ -1,0 +1,382 @@
+<PlatformWrapper platform="windows">
+
+
+
+
+### Handle the system logic
+
+To setup the libraries and objects you need for custom audio:
+
+1. **Import the required modules**
+
+    To use `OpenCV`, `fstream` and other required modules in your project, add the following `#include` statements in `AgoraImplementationDlg.h` after `#pragma once`:
+
+        ```cpp
+        #include <memory>
+        #include <thread>
+        #include <chrono>
+        #include <fstream>   // Play external audio
+        #include <opencv2/opencv.hpp>  // Play external video
+        ```
+2.  **Setup an IMediaEngine instance**
+
+    `IMediaEngine` enables you to handle external media in your <Vpl k = "CLIENT"/>.
+
+    1. In `AgoraImplementationDlg.h`, declare the `mediaEngine` variable publicly in the
+    `CAgoraImplementationDlg` class after `IRtcEngine* agoraEngine = nullptr;`:
+
+        ```cpp
+        agora::util::AutoPtr<agora::media::IMediaEngine> mediaEngine;
+        ```
+    2. In `AgoraImplementationDlg.cpp`, initiate `mediaEngine` in `OnInitDialog()` after setting up <Vg k="ENGINE" /> in `setupVideoSDKEngine();`:
+        ```cpp
+        // Query the interface agora::AGORA_IID_MEDIA_ENGINE in the engine.
+        mediaEngine.queryInterface(agoraEngine, agora::rtc::AGORA_IID_MEDIA_ENGINE);
+
+        if (mediaEngine.get() == nullptr) {
+            AfxMessageBox(L"Media Engine error.");
+            return false;
+        }
+        ```
+### Implement a custom video source
+
+In this section, you create the basic framework required to push video frames from a custom source. Depending on the type of your source, you add your own code to this framework that converts source data to `ExternalVideoFrame` data. To create the basic framework, take following steps:
+
+1. **Add variables to process and push custom video source data**
+
+    In `AgoraImplementationDlg.h`, add following declarations publicly after `AgoraEventHandler agoraEventHandler;`:
+    ```cpp
+    // Variables for custom video source implementation 
+    std::atomic<bool> captureExternalVideo;
+    std::thread videoFrameThread;
+    const std::string video_path = "<path for external video file>"; // like "C:\\Users\\User1\\Downloads\\sample.mp4"
+    ```
+2. **Enable custom video track publishing**
+
+    When a user presses **Join**, You set the external video source and update the `VideoCanvas` source type to
+        `VIDEO_SOURCE_CUSTOM`:
+
+    1. In the **JOIN** button `OnClickedButtn1` event listener, replace `canvas.
+    sourceType = VIDEO_SOURCE_CAMERA;` with
+        ```cpp
+        canvas.sourceType = VIDEO_SOURCE_CUSTOM;
+        ```
+    2. To set the external video source, put the following code before `agoraEngine->enableVideo();`:
+        ```cpp
+        // Enable external video source 
+        mediaEngine->setExternalVideoSource(true, false);
+        ```
+    3. As the preview starts after inducing external video frames from custom source, remove the following lines:
+        ```cpp
+        // Preview the local video.
+        agoraEngine->startPreview();
+        ```
+3. **Play external video file in your local view window** 
+    
+    Create a new dedicated thread to handle external video playback. This thread carries out the
+        following tasks:
+
+        1. Reads frames from the external video file.
+        2. Updates the `ExternalVideoFrame` object with the data obtained by reading the video frame.
+        3. Pushes the updated external frame object to <Vg k="ENGINE" />.
+
+    Once these tasks are complete, you make the external video visible in local view window. To do this:
+
+        1. In `AgoraImplementationDlg.h`, declare `playExternalVideo()` after `setupVideoSDKEngine()`:
+
+            ```cpp
+            void playExternalVideo(IRtcEngine* agoraEngine);
+            ```
+        2. Put the following code in `JoinChannel()` after `isJoin = true;`
+            ```cpp
+            captureExternalVideo = true;
+            videoFrameThread = std::thread([&] {this->playExternalVideo(agoraEngine);});
+            ```
+        3. Define `playExternalVideo`:
+            ```cpp
+            void CAgoraImplementationDlg::playExternalVideo(IRtcEngine* agoraEngine)
+            {
+                cv::VideoCapture cap(video_path);
+                if (!cap.isOpened()) 
+                {
+                    AfxMessageBox(L"Error: Could not open the video file.");
+                    return;
+                }
+
+                int fps = static_cast<int>(cap.get(cv::CAP_PROP_FPS));
+                
+                // Preview the local video.
+                agoraEngine->startPreview();
+
+                while (captureExternalVideo) {
+                    cv::Mat frame;
+                    if (!cap.read(frame)) {
+                        break;
+                    }
+                    cv::Mat bgra_frame;
+                    cv::cvtColor(frame, bgra_frame, cv::COLOR_BGR2BGRA);
+                    cv::flip(bgra_frame, bgra_frame, 1);
+                        
+
+                    agora::media::base::ExternalVideoFrame external_frame;
+                    external_frame.type = agora::media::base::ExternalVideoFrame::VIDEO_BUFFER_TYPE::VIDEO_BUFFER_RAW_DATA;//VIDEO_BUFFER_RAW_DATA;//VIDEO_BUFFER_ARRAY;//VIDEO_BUFFER_RAW_DATA;   //VIDEO_PIXEL_BGRA;    //VIDEO_BUFFER_RAW_DATA;
+                    external_frame.format = agora::media::base::VIDEO_PIXEL_BGRA;
+                    external_frame.buffer = bgra_frame.data;
+                    external_frame.stride = bgra_frame.cols;
+                    external_frame.height = bgra_frame.rows;
+                    external_frame.timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+
+                    if (agoraEngine && mediaEngine)
+                    {
+                        // Push external frame to Agora SDK
+                        mediaEngine->pushVideoFrame(&external_frame);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1000 / fps));
+                }
+            }
+            ```
+4. **Leave the channel**
+        
+    When you leave the channel,  halt the active thread and deactivate the external video source. To do this:
+
+        1. In `AgoraImplementationDlg.h`, declare `disableExternalVideoSource()` after `playExternalVideo()`:
+            ```cpp
+            void disableExternalVideoSource();
+            ```
+        1. In `AgoraImplementationDlg.cpp`, put the following line in the `OnBnClickedButton2` **LEAVE** button event listener before `agoraEngine->leaveChannel();`
+            ```cpp
+            disableExternalVideoSource();
+            ```
+        1. Define `disableExternalVideoSource()`:
+            ```cpp
+            void CAgoraImplementationDlg::disableExternalVideoSource()
+            {
+                captureExternalVideo = false; // Signal the thread to stop video capture
+                if (videoFrameThread.joinable())
+                {
+                    videoFrameThread.join(); // Wait for thread to finish
+                }
+                mediaEngine->setExternalVideoSource(false, false);
+            }
+            ```
+
+### Implement a custom audio source
+
+To push audio from a custom source to a channel, take the following steps:
+
+    1. **Implement the user interface**
+
+        To enable the user to play and pause the external audio, add a button to user interface. To implement this UI, take the following steps:
+
+        1. In Visual Studio, go to menu **View** > **Other Windows** > **Resource View**.
+
+            If the **Resource View** window isn't the top-most window, select the **Resource View** tab.
+
+        2. To view the dialog resources, in **Resource View**, go to **AgoraImplementation.rc** > **Dialog** and double-click `IDD_AGORAIMPLEMENTATION_DIALOG`.
+
+            The resource opens inside **Dialog Editor**.
+
+        3. To open **Toolbox**, go to menu **View** > **ToolBox**.
+
+        4. From **ToolBox**, drag **Button** to the surface of **Dialog Editor**.
+
+            You see the button in **Dialog Editor**.
+
+        6. Right click on this newly created button and click **Properties**, then change the caption to **Play External Audio**.
+
+1. **Define variables to play custom audio and access UI elements**
+    
+    In `AgoraImplementationDlg.h`, add following declarations publicly to the `CAgoraImplementationDlg` class after
+        `AgoraEventHandler agoraEventHandler;`:
+        ```cpp
+        // Variables for custom audio source implementation 
+        std::atomic<bool> captureExternalAudio;
+        std::thread audioFrameThread;
+        const std::string audio_path = "<path for external audio file>"; // like "C:\\Users\\Varun\\Downloads\\applause-e0067b2d6fe36b2869d6190009ef4fc2.wav"
+        const int SAMPLE_RATE = 48000;
+        const int PUSH_FREQ_PER_SEC = 20;
+        const int  SAMPLE_NUM_OF_CHANNEL = 2;
+        const int BYTESPERSAMPLE = 2
+        CButton* externalAudioBtn; // UI element for a button to play external audio
+        ```
+1. **Set up access to the external audio button**
+
+    In `AgoraImplementationDlg.cpp`, add following lines to the `OnInitDialog` method after `setupVideoSDKEngine();`:
+        ```cpp
+        externalAudioBtn = (CButton*)GetDlgItem(IDC_BUTTON3); 
+        ```
+        In this example the identifier for created button is `IDC_BUTTON3`. However, this identifier may vary
+            according to your unique implementation or context.
+
+1. **Enable custom audio track publishing**
+
+    When a user presses <code><strong>`JOIN`</strong></code>, you set external audio source and configure
+            `ChannelMediaOptions` to disable the microphone audio track and enable the custom audio track. You also
+            enable custom audio local playback and set the external audio source. To do this:
+
+    1.  In `AgoraImplementationDlg.cpp` put following lines before `agoraEngine->enableAudio();` in
+            the `OnClickedButtn1` event listener for the **JOIN** button:
+        ```cpp
+        // Eanble external audio source
+        mediaEngine->setExternalAudioSource(true, SAMPLE_RATE, SAMPLE_NUM_OF_CHANNEL, 1, false, true);
+        ```
+    2.  Put the following before `joinChannel()`
+        ```cpp
+        ChannelMediaOptions option;
+        option.publishMicrophoneTrack = false;
+        option.publishCustomAudioTrack = true;
+        option.enableAudioRecordingOrPlayout = true;
+        agoraEngine->updateChannelMediaOptions(option);
+        // Enable custom audio local playback 
+        agoraEngine->enableCustomAudioLocalPlayback(0, true);
+        ```
+    3. Join the channel with the `ChannelMediaOptions` parameter. Replace `if (0 == agoraEngine->joinChannel(token.c_str
+            (), channelName.c_str(), 0, NULL))` with :
+        ```cpp
+        if (0 == agoraEngine->joinChannel(token.c_str(), channelName.c_str(), 0, option))
+        ```
+        If you have already implemented custom video, these api changes do not impact your custom video functionality.
+
+1. **Enable user to play and pause external audio**
+        
+    When user clicks **Play External Audio**, a new thread is created which is dedicated to handle the playback of external audio. In this new thread, carry out following tasks:
+
+        1. Read frames from the external audio file.
+        2. Update the `IAudioFrameObserverBase::AudioFrame audioFrame` object with data obtained by reading the video
+            frame.
+        3. Push the updated audio frame object to <Vg k="ENGINE" />.
+
+
+    To implement this flow in your <Vpl k = "CLIENT"/>:
+    
+        1. In **Dialog Editor**, double-click **Play External Audio**. **Dialog Editor** automatically creates and
+            opens an event listener for you. Add following code to this event listener:
+            ```cpp
+            if (isJoin)
+            {
+                CString buttonText;
+                externalAudioBtn->GetWindowText(buttonText);
+                if ((buttonText.Compare(L"Play External Audio") == 0) || (buttonText.Compare(L"Play") == 0))
+                {
+                    
+                    if (audioFrameThread.joinable())
+                    {
+                        audioFrameThread.join();
+                    }
+                    captureExternalAudio = true;
+                    externalAudioBtn->SetWindowTextW(L"Pause");
+                    audioFrameThread = std::thread([&] { this->playExternalAudio(agoraEngine); });
+                }
+                else //if (buttonText.Compare(L"Pause") == 0)
+                {
+                    captureExternalAudio = false;
+                    externalAudioBtn->SetWindowTextW(L"Play");
+                }
+            }
+            else
+            {
+                AfxMessageBox(L"Join a channel first!");
+            }
+            ``` 
+        1. In `AgoraImplementationDlg.h`, declare `playExternalAudio()` after `setupVideoSDKEngine()`:
+            ```cpp
+            void playExternalAudio(IRtcEngine* agoraEngine);
+            ```
+            
+        1. Define `playExternalAudio`: 
+            ```cpp
+            void CAgoraImplementationDlg::playExternalAudio(IRtcEngine* agoraEngine)
+            {
+                std::ifstream stream(audio_path, std::ios::binary);
+                if (!stream.is_open())
+                {
+                    AfxMessageBox(L"Error: Could not open the video file.");
+                    return;
+                }
+
+                IAudioFrameObserverBase::AUDIO_FRAME_TYPE type = IAudioFrameObserverBase::AUDIO_FRAME_TYPE::FRAME_TYPE_PCM16;
+                int samples = SAMPLE_RATE / PUSH_FREQ_PER_SEC;
+                std::vector<char> buffer(samples * BYTESPERSAMPLE * SAMPLE_NUM_OF_CHANNEL);
+                int freq = 1000 / PUSH_FREQ_PER_SEC;
+
+                auto tic = std::chrono::steady_clock::now();
+
+                // Allocate memory for the audio frame buffer
+                std::unique_ptr<char[]> audioFrameBuffer(new char[buffer.size()]);
+                IAudioFrameObserverBase::AudioFrame audioFrame;
+
+                audioFrame.bytesPerSample = agora::rtc::BYTES_PER_SAMPLE::TWO_BYTES_PER_SAMPLE;
+                audioFrame.type = type;
+                audioFrame.samplesPerChannel = samples;
+                audioFrame.samplesPerSec = SAMPLE_RATE;
+                audioFrame.channels = SAMPLE_NUM_OF_CHANNEL;
+                
+                audioFrame.buffer = audioFrameBuffer.get();
+                audioFrame.renderTimeMs = freq;
+
+                while (captureExternalAudio)
+                {
+                    auto toc = std::chrono::steady_clock::now();
+                    if (std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count() >= freq)
+                    {
+                        stream.read(buffer.data(), buffer.size());
+                        int n = static_cast<int>(stream.gcount());
+
+                        if (n <= 0) // Break the loop if the end of the file is reached or an error occurs
+                        {
+                            externalAudioBtn->SetWindowTextW(L"Play External Audio");
+                            captureExternalAudio = false;
+                            break;
+                        }
+                        std::memcpy(audioFrameBuffer.get(), buffer.data(), buffer.size());
+                        if (agoraEngine && mediaEngine)
+                        {
+                            mediaEngine->pushAudioFrame(MEDIA_SOURCE_TYPE::AUDIO_PLAYOUT_SOURCE, &audioFrame);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                        tic = toc;
+                    }
+                    else
+                    {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    }
+                }
+            }
+            ```
+1. **Leave the channel**
+            
+            When you leave the channel, halt the active thread and deactivate the external audio source. To accomplish
+            this, do the following:
+            
+                1. In `AgoraImplementationDlg.h`, declare `disableExternalVideoSource()` after `playExternalVideo()`:
+                    ```cpp
+                    void disableExternalAudioSource();
+                    ```
+                2. In `AgoraImplementationDlg.cpp`, put the following line in the `OnBnClickedButton2` **LEAVE**
+            button event listener, before `agoraEngine->leaveChannel();`
+                    ```cpp
+                    disableExternalAudioSource();
+                    ```
+                3. Define `disableExternalAudioSource()`:
+                    ```cpp
+                    void CAgoraImplementationDlg::disableExternalAudioSource()
+                    {
+                        captureExternalAudio = false; // Signal the thread to stop audio capture
+                        if (audioFrameThread.joinable())
+                        {
+                            audioFrameThread.join(); // Wait for thread to finish
+                        }
+                        mediaEngine->setExternalAudioSource(false, SAMPLE_RATE, SAMPLE_NUM_OF_CHANNEL, 1, false, false);
+
+                        // Set window text to  "Play External Audio"
+                        externalAudioBtn->SetWindowTextW(L"Play External Audio");
+                    }
+                    ```
+</PlatformWrapper>

@@ -111,13 +111,19 @@ export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/referenc
 export const SPATIAL = '3D Spatial Audio';
 
 export const CHAT = `Chat`;
+export const CHAT_SDK = `${CHAT} SDK`;
 export const CHAT_RELEASE_API = `1.x`;
 export const API_REF_ROOT_CHAT_SDK = `${API_ROOT}/chat-sdk`;
 export const CHAT_SDK_API_ANDROID  = `${API_REF_ROOT_CHAT_SDK}/android/${CHAT_RELEASE_API}`;
 export const CHAT_SDK_API_WEB  = `${API_REF_ROOT_CHAT_SDK}/web/${CHAT_RELEASE_API}`;
 
+export const IOT = `IoT SDK`;
+export const IOT_RELEASE_API = `1.x`;
 
-
+//export const IOT_SDK_API_REF_ROOT = `${API_ROOT}/iot-sdk`;
+export const IOT_SDK_API_REF_ROOT = `https://api-ref.agora.io/en/iot-sdk`
+export const IOT_SDK_API_REF_ANDROID = `${IOT_SDK_API_REF_ROOT}/android/${IOT_RELEASE_API}`
+export const IOT_SDK_API_REF_LNX_C = `${IOT_SDK_API_REF_ROOT}/linux/${IOT_RELEASE_API}`
 export const PS = 'Pub-Sub';
 export const PUSH = 'Push Notifications';
 
@@ -156,6 +162,8 @@ export const EXTAPP = 'ExtApp';
 
 
 export const CREC = 'Cloud Recording';
+export const CREC_FCS = 'https://download.agora.io/acrsdk/release/cloud_recording_tools.v3.8.0.69-202302061216-release-prod.tar.gz'
+
 
 export const CGATE = 'Cloud Gateway';
 

@@ -10,11 +10,9 @@ assignees: ''
 **Business case**: How will this issue help our customers.
 
 **Subject Matter Expert**: Who the doc team can ask technical questions.
-
-**Reviewers**:
-  - *Technical*: 
-  - *Language*: Iain
-  - *PM*: only if essential
+  - *Technical*: Saud
+  - *Language*: Anastasia
+  - *PM*: Iain 
 
 **Scope**: The products and documents to be updated. If you are not sure, leave it to Iain. 
 

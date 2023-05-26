@@ -217,6 +217,73 @@ Each TW raises a PR and requests reviews following this logic:
 //Clarify publishing procedure
 
 
+### Samples for the docs
+
+Each product and each platform has its own repository that stores the runnable code used in the docs. For example:
+
+- https://github.com/AgoraIO/video-sdk-samples-ios
+- https://github.com/AgoraIO/video-sdk-samples-android
+
+All repositories must have the same directory and folder structure. In the repository root, you have one folder, 
+`agora-manager` that holds the base code necessary to create an app, and one folder for each document published in 
+the docs repository. The folder names and file names must be written in kebab case. An example repository would look like:
+
+- agora-manager
+- ai-noise-suppression
+- audio-and-voice-effects
+- authentication-workflow
+- cloud-proxy
+- custom-video-and-audio
+- ensure-channel-quality
+- geofencing
+- get-started-sdk
+- integrate-token-generation
+- magic-leap
+- media-stream-encryption
+- migration-guide
+- play-media
+- product-workflow
+- spatial-audio
+- stream-raw-audio-and-video
+- use-an-extension
+- virtual-background
+- Readme.md
+
+The code in the repository is runnable from the product root, you choose to run the code from each folder. 
+
+`agora-manager` contains:
+
+- The base implementation for a product and contains the same variables and methods for the SDK. For example:
+  - appId = "<Your app Id>";
+  - channelName = "Your channel name";
+  - token = "<your access token>";
+  - uid = 0;
+  - isJoined = false;
+  - RtcEngine agoraEngine;
+  - currentProduct - one of Video Calling, Voice Calling, ILS, Broadcast Streaming, Voice Calling. There must be a method, `setCurrentProduct` to, set the current product.  
+
+- The base UI implementation for an app. 
+
+`Readme.md` contains:
+- An explanation of the purpose of the document
+- A procedure on how to run the project
+- A list of the folders and a one line explanation of the business logic coded in them
+
+Each document folder contains at least:
+- `<folder-name>.<file-extension>` - an extension of agoraManager that implements the features discussed in the doc. 
+  Each feature must be encapsulated in a method. The top of the class holds the agora methods, lower down holds the UI extension. 
+- `Readme.md` - A brief explanation of the implementation in the folder containing:
+  - The intro section from the doc
+  - A Link to the document for this page for each product. 
+  - A small list of the main methods in the code. 
+
+   
+
+
+
+
+
+
 
 
 

@@ -175,6 +175,7 @@ If the status code is `200`, the request is successful. The response returns the
 | `errorMessage`        | string   | The error message corresponding to the error code, describing the cause of the error. This parameter is only returned when the conversion task fails.                                                                                                                                                      |
 
 
+**Note**: The API for querying the progress of file conversion tasks only supports tasks created within the past seven days. To prevent the loss of status information or results, Agora recommends that you additionally store task information after completing or failing a conversion, or receive notifications of task status changes through webhook callbacks.
 
 ## Query to-be-converted tasks
 

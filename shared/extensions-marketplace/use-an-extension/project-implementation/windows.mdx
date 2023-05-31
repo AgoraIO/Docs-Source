@@ -1,9 +1,133 @@
 <PlatformWrapper platform="windows">
 
-To use an extension in your <Vg k="COMPANY" /> project:
 
--   The implementation procedure varies according to extensions. Each extension vendor provides their own implementation guides, which is validated by Agora before the official release of the extension.
+Integrating an extension into your project involves a few important steps to ensure seamless interaction between the extension and <Vg k="COMPANY" /> <Vg k="VSDK"/>. Each of these steps plays a crucial role to ensure that the extension works correctly and efficiently within your <Vg k="COMPANY" /> project:
 
--   To implement the extension in your project, go to the detail page of the extension on [Agora Console](https://console.agora.io/marketplace/extension), click **Implementation guides**, and follow the steps on the page.
+
+1. **Define variables to integrate an extension with <Vg k="COMPANY" /> <Vg k = "VSDK"/>**
+
+        In `AgoraImplementationDlg.h`, add the following declarations to the `CAgoraImplementationDlg` class before `setupVideoSDKEngine();`:
+
+        ```cpp
+        // File path to the dynamic library (.dll file on Windows) that contains the implementation of the extension provider.
+        const char* extensionLibrarayPath = "<extension dynamic library path and name>"; // For example : "/ library / libagora_segmentation_extension.dll"
+        const char * extensionProvider = "<extension library path and name>"; // For example : "agora.io";
+        const char* extensionName = "<extension name>"; // For example :  "libagora_segmentation_extension.dll";
+        
+        // The key is a string that identifies a specific property of the extension, 
+        // and value is the new value for that property.
+        // What these keys are and what values they can take is entirely up to the extension.
+        // For example, an extension might have a property that controls the quality of a video stream, with a key named "videoQuality".
+        // To set this property to "high", you would call setExtensionProperty() with "videoQuality" as the key and "high" as the value.
+        const char* extensionKey = "<name of the extension property you want to set>";
+        const char* extensionValue = "<new value of the property>";
+        
+        // When using methods that take a MEDIA_SOURCE_TYPE parameter, you would specify the value that corresponds to the type of media source
+        // you want the method to operate on. For example, if you want to use the second camera to capture video, set this parameter to "SECONDARY_CAMERA_SOURCE".
+        // The default value is UNKNOWN_MEDIA_SOURCE.
+        agora::media::MEDIA_SOURCE_TYPE extensionMediaType = agora::media::UNKNOWN_MEDIA_SOURCE; // insert the media souce type as per your context
+        ```
+1. **Register extension callbacks to <code><strong>`IRtcEngineEventHandler`</strong></code> event handler**
+
+    1. In `AgoraImplementationDlg.h`, add the following declarations to the `AgoraEventHandler` class after `onLeaveChannel`:
+
+        ```cpp
+        virtual void onExtensionEvent(const char* provider, const char* extension, const char* key, const char* value)override;
+        virtual void onExtensionStopped(const char* provider, const char* extension)override;
+        virtual void onExtensionStarted(const char* provider, const char* extension)override;
+        virtual void onExtensionError(const char* provider, const char* extension, int error, const char* errorMessage)override;
+        ```
+    2. Define these callbacks in `AgoraImplementationDlg.cpp`:
+
+        ```cpp
+        // Extension Callbacks
+        void AgoraEventHandler::onExtensionEvent(const char* provider, const char* extension, const char* key, const char* value)
+        {
+            // Handle the event
+            CString extension_provider(provider);
+            CString extension_name(extension);
+            CString extension_key(key);
+            CString extension_value(value);
+
+            CString message;
+            message.Format(_T("Extension Provider: %s\nExtension Name: %s\nKey: %s\nValue: %s\n is enabled to run."), extension_provider, extension_name);
+            AfxMessageBox(message);
+        }
+
+        void AgoraEventHandler::onExtensionStopped(const char* provider, const char* extension)
+        {
+            AfxMessageBox(L"Extension stopped.");
+        }
+
+        void AgoraEventHandler::onExtensionStarted(const char* provider, const char* extension)
+        {
+            AfxMessageBox(Extension started);
+        }
+
+        void AgoraEventHandler::onExtensionError(const char* provider, const char* extension, int error, const char* errorMessage)
+        {
+            // Handle the error event
+            CString error_message(errorMessage);
+            CString message;
+            message.Format(_T("Error: %s\n with error code %d"), error_message, error);
+            AfxMessageBox(message);
+        }
+        ```
+
+1.  **Enable the extension and set the extension properties**
+
+        To use the extension you downloaded in your <Vpl k="CLIENT" />:
+        
+            1. Load the extension. 
+            2. Register the extension.
+            3. Enable the extension.
+            4. Set the extension property.
+
+        To accomplish these tasks, do the following:
+
+            1. In `AgoraImplementationDlg.h`, declare `setupMarketExtension()` before `setupVideoSDKEngine();``:
+                
+                ```cpp
+                // Function to load, register and enable the extension. Here you also set the extension propertties for your specific extension
+                void setupMarketExtension(IRtcEngine* agoraEngine);
+                ```
+            1. In `AgoraImplementationDlg.cpp`, put the following in the `setupVideoSDKEngine` function just after
+          initializing <Vg k="ENGINE" /> `agoraEngine->initialize(context);`:
+                
+                ```cpp
+                // Integrate extension to the Agora SDK.
+                setupMarketExtension(agoraEngine);
+                ```
+            1. Define `setupMarketExtension()`:
+                
+                ```cpp
+                void CAgoraImplementationDlg::setupMarketExtension(IRtcEngine* agoraEngine)
+                {
+                    // Load the extension with the file path to the dynamic library (.dll file on Windows) and a boolean flag 'unload_after_use' is true here mean 
+                    // unload the dynamic library after it has been used.
+                    agoraEngine->loadExtensionProvider(extensionLibrarayPath,true);
+
+                    // Register the extension
+                    agoraEngine->registerExtension(extensionProvider, extensionName, extensionMediaType);
+
+                    // Enable the extension
+                    agoraEngine->enableExtension(extensionProvider, extensionName, true, extensionMediaType);
+
+                    // Set Extension property. The extension key and extension value would be specific to the extension you are using.
+                    // This function is used to set the value of a specific property of an extension
+                    agoraEngine->setExtensionProperty(extensionProvider, extensionName, extensionKey, extensionValue, extensionMediaType);
+                }
+                ```
+1.  **Disable the extension before closing the application**
+
+    You must unload and disable all extensions before the <Vpl k="CLIENT" /> closes. As you set `unload_after_use` to
+          `true` in `loadExtensionProvider()`, the  extension dynamic link library unloads automatically after it has
+          been used. You disable the extension to prevent any potential memory leaks or unanticipated
+          effects. To do this, put the following in `OnClose()` before `agoraEngine->release();`:
+    
+        ```cpp
+        // Disable extension by making 'eanbled' flag as false . 
+        agoraEngine->enableExtension(extensionProvider, extensionName, false);
+        ```
 
 </PlatformWrapper>

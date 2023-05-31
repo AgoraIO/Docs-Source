@@ -54,6 +54,7 @@ export const API_REF_WINDOWS_ROOT_CPP  = `${API_REF_ROOT}/cpp/${VSDK_RELEASE_API
 export const API_REF_UE_ROOT_VOICE_SDK  = `${API_REF_ROOT_VOICE_SDK}/unreal-engine/${VSDK_RELEASE_API}/API`;
 export const API_REF_WINDOWS_ROOT_CPP_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/cpp/${VSDK_FLUTTER_RELEASE_API}/API`;
 
+
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
 
@@ -119,8 +120,13 @@ export const API_REF_ROOT_CHAT_SDK = `${API_ROOT}/chat-sdk`;
 export const CHAT_SDK_API_ANDROID  = `${API_REF_ROOT_CHAT_SDK}/android/${CHAT_RELEASE_API}`;
 export const CHAT_SDK_API_WEB  = `${API_REF_ROOT_CHAT_SDK}/web/${CHAT_RELEASE_API}`;
 
+export const IOT = `IoT SDK`;
+export const IOT_RELEASE_API = `1.x`;
 
-
+//export const IOT_SDK_API_REF_ROOT = `${API_ROOT}/iot-sdk`;
+export const IOT_SDK_API_REF_ROOT = `https://api-ref.agora.io/en/iot-sdk`
+export const IOT_SDK_API_REF_ANDROID = `${IOT_SDK_API_REF_ROOT}/android/${IOT_RELEASE_API}`
+export const IOT_SDK_API_REF_LNX_C = `${IOT_SDK_API_REF_ROOT}/linux/${IOT_RELEASE_API}`
 export const PS = 'Pub-Sub';
 export const PUSH = 'Push Notifications';
 
@@ -134,7 +140,7 @@ export const RTEE = 'Extensions';
 export const RTEE_DRM = `${COMPANY} DRM`;
 export const RTEE_DRM_FRAMEWORK = `AgoraDrmLoader.framework`;
 export const RTEE_NS = 'AI Noise Suppression';
-export const RTEE_VB = 'Vitual Background';
+export const RTEE_VB = 'Virtual Background';
 export const RTEE_FU = 'FaceUnity';
 export const AA = `${COMPANY} Analytics`;
 export const WHITE = 'Interactive Whiteboard';

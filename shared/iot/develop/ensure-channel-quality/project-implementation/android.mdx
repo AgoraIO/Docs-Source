@@ -1,0 +1,194 @@
+<PlatformWrapper platform="android">
+
+### Implement the user interface
+
+To enable app users to mute and unmute audio and video, add checkboxes to the user interface. To do this, open `/app/res/layout/activity_main.xml` and add the following lines before `</RelativeLayout>`:
+
+    ```xml
+    <CheckBox
+        android:id="@+id/MuteLocalAudio"
+        android:text="Mute local audio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/JoinButton"
+        android:layout_alignStart="@id/JoinButton" />
+
+    <CheckBox
+        android:id="@+id/MuteLocalVideo"
+        android:text="Mute local video"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/MuteLocalAudio"
+        android:layout_alignStart="@id/JoinButton" />
+    ```
+
+### Handle the system logic
+
+Import the necessary Android classes and access the UI elements.
+
+1. **Import supporting libraries**
+
+    In `MainActivity.java`, add the following to the list of `import` statements:
+
+    ```java
+    import java.lang.Math;
+    import android.widget.CheckBox;
+    import android.widget.CompoundButton;
+    ```
+
+1. **Define variables to access the checkboxes**
+
+    In `/app/java/com.example.<projectname>/MainActivity`, add the following declarations to the `MainActivity` class:
+
+    ```java
+    private CheckBox checkMuteLocalAudio;
+    private CheckBox checkMuteLocalVideo;
+    ```
+
+### Implement channel quality features
+
+To implement channel quality features, take the following steps:
+
+1. **Configure the <Vpd k="SDK" /> log file**
+
+    To customize the location, and content of the log file, add the following code to `setupAgoraEngine()` before `agoraEngine.init(appId, agoraRtcEvents, options);`
+
+    ```java
+    // Configure log file location and logging level
+    options.logCfg.logPath = getExternalFilesDir(null).getPath() + "/iotlog";
+    options.logCfg.logLevel = AgoraRtcService.LogLevel.RTC_LOG_WARNING;
+    ```
+
+1. **Specify the audio codec, sampling rate and the number of channels**
+
+    You set the audio codec, sampling rate, and the number of channels in `ChannelOptions` that you pass to the `agoraEngine.joinChannel` method. To set these parameters, modify the following lines in the `joinChannel(View view)` method according to your requirements:
+
+    ```java
+    channelOptions.audioCodecOpt.audioCodecType
+            = AgoraRtcService.AudioCodecType.AUDIO_CODEC_TYPE_OPUS;
+    channelOptions.audioCodecOpt.pcmSampleRate = 16000;
+    channelOptions.audioCodecOpt.pcmChannelNum = 1;
+    ```
+  
+    Choose from `OPUS`, `G722`, `G711A`, and `G711U` built-in audio codecs in the <Vpd k="SDK" />. 
+    
+    To use your own audio codec, set `channelOptions.audioCodecOpt.audioCodecType` to `AUDIO_CODEC_DISABLED`. When you call `agoraEngine.sendAudioData`, set the `dataType` parameter of `AudioFrameInfo` to your encoding format. This setting transmits the audio encoding format as is to the receiving end. When you disable use of a built-in audio codec, <Vpd k="SDK" /> does not process the audio. The receiving end obtains the encoded audio data and the encoding format through the `onAudioData` callback and decodes it using a custom decoder.
+    
+1. **Configure bandwidth estimation parameters**  
+
+    You configure bandWidth estimation parameters before joining a channel. For example, based on the [definition levels of a webcam](#definition-levels-of-a-webcam), the minimum value can be set to 400 kbps, and the maximum value can be set to 4200 kbps. The starting value is between the minimum and the maximum value. If the initial encoding is SD, the initial bit rate can be set to 500 kbps, based on the table.
+
+    To specify these parameters, add the following code to the `joinChannel(View view)` method before `agoraEngine.joinChannel`.
+    
+    ```java
+    // Configure Bandwidth Estimation. Min, max and starting bit rates in bps
+    agoraEngine.setBweParam(connectionId, 400000, 4200000, 500000);
+    ```
+
+1. **Respond to target bit rate changes**
+
+    When network bandwidth changes, <Vpd k="SDK"/> triggers the `onTargetBitrateChanged` callback to prompt the <Vpl k="CLIENT"/> to adjust the sending bit rate. The `targetBps` value returned by the callback is the maximum recommended encoding bit rate of the video encoder.
+
+    In this example, you use [definition levels of a webcam](#definition-levels-of-a-webcam) to switch resolution depending on the reported target bit rate. To do this, replace the `onTargetBitrateChanged` method under `agoraRtcEvents` with the following:
+
+    ```java
+    int curTargetBitrate, diffTargetBitrate, lastTargetBitrate = 500;
+    int lowBitrateL1 = 400, highBitrateL1 = 800;
+    int lowBitrateL2 = 1130 , highBitrateL2 = 2260, highBitrateL3 = 4160;
+    int curResolutionLevel = 1 , lastResolutionLevel = 1;
+
+    @Override
+    public void onTargetBitrateChanged(int connId, int targetBps) {
+        // Adjust the sending code rate in real time
+        // The current code rate is graded according to 100 K, rounded down
+        curTargetBitrate = targetBps/100000 * 100;
+        diffTargetBitrate = Math.abs(curTargetBitrate - lastTargetBitrate);
+
+        // If the difference between the detected bandwidth and the
+        // current encoding rate is more than 100K, adjust the encoding parameters
+        if ((diffTargetBitrate >= 100) && ((lowBitrateL1 < curTargetBitrate)
+                && (curTargetBitrate < highBitrateL3))) {
+            if ((lowBitrateL1 < curTargetBitrate) && (curTargetBitrate < highBitrateL1)) {
+                curResolutionLevel = 1; // Set resolution to L1
+            } else if ((lowBitrateL2 < curTargetBitrate) && (curTargetBitrate < highBitrateL2)) {
+                curResolutionLevel = 2; // Set resolution to L2
+            } else {
+                curResolutionLevel = 3; // Set resolution to L3
+            }
+
+            // Adjust encoding resolution
+            if (curResolutionLevel != lastResolutionLevel) {
+                //setEncoderResolution(curResolutionLevel);
+            }
+
+            // Set the encoding bit rate
+            // setEncoderBitrate(curTargetBitrate);
+
+            lastResolutionLevel = curResolutionLevel;
+            lastTargetBitrate = curTargetBitrate;
+        }
+    }
+    ```
+
+1. **Manage audio and video streaming status**
+
+    When a user taps a `Checkbox`, you pause or resume sending local audio and video streams. To do this, add the following code to the `onCreate` method in the `MainActivity` class:
+    
+    ```java
+    checkMuteLocalAudio = findViewById(R.id.MuteLocalAudio);
+    checkMuteLocalVideo = findViewById(R.id.MuteLocalVideo);
+
+    checkMuteLocalAudio.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        @Override
+        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+            if (isJoined) {
+                agoraEngine.muteLocalAudio(connectionId, checkMuteLocalAudio.isChecked());
+            }
+        }
+    });
+
+    checkMuteLocalVideo.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        @Override
+        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+            if (isJoined) {
+                agoraEngine.muteLocalVideo(connectionId, checkMuteLocalVideo.isChecked());
+            }
+        }
+    });
+    ```
+    To pause and resume playing remote audio or video streams call `agoraEngine.muteRemoteAudio(connectionId, remoteUid, isMuted)` or `agoraEngine.muteRemoteVideo(connectionId, remoteUid, isMuted)`.
+
+1. **Handle muting and unmuting notifications of remote streams**
+
+    When a remote user mutes or unmutes their audio or video stream, you receive notification of these changes. In this example, you inform the user of these events by displaying a message. To do this, replace the `onUserMuteAudio` and `onUserMuteVideo` methods under `agoraRtcEvents` with the following:
+
+    ```java
+    @Override
+    public void onUserMuteAudio(int connId, int uid, boolean muted) {
+        // A remote user paused or resumed sending the audio stream
+        showMessage("Remote user " + uid + (muted ? " muted" : " unmuted") + " audio");
+    }
+
+    @Override
+    public void onUserMuteVideo(int connId, int uid, boolean muted) {
+        // A remote user paused or resumed sending the video stream
+        showMessage("Remote user " + uid + (muted ? " muted" : " unmuted") + " video");
+    }
+    ```
+
+1. **Request and send key frames**
+
+    When you call `agoraEngine.sendVideoData` to send a video frame, you specify if this frame is a key frame by setting the `frameType` parameter of `VideoFrameInfo`.
+
+    When the sender does not send a key frame for a long time or the key frame is lost or damaged during transmission, <Vpd k="SDK" /> triggers the `onKeyFrameGenReq` callback to advise the sender to generate a key frame. In this example, you show a message when you receive the `onKeyFrameGenReq` callback. Add the following code to the `MainActivity` class:
+
+    ```java
+    @Override
+    public void onKeyFrameGenReq(String channel, int remote_uid, byte stream_id) {
+        // Set a flag for the encoder to generate a key frame",
+        showMessage("Frame loss detected.");
+    }
+    ```
+
+    If the receiver encounters an error when decoding frames, it calls the `agoraEngine.requestVideoKeyFrame` method to request a remote user to generate a fresh key frame.
+</PlatformWrapper>

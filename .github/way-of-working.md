@@ -235,30 +235,30 @@ All repositories must have the same directory and folder structure. In the repos
 `agora-manager` that holds the base code necessary to create an app, and one folder for each document published in 
 the docs repository. The folder names and file names must be written in kebab case. An example repository would look like:
 
-- agora-manager
-- ai-noise-suppression
-- audio-and-voice-effects
-- authentication-workflow
-- cloud-proxy
-- custom-video-and-audio
-- ensure-channel-quality
+- agora_manager
+- ai_noise_suppression
+- audio_and_voice_effects
+- authentication_workflow
+- cloud_proxy
+- custom_video_and_audio
+- ensure_channel_quality
 - geofencing
-- get-started-sdk
-- integrate-token-generation
-- magic-leap
-- media-stream-encryption
-- migration-guide
-- play-media
-- product-workflow
-- spatial-audio
-- stream-raw-audio-and-video
-- use-an-extension
-- virtual-background
+- get_started_sdk
+- integrate_token_generation
+- magic_leap
+- media_stream_encryption
+- migration_guide
+- play_media
+- product_workflow
+- spatial_audio
+- stream_raw_audio_and_video
+- use_an_extension
+- virtual_background
 - Readme.md
 
 The code in the repository is runnable from the product root, you choose to run the code from each folder. 
 
-`agora-manager` contains:
+`agora_manager` contains:
 
 - The base implementation for a product and contains the same variables and methods for the SDK. For example:
   - appId = "<Your app Id>";

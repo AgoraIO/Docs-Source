@@ -7,6 +7,8 @@ description: >
    Guidelines for integrating cloud recording into your app.
 ---
 
+import SwitchDomainName from '@docs/shared/common/_switch-domain-name.mdx';
+
 To improve application robustness, Agora recommends that you do the following when integrating Cloud Recording RESTful APIs:
 
 ## Use dual domain names
@@ -94,9 +96,12 @@ To guarantee high availability of important scenes with a large audience, best p
 1. Use Notifications to [Handle notifications for specific events](/en/cloud-recording/develop/receive-notifications#cloud-recording-callback-events). After starting the recording, if you don't receive event `13` `High availability register success` within 10 seconds, create a new recording task with a different UID.
 
 These fault recovery methods may result in multiple recording tasks. You are charged separately for each task. For more information, see [Pricing](../reference/pricing).
- 
 
-## Integration requirements checklist
+<SwitchDomainName />
+
+## Reference
+
+### Integration requirements checklist
 
 To ensure reliability of the cloud recording service, refer to the following checklist to confirm that your solution meets the integration requirements:
 
@@ -113,25 +118,4 @@ To ensure reliability of the cloud recording service, refer to the following che
 | 9 | optional | Use dual domain names | If the request fails with the primary domain name `api.agora.io`, try again with the primary domain name. If it fails again, switch to the secondary domain name `api.sd-rtn.com` and send the request again. |
 | 10 | optional | timeout logic | Make sure that the `maxIdleTime` setting is reasonable. The recommended value is 300 seconds. |
 
-## Reference
 
-### Domain name table
-
-|Primary domain name  |Region domain name	|Region|
-|:--------------------|:--------------------|:-----|
-|`api.sd-rtn.com`      |`api-us-west-1.sd-rtn.com` |Western United States|
-|                      |`api-us-east-1.sd-rtn.com` |Eastern United States|
-|                      |`api-ap-southeast-1.sd-rtn.com`|Southeast Asia Pacific|
-|                      |`api-ap-northeast-1.sd-rtn.com`| Northeast Asia Pacific|
-|                      |`api-eu-west-1.sd-rtn.com` |Western Europe|
-|                      |`api-eu-central-1.sd-rtn.com` |Central Europe|
-|                      |`api-cn-east-1.sd-rtn.com`|East China|
-|                      |`api-cn-north-1.sd-rtn.com`|North China|
-|`api.agora.io`         |`api-us-west-1.agora.io`|Western United States|
-|                       |`api-us-east-1.agora.io`|Eastern United States|
-|                       |`api-ap-southeast-1.agora.io`|Southeast Asia Pacific|
-|                       |`api-ap-northeast-1.agora.io`|Northeast Asia Pacific|
-|                	    |`api-eu-west-1.agora.io`|Western Europe|
-|                       |`api-eu-central-1.agora.io`|Central Europe|
-|                       |`api-cn-east-1.agora.io`|East China|
-|                       |`api-cn-north-1.agora.io`|North China|

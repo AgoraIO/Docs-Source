@@ -1,0 +1,166 @@
+<PlatformWrapper platform="windows">
+
+
+### Implement processing of raw audio data
+
+To register and use audio frame observers in your <Vpl k="CLIENT" />, <Vg k = "COMPANY"/> provides the `IAudioFrameObserver` interfaces for real-time audio processing. These interfaces enable developers to capture and process raw audio data before it is sent over the network. To implement these interfaces:
+
+1.  **Set up the audio frame observer**
+    1. Implement the `IAudioFrameObserver` audio frame observer interface.
+
+        Put the following code in `AgoraImplementationDlg.h` before the `AgoraEventHandler` class declaration:
+
+        ```cpp
+        class CustomAudioFrameObserver: public IAudioFrameObserver {
+            virtual bool onPlaybackAudioFrameBeforeMixing(const char* channelId, rtc::uid_t uid, AudioFrame& audioFrame)override;
+            virtual bool onRecordAudioFrame(const char* channelId, AudioFrame& audioFrame)override;
+            virtual bool onPlaybackAudioFrame(const char* channelId, AudioFrame& audioFrame)override;
+            virtual bool onMixedAudioFrame(const char* channelId, AudioFrame& audioFrame)override;
+            virtual bool onEarMonitoringAudioFrame(AudioFrame& audioFrame)override;
+            virtual int getObservedAudioFramePosition()override;
+            virtual AudioParams getPlaybackAudioParams()override;
+            virtual AudioParams getRecordAudioParams()override;
+            virtual AudioParams getMixedAudioParams()override;
+            virtual AudioParams getEarMonitoringAudioParams()override;
+        };
+        ```
+
+    1. Add the audio frame observer:
+
+        In `AgoraImplementationDlg.h`, add the following code after `AgoraEventHandler agoraEventHandler;`
+
+        ```cpp
+        // Audio frame observer object
+        CustomAudioFrameObserver* audio_frame_observer = new CustomAudioFrameObserver();
+        ```
+    1. Provide the member functions definitions you declared in `CustomAudioFrameObserver`.
+
+
+        2. Implement audio frame observer callbacks:
+            
+            `IAudioFrameObserver` provides access to each captured or played back audio frame, allowing you to process the audio frames according to your needs.To implement `IAudioFrameObserver` callbacks add the following to `AgoraImplementationDlg.cpp`:
+
+            ```cpp
+            // IAudioFrameObserver Implementation
+            // User can provide implementation for "onRecordAudioFrame()", "onPlaybackAudioFrame()" and "onMixedAudioFrame()" as per scenario. 
+            bool CustomAudioFrameObserver::onRecordAudioFrame(const char* channelId, AudioFrame& audioFrame)
+            {
+                // Gets the captured audio frame.
+                // Add code here to process the recorded audio.
+                return true;
+            }
+
+            bool CustomAudioFrameObserver::onPlaybackAudioFrame(const char* channelId, AudioFrame& audioFrame)
+            {
+                // Gets the audio frame for playback.
+                // Add code here to process the playback audio.
+                return true;
+            }
+
+            bool CustomAudioFrameObserver::onMixedAudioFrame(const char* channelId, AudioFrame& audioFrame)
+            {
+                // Retrieves the mixed captured and playback audio frame.
+                // Add code here to process the mixed captured playback audio
+                return true;
+            }
+
+            // Rest the below functions are dummy "do-nothing" implentaion just to sake for overriding of interface pure virtual functions.
+            bool CustomAudioFrameObserver::onPlaybackAudioFrameBeforeMixing(const char* channelId, rtc::uid_t uid, AudioFrame& audioFrame)
+            {
+                return false;
+            }
+
+            bool CustomAudioFrameObserver::onEarMonitoringAudioFrame(AudioFrame& audioFrame)
+            {
+                return false;
+            }
+
+            int CustomAudioFrameObserver::getObservedAudioFramePosition()
+            {
+                return 0;
+            }
+
+            IAudioFrameObserver::AudioParams CustomAudioFrameObserver::getPlaybackAudioParams()
+            {
+                return AudioParams();
+            }
+
+            IAudioFrameObserver::AudioParams CustomAudioFrameObserver::getRecordAudioParams()
+            {
+                return AudioParams();
+            }
+
+            IAudioFrameObserver::AudioParams CustomAudioFrameObserver::CustomAudioFrameObserver::getMixedAudioParams()
+            {
+                return AudioParams();
+            }
+
+            IAudioFrameObserver::AudioParams CustomAudioFrameObserver::getEarMonitoringAudioParams()
+            {
+                return AudioParams();
+            }       
+            ```
+
+2.  **Register the audio frame observers**
+
+    To receive the callbacks declared in `IAudioFrameObserver`, you register the audio frame observers with the <Vg k="ENGINE" /> before joining a channel. To specify the format of audio frames captured by each `IAudioFrameObserver` callback, use the `setRecordingAudioFrameParameters`, `setPlaybackAudioFrameParameters` and `setMixedAudioFrameParameters` methods.
+
+    To register the observers, do the following:
+
+    1. Setup a function to register and unregister observers for audio frames. In `AgoraImplementationDlg.h`, add the following code after `void setupVideoSDKEngine();`:
+      
+        ```cpp
+        bool EnableAudioVideoCapture(bool bEnable);
+        ```
+    
+    1. Define `EnableAudioVideoCapture()`. Add the following in `AgoraImplementationDlg.cpp`, before `CAboutDlg()`:
+
+        ```cpp
+        bool CAgoraImplementationDlg::EnableAudioVideoCapture(bool bEnable)
+        {
+            agora::util::AutoPtr<agora::media::IMediaEngine> mediaEngine;
+            //query interface agora::AGORA_IID_MEDIA_ENGINE in the engine.
+            mediaEngine.queryInterface(agoraEngine, agora::rtc::AGORA_IID_MEDIA_ENGINE);
+            int nRet = 0;
+            agora::base::AParameter apm(agoraEngine);
+            if (mediaEngine.get() == NULL)
+                return FALSE;
+            if (bEnable) 
+            {
+                // Register the audio frame observer
+                nRet = mediaEngine->registerAudioFrameObserver(audio_frame_observer);
+
+                // Set the format of the captured raw audio data.
+                int SAMPLE_RATE = 16000, SAMPLE_NUM_OF_CHANNEL = 1, SAMPLES_PER_CALL = 1024;
+
+                agoraEngine->setRecordingAudioFrameParameters(SAMPLE_RATE, SAMPLE_NUM_OF_CHANNEL,
+                    RAW_AUDIO_FRAME_OP_MODE_READ_WRITE, SAMPLES_PER_CALL);
+
+                agoraEngine->setPlaybackAudioFrameParameters(SAMPLE_RATE, SAMPLE_NUM_OF_CHANNEL,
+                    RAW_AUDIO_FRAME_OP_MODE_READ_WRITE, SAMPLES_PER_CALL);
+
+                agoraEngine->setMixedAudioFrameParameters(SAMPLE_RATE, SAMPLE_NUM_OF_CHANNEL, SAMPLES_PER_CALL);
+            }
+            else 
+            {
+                nRet = mediaEngine->registerAudioFrameObserver(NULL);
+            }
+            return nRet == 0 ? TRUE : FALSE;
+        }
+        ```
+
+    1. To execute this method before joining the channel, add the following before `agoraEngine->enableAudio()`:
+
+        ```cpp
+        // Enable audio & video frame capture by registering the frames.
+        EnableAudioVideoCapture(TRUE);
+        ```
+3. **Unregister the audio frame observer when you leave a channel**
+    
+    When you leave a channel, you unregister the frame observers by setting `EnableAudioVideoCapture()` to `false`.To do this, add the following to the`Leave` button event listener, `OnBnClickedButton1()` after `agoraEngine->disableAudio();`:
+
+        ```cpp
+        // Unregister audio & video frame.
+		EnableAudioVideoCapture(FALSE);
+        ```
+</PlatformWrapper>

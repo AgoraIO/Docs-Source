@@ -1,0 +1,195 @@
+1. **Import the required class**
+
+    To use the `CHttpFile` class in your project, add the following to the list of `#include` statements in `AgoraImplementationDlg.cpp`:
+
+    ```cpp
+    #include "afxinet.h"
+    ```
+2. **Add variables for your connection to the token server**
+
+    Declare the variables you need to specify the user id, token-server URL and the token expire time. In `AgoraImplementationDlg.h`, add the following declarations to the `CAgoraImplementationDlg` class after `channelName` declaration:
+
+    ``` cpp
+    int tokenRole = 1; // The token role: Broadcaster or Audience
+	std::string serverUrl = "<The base URL to your token server>"; //For example, "https://agora-token-service-production-92ff.up.railway.app"
+	int expireTime = 60; //Expire time in Seconds.
+	uid_t uid = 1; // An integer that identifies the user
+    ```
+    Make sure you specify the token server URL in exactly the same format as shown in the example.
+
+4. **Retrieve a token from the server**
+
+    Use a GET request to retrieve an authentication token for a specific channel from the token server. In `AgoraImplementationDlg.cpp`, add the following `fetchToken()` method before `onJoinChannelSuccess()`:
+
+    ```cpp
+    std::string fetchToken(std::string& serverUrl, const std::string& channelName, int tokenRole, size_t uid, int expireTime) 
+    {
+        CInternetSession session;
+        CHttpConnection* pConnection = NULL;
+        std::string httpsPrefix = "https://";
+        std::string serverUrlWithoutHTTPS;
+        if (serverUrl.find(httpsPrefix) == 0) 
+        {
+            serverUrlWithoutHTTPS = serverUrl.substr(httpsPrefix.length());
+        }
+        CString baseURL(serverUrlWithoutHTTPS.c_str());
+        std::string rest_url = "/rtc/" + channelName + "/" + std::to_string(tokenRole) + "/uid/" + std::to_string(uid) + "/?expiry=" + std::to_string(expireTime);
+        CString restURL(rest_url.c_str());
+        std::string token = "";
+        try 
+        {
+            pConnection = (CHttpConnection*)session.GetHttpConnection(baseURL, (INTERNET_PORT)INTERNET_DEFAULT_HTTP_PORT);
+            if (pConnection) 
+            {
+                CHttpFile* pHTTPFile = NULL;
+                pHTTPFile = pConnection->OpenRequest(CHttpConnection::HTTP_VERB_GET, restURL);
+                if (pHTTPFile)
+                {
+                    pHTTPFile->SendRequest();
+                    DWORD dwRet = 0;
+                    char result[1024];
+                    memset(result, 0, sizeof(result));
+                    pHTTPFile->QueryInfoStatusCode(dwRet);
+                    if (dwRet == HTTP_STATUS_OK) 
+                    {
+                        int bytesRead = pHTTPFile->Read((void*)result, 1024);
+                        result[bytesRead] = '\0';
+                        char* tokenStart = strstr(result, "\"rtcToken\":\"");
+                        if (tokenStart != NULL) 
+                        {
+                            tokenStart += strlen("\"rtcToken\":\"");
+                            char* tokenEnd = strchr(tokenStart, '\"');
+                            if (tokenEnd != NULL) 
+                            {
+                                *tokenEnd = '\0';
+                                token = std::string(tokenStart);
+                            }
+                        }
+                    }
+                    else 
+                    {
+                        CString errorCode;
+                        pHTTPFile->QueryInfo(HTTP_QUERY_STATUS_TEXT, errorCode);    // Status String - eg OK, Not Found
+                        AfxMessageBox(errorCode);
+                    }
+                    pHTTPFile->Close();
+                    delete pHTTPFile;
+                }
+                pConnection->Close();
+                delete pConnection;
+            }
+        }
+        catch (CInternetException* e) 
+        {
+            char strErrorBuf[255];
+            e->GetErrorMessage((LPTSTR)strErrorBuf, 255, NULL);
+            AfxMessageBox((LPCTSTR)strErrorBuf, MB_ICONINFORMATION);
+        }
+        session.Close();
+        return token;
+    }
+    ```
+5. **Update the `Join` button event listener to fetch a new token and join the channel with this retrieved token**
+
+    In **Dialog Editor**, double-click **Join**. It opens the `Join` event listener for you. Replace the following code:
+
+    ```cpp
+    if (0 == agoraEngine->joinChannel(token.c_str(), channelName.c_str(), 0, NULL))
+    {
+        isJoin = true;
+    }
+    ```
+
+    with:
+
+    ```cpp
+    if (token == "")
+    {
+        // Fetch new token 
+        token = fetchToken(serverUrl, channelName, tokenRole, uid, expireTime);
+        if (token == "")
+        {
+            AfxMessageBox(L"Invalid Token.");
+            return;
+        }
+    }
+    if (0 == agoraEngine->joinChannel(token.c_str(), channelName.c_str(), NULL, uid))
+    {
+        isJoin = true;
+    }
+    ```
+    This examples uses a different `joinchannel()` call to support a uid other than 0.
+
+6. **Set `token` as an empty string in the `Leave` button event listener:**
+
+     In **Dialog Editor**, double-click **Leave**. The `Leave` event listener opens. Set `token` as an empty string
+     after `remoteUId = NULL;`. This forces your <Vpl k="CLIENT" />  to fetch a new token whenever your user rejoins a
+     channel.
+
+       ```cpp
+       token = "";
+       ```
+
+7. **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
+
+    A token expires after the `expireTime` specified in the call to the token server, or after 24 hours if the time
+    is not specified. In order for you to renew the token, the `onTokenPrivilegeWillExpire` event receives a callback
+    when the current token is about to expire. To implement this workflow:
+
+      1. In **Solution Explorer**, open `pch.h` and define the `ON_TOKEN_PRIVILEGE_WILL_EXPIRE` window message
+ macro after the `EID_USER_JOINED` macro definition:
+
+          ```cpp
+          #define ON_TOKEN_PRIVILEGE_WILL_EXPIRE	0x00000023
+          ```
+
+      2. In `AgoraImplementationDlg.h`, declare the event callback to handle the triggered event in the
+ `AgoraEventHandler` class:
+
+          ```cpp
+          virtual void onTokenPrivilegeWillExpire(const char* token)override;
+          ```
+
+      3. Add the following method declaration to `CAgoraImplementationDlg` class after `afx_msg LRESULT OnEIDUserJoined(WPARAM wParam, LPARAM lParam);`:
+
+          ```cpp
+          afx_msg LRESULT OnEIDTokenPrivilegeWillExpire(WPARAM wParam, LPARAM lParam);
+          ```
+      4. In the `AgoraImplementationDlg.cpp` class, define the event callback after the
+   `AgoraEventHandler::onUserJoined()` definition:
+
+          ```cpp
+          void AgoraEventHandler::onTokenPrivilegeWillExpire(const char* token)
+          {
+              // Occurs on requesting new token
+              AfxMessageBox(L"Token is about to expire");
+              if (m_hMsgHandler)
+              {
+                  ::PostMessage(m_hMsgHandler, WM_MSGID(ON_TOKEN_PRIVILEGE_WILL_EXPIRE), (WPARAM)token, NULL);
+              }
+          }
+          ```
+      5. Define the `OnEIDTokenPrivilegeWillExpire()` method after the `CAgoraImplementationDlg::OnEIDUserJoined()`
+   definition:
+
+          ```cpp
+          LRESULT CAgoraImplementationDlg::OnEIDTokenPrivilegeWillExpire(WPARAM wParam, LPARAM lParam)
+          {
+              // Fetch a new token
+              token = fetchToken(serverUrl, channelName, tokenRole, uid, expireTime);
+              if (token == "")
+              {
+                  AfxMessageBox(L"Invalid Token");
+                  ::PostMessage(GetParent()->GetSafeHwnd(), WM_MSGID(ON_TOKEN_PRIVILEGE_WILL_EXPIRE), TRUE, 0);
+                  return 0;
+              }
+              // Renew Agora engine token by the new one
+              if (0 == agoraEngine->renewToken(token.c_str()))
+              {
+                  AfxMessageBox(L"Token Renewed");
+              }
+
+              ::PostMessage(GetParent()->GetSafeHwnd(), WM_MSGID(ON_TOKEN_PRIVILEGE_WILL_EXPIRE), TRUE, 0);
+              return 0;
+          }
+          ```

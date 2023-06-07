@@ -87,3 +87,57 @@ To upload courseware during a class, perform the following steps:
    You can delete your personal resources by selecting the option icon and clicking **Delete**, as shown in the following screenshot:
 
    ![](https://web-cdn.agora.io/docs-files/1663562326661)
+
+## Cloud storage configuration
+
+To ensure that Flexible Classroom can access your cloud storage, configure your cloud storage account as follows:
+
+* Alibaba Cloud OSS account
+
+   * Ensure that read and write permissions are set to public read.
+
+   * Cross domain rule configuration
+      * Configure Source and Allow Headers according to your actual situation.
+      * Exposure Headers must be filled in according to the figure below:
+
+     ![alibaba-cloud-storage-config](/images/flexible-classroom/alibaba-cloud-storage-config.png)
+
+* AWS S3 accounts
+
+   * Bucket policy
+
+      ```json
+      {
+      "Version": "2012-10-17",
+      "Id": "Policy1622700880591",
+      "Statement": [
+            {
+               "Sid": "Stmt1622700872941",
+               "Effect": "Allow",
+               "Principal": "*",
+               "Action": "s3:GetObject",
+               "Resource": "arn:aws-cn:s3:::agora-adc-artifacts/*"
+            }
+      ]
+      }
+      ```
+
+   * Cross-origin resource sharing
+
+      ```json
+      [
+      {
+            "AllowedHeaders": [
+               "*"
+            ],
+            "AllowedMethods": [
+               "PUT",
+               "GET"
+            ],
+            "AllowedOrigins": [
+               "*"
+            ],
+            "ExposeHeaders": []
+      }
+      ]
+      ```

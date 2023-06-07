@@ -2,6 +2,7 @@
 title: "Common errors"
 sidebar_position: 5
 type: docs
+platform_selector: false
 description: >
   Common error codes and status codes you may encounter when using the Cloud Recording RESTful APIs.
 ---

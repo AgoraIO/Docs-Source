@@ -56,9 +56,15 @@ const data = {
     CLIENT: 'app'
   },
 
-  'windows': {
-    NAME: 'Windows',
-    PATH: 'windows',
+  'linux-cpp': {
+    NAME: 'Linux C++',
+    PATH: 'linux-cpp',
+    CLIENT: 'app'
+  },
+
+  'linux-c': {
+    NAME: 'Linux C',
+    PATH: 'linux-c',
     CLIENT: 'app'
   },
 
@@ -67,6 +73,7 @@ const data = {
     PATH: 'unreal',
     CLIENT: 'game'
   }
+  
 };
 
 export default data;

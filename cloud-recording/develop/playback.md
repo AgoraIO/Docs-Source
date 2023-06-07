@@ -2,6 +2,7 @@
 title: "Synchronous playback"
 sidebar_position: 10
 type: docs
+platform_selector: false
 description: >
   Use the start timestamp of the recording, provided by Agora Cloud Recording, to achieve synchronized playbac
 ---

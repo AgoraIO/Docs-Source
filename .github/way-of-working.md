@@ -232,8 +232,8 @@ Each product and each platform has its own repository that stores the runnable c
 - https://github.com/AgoraIO/video-sdk-samples-android
 
 All repositories must have the same directory and folder structure. In the repository root, you have one folder, 
-`agora-manager` that holds the base code necessary to create an app, and one folder for each document published in 
-the docs repository. The folder names and file names must be written in kebab case. An example repository would look like:
+`agora_manager` that holds the base code necessary to create an app, and one folder for each document published in 
+the docs repository. The folder names and file names must be written in snake case. An example repository would look like:
 
 - agora_manager
 - ai_noise_suppression

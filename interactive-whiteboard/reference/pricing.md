@@ -14,18 +14,53 @@ If you have already signed a contract with <Vg k="COMPANY" />, the billing terms
 
 ## <Vg k="WHITE" /> pricing
 
-The unit prices for whiteboard features are as follows: 
+The unit prices for whiteboard features are as follows:
 
-| Whiteboard feature | Volume                                | Pricing                  |
-|:-------------------|:--------------------------------------|:-------------------------|
-| Online whiteboard  | Under 10,000 minutes                  | Free                     |
-|                    | 10,000 - 60,000 minutes               | 1.40 US$/1,000 minutes   |
-|                    | 60,000 - 120,000 minutes              | 1.30 US$/1,000 minutes   |
-|                    | 120,000 - 1,000,000 minutes           | 1.10 US$/1,000 minutes   |
-|                    | Over 1,000,000 minutes                | Contact Agora Sales      |
-| File conversion    | Under 1,000 images/web pages          | Free                     |
-|                    | Static file conversion (to image)     | 0.50 US$/1,000 images    |
-|                    | Dynamic file conversion (to web page) | 2.50 US$/1,000 web pages |
+<table>
+    <thead>
+        <tr>
+            <th>Whiteboard feature</th>
+            <th>Volume</th>
+            <th>Pricing per month</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td rowspan="5">Online whiteboard</td>
+            <td>0 - 10,000 minutes</td>
+            <td>Free</td>
+        </tr>
+        <tr>
+            <td>10,000 - 60,000 minutes</td>
+            <td>$1.40 USD/1,000 minutes</td>
+        </tr>
+        <tr>
+            <td>60,000 - 120,000 minutes</td>
+            <td>$1.30 USD/1,000 minutes</td>
+        </tr>
+        <tr>
+            <td>120,000 - 1,000,000 minutes</td>
+            <td>$1.10 USD/1,000 minutes</td>
+        </tr>
+        <tr>
+            <td>Over 1,000,000 minutes</td>
+            <td>Contact Agora Sales</td>
+        </tr>
+        <tr>
+            <td rowspan="3">File conversion</td>
+            <td>0 - 1,000 images/web pages</td>
+            <td>Free</td>
+        </tr>
+        <tr>
+            <td>Static file conversion (to image)</td>
+            <td>$0.50 USD/1,000 images</td>
+        </tr>
+        <tr>
+            <td>Dynamic file conversion (to web page)</td>
+            <td>$2.50 USD/1,000 web pages</td>
+        </tr>
+    </tbody>
+</table>
 
 If your scenario involves other Agora products or services, such as the <Vg k="VIDEO" />, <Vg k="MESS" />, or <Vg k="CREC" />, expect additional charges for these products or services. For details, see the pricing policy for each Agora product or service.
 

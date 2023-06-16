@@ -27,7 +27,7 @@ The unit prices for whiteboard features are as follows:
     <tbody>
         <tr>
             <td rowspan="5">Online whiteboard</td>
-            <td>0 - 10,000 minutes</td>
+            <td>Under 10,000 minutes</td>
             <td>Free</td>
         </tr>
         <tr>

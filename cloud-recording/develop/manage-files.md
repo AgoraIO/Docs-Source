@@ -169,7 +169,7 @@ Slicing occurs when any of the following conditions is met:
 - The video stream is interrupted.
 - When you set the browser to use H.264 codec for encoding, forced slicing occurs when the slice file reaches 5.5 minutes, or the file size is over 50 MB. After forced slicing, the first frame of the new slice file might not be an I frame, in which case the slice file cannot be decoded and played directly. For example, in the communication channel, sometimes only one I frame may appear in several hours. In such case, the first frame of the new slice file is probably not an I frame.
 
-When you set the browser to use VP8 codec, Agora Cloud Recording will not force slicing the file.
+When you set the browser to use VP9 codec, Agora Cloud Recording will not force slicing the file.
 
 ### Audio file slicing
 

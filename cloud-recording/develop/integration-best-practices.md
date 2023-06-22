@@ -1,25 +1,29 @@
 ---
-title: "Best Practices in integrating Cloud Recording"
+title: "Best practice in integrating Cloud Recording"
 sidebar_position: 13
 type: docs
+platform_selector: false
 description: >
    Guidelines for integrating cloud recording into your app.
 ---
+
+import SwitchDomainName from '@docs/shared/common/_switch-domain-name.mdx';
 
 To improve application robustness, Agora recommends that you do the following when integrating Cloud Recording RESTful APIs:
 
 ## Use dual domain names
 
-If you send a Cloud Recording RESTful API request to `api.agora.io` and the request fails, retry with the same domain name first. If it fails again, replace the domain name with `api.sd-rtn.com` and retry. Agora recommends that you use a backoff strategy, for example, retry after 1, 3, and 6 seconds successively, to avoid exceeding the Queries Per Second (QPS) limits.
+If you send a Cloud Recording RESTful API request to `api.agora.io` and the request fails, retry with the same domain name first. If it fails again, replace the domain name with `api.sd-rtn.com` and retry. Best practice is to first try the DNS domain close to your server. See the [domain name table](#domain-name-table) for a list of DNS servers.
 
-## Acquire service status
+Agora recommends that you use a backoff strategy, for example, retry after 1, 3, and 6 seconds successively, to avoid exceeding the Queries Per Second (QPS) limits.
 
-You can use Cloud Recording RESTful APIs to acquire the status of the recording service.  Apart from Cloud Recording RESTful APIs. 
+## Get service status
 
+You use Cloud Recording RESTful APIs to get the status of the recording service.
 
-Agora recommends that core apps should not rely on the Message Notification Service. If your apps already rely heavily on the Message Notification Service, Agora recommends that you contact <a href="mailto:support@agora.io">support@agora.io</a> to enable the redundant message notification function, which doubles the received notifications and reduces the probability of message loss. After enabling the redundant message notification function, you need to deduplicate messages based on `sid`. Redundant message notification still cannot guarantee a 100% arrival rate.
+Best practice is that core apps do not rely on <Vg k="NCS_LONG" /> (<Vg k="NCS" />). If your apps already rely heavily on the <Vg k="NCS" />, contact <a href="mailto:support@agora.io">support@agora.io</a> and enable the redundant message notification function. This doubles the received notifications and reduces the probability of message loss. After enabling the message notification function, you need to deduplicate messages based on `sid`. Message notification still cannot guarantee a 100% arrival rate.
 
-The queries per second (QPS) quota is 10 requests per second for each App ID. You can estimate the QPS quota your project needs according to your peak current worker (PCW) quota (300) and query frequency, and contact <a href="mailto:support@agora.io">support@agora.io</a> to increase your quota if necessary.
+The initial QPS limit is 10 per App ID when you register. You can estimate the QPS quota your project needs according to your Peak Concurrent Worker (PCW) quota and query frequency. The initial PCW limit is 50 per AppID when you register. If the RESTful API returns QPS limitation error code `429`, or PCW quota limitation error code `406`, then retry, or contact support@agora.io to increase your QPS or PCW quota.
 
 ### Ensure the recording service starts successfully
 
@@ -37,7 +41,7 @@ Take the following steps to ensure that the recording service starts successfull
 
 ### Monitor service status during a recording
 
-You can periodically call `query` to ensure that the recording service is in progress and in a normal state. Apart from `query`, you can use the Message Notification Service as a complementary method to monitor the service status. See [Comparison Between the Message Notification Service and the `query` Method](../reference/rest-api/query#what-are-the-differences-between-the-message-notification-service-and-the-query-method) for detailed comparison between the two methods.
+You can periodically call `query` to ensure that the recording service is in progress and in a normal state. Apart from `query`, you can use the <Vg k="NCS" /> as a complementary method to monitor the service status. See [Comparison Between the <Vg k="NCS" /> and the `query` Method](../reference/rest-api/query#what-are-the-differences-between-the-message-notification-service-and-the-query-method) for detailed comparison between the two methods.
 
 #### Periodically query service status
 
@@ -77,3 +81,41 @@ In composite recording mode, call `query` 15 seconds after the cloud recording s
 The default value of `maxIdleTime` in the `start` method is 30 seconds. If the host frequently goes online and offline, a brief `maxIdleTime` value causes the recording service to join and exit the channel frequently. For scenarios that require the recording service to be in the channel all the time, it is necessary to increase `maxIdleTime` in case the recording quits after a short idle time.
 
 For example, if there is a fixed 5-minute break in each class, you can set `maxIdleTime` to 10 minutes to ensure uninterrupted recording of the entire class.
+
+## Fault recovery
+
+
+Network failures and potential risks may occur due to factors such as cloud and network software, infrastructure, and other elements outside of <Vg k="COMPANY"/>'s control. To enhance the user experience, Cloud Recording offers automatic high availability task migration for failure recovery. When a failure is detected, the recording task will be migrated within 90 seconds. During this time, the recording may be disrupted and recorded files may be lost.
+
+To guarantee high availability of important scenes with a large audience, best practice is to:
+
+1. Monitor recording tasks with calls to the [query](/en/cloud-recording/reference/rest-api/query) method.
+
+   If the call returns a `404` error, create a new recording task with a different UID.
+
+1. Use Notifications to [Handle notifications for specific events](/en/cloud-recording/develop/receive-notifications#cloud-recording-callback-events). After starting the recording, if you don't receive event `13` `High availability register success` within 10 seconds, create a new recording task with a different UID.
+
+These fault recovery methods may result in multiple recording tasks. You are charged separately for each task. For more information, see [Pricing](../reference/pricing).
+
+<SwitchDomainName />
+
+## Reference
+
+### Integration requirements checklist
+
+To ensure reliability of the cloud recording service, refer to the following checklist to confirm that your solution meets the integration requirements:
+
+| Serial | Importance | Item | Description |
+|--|----------|----------|----------|
+| 1 | required | Subscribe to a service | Make sure you have activated the cloud recording service. | 
+| 2 | required | request method | <ul><li>To query, use the `POST` request method; to query the recording status use `GET`. </li> <li>Request URLs and request body content are case-sensitive.</li></ul> |
+| 3 | required | Get recording resources | <ul><li>The passed in `uid` cannot duplicate any UID within the current channel.</li><li>For page recording, make sure an `appid + cname + uid` corresponds to a resource ID.</li><li>Make sure that a resource ID is only used for one cloud recording service.</li><li>Make sure to call the `start` method.</li></ul> |
+| 4 | required | channel scene | Make sure that the channel scene (`channelType`) is consistent with the settings of the <Vg k="VSDK" />. |
+| 5 | required | recording parameters | <ul><li>Make sure that the type, case, and value range of all the parameters passed in when starting the recording are correct, and the required parameters are filled; otherwise, error code 2 is returned.</li><li>Set the layout and video bit rate of the combined recording by referring to the combined layout document and the recording bit rate comparison table.</li></ul> |
+| 6 | required | Confirm that the recording service has started successfully | <ul><li>Make sure that the start request is successful, that is, the `sid` (recording ID) is successfully obtained.</li><li>Call the query method 5 seconds after getting the `sid` using the backoff strategy. If the returned status is still not `4` or `5`, after 90 seconds, it can be considered that the recording has not started or exited after a timeout.</li></ul> |
+| 7 | required | PCW & QPS limits | <ul><li>Make sure that each App ID does not exceed 10 requests per second (QPS).</li><li>To increase the QPS and PCW limits, please contact technical support.</li></ul> |
+| 8 | optional | NCS Service Activation | Activate the cloud recording callback service and subscribe to the following events as an auxiliary means of monitoring the recording service status: <ul><li>`40 recorder_started`: The recording service has started.</li><li>`11 session_exit`: The recording service ended the task and exited.</li><li>`1 cloud_recording_error`: An error occurred in the recording service.</li><li>`12 session_failover`: Enable high availability mechanism for recording.</li><li>`31 uploaded`: All recorded files have been uploaded to the specified third-party cloud storage.</li></ul> |
+| 9 | optional | Use dual domain names | If the request fails with the primary domain name `api.agora.io`, try again with the primary domain name. If it fails again, switch to the secondary domain name `api.sd-rtn.com` and send the request again. |
+| 10 | optional | timeout logic | Make sure that the `maxIdleTime` setting is reasonable. The recommended value is 300 seconds. |
+
+

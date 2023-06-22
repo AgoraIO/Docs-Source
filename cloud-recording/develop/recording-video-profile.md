@@ -2,6 +2,7 @@
 title: "Set the video profile"
 sidebar_position: 14
 type: docs
+platform_selector: false
 description: >
    Setting the video profile for recorded videos.
 ---

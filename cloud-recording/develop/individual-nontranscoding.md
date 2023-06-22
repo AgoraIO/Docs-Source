@@ -2,6 +2,7 @@
 title: "Individual audio non-transcoding recording"
 sidebar_position: 12
 type: docs
+platform_selector: false
 description:
   Make an individual audio non-transcoding recording or postpone audio mixing
 ---
@@ -227,7 +228,11 @@ https://http://api.agora.io//v1/apps/<yourappid>/cloud_recording/resourceid/<res
 
 ## Recorded files
 
-For the naming rules of recorded files, see [Manage Recording Files](../develop/manage-files). You can play M3U8 audio files, or you can use [Agora Format Converter Script](https://download.agora.io/acrsdk/release/Agora_Cloud_Recording_Tools_v2.8.0_20210820-1629467741_274.tar.gz)﻿ to merge and convert all TS files of the specified user ID into one MP3/M4A/AAC audio file for playback. See [Merge Audio and Video Files after an Individual Recording](../develop/merge-files) for details.
+
+ 
+For the naming rules of recorded files, see [Manage Recording Files](../develop/manage-files). You can play M3U8 
+audio files, or you can use the <Link target="_blank" to="{{Global.CREC_FCS}}">Agora Format Converter Script</Link> to 
+merge and convert all TS files of the specified user ID into one MP3/M4A/AAC audio file for playback. See [Merge Audio and Video Files after an Individual Recording](../develop/merge-files) for details.
 
 If you enable Postpone Audio Mixing, you can also get the MP3/M4A/AAC file of all user IDs mixed in the channel within 24 hours after the Audio Individual non-transcoding Recording ends.
 

@@ -1,187 +1,458 @@
+import ResourcesClean from './windows-resources-clean.mdx'
+
 <PlatformWrapper platform="windows">
 
 ### Implement the user interface
 
-To create the user interface (UI) for the video call in your project, add the following elements into the UI:
+In the interface, create windows for local and remote video, and add buttons to join and leave a channel. To create this UI, take the following steps:
 
-- The view of the host
-- The exit button
+1. **Add buttons to joins and leave the channel**
 
-
-When you use the UI setting of the [sample project](https://github.com/AgoraIO/API-Examples/tree/master/windows/APIExample), you can see the following interface:
-
-![](https://web-cdn.agora.io/docs-files/1568792708592)
-
-### Implement the  channel logic
-
-1. Initialize IRtcEngine
-
-   Create and initialize the `IRtcEngine` object before calling any other Agora APIs.
-
-   Call the `createAgoraRtcEngine` method and the `initialize` method, and pass in the App ID to initialize the `IRtcEngine` object.
-
-   You can also listen for callback events, such as when the local user joins or leaves the channel.
-
-   ```cpp
-   // Create Rtc engine.
-   m_lpAgoraEngine = createAgoraRtcEngine();
-   RtcEngineContext ctx;
-
-   // Add the register events and callbacks.
-   ctx.eventHandler = &m_engineEventHandler;
-
-   // Input your App ID.Fill the App ID of your project generated on Agora Console.
-   ctx.appId = "Your App ID";
-
-   // Initialize the IRtcEngine object.
-   m_lpAgoraEngine->initialize(ctx);
-   ```
-
-   ```cpp
-   // Inherit the events and callbacks of IRtcEngineEventHandler.
-   class CAGEngineEventHandler :
-       public IRtcEngineEventHandler
-   {
-   public:
-       CAGEngineEventHandler();
-       ~CAGEngineEventHandler();
-       void setMainWnd(HWND wnd);
-       HWND GetMsgReceiver() {return m_hMainWnd;};
-
-       // Listen for the onJoinChannelSuccess callback.
-       // This callback occurs when the local user successfully joins the channel.
-       virtual void onJoinChannelSuccess(const char* channel, uid_t uid, int elapsed);
-
-       // Listen for the onLeaveChannel callback.
-       // This callback occurs when the local user successfully leaves the channel.
-       virtual void onLeaveChannel(const RtcStats& stat);
-
-       // Listen for the onUserJoined callback.
-       // This callback occurs when the remote host successfully joins the channel.
-       // After receiving this callback, immediately call setupRemoteVideo to set the remote video view.
-       virtual void onUserJoined(uid_t uid, int elapsed) override;
-
-       // Listen for the onUserOffline callback.
-       // This callback occurs when the remote host leaves the channel or drops offline.
-       virtual void onUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason);
-   private:
-       HWND m_hMainWnd;
-   };
-   ```
-
-
-
-3. Set the local video view
-
-   After setting the channel profile and client role, set the local video view before joining the channel so that the host can see the local video in the video call. Follow these steps to configure the local video view:
-
-   ```cpp
-   // Enable the video module.
-   m_lpAgoraEngine->enableVideo();
-   // Start local preview.
-   m_lprtcEngine->startPreview();
-
-   // Set the local video view.
-   VideoCanvas vc;
-   vc.uid = 0;
-   vc.view = hVideoWnd;
-   vc.renderMode = RENDER_MODE_TYPE::RENDER_MODE_HIDDEN;
-   m_lpAgoraEngine->setupLocalVideo(vc);
-   ```
-
-
-
-4. Join the channel
-
-   Set channel profile and client role and join the channel by a temp token.
-
-   ```cpp
-   ChannelMediaOptions options;
-   // For a video call scenario, set the channel profile as BROADCASTING.
-   options.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
-   // Set both clients as the BROADCASTER.
-   options.clientRoleType = CLIENT_ROLE_BROADCASTER;
-
-   // Join channel with a temp token that you generate on Agora Console.
-   BOOL CAgoraObject::JoinChannel("Your token", LPCTSTR lpChannelName, 0, options)
-   {
-       int nRet = 0;
-       LPCSTR lpStreamInfo = "{\"owner\":true,\"width\":640,\"height\":480,\"bitrate\":500}";
-   #ifdef UNICODE
-       CHAR szChannelName[128];
-       ::WideCharToMultiByte(CP_ACP, 0, lpChannelName, -1, szChannelName, 128, NULL, NULL);
-          if (nRet == 0)
-           m_strChannelName = lpChannelName;
-       return nRet == 0 ? TRUE : FALSE;
-   }
-   ```
-
-
-
-5. Set the remote video view
-
-   Call the `setupRemoteVideo` method after joining the channel.
-
-   Shortly after a remote host joins the channel, the SDK gets the host's user ID in the `onUserJoined` callback. Call the `setupRemoteVideo` method in the callback and pass in the `uid` to set the video view of the host.
-
-   ```cpp
-   // Listen for the onUserJoined callback.
-   // After receiving this callback, immediately call setupRemoteVideo to set the remote video view.
-   void CAGEngineEventHandler::onUserJoined(uid_t uid, int elapsed)
-   {
-   	LPAGE_USER_JOINED lpData = new AGE_USER_JOINED;
-
-   	lpData->uid = uid;
-   	lpData->elapsed = elapsed;
-
-   	if(m_hMainWnd != NULL)
-   		::PostMessage(m_hMainWnd, WM_MSGID(EID_USER_JOINED), (WPARAM)lpData, 0);
-   }
-   ```
-
-   ```cpp
-   VideoCanvas canvas;
-   canvas.renderMode = RENDER_MODE_FIT;
-   POSITION pos = m_listWndInfo.GetHeadPosition();
-   ......
-   AGVIDEO_WNDINFO &agvWndInfo = m_listWndInfo.GetNext(pos);
-   canvas.uid = agvWndInfo.nUID;
-   canvas.view = m_wndVideo[nIndex].GetSafeHwnd();
-   agvWndInfo.nIndex = nIndex;
-
-   // Set the remote video view.
-   CAgoraObject::GetEngine()->setupRemoteVideo(canvas);
-   ```
-
-
-
-6. Leave the channel
-
-   Call the `leaveChannel` method to leave the current channel according to your scenario, for example, when the video call ends, when you need to close the app, or when your app runs in the background.
-
-   ```cpp
-   BOOL CAgoraObject::LeaveCahnnel()
-   {
-       m_lpAgoraEngine->stopPreview();
-       // Leave the current channel.
-       int nRet = m_lpAgoraEngine->leaveChannel();
-       m_nSelfUID = 0;
-       return nRet == 0 ? TRUE : FALSE;
-   }
-
-   void CAgoraObject::CloseAgoraObject()
-   {
-       if(m_lpAgoraEngine != NULL)
-           // Release the IRtcEngine object.
-           m_lpAgoraEngine->release();
-       if(m_lpAgoraObject != NULL)
-           delete m_lpAgoraObject;
-       m_lpAgoraEngine = NULL;
-       m_lpAgoraObject = NULL;
-   }
-   ```
-
+    1. Go to menu **View** > **Other Windows** > **Resource View**.
     
+        If the **Resource View** window isn't the top-most window, select the **Resource View** tab to bring it to the top.
+    
+    1. In **Resource View**, go to **AgoraImplementation.rc** > **Dialog** and double-click `IDD_AGORAIMPLEMENTATION_DIALOG`.
+        
+        The resource opens inside the **Dialog Editor**. 
 
+    1. Click **View** > **ToolBox**. The **Toolbox** opens.
+
+    1. From **ToolBox**, drag **Button** to the surface of the **Dialog Editor**.
+
+    1. In **Properties**, update the **Caption** field to `Join`.
+
+    1. Repeat these steps and create another button where **Caption** says `Leave`.
+
+    <ProductWrapper product = "interactive-live-streaming">
+
+    7. From **ToolBox**, drag **Check Box** to the surface of the **Dialog Editor**.
+
+    1. In **Properties**, update the **Caption** field to `Host`.
+
+    1. Repeat step seven and eight to add another check box where **Caption** says `Audience`.
+    </ProductWrapper>
+
+        Adjust the UI elements positions as needed.
+
+2. **Add windows to the UI for the local and remote view**
+
+    To display the local and remote video, you use the `CWnd` class. To setup the local and remote view in your <Vpl k= "CLIENT"/>, do the following:
+        
+    1. From **Solution Explorer**, open `AgoraImplementationDlg.h` and add the following declarations to `CAgoraImplementationDlg`:
+        
+        ```cpp
+        public:
+        CWnd localView;
+        CWnd remoteView;
+        ```
+    
+    1. From **Solution Explorer**, open `AgoraImplementationDlg.cpp`, replace `OnInitDialog()` with the following code:
+
+        ```cpp
+	    BOOL CAgoraImplementationDlg::OnInitDialog()
+        {
+            CDialogEx::OnInitDialog();
+            // Create a window to display the remote video.
+            remoteView.Create(NULL, NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
+            CRect(0, 0, 20, 20), this, NULL);
+            // Adjust the window size and position.
+            remoteView.MoveWindow(600, 200, 350, 350, TRUE);
+            // Create a window to display the local video.
+            localView.Create(NULL, NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
+            CRect(0, 0, 20, 20), this, NULL);
+            // Adjust the window size and position.
+            localView.MoveWindow(200, 200, 350, 350, TRUE);
+            return TRUE;  // return TRUE  unless you set the focus to a control
+        }
+        ```
+ 
+The UI looks like: 
+    <ProductWrapper product = "video-calling">
+    ![image](/images/video-sdk/video-call-windows-ui.png)
+    </ProductWrapper>
+    <ProductWrapper product = "interactive-live-streaming">
+    ![image](/images/video-sdk/ILS-UI-Windows.png)
+    </ProductWrapper>
+
+
+### Implement the <Vpd k="PRODUCT" /> logic
+
+1. **Add the <Vg k = "VSDK"/> libraries to the precompiled header file**
+    
+    From **Solution Explorer**, open the `pch.h` file and add the following lines after `#include "framework.h"`:
+
+    ```cpp
+    #define _AFX_ALL_WARNINGS
+    #include <string>
+    #include <afxwin.h>         // MFC core and standard components
+    #include <IAgoraRtcEngine.h>
+    #include <IAgoraMediaEngine.h>
+    #pragma comment(lib, "agora_rtc_sdk.dll.lib")
+    #pragma comment(lib, "libagora_segmentation_extension.dll.lib")
+    #pragma comment(lib, "libagora-ffmpeg.dll.lib")
+    using namespace agora;
+    using namespace agora::rtc;
+    using namespace agora::media;
+    #define WM_MSGID(code) (WM_USER+0x200+code)
+    #define EID_USER_JOINED					0x00000003
+    ```
+
+1. **Add the required variables**
+
+    In `AgoraImplementationDlg.h`, add the following declarations after `CWnd remoteView;`:
+    <ProductWrapper product = "video-calling">
+    ```cpp
+    IRtcEngine* agoraEngine = nullptr;
+    std::string appId = "";
+    std::string channelName = "";
+    std::string token = "";
+    BOOL isJoin = false;
+    u_int remoteUId;
+    AgoraEventHandler agoraEventHandler;
+    ```
+    </ProductWrapper>
+    <ProductWrapper product = "interactive-live-streaming">
+    ```cpp
+    IRtcEngine* agoraEngine = nullptr;
+    std::string appId = "";
+    std::string channelName = "";
+    std::string token = "";
+    BOOL isJoin = false;
+    u_int remoteUId;
+    AgoraEventHandler agoraEventHandler;
+    std::string clientRole;
+    ```
+    </ProductWrapper>
+
+1. **Setup Agora Engine**
+
+   When the user launches this application, you call `setupVideoSDKEngine` to create and initialize an instance of <Vg k = "VSDK"/>. To setup an engine instance of <Vg k = "VSDK"/>, do the following:
+
+    1. In `AgoraImplementationDlg.h`, add the following code after `CAgoraImplementationDlg(CWnd* pParent = nullptr);`:
+      
+        ```cpp
+        void setupVideoSDKEngine();
+        ```
+
+    1. In `AgoraImplementationDlg.cpp`, add the following before `OnPaint`:
+      
+        ```cpp
+        void CAgoraImplementationDlg::setupVideoSDKEngine()
+        {
+            // Check if the engine initialized successfully.
+            agoraEngine = createAgoraRtcEngine();
+            if (!agoraEngine) 
+            {
+                return;
+            }
+            // Setup a message handler to communicate with the CAgoraImplementationDlg class.
+            agoraEventHandler.SetMsgReceiver(m_hWnd);
+            // Create an instance of RtcEngineContext to initialize the engine.
+            RtcEngineContext context;
+            // Pass your app ID to the context.
+            context.appId = appId.c_str();
+            // Pass an object of agoraEventHandler class to receive callbacks.
+            context.eventHandler = &agoraEventHandler;
+            // Set channel profile in the engine to the CHANNEL_PROFILE_LIVE_BROADCASTING.
+            context.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
+            // Initialize the engine using the context variable.
+            agoraEngine->initialize(context);
+            // Set the user role to Host.
+            agoraEngine->setClientRole(CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER);
+        }
+        ```
+    1. To execute this method at startup, in `AgoraImplementationDlg.cpp` ,add the following to `OnInitDialog` before `return TRUE;`:
+        
+        ```cpp
+        // Setup an instance of the Video SDK.
+        setupVideoSDKEngine();
+        ```
+1. **Setup an event handler to receive callbacks**
+
+   You use `IRtcEngineEventHandler` to implement callback functions. To do this, take the following steps:
+
+        1. Add the following class to `AgoraImplementationDlg.h` before `CAgoraImplementationDlg`:
+
+            ```cpp
+            class AgoraEventHandler : public IRtcEngineEventHandler
+            {
+                public:
+                // Set the message notify window handler
+                void SetMsgReceiver(HWND hWnd) { m_hMsgHandler = hWnd; }
+                virtual void onJoinChannelSuccess(const char* channel, uid_t uid, int elapsed) override;
+                virtual void onUserJoined(uid_t uid, int elapsed) override;
+                virtual void onUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason) override;
+                virtual void onLeaveChannel(const RtcStats& stats) override;
+                private:
+                HWND m_hMsgHandler;
+            };
+            ```
+
+        2. Provide definitions for the callbacks you declared in `AgoraEventHandler`. In `AgoraImplementationDlg.cpp`, add the following before `CAboutDlg`:
+
+            ```cpp
+            void AgoraEventHandler::onJoinChannelSuccess(const char* channel, uid_t uid, int elapsed)
+            {
+                // Occurs when you join a channel.
+            }
+            void AgoraEventHandler::onUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason)
+            {
+                // Occurs when the remote user drops offline or leave the channel.
+                AfxMessageBox(L"Remote user Leave the channel");
+            }
+            void AgoraEventHandler::onLeaveChannel(const RtcStats& stats)
+            {
+                // Occurs when you leave a channel.
+                AfxMessageBox(L"You left the channel");
+            }
+            ```
+
+1. **View the remote user when they join a channel**
+   
+   When a remote user joins the channel, <Vg k = "VSDK"/> triggers `onUserJoined`. You catch this callback and retrieve the remote user ID and display the remote video. To Implement this workflow, take the following steps:
+
+    1. In `AgoraImplementationDlg.cpp`, add the following before `OnInitDialog`:
+    
+        ```cpp
+        void AgoraEventHandler::onUserJoined(uid_t uid, int elapsed) 
+        { 
+            // Send a notification to CAgoraImplementationDlg class to setup a remote video view.
+            if (m_hMsgHandler) 
+            {
+                ::PostMessage(m_hMsgHandler, WM_MSGID(EID_USER_JOINED), (WPARAM)uid, (LPARAM)elapsed);
+            }
+        }        
+        ```
+    1. When the parent window receives the notification sent by `AgoraEventHandler`, it calls `OnEIDUserJoined` to setup the remote view. To setup `OnEIDUserJoined` in your <Vpl k = "CLIENT"/>, take the following steps:
+       
+        1. Add the following method declaration to `AgoraImplementationDlg.h` after `CAgoraImplementationDlg(CWnd* pParent = nullptr);`:
+
+            ```cpp
+            afx_msg LRESULT OnEIDUserJoined(WPARAM wParam, LPARAM lParam);
+            ```
+
+        1. Add the logic for remote video view to `OnEIDUserJoined`. In `AgoraImplementationDlg.cpp`, add the following code before `OnInitDialog`:
+            <ProductWrapper product = "video-calling"> 
+            ```cpp
+            LRESULT CAgoraImplementationDlg::OnEIDUserJoined(WPARAM wParam, LPARAM lParam)
+            {
+                // Setup a video canvas to render the remote video.
+                VideoCanvas canvas;
+                // Choose a video render mode.
+                canvas.renderMode = media::base::RENDER_MODE_FIT;
+                // Assign the remote user ID to the canvas for identification.
+                canvas.uid = wParam;
+                // Pass the remote view window handle to canvas to render the remote video.
+                canvas.view = remoteView.GetSafeHwnd();
+                // Render the remote video.
+                agoraEngine->setupRemoteVideo(canvas);
+                // Save the remote user ID for reuse.
+                remoteUId = wParam;
+                // Notify the parent window
+                ::PostMessage(GetParent()->GetSafeHwnd(), WM_MSGID(EID_USER_JOINED), TRUE, 0);
+                return 0;
+            }
+            ```
+            </ProductWrapper>
+            <ProductWrapper product = "interactive-live-streaming">
+            ```cpp
+            LRESULT CAgoraImplementationDlg::OnEIDUserJoined(WPARAM wParam, LPARAM lParam)
+            {
+                // Setup a video canvas to render the remote video.
+                VideoCanvas canvas;
+                // Choose a video render mode.
+                canvas.renderMode = media::base::RENDER_MODE_FIT;
+                // Assign the remote user ID to the canvas for identification.
+                canvas.uid = wParam;
+                // Pass the remote view window handle to canvas to render the remote video.
+                canvas.view = remoteView.GetSafeHwnd();
+                // Render the remote video.
+                agoraEngine->setupRemoteVideo(canvas);
+                // Save remote user ID for reuse.
+                remoteUId = wParam;
+                // Unsubscribe to the remote video if the user role is Host.
+                if (clientRole == "Host")
+                {
+                    agoraEngine->muteRemoteVideoStream(remoteUId, true);
+                }
+                // Notify the parent window
+                ::PostMessage(GetParent()->GetSafeHwnd(), WM_MSGID(EID_USER_JOINED), TRUE, 0);
+                return 0;
+            }
+            ```
+            </ProductWrapper>
+
+        1. Add the following macro to `AgoraImplementationDlg.cpp` after `ON_WM_QUERYDRAGICON()`:
+
+            ```cpp
+            ON_MESSAGE(WM_MSGID(EID_USER_JOINED), &CAgoraImplementationDlg::OnEIDUserJoined)
+            ```
+
+4. **Join the channel to start <Vpd k = "PRODUCT"/>**
+
+    When the local user clicks the **Join** button, you enable the local audio and video, setup a canvas to preview the local video, and call `joinChannel` to securely connect to a channel using the authentication token. To implement this workflow, in **Dialog Editor**, double-click **Join**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener you just created:
+
+   <ProductWrapper product = "video-calling">
+    ```cpp
+    // Check if user is already joined
+    if (isJoin == true)
+    {
+        AfxMessageBox(L"Already joined!");
+        return;
+    }
+    // Check if the engine is successfully initialized.
+    if (agoraEngine == NULL)
+	{
+        AfxMessageBox(L"Engine is not initialized");
+        return;
+	}
+    // Enable the microphone to create the local audio stream.
+	agoraEngine->enableAudio();
+    // Enable the local video capturer.
+	agoraEngine->enableVideo();
+    // Setup a video canvas to render the local video.
+	VideoCanvas canvas;
+    // Assign the local user ID to canvas for identification.
+	canvas.uid = 0;
+    // Pass the local view window handle to canvas to render the local video.
+	canvas.view = localView;
+    // Select a local video source.
+	canvas.sourceType = VIDEO_SOURCE_CAMERA;
+    // Render the local video.
+	agoraEngine->setupLocalVideo(canvas);
+    // Preview the local video.
+    agoraEngine->startPreview();
+    // Join a channel to start video calling.
+	if (0 == agoraEngine->joinChannel(token.c_str(), channelName.c_str(), 0, NULL))
+	{
+		isJoin = true;
+	}
+    ```
+    </ProductWrapper>
+
+    <ProductWrapper product = "interactive-live-streaming">
+    ```cpp
+    // Check if user is already joined
+    if (isJoin == true)
+    {
+        AfxMessageBox(L"Already joined!");
+        return;
+    }
+    // Check if the engine is successfully initialized.
+    if (agoraEngine == NULL)
+    {
+        AfxMessageBox(L"Engine is not initialized");
+    }
+    // Check if the user has selected a role.
+    if (clientRole == "")
+	{
+        AfxMessageBox(L"No user role selected!");
+        return;
+	}
+    // Enable the microphone to create the local audio stream.
+    agoraEngine->enableAudio();
+    // Enable the local video capturer.
+    agoraEngine->enableVideo();
+    // Setup a video canvas to render the local video.
+    VideoCanvas canvas;
+    // Assign your local UID to canvas for identification.
+    canvas.uid = 0;
+    // Pass the local view window handle to canvas to render the local video.
+    canvas.view = localView;
+    // Select the source of video.
+    canvas.sourceType = VIDEO_SOURCE_CAMERA;
+    // Start rendering the local video.
+    agoraEngine->setupLocalVideo(canvas);
+    // Preview the local video.
+    agoraEngine->startPreview();
+    // Disable the local video capturer if the user role is Audience.
+    if (clientRole == "Audience")
+    {
+        agoraEngine->enableLocalVideo(false);
+    }
+    // Join a channel to start interactive live streaming.
+    if (agoraEngine->joinChannel(token.c_str(), channelName.c_str(), 0, NULL) == 0)
+    {
+        isJoin = true;
+    }
+    ```
+    </ProductWrapper>
+1. **Leave the channel when user ends the call**
+
+    When your app is running, the user can leave or join a channel using the buttons available in the UI. When a user clicks **Leave**, call `leaveChannel` to exit the channel. In **Dialog Editor**, double-click **Leave**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener you just created:
+
+    ```cpp
+    if (isJoin == true)
+	{
+        // Leave the channel to end the call.
+        agoraEngine->leaveChannel();
+        // Stop the local video preview.
+        agoraEngine->stopPreview();
+        // Disable the local video capturer.
+        agoraEngine->disableVideo();
+        // Disable the local microphone.
+        agoraEngine->disableAudio();
+        isJoin = false;
+        remoteUId = NULL;
+	}
+	else
+	{
+        AfxMessageBox(L"Join a channel first!");
+	}
+    ```
+<ProductWrapper product = "interactive-live-streaming">
+8. **Manage the user role**
+
+    1.  When the user taps **Host**, you call `setClientRole` and `muteRemoteVideoStream` to switch the user role to `Host` and stop viewing the remote user stream. To implement this work flow, in **Dialog Editor**, double-click  **Host**, **Dialog Editor** automatically setup an event listener for `Host`. Add the following code to the listener you just created:
+
+        ```cpp
+        // Uncheck the Audience check box.
+        CButton* audienceBtn = (CButton*)GetDlgItem(IDC_CHECK2);
+        audienceBtn->SetCheck(0);
+        // Set the user role to host.
+        agoraEngine->setClientRole(CLIENT_ROLE_BROADCASTER);
+        // Enable the local video capturer to display the local video.
+        agoraEngine->enableLocalVideo(true);
+        // Save the current role of the user for reuse.
+        clientRole = "Host";
+        // Check if you have remote user in the channel.
+        if (remoteUId == NULL)
+        {
+            return;
+        }
+	    agoraEngine->muteRemoteVideoStream(remoteUId, true);
+        ```
+
+    2.  When the user taps **Audience**, you call `setClientRole` and `muteRemoteVideoStream` to switch the user role to `Audience` and subscribe to the remote user stream. To implement this work flow, in **Dialog Editor**, doube-click  **Audience**. **Dialog Editor** automatically setup an event listener for `Audience`. Add the following code to the listener you just created:
+
+        ```cpp
+        // Uncheck the host check box.
+        CButton* hostBtn = (CButton*)GetDlgItem(IDC_CHECK1);
+	    hostBtn->SetCheck(0);
+        // Set the user role to Audience.
+	    agoraEngine->setClientRole(CLIENT_ROLE_AUDIENCE);
+        // Stop the local video capturer to stop the local video.
+	    agoraEngine->enableLocalVideo(false);
+        // Update the clientRole variable to save the current role.
+	    clientRole = "Audience";
+        // Check if you have a remote user in the channel.
+	    if (remoteUId == NULL)
+        {
+            return;
+        }
+        // Subscribe to the remote video stream if you have a remote user in the channel.
+	    agoraEngine->muteRemoteVideoStream(remoteUId, false);
+        ```
+
+9.  **Clean up the resources used by your <Vpl k = "CLIENT"/>**
+
+      <ResourcesClean />
+</ProductWrapper>
+<ProductWrapper notAllowed="interactive-live-streaming">
+8.  **Clean up the resources used by your <Vpl k = "CLIENT"/>**
+
+      <ResourcesClean />
+</ProductWrapper>
 
 </PlatformWrapper>

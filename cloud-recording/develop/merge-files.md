@@ -2,6 +2,7 @@
 title: "Merge audio and video files"
 sidebar_position: 8
 type: docs
+platform_selector: false
 description: >
   Merge each user's audio and video files into one file.
 ---
@@ -27,7 +28,8 @@ Recommended systems for transcoding:
 
 ### 1. Get the Agora Format Converter Script
 
-Download the [Agora Format Converter Script](https://download.agora.io/acrsdk/release/Agora_Cloud_Recording_Tools_v2.8.0_20210820-1629467741_274.tar.gz) and decompress it. Find `ffmpeg.tar.gz` and `convert.py`. Decompress `ffmpeg.tar.gz`, and make sure it is in the same directory as `convert.py.`
+Download the <Link target="_blank" to="{{Global.CREC_FCS}}">Agora Format Converter Script</Link> and decompress it. Find `ffmpeg.tar.gz` and `convert.py`. Decompress `ffmpeg.tar.gz`, and make sure it is in the same directory as `convert.py.`
+
 
 To avoid compatibility issues, Agora suggests that you use the FFmpeg binary in the zipped file or install FFmpeg 3.3.
 

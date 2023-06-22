@@ -4,7 +4,6 @@
 
     In order to make HTTPS calls to a token server and interpret the JSON return parameters, integrate the `OkHttp` client and `Gson` library into your Android project. In `/Gradle Scripts/build.gradle (Module: <projectname>.app)`, add the following lines under `dependencies`.
         ``` java
-        ...
         dependencies
         {
             ...
@@ -61,12 +60,12 @@
 
 5.  **Add variables for your connection to the token server**
 
-    Declare the variables you need to specify the user id, token role, token server URL and the token expire time. Add the following declarations to the `MainActivity` class after `private RtcEngine agoraEngine;`
+    Declare the variables you need to specify the user id, token role, token server URL and the token expire time. Add the following declarations to the `MainActivity` class:
 
     ``` java
     private int tokenRole; // The token role: Broadcaster or Audience
-    private String serverUrl = "<Token Server URL>"; // The base URL to your token server, for example, "https://agora-token-service-production-92ff.up.railway.app".
-    private int tokenExpireTime = 40; // Expire time in Seconds.
+    private String serverUrl = "<Token Server URL>"; // The base URL to your token server, for example, "https://agora-token-service-production-xxxx.up.railway.app".
+    private int tokenExpireTime = 40; // Time in seconds after which the token will expire.
     private EditText editChannelName; // To read the channel name from the UI.
     ```
 
@@ -74,7 +73,7 @@
 
 6.  **Set up access to the channel name text box from code**
 
-    Add the following line at the end of the `onCreate` method,.
+    Add the following line to the `onCreate` method:
 
     ``` java
     editChannelName = (EditText) findViewById(R.id.editChannelName);
@@ -87,7 +86,6 @@
     In the `MainActivity` class, add the following `fetchToken` method:
 
     ``` java
-    // Fetch the <Vg k="VSDK" /> token
     private void fetchToken(int uid, String channelName, int tokenRole) {
         // Prepare the Url
         String URLString = serverUrl + "/rtc/" + channelName + "/" + tokenRole + "/"
@@ -112,12 +110,13 @@
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 if (response.isSuccessful()) {
+                    Log.i("Token Received", token);
                     Gson gson = new Gson();
                     String result = response.body().string();
                     Map map = gson.fromJson(result, Map.class);
                     String _token = map.get("rtcToken").toString();
+                    // Use the token to join a channel or to renew an expiring token
                     setToken(_token);
-                    Log.i("Token Received", token);
                 }
             }
         });
@@ -136,7 +135,6 @@
         token = newValue;
         if (!isJoined) { // Join a channel
             ChannelMediaOptions options = new ChannelMediaOptions();
-
             // For a Video call, set the channel profile as COMMUNICATION.
             options.channelProfile = Constants.CHANNEL_PROFILE_COMMUNICATION;
             // Set the client role as BROADCASTER or AUDIENCE according to the scenario.
@@ -154,7 +152,7 @@
     ```
     </ProductWrapper>
 
-    <ProductWrapper product="interactive-live-streaming">
+    <ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
     ``` java
     void setToken(String newValue) {
         token = newValue;
@@ -182,10 +180,42 @@
     ```
     </ProductWrapper>
 
+    <ProductWrapper product="iot">
+    ``` java
+    void setToken(String newValue) {
+        token = newValue;
+        if (!isJoined) { // Join a channel
+            // Set channel options
+            AgoraRtcService.ChannelOptions channelOptions = new AgoraRtcService.ChannelOptions();
+            channelOptions.autoSubscribeAudio = true;
+            channelOptions.autoSubscribeVideo = true;
+            channelOptions.audioCodecOpt.audioCodecType
+                    = AgoraRtcService.AudioCodecType.AUDIO_CODEC_TYPE_OPUS;
+            channelOptions.audioCodecOpt.pcmSampleRate = 16000;
+            channelOptions.audioCodecOpt.pcmChannelNum = 1;
+
+            // Join a channel
+            int ret = agoraEngine.joinChannel(connectionId, channelName,
+                    uid, token, channelOptions);
+            if (ret != AgoraRtcService.ErrorCode.ERR_OKAY) {
+                showMessage("Join channel failure!");
+                isJoined = false;
+            } else {
+                isJoined = true;
+            }
+        } else { // Already joined, renew the token by calling renewToken
+            agoraEngine.renewToken(connectionId, token);
+            showMessage("Token renewed");
+        }
+    }
+    ```
+    </ProductWrapper>
+
 9.  **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
 
     A token expires after the `expireTime` specified in the call to the token server or expires after 24 hours, if the time is not specified. The `onTokenPrivilegeWillExpire` event receives a callback when the current token is about to expire so that a fresh token may be retrieved and used.
 
+    <ProductWrapper notAllowed="iot">
     In the `MainActivity` class, add the following method after `private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {`
 
     ``` java
@@ -197,10 +227,44 @@
         super.onTokenPrivilegeWillExpire(token);
     }
     ```
+    </ProductWrapper>
+
+    <ProductWrapper product="iot">
+    In the `MainActivity` class, add the following code inside the `onTokenPrivilegeWillExpire` method of the `AgoraRtcEvents` instance:
+
+    ``` java
+    Log.i("i", "Token Will expire");
+    fetchToken(uid, channelName, tokenRole);
+    ```
+    </ProductWrapper>
+    
 
 10. **Update the `joinChannel` method to fetch a token**
 
     In the `MainActivity` class, replace the `joinChannel` method with the following:
+
+    <ProductWrapper product="iot">
+    ```java
+    public void joinChannel(View view) {
+        channelName = editChannelName.getText().toString();
+        if (channelName.length() == 0) {
+            showMessage("Type a channel name");
+            return;
+        } else if (!serverUrl.contains("http")) {
+            showMessage("Invalid token server URL");
+            return;
+        }
+
+        if (checkSelfPermission()) {
+            tokenRole = 1; // use 1 for publisher, 2 for subscriber
+            showMessage("Fetching token...");
+            fetchToken(uid, channelName, tokenRole);
+        } else {
+            showMessage("Permissions was not granted");
+        }
+    }
+    ```
+    </ProductWrapper>
 
     <ProductWrapper product="video-calling">
     ``` java
@@ -227,7 +291,7 @@
     ```
     </ProductWrapper>
 
-    <ProductWrapper product="interactive-live-streaming">
+    <ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
     ``` java
     public void joinChannel(View view) {
         channelName = editChannelName.getText().toString();

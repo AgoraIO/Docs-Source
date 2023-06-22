@@ -752,7 +752,7 @@ Refer to the following steps to generate an SDK Token:
 
 3. Fill in your AK, SK, token validity period, and token role in the `Program.cs` file.
 
-```c#
+```csharp
 using System;
 using Netless;
 class Program
@@ -785,7 +785,7 @@ Refer to the following steps to generate a Room Token:
 
 3. Delete the code in the `Program.cs` file and copy the following sample code into it:
 
-```c#
+```csharp
 using System;
 using Netless;
 class Program
@@ -820,7 +820,7 @@ Refer to the following steps to generate a Task Token:
 
 3. Delete the code in the `Program.cs` file and copy the following sample code into it:
 
-```c#
+```csharp
 using System;
 using Netless;
 class Program

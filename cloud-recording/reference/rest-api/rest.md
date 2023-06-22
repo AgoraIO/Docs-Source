@@ -2,6 +2,7 @@
 title: "API overview"
 sidebar_position: 1
 type: docs
+platform_selector: false
 description:
   Detailed help for Cloud Recording API.
 ---

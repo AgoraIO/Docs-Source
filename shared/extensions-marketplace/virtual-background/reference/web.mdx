@@ -1,5 +1,118 @@
 <PlatformWrapper platform='web'>
 
+### Sample code
+
+```typescript
+import AgoraRTC from "agora-rtc-sdk-ng";
+import VirtualBackgroundExtension from "agora-extension-virtual-background";
+
+// Create a client object
+var client = AgoraRTC.createClient({mode: "rtc", codec: "vp8"});
+// Create a VirtualBackgroundExtension instance
+const extension = new VirtualBackgroundExtension();
+// Register the extension
+AgoraRTC.registerExtensions([extension]);
+
+let processor = null;
+var localTracks = {
+  videoTrack: null,
+  audioTrack: null
+};
+
+// Initialization
+async function getProcessorInstance() {
+  if (!processor && localTracks.videoTrack) {
+    // Create a VirtualBackgroundProcessor instance
+    processor = extension.createProcessor();
+
+      try {
+        // Initialize the extension and pass in the URL of the Wasm file
+        await processor.init("./assets/wasms");
+        } catch(e) {
+          console.log("Fail to load WASM resource!");return null;
+          }
+    // Inject the extension into the video processing pipeline in the SDK
+    localTracks.videoTrack.pipe(processor).pipe(localTracks.videoTrack.processorDestination);
+  }
+  return processor;
+}
+
+// Join a channel
+async function join() {
+  // Add event listeners
+  client.on("user-published", handleUserPublished);
+  client.on("user-unpublished", handleUserUnpublished);
+
+  [options.uid, localTracks.audioTrack, localTracks.videoTrack] = await Promise.all([
+    // Join a channel
+    client.join(options.appid, options.channel, options.token || null),
+    // Create a local microphone track and camera track
+    localTracks.audioTrack || AgoraRTC.createMicrophoneAudioTrack(),
+    localTracks.videoTrack || AgoraRTC.createCameraVideoTrack({encoderConfig: '720p_4'})
+  ]);
+
+  // Play local tracks
+  localTracks.videoTrack.play("local-player");
+}
+
+// Set a solid color as the background
+async function setBackgroundColor() {
+  if (localTracks.videoTrack) {
+    document.getElementById("loading").style.display = "block";
+
+    let processor = await getProcessorInstance();
+
+    try {
+      processor.setOptions({type: 'color', color: '#00ff00'});
+      await processor.enable();
+    } finally {
+      document.getElementById("loading").style.display = "none";
+    }
+
+    virtualBackgroundEnabled = true;
+  }
+}
+
+// Blur the user's actual background
+async function setBackgroundBlurring() {
+  if (localTracks.videoTrack) {
+    document.getElementById("loading").style.display = "block";
+
+    let processor = await getProcessorInstance();
+
+    try {
+      processor.setOptions({type: 'blur', blurDegree: 2});
+      await processor.enable();
+    } finally {
+      document.getElementById("loading").style.display = "none";
+    }
+
+    virtualBackgroundEnabled = true;
+  }
+}
+
+// Set an image as the background
+async function setBackgroundImage() {
+    const imgElement = document.createElement('img');
+
+    imgElement.onload = async() => {
+      document.getElementById("loading").style.display = "block";
+
+      let processor = await getProcessorInstance();
+
+      try {
+        processor.setOptions({type: 'img', source: imgElement});
+        await processor.enable();
+      } finally {
+        document.getElementById("loading").style.display = "none";
+      }
+
+      virtualBackgroundEnabled = true;
+    }
+    imgElement.src = '/images/background.png';
+}
+```
+
 ### Considerations
 
 - This extension works best when there is only one user in the video captured by the camera.
@@ -11,7 +124,13 @@
    - CPU: Intel Core i5 4 cores or higher
    - 8G RAM or more
    - 64-bit operating system
-   
+- If multiple extensions are enabled concurrently and other programs are occupying high system resources at the same time, your app may experience audio and video freezes.
+- When using this extension, Agora recommends selecting `Performance` mode or `Balanced` mode for your laptops. The computing requirements for this extension may not be met if the laptop is in a battery-saving mode.
+- This extension supports using a video as a dynamic virtual background since v1.0.0-beta-3. Videos must be in a format supported by `<video>` HTML elements. Agora also recommends meeting the following requirements:
+   - The video adopts a resolution close to that of a portrait. Agora recommends not using a video with too high a bit rate.
+   - Video content is suitable for looping to achieve a more natural dynamic virtual background effect.
+   - Properly reduce the video frame rate, such as 15 fps or below. Video above 30 fps is not recommended by Agora.
+
 ### API reference
 
 #### IVirtualBackgroundExtension
@@ -22,7 +141,7 @@
 createProcessor(): IVirtualBackgroundProcessor;
 ```
 
-Creates an `VirtualBackgroundProcessor` object.
+Creates a `VirtualBackgroundProcessor` object.
 
 #### IVirtualBackgroundProcessor
 
@@ -79,6 +198,16 @@ disable(): void | Promise<void>;
 
 Disables the virtual background feature.
 
+#### release
+
+```typescript
+release(): Promise<void>;
+```
+
+Releases all resources used by the extension, including created web workers .
+
+If `IVirtualBackgroundProcessor` is repeatedly created without releasing the resources occupied by the extension, it may cause memory exhaustion.
+
 ##### onoverload
 
 ```typescript
@@ -112,6 +241,8 @@ Properties:
    - `"color"`: Sets a solid color as the background.
    - `"img"`: Sets an image as the background.
    - `"blur"`: Blurs the user's original background.
+   - `"video"`: Sets a video as the dynamic background.
+   - `"none"`: Removes the background, that is, creates the effect of a portrait cutout.
 
 - `color`: String. When you set `type` as `"color"`, set this parameter to specify the color. The value must be a valid CSS color such as `"white"`, `"#00ff00"`, or ` "RGB(255, 0, 0)"`.
 
@@ -123,5 +254,10 @@ Properties:
    - `1`: Low
    - `2`: Medium
    - `3`: High
+
+- `fit`: String. Set this parameter to choose how the virtual background is filled:
+   - `"contain"`: Fill in proportion to ensure that the background can be displayed completely, and fill the insufficient part with black.
+   - `"cover"`: Fill in proportion and ensure that the background can fill the area, and the excess part will be cropped.
+   - `"fill"`: Stretch to fill the area.
 
 </PlatformWrapper>

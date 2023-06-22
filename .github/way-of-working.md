@@ -99,9 +99,13 @@ When all the issue branches in a milestone are merged, the milestone branch is m
 
 The [Docs](https://github.com/AgoraIO/Docs.git) repository contains the basic website framework. Only issues that require addition or modification of products, product platforms, product availability, API reference links, SDK links should be created in this repository. It has the following submodules:
 
-* [Docs-Source-Private](https://github.com/AgoraIO/Doc-Source-Private/)
+* [Doc-Source-Private](https://github.com/AgoraIO/Doc-Source-Private/)
    
    This repository contains documentation content for various products and platforms. Most new milestones and documentation issues are created in this repository. It replaces the [Docs-Source](https://github.com/AgoraIO/Docs-Source/) public repository that is currently being phased out. 
+
+* [Docs-Source](https://github.com/AgoraIO/Docs-Source/) 
+
+    This is a public repository where non-TWs without access to the private one can still open documentation requests.  
 
 * [Docs-Source-Legacy](https://github.com/AgoraIO/Docs-Source-Legacy)
 
@@ -155,6 +159,28 @@ For issues that do not require technical implementation, TWs use their judgement
 For API reference, if the HTML files are not provided by SMEs, the TWs follow this procedure to generate them:
 
 //Clarify the procedure and criteria for when the HTML files have to be re-generated.
+
+#### Minimal scope for documenting releases
+
+Some product releases do not require any major doc updates and only include the following:
+
+- Release notes
+- New SDK download link
+- New API html or even just a bump in the API version
+
+To document such releases:
+
+1. Create 3 milestone branches with the same name in Docs, Docs-Source-Private, and API-Reference repositories following the naming convention above, if not already created by the Documentation Architect. 
+
+1. Create an update branch under the same name from each of those milestone branches. 
+
+1. Update the release notes using the input provided by the CN team in Docs-Source-Private. Raise the PR back to the Docs-Source-Private milestone branch.
+
+1. Update the API reference with the zip(s) provided by the CN team in the API-Reference branch. If no zip is provided, find and replace the API version so that it is consistent with the release. Raise the PR back to the API-Reference milestone branch.
+
+1. Update `data/api-reference.js` with the latest version number and `data/sdks.js` with the new SDK download link in the Docs branch. Raise the PR back to the Docs milestone branch.
+
+1. Make sure all open PRs are linked to your ticket for better organization and easier review. 
 
 ### Review
 
@@ -221,8 +247,83 @@ Each TW raises a PR and requests reviews following this logic:
 
 ### Publishing
 
-//Clarify publishing procedure
+Publishing docs involves building locally and using Vercel to double-check doc updates while moving them all the way from a 
+milestone (if any) branch to main.
 
+#### API-Reference repository
+
+Whenever it is necessary to publish an update that involves main docs and API reference, make sure to publish API reference first. 
+
+Publishing API reference involves the following steps: 
+
+1. Merge the PR to the milestone branch. Skip to checking deployment on Vercel for `staging` if there is no milestone branch and the PR is raised directly to `staging`.
+
+1. Check deployment for the milestone branch on Vercel. Find the branch in the list of active branches under api-reference-staging.
+
+1. Pull from the milestone branch to the `staging` branch.  
+
+1. Open `dir.html` in the API-Reference root in a browser to check the update locally. 
+
+1. Push to remote `staging`.
+
+1. Check deployment for the `staging` branch on Vercel. This is the main instance in api-reference-staging.
+
+1. Pull from `staging` to `main`. 
+
+1. Open `dir.html` from the API-Reference root in the browser to check the update locally.
+
+1. Push to remote `main`. 
+
+1. Check that the update is live on https://api-ref.agora.io/.
+
+1. For major updates, such as releases, create and push a descriptive tag to the API-Reference repo.
+
+#### Docs repository with updates in the docs submodule
+
+Since two docs submodules are still in use - public and private one - the full publishing process involves moving doc updates from a private milestone branch to private `staging` to public `staging` to public `main`. Skip the relevant steps if there is no private milestone branch or if the update has been done in the public submodule. 
+
+Publishing main docs involves the following steps: 
+
+1. Merge PRs to the milestone branches in the Docs repo and private docs submodule. 
+
+1. Build both milestone branches locally to check.
+
+1. Commit and push the updated docs submodule to the Docs milestone branch. 
+
+1. Check the deployment for the milestone branch on Vercel. (Find the branch under docs-staging). 
+
+1. Pull from the milestone branch to `staging` in the Docs repo and private docs submodule. 
+
+1. Build both `staging` branches locally to check. 
+
+1. Commit and push the updated docs submodule to the Docs `staging` branch. 
+
+1. Check the deployment for `staging` on Vercel. (This is the main deployment in docs-staging).
+
+1. Pull from `staging` in the private submodule to `staging` in the public submodule.
+
+1. Build public `staging` to check locally.
+
+1. Commit and push the updated docs submodule to the Docs `staging` branch. 
+
+1. Check the deployment for `staging` on Vercel. (This is the main deployment in docs-staging).
+
+1. Pull from public `staging` to public `main` in docs, and from `staging` to `main` in Docs.
+
+1. Build both `main` branches locally to check.
+
+1. Commit and push the updated docs submodule to the Docs `main` branch. 
+
+1. Check that the docs are live. See build progress in docs. 
+
+1. For major updates, such as releases, create and push the same descriptive tag to the public docs submodule and Docs repo.
+
+Notes:
+
+- You can choose to also build locally before pulling any doc updates, to check that they are not there.
+- Make sure to check that the commits you pull and push to `staging` and `main` branches are indeed relevant and correct.
+- Add the same descriptive commit messages and tags in the Docs repo and docs submodule for traceability.
+- Whenever pushing the updated docs submodule to the Docs repo for Vercel, pay attention to where `root/.gitmodules` is pointing.
 
 ### Samples for the docs
 

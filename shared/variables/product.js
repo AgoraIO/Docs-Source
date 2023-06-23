@@ -33,12 +33,13 @@ const data = {
       PRODUCT: 'Agora Analytics',
       STREAM: 'interactive live streaming or broadcast streaming',
   },
-    'extensions-marketplace': {
-        NAME: 'Extensions Marketplace',
-        PATH: 'extensions-marketplace',
-        PRODUCT: 'Extensions Marketplace',
-        STREAM: 'interactive live streaming or broadcast streaming',
-    },
+
+  'extensions-marketplace': {
+      NAME: 'Extensions Marketplace',
+      PATH: 'extensions-marketplace',
+      PRODUCT: 'Extensions Marketplace',
+      STREAM: 'interactive live streaming or broadcast streaming',
+  },
 
   'cloud-recording': {
       NAME: 'Cloud Recording',
@@ -79,6 +80,19 @@ const data = {
     PRODUCT: 'IoT'
   },
 
+  'media-pull': {
+    NAME: 'Media Pull',
+    PATH: 'media-pull',
+    SDK: 'Media Pull',
+    PRODUCT: 'Media Pull'
+  },
+
+  'media-push': {
+    NAME: 'Media Push',
+    PATH: 'media-push',
+    SDK: 'Media Push',
+    PRODUCT: 'Media Push'
+  },
 };
 
 export default data;

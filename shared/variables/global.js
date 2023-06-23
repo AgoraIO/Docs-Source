@@ -53,6 +53,7 @@ export const API_REF_WINDOWS_ROOT_CPP  = `${API_REF_ROOT}/cpp/${VSDK_RELEASE_API
 export const API_REF_UE_ROOT_VOICE_SDK  = `${API_REF_ROOT_VOICE_SDK}/unreal-engine/${VSDK_RELEASE_API}/API`;
 export const API_REF_WINDOWS_ROOT_CPP_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/cpp/${VSDK_FLUTTER_RELEASE_API}/API`;
 
+
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
 
@@ -136,7 +137,7 @@ export const RTEE = 'Extensions';
 export const RTEE_DRM = `${COMPANY} DRM`;
 export const RTEE_DRM_FRAMEWORK = `AgoraDrmLoader.framework`;
 export const RTEE_NS = 'AI Noise Suppression';
-export const RTEE_VB = 'Vitual Background';
+export const RTEE_VB = 'Virtual Background';
 export const RTEE_FU = 'FaceUnity';
 export const AA = `${COMPANY} Analytics`;
 export const WHITE = 'Interactive Whiteboard';

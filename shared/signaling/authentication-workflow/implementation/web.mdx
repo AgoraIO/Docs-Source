@@ -6,76 +6,85 @@ In order to make HTTPS calls to a token server and interpret the JSON return par
 To retrieve tokens from the token server and use them to authenticate your <Vpl k="CLIENT" /> with <Vg k="MESS" />
   using  <Vpd k="SDK" />:
 
-
-1.  **Add variables for your connection to the token server**
-
-    Declare the variables you need to specify the token-server url and the token expire time.
-    ``` javascript
-    let options = {
-      // Set the user ID
-      uid: "",
-      // Set token expire time: the number of seconds after which this token will expire
-      expireTime: 60,
-      // The base URL to your token server.
-      // For example, https://agora-token-service-production-92ff.up.railway.app".
-      serverUrl: "<your token server base URL>",
-    };
-    ```
-
-    Make sure you specify the token-server URL in exactly the same format as the example.
-
 1.  **Retrieve a token from the server**
 
     Use a GET request to retrieve an authentication token for a specific channel from the token server.
 
      ``` javascript
-      // Fetch the Signaling token
-      async function FetchToken() {
-        return new Promise(function (resolve) {
-          axios
-            .get(
-              proxyUrl +
-                options.serverUrl +
-                "/rtm/" +
-                options.uid +
-                "/?expiry=" +
-                options.expireTime,
-              {
-                headers: {
-                  "X-Requested-With": "XMLHttpRequest",
-                },
-              }
-            )
-            .then((response) => {
-              resolve(response.data.rtmToken);
-            })
-            .catch((error) => {
-              console.log(error);
-            });
-        });
+      // Get the config
+      const config = signalingManager.config;
+
+      // Fetches the Signaling token
+      async function fetchToken(uid) {
+        if (config.serverUrl !== "") {
+          return new Promise(function (resolve) {
+            axios
+              .get(
+                config.proxyUrl +
+                  config.serverUrl +
+                  "/rtm/" +
+                  uid +
+                  "/?expiry=" +
+                  config.tokenExpiryTime,
+                {
+                  headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                  },
+                }
+              )
+              .then((response) => {
+                resolve(response.data.rtmToken);
+              })
+              .catch((error) => {
+                console.log(error);
+              });
+          });
+        } else {
+          return config.token;
+        }
       }
     ```
 
-6.  **Fetch a token when the user logs in to Signaling**
+1.  **Fetch a token when the user logs in to Signaling**
 
     Call `FetchToken` to get a fresh token before joining a channel.
 
     ``` javascript
-      token = await FetchToken(options);
-      await login(options.uid, token);
+    const fetchTokenAndLogin = async (uid) => {
+      const token = await fetchToken(uid);
+      signalingManager.login(uid, token);
+    };
     ```
 
-7.  **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
+1.  **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
 
-    A token expires after the `ExpireTime` specified in the call to the token server or after 24 hours, if the time is not specified. The `onTokenPrivilegeWillExpire` event receives a callback when the current token is about to expire so that a fresh token may be retrieved and used.
-
+    A token expires after the `tokenExpiryTime` specified in the call to the token server. If the expiry time
+  is not specified the default timeout is 24 hours. The  `onTokenPrivilegeWillExpire` event receives a callback when
+  the current token is about to expire so that a fresh token may be retrieved and used.
 
     ``` javascript
     // When token-privilege-will-expire occurs, fetch a new token from the server and call renewToken to renew the token.
-    signalingEngine.on("token-privilege-will-expire", async function ()
-    {
-        options.token = await FetchToken();
-        await signalingEngine.renewToken(options.token);
-    });
+      const handleSignalingEvents = (event, eventArgs) => {
+        switch (event) {
+          case "TokenPrivilegeWillExpire":
+            renewToken(uid);
+            break;
+        }
+      }
     ```
+
+1. **Fetch a token from the authentication server**
+
+    You persist the existing session with a call to `renewToken`.
+
+    ``` javascript
+      const renewToken = async (uid) => {
+        const token = await fetchToken(uid);
+        const result = await signalingManager
+          .getSignalingEngine()
+          .renewToken(token);
+        messageCallback("Token was about to expire so it was renewed...")
+      };
+    ```
+
 </PlatformWrapper>

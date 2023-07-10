@@ -93,12 +93,12 @@ export const AV = 'Audio/Video';
 
 export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
-export const MESS_ENGINE = `${MESS} Engine`;
+export const MESS_ENGINE = `${MESS}Engine`;
 export const EASEMOB_SDK = `Easemob IM SDK`;
 export const NCS = `NCS`;
 export const NCS_LONG = `Notifications`;
 export const SIG = `${MESS}`;
-export const SIG_RELEASE_API = `1.x`;
+export const SIG_RELEASE_API = `2.x`;
 export const SIG_SDK_API_REF_ROOT = `${API_ROOT}/signaling-sdk`;
 export const SIG_SDK_API_ANDROID = `${SIG_SDK_API_REF_ROOT}/android/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_WIN_CPP = `${SIG_SDK_API_REF_ROOT}/windows-cpp/${SIG_RELEASE_API}`;

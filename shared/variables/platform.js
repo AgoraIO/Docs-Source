@@ -15,14 +15,16 @@ const data = {
     NAME: 'iOS',
     PATH: 'ios',
     CLIENT: 'app',
-    PACKAGE_NAME: 'AgoraRtcEngine_iOS'
+    PACKAGE_NAME: 'AgoraRtcEngine_iOS',
+    PACKAGE_PRODUCT_NAME: 'RtcBasic'
   },
 
   'macos': {
     NAME: 'macOS',
     PATH: 'macos',
     CLIENT: 'app',
-    PACKAGE_NAME: 'AgoraRtcEngine_macOS'
+    PACKAGE_NAME: 'AgoraRtcEngine_macOS',
+    PACKAGE_PRODUCT_NAME: 'RtcBasic'
   },
 
   'react-native': {

@@ -15,54 +15,42 @@ To retrieve tokens from the token server and use them to authenticate your <Vpl 
       // Fetches the Signaling token
       async function fetchToken(uid) {
         if (config.serverUrl !== "") {
-          return new Promise(function (resolve) {
-            axios
-              .get(
-                config.proxyUrl +
-                  config.serverUrl +
-                  "/rtm/" +
-                  uid +
-                  "/?expiry=" +
-                  config.tokenExpiryTime,
-                {
-                  headers: {
-                    "X-Requested-With": "XMLHttpRequest",
-                  },
-                }
-              )
-              .then((response) => {
-                resolve(response.data.rtmToken);
-              })
-              .catch((error) => {
-                console.log(error);
-              });
-          });
+          try {
+            const res = await fetch(
+              config.proxyUrl +
+                config.serverUrl +
+                "/rtm/" +
+                uid +
+                "/?expiry=" +
+                config.tokenExpiryTime,
+              {
+                headers: {
+                  "X-Requested-With": "XMLHttpRequest",
+                },
+              }
+            );
+            const data = await res.text();
+            const json = await JSON.parse(data);
+            console.log("RTM token fetched from server: ", json.rtmToken);
+            return json.rtmToken;
+          } catch (err) {
+            console.log(err);
+          }
         } else {
-          return config.token;
+          return config.token; // Fallback
         }
       }
     ```
 
-1.  **Use the token to initialize the <Vg k="MESS_ENGINE" />**
+1.  **Use the token to login into the <Vg k="MESS_ENGINE" />**
 
     Call `fetchToken` to get a fresh RTM token. Use the token in the `RTMConfig` to initiate the <Vg k="MESS_ENGINE" />.
 
     ``` javascript
-    try {
-      const token = await fetchToken(config.uid);
-      if (rtmConfig !== undefined && rtmConfig.token == undefined) {
-        rtmConfig.token = token;
-      }
-      rtmConfig = rtmConfig || {
-        token: token,
-        useStringUserId: config.useStringUserId,
-        logUpload: config.logUpload,
-        presenceTimeout: config.presenceTimeout,
-      };
-      signalingEngine = new AgoraRTM.RTM(config.appId, config.uid, rtmConfig);
-    } catch (error) {
-      console.log("Error:", error);
-    }
+    const fetchTokenAndLogin = async (uid) => {
+      const token = await fetchToken(uid);
+      signalingManager.login(uid, token);
+    };
     ```
 1. **Retrieve an RTC token**
 
@@ -72,37 +60,35 @@ To retrieve tokens from the token server and use them to authenticate your <Vpl 
     // Fetches an RTC token for stream channels
     async function fetchRTCToken(uid, channelName) {
       if (config.serverUrl !== "") {
-        return new Promise(function (resolve) {
-          axios
-            .get(
-              config.proxyUrl +
-                config.serverUrl +
-                "/rtc/" +
-                channelName +
-                "/" +
-                role +
-                "/uid/" +
-                uid +
-                "/?expiry=" +
-                config.tokenExpiryTime,
-              {
-                headers: {
-                  "X-Requested-With": "XMLHttpRequest",
-                },
-              }
-            )
-            .then((response) => {
-              resolve(response.data.rtcToken);
-            })
-            .catch((error) => {
-              console.log(error);
-            });
-        });
+        try {
+          const res = await fetch(
+            config.proxyUrl +
+              config.serverUrl +
+              "/rtc/" +
+              channelName +
+              "/" +
+              role +
+              "/uid/" +
+              uid +
+              "/?expiry=" +
+              config.tokenExpiryTime,
+            {
+              headers: {
+                "X-Requested-With": "XMLHttpRequest",
+              },
+            }
+          );
+          const data = await res.text();
+          const json = await JSON.parse(data);
+          console.log("RTC token fetched from server: ", json.rtcToken);
+          return json.rtcToken;
+        } catch (err) {
+          console.log(err);
+        }
       } else {
         return config.rtcToken;
       }
     }
-
     ```
 
 1.  **Use the RTC token to join a stream channel**
@@ -112,15 +98,17 @@ To retrieve tokens from the token server and use them to authenticate your <Vpl 
     ```javascript
     const streamChannelJoinAndLeave = async function (
       isStreamChannelJoined,
+      uid,
       streamChannelName
     ) {
-      const token = await fetchRTCToken(config.uid, streamChannelName);
-      streamChannel = await signalingManager
-        .getSignalingEngine()
-        .createStreamChannel(streamChannelName); // creates a stream channel
+      const token = await fetchRTCToken(uid, streamChannelName);
+      if (getSignalingStreamChannel() === null) {
+        streamChannel = await signalingManager
+          .getSignalingEngine()
+          .createStreamChannel(streamChannelName); // creates a stream channel
+      }
 
       if (isStreamChannelJoined === false) {
-        // Join the stream channel using an RTC token
         await streamChannel
           .join({
             token: token,
@@ -166,7 +154,7 @@ To retrieve tokens from the token server and use them to authenticate your <Vpl 
         const result = await signalingManager
           .getSignalingEngine()
           .renewToken(token);
-        messageCallback("Token was about to expire so it was renewed...")
+        messageCallback("Token was about to expire so it was renewed...");
       };
     ```
 

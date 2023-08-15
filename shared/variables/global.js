@@ -186,6 +186,7 @@ export const CREC_FCS = 'https://download.agora.io/acrsdk/release/cloud_recordin
 
 
 export const CGATE = 'Cloud Gateway';
+export const MEDGATE = 'Media Gateway';
 
 export const CGATE_RELEASE_API = `3.x`;
 export const API_REF_ROOT_CGATE_SDK = `${API_ROOT}/server-gateway-sdk`;

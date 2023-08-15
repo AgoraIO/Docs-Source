@@ -10,6 +10,7 @@ export const VSDK_UNITY_FLUTTER_RN_RELEASE_API = '4.0.0.beta-2'
 export const VSDK_WEB_RELEASE_API = '4.13.0'
 export const MAJOR_VERSION = '4.x'
 export const VSDK_FLUTTER_PREVIOUS_RELEASE = '5.x';
+
 export const API_ROOT = 'https://api-ref.agora.io/en';
 //export const API_ROOT = 'https://api-ref-staging.agora.io/en';
 export const API_REF_ROOT = `${API_ROOT}/video-sdk`;
@@ -28,6 +29,8 @@ export const API_REF_IOS_ROOT_RTC_ENGINE_KIT = `${API_REF_IOS_ROOT_RTC_KIT}/agor
 export const API_REF_IOS_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/ios/${VSDK_RELEASE_API}/documentation`;
 export const API_REF_IOS_ROOT_RTC_KIT_VOICE_SDK = `${API_REF_IOS_ROOT_VOICE_SDK}/agorartckit`;
 export const API_REF_IOS_ROOT_RTC_ENGINE_KIT_VOICE_SDK = `${API_REF_IOS_ROOT_RTC_KIT_VOICE_SDK}/agorartcenginekit`;
+export const API_REF_RNJS_ROOT  = `${API_REF_ROOT}/reactjs/2.x`;
+export const API_REF_RNJS_ROOT_VOICE = `${API_REF_ROOT_VOICE_SDK}/reactjs/2.x`;
 export const API_REF_RN_ROOT  = `${API_REF_ROOT}/react-native/${MAJOR_VERSION}/API`;
 
 export const API_REF_UE_ROOT  = `${API_REF_ROOT}/unreal-engine/${MAJOR_VERSION}/API`;
@@ -86,6 +89,8 @@ export const ILS = 'Interactive Live Streaming';
 export const ILSS = 'Interactive Live Streaming Standard';
 export const ILSP = 'Interactive Live Streaming Premium';
 export const VSDK = 'Video SDK';
+
+export const RTT = 'Real-Time Transcription';
 export const GET_STARTED = 'SDK quickstart';
 export const VSDK_RELEASE = '4.x';
 // A variable to update the version of SDK in release notes.

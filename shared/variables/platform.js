@@ -32,7 +32,11 @@ const data = {
     PATH: 'react-native',
     CLIENT: 'app'
   },
-
+  'react-js': {
+    NAME: 'ReactJS',
+    PATH: 'react-js',
+    CLIENT: 'app'
+  },
   'electron': {
     NAME: 'Electron',
     PATH: 'electron',
@@ -73,7 +77,7 @@ const data = {
   'unreal': {
     NAME: 'Unreal Engine',
     PATH: 'unreal',
-    CLIENT: 'app'
+    CLIENT: 'game'
   }
   
 };

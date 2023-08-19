@@ -1,323 +1,244 @@
 <PlatformWrapper platform="android">
 
-### Implement the user interface
+1. **Import the required Agora libraries**
 
-This section guides you through the necessary UI changes in the <Vg k="GET_STARTED"/> project interface to implement call quality features.
-
-**Add a network status indicator to the user interface**
-
-To enable <Vpl k="CLIENT" /> users to see the network status, add `TextView`s to the user interface. To do this, open `/app/res/layout/activity_main.xml` and add the following lines before `</RelativeLayout>`:
-
-```xml
-<TextView
-    android:id="@+id/networkStatus"
-    android:layout_width="20dp"
-    android:layout_height="20dp"
-    android:layout_below="@id/LeaveButton"
-    android:layout_alignRight="@id/LeaveButton"
-    />
-
-<TextView
-    android:id="@+id/networkLabel"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_below="@id/LeaveButton"
-    android:layout_toLeftOf="@id/networkStatus"
-    android:text="Network Status: "
-    />
-
-<Button
-    android:id="@+id/echoTestButton"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_below="@+id/LeaveButton"
-    android:layout_alignStart="@id/JoinButton"
-    android:onClick="echoTest"
-    android:text="Start Echo Test" />
-```
-
-
-### Handle the system logic
-
-1. **Import the required Android and Agora libraries**
-
-    To access and use the `TextView` object and integrate <Vg k="VSDK" /> channel quality libraries, add the following statements after the last `import` statement in `/app/java/com.example.<projectname>/MainActivity`.
-
-    ```java
-    import android.widget.TextView;
-    import android.widget.Button;
-    import android.graphics.Color;
-
-    import io.agora.rtc2.EchoTestConfiguration;
-    import io.agora.rtc2.internal.LastmileProbeConfig;
-    import io.agora.rtc2.video.VideoEncoderConfiguration; 
+    ``` kotlin
+    import io.agora.rtc2.*
+    import io.agora.rtc2.video.VideoCanvas
+    import io.agora.rtc2.internal.LastmileProbeConfig
+    import io.agora.rtc2.video.VideoEncoderConfiguration
+    import io.agora.rtc2.IRtcEngineEventHandler.RemoteVideoStats
     ```
 
-1. **Define variables to manage test state and workflow**
+1. **Use a probe test to check network health**
 
-    In `/app/java/com.example.<projectname>/MainActivity`, add the following declaration to class `MainActivity`:
-
-    ```java
-    private TextView networkStatus; // For updating the network status
-    private int counter1 = 0; // Controls the frequency of messages
-    private int counter2 = 0; // Controls the frequency of messages
-    private int remoteUid; // Uid of the remote user
-    private boolean highQuality = true; // Quality of the remote video stream being played
-    private boolean isEchoTestRunning = false; // Keeps track of the echo test
-    private Button echoTestButton;
-    ```
-
-1. **Update the network status indication**
-
-    To show the network quality result visually to the user, add the following to the `MainActivity` class:
-
-    ```java
-    private void updateNetworkStatus(int quality){  
-        if (quality > 0 && quality < 3) networkStatus.setBackgroundColor(Color.GREEN);
-        else if (quality <= 4) networkStatus.setBackgroundColor(Color.YELLOW);
-        else if (quality <= 6) networkStatus.setBackgroundColor(Color.RED);
-        else networkStatus.setBackgroundColor(Color.WHITE);
-    }
-    ```
-
-    To set up access to the elements, add the following lines to the `onCreate` method after `setupVideoSDKEngine();`
-
-    ```java
-    networkStatus = findViewById(R.id.networkStatus);
-    echoTestButton = findViewById(R.id.echoTestButton);
-    ```
-
-### Implement features to ensure quality
-
-To implement the call quality features, take the following steps:
-
-1. **Enable the user to test the network**
-
-    In the `MainActivity` class, add the following method:
-
-    ```java
-    public void startProbeTest() {
+    ``` kotlin
+    fun startProbeTest() {
+        if (agoraEngine == null) setupAgoraEngine()
         // Configure a LastmileProbeConfig instance.
-        LastmileProbeConfig config = new LastmileProbeConfig();
+        val config = LastmileProbeConfig()
         // Probe the uplink network quality.
-        config.probeUplink = true;
-        // Probe the downlink network quality.
-        config.probeDownlink = true;
+        config.probeUplink = true
+        // Probe the down link network quality.
+        config.probeDownlink = true
         // The expected uplink bitrate (bps). The value range is [100000,5000000].
-        config.expectedUplinkBitrate = 100000;
-        // The expected downlink bitrate (bps). The value range is [100000,5000000].
-        config.expectedDownlinkBitrate = 100000;
-        agoraEngine.startLastmileProbeTest(config);
-        showMessage("Running the last mile probe test ...");
+        config.expectedUplinkBitrate = 100000
+        // The expected down link bitrate (bps). The value range is [100000,5000000].
+        config.expectedDownlinkBitrate = 100000
+        agoraEngine!!.startLastmileProbeTest(config)
+        sendMessage("Running the last mile probe test ...")
     }
     ```
 
-2. **Implement best practice for app initiation**
+1. **Implement best practice for app initiation**
 
-    When a user starts your <Vpl k="CLIENT" />, the <Vg k="ENGINE" /> is initialized in `setupVideoSDKEngine`. After initialization, do the following:
+    Use the following <Vg k="VSDK" /> features when you set up an instance of the <Vg k="ENGINE" />:
 
     * _Enable dual stream mode_: Required for multi-user scenarios.
     * _Set an audio profile and audio scenario_: Setting an audio profile is optional and only required if you have special requirements such as streaming  music.
     * _Set the video profile_: Setting a video profile is also optional. It is useful when you want to change one or more of `mirrorMode`, `frameRate`, `bitrate`, `dimensions`, `orientationMode`, `degradationPrefer` or `compressionPrefer` from the default setting to custom values.
       For more information, see  [video profile table](#video-profile-table).
-    * _Start the network probe test_: A quick test at startup to gauge network quality.
+    * _Start a network probe test_: A quick test at startup to gauge network quality.
 
-    To implement these features, add the following code to `setupVideoSDKEngine` after `agoraEngine.enableVideo()`;
+    ``` kotlin
+    override fun setupAgoraEngine(): Boolean {
+        try {
+            val config = RtcEngineConfig()
+            config.mContext = mContext
+            config.mAppId = appId
+            config.mEventHandler = iRtcEngineEventHandler
 
-    ```java
-    // Enable the dual stream mode
-    agoraEngine.enableDualStreamMode(true);
-    // Set audio profile and audio scenario.
-    agoraEngine.setAudioProfile(Constants.AUDIO_PROFILE_DEFAULT, Constants.AUDIO_SCENARIO_GAME_STREAMING);
+            // Configure the log file
+            val logConfig = RtcEngineConfig.LogConfig()
+            logConfig.fileSizeInKB = 256 // Range 128-1024 Kb
+            logConfig.level = Constants.LogLevel.getValue(Constants.LogLevel.LOG_LEVEL_WARN)
+            config.mLogConfig = logConfig
+            agoraEngine = RtcEngine.create(config)
+            // Enable video mode
+            agoraEngine!!.enableVideo()
+        } catch (e: Exception) {
+            sendMessage(e.toString())
+            return false
+        }
 
-    // Set the video profile
-    VideoEncoderConfiguration videoConfig = new VideoEncoderConfiguration();
-    // Set mirror mode
-    videoConfig.mirrorMode = VideoEncoderConfiguration.MIRROR_MODE_TYPE.MIRROR_MODE_AUTO;
-    // Set framerate
-    videoConfig.frameRate = VideoEncoderConfiguration.FRAME_RATE.FRAME_RATE_FPS_10.getValue();
-    // Set bitrate
-    videoConfig.bitrate = VideoEncoderConfiguration.STANDARD_BITRATE;
-    // Set dimensions
-    videoConfig.dimensions =  VideoEncoderConfiguration.VD_640x360;
-    // Set orientation mode
-    videoConfig.orientationMode = VideoEncoderConfiguration.ORIENTATION_MODE.ORIENTATION_MODE_ADAPTIVE;
-    // Set degradation preference
-    videoConfig.degradationPrefer = VideoEncoderConfiguration.DEGRADATION_PREFERENCE.MAINTAIN_BALANCED;
-    // Set compression preference: low latency or quality
-    videoConfig.compressionPrefer = VideoEncoderConfiguration.COMPRESSION_PREFERENCE.PREFER_LOW_LATENCY;
-    // Apply the configuration
-    agoraEngine.setVideoEncoderConfiguration(videoConfig);
+        // Enable the dual stream mode
+        agoraEngine!!.setDualStreamMode(Constants.SimulcastStreamMode.ENABLE_SIMULCAST_STREAM)
+        // If you set the dual stream mode to AUTO_SIMULCAST_STREAM, the low-quality video
+        // steam is not sent by default; the SDK automatically switches to low-quality after
+        // it receives a request to subscribe to a low-quality video stream.
 
-    // Start the probe test
-    startProbeTest();
+        // Set an audio profile and an audio scenario.
+        agoraEngine!!.setAudioProfile(
+            Constants.AUDIO_PROFILE_DEFAULT,
+            Constants.AUDIO_SCENARIO_GAME_STREAMING
+        )
+
+        // Set the video profile
+        val videoConfig = VideoEncoderConfiguration()
+        // Set mirror mode
+        videoConfig.mirrorMode = VideoEncoderConfiguration.MIRROR_MODE_TYPE.MIRROR_MODE_AUTO
+        // Set frameRate
+        videoConfig.frameRate = VideoEncoderConfiguration.FRAME_RATE.FRAME_RATE_FPS_10.value
+        // Set bitrate
+        videoConfig.bitrate = VideoEncoderConfiguration.STANDARD_BITRATE
+        // Set dimensions
+        videoConfig.dimensions = VideoEncoderConfiguration.VD_640x360
+        // Set orientation mode
+        videoConfig.orientationMode =
+            VideoEncoderConfiguration.ORIENTATION_MODE.ORIENTATION_MODE_ADAPTIVE
+        // Set degradation preference
+        videoConfig.degradationPrefer =
+            VideoEncoderConfiguration.DEGRADATION_PREFERENCE.MAINTAIN_BALANCED
+        // Set compression preference: low latency or quality
+        videoConfig.advanceOptions.compressionPreference =
+            VideoEncoderConfiguration.COMPRESSION_PREFERENCE.PREFER_LOW_LATENCY
+        // Apply the configuration
+        agoraEngine!!.setVideoEncoderConfiguration(videoConfig)
+        return true
+    }
     ```
 
-3. **Test the user's hardware**
+1. **Test the user's hardware**
 
     The echo test checks that the user's hardware is working properly. To start and stop the test, add the following method to the `MainActivity` class:
 
-    ```java
-    public void echoTest(View view) {
-        if (!isEchoTestRunning) {
-            EchoTestConfiguration echoConfig = new EchoTestConfiguration();
-            echoConfig.enableAudio = true;
-            echoConfig.enableVideo = true;
-            echoConfig.token = token;
-            echoConfig.channelId = channelName;
+    ``` kotlin
+    fun startEchoTest(): SurfaceView {
+        if (agoraEngine == null) setupAgoraEngine()
+        // Set test configuration parameters
+        val echoConfig = EchoTestConfiguration()
+        echoConfig.enableAudio = true
+        echoConfig.enableVideo = true
+        echoConfig.channelId = channelName
+        echoConfig.intervalInSeconds = 2 // Interval  between recording and playback
+        // Set up a SurfaceView
+        val localSurfaceView = SurfaceView(mContext)
+        localSurfaceView.visibility = View.VISIBLE
+        // Call setupLocalVideo with a VideoCanvas having uid set to 0.
+        agoraEngine!!.setupLocalVideo(
+            VideoCanvas(
+                localSurfaceView,
+                VideoCanvas.RENDER_MODE_HIDDEN,
+                0
+            )
+        )
+        echoConfig.view = localSurfaceView
 
-            setupLocalVideo();
-            echoConfig.view = localSurfaceView;
-            localSurfaceView.setVisibility(View.VISIBLE);
-            agoraEngine.startEchoTest(echoConfig);
-            echoTestButton.setText("Stop Echo Test");
-            isEchoTestRunning = true;
-        } else {
-            agoraEngine.stopEchoTest();
-            echoTestButton.setText("Start Echo Test");
-            isEchoTestRunning = false;
-            setupLocalVideo();
-            localSurfaceView.setVisibility(View.GONE);
+        // Get a token from the server or from the config file
+        if (serverUrl.contains("http")) { // A valid server url is available
+            // Fetch a token from the server for channelName
+            fetchToken(channelName, 0, object : TokenCallback {
+                override fun onTokenReceived(rtcToken: String?) {
+                    // Set the token in the config
+                    echoConfig.token = rtcToken
+                    // Start the echo test
+                    agoraEngine!!.startEchoTest(echoConfig)
+                }
+
+                override fun onError(errorMessage: String) {
+                    // Handle the error
+                    sendMessage("Error: $errorMessage")
+                }
+            })
+        } else { // use the token from the config.json file
+            echoConfig.token = config!!.optString("rtcToken")
+            // Start the echo test
+            agoraEngine!!.startEchoTest(echoConfig)
         }
+        return localSurfaceView
+    }
+
+    fun stopEchoTest() {
+        agoraEngine!!.stopEchoTest()
+        destroyAgoraEngine()
     }
     ```
 
-4. **Listen to <Vg k="ENGINE" /> events to receive state change notifications and quality statistics**
+1. **Listen to <Vg k="ENGINE" /> events to receive state change notifications and quality statistics**
 
-    Add the following event handlers to receive state change notifications and quality statistics:
+    Use the following event handlers to monitor and ensure channel quality:
 
-    * `onLastmileQuality`: Receives the network quality result.
-    * `onLastmileProbeResult`: Receives detailed probe test results.
-    * `onNetworkQuality`: Receives statistics on network quality.
-    * `onRtcStats`: Receives the <Vg k="ENGINE" /> stats.
-    * `onRemoteVideoStateChanged`: Receives notification regarding any change in the state of the remote video.
-    * `onRemoteVideoStats`: Receives stats about the remote videos.
-
-    In the `MainActivity` class, add the following methods after `private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {`:
-
-    ```java
-    @Override
-    public void onConnectionStateChanged(int state, int reason) {
-        showMessage("Connection state changed"
-                + "\n New state: " + state
-                + "\n Reason: " + reason);
+    ``` kotlin
+    override fun onLastmileQuality(quality: Int) {
+        // Reports the last-mile network quality of the local user
+        (mListener as CallQualityManagerListener).onLastMileQuality(quality)
     }
 
-    @Override
-    public void onLastmileQuality(int quality) {   
-        runOnUiThread(() -> updateNetworkStatus(quality));
-    }
-
-    @Override
-    public void onLastmileProbeResult(LastmileProbeResult result) {   
-        agoraEngine.stopLastmileProbeTest();
+    override fun onLastmileProbeResult(result: LastmileProbeResult) {
+        // Reports the last mile network probe result
+        agoraEngine!!.stopLastmileProbeTest()
         // The result object contains the detailed test results that help you
-        // manage call quality, for example, the downlink jitter.
-        showMessage("Downlink jitter: " + result.downlinkReport.jitter);
+        // manage call quality, for example, the down link bandwidth.
+        sendMessage("Available down link bandwidth: " + result.downlinkReport.availableBandwidth)
     }
 
-    @Override
-    public void onNetworkQuality(int uid, int txQuality, int rxQuality) {
-        // Use downlink network quality to update the network status
-        runOnUiThread(() -> updateNetworkStatus(rxQuality));
+    override fun onNetworkQuality(uid: Int, txQuality: Int, rxQuality: Int) {
+        // Reports the last mile network quality of each user in the channel
+        (mListener as CallQualityManagerListener).onNetworkQuality(
+            uid, txQuality, rxQuality
+        )
     }
 
-    @Override
-    public void onRtcStats(RtcStats rtcStats) {
-        counter1 += 1;
-        String msg = "";
-
-        if (counter1 == 5)
-            msg = rtcStats.users + " user(s)";
-        else if (counter1 == 10 ) {
-            msg = "Packet loss rate: " + rtcStats.rxPacketLossRate;
-            counter1 = 0;
+    override fun onRtcStats(rtcStats: RtcStats) {
+        // Reports the statistics of the current session
+        counter += 1
+        var msg = ""
+        if (counter == 5) msg =
+            rtcStats.users.toString() + " user(s)" else if (counter == 10) {
+            msg = "Packet loss rate: " + rtcStats.rxPacketLossRate
+            counter = 0
         }
-
-        if (msg.length()>0) showMessage(msg);
+        if (msg.isNotEmpty()) sendMessage(msg)
     }
 
-    @Override
-    public void onRemoteVideoStateChanged(int uid, int state, int reason, int elapsed) {
-        String msg = "Remote video state changed: \n Uid =" + uid
-                + " \n NewState =" + state
-                + " \n reason =" + reason
-                + " \n elapsed =" + elapsed;
-
-        showMessage(msg);
+    override fun onConnectionStateChanged(state: Int, reason: Int) {
+        // Occurs when the network connection state changes
+        sendMessage(
+            "Connection state changed\n" +
+                    "New state: $state\n" +
+                    "Reason: $reason"
+        )
     }
 
-    @Override
-    public void onRemoteVideoStats(RemoteVideoStats stats) {
-        counter2 += 1;
+    override fun onRemoteVideoStateChanged(uid: Int, state: Int, reason: Int, elapsed: Int) {
+        // Occurs when the remote video stream state changes
+        val msg = "Remote video state changed:\n" +
+                "Uid = $uid\n" +
+                "NewState = $state\n" +
+                "Reason = $reason\n" +
+                "Elapsed = $elapsed"
+        sendMessage(msg)
+    }
 
-        if (counter2 == 5) {
-            String msg = "Remote Video Stats: "
-                    + "\n User id =" + stats.uid
-                    + "\n Received bitrate =" + stats.receivedBitrate
-                    + "\n Total frozen time =" + stats.totalFrozenTime;
-            counter2 = 0;
-            showMessage(msg);
-        }
+    override fun onRemoteVideoStats(stats: RemoteVideoStats) {
+        // Reports the statistics of the video stream sent by each remote user
+        (mListener as CallQualityManagerListener).onRemoteVideoStats(
+            stats
+        )
     }
     ```
 
-    Each event reports the statistics of the audio video streams from each remote user and host. 
+1. **Switch stream quality**
 
+    Take advantage of dual-stream mode and switch remote video quality to high or low.
 
-5. **Switch stream quality when the user taps the remote video**
-
-    To take advantage of dual-stream mode and switch remote video quality to high or low, add the following to the `MainActivity` class:
-
-    ```java
-    public void setStreamQuality(View view) {
-            highQuality = !highQuality;
-
+    ``` kotlin
+    fun setStreamQuality(remoteUid: Int, highQuality: Boolean) {
+        // Set the stream type of the remote video
         if (highQuality) {
-            agoraEngine.setRemoteVideoStreamType(remoteUid, Constants.VIDEO_STREAM_HIGH);
-            showMessage("Switching to high-quality video");
+            agoraEngine!!.setRemoteVideoStreamType(remoteUid, Constants.VIDEO_STREAM_HIGH)
         } else {
-            agoraEngine.setRemoteVideoStreamType(remoteUid, Constants.VIDEO_STREAM_LOW);
-            showMessage("Switching to low-quality video");
+            agoraEngine!!.setRemoteVideoStreamType(remoteUid, Constants.VIDEO_STREAM_LOW)
         }
     }
     ```
-
-    To fire this method when the user taps the remote view panel, add the following line after `<FrameLayout android:id="@+id/remote_video_view_container"` in `activity_main.xml`:
-
-    ```xml
-    android:onClick="setStreamQuality"
-    ```
-
-    To obtain the uid of the remote user, add the following line to the `onUserJoined` method:
-
-    ```java
-    remoteUid = uid;
-    ```
-
-6. **Configure the <Vpd k="SDK" /> log file**
-
-    To customize the location, content and size of log files, add the following code to `setupVideoSDKEngine` before `agoraEngine = RtcEngine.create(config);`:
-
-    ```java
-    // Configure the log file
-    RtcEngineConfig.LogConfig logConfig = new RtcEngineConfig.LogConfig();
-    logConfig.filePath = "/storage/emulated/0/Android/data/<package name>/files/agorasdk1.log.";
-    logConfig.fileSizeInKB = 256; // Range 128-1024 Kb
-    logConfig.level = Constants.LogLevel.getValue(Constants.LogLevel.LOG_LEVEL_WARN);
-    config.mLogConfig = logConfig;
-    ```
-
-    Make sure you replace the `<package name>` in `filePath` with the name of your package.
-
-    If you want to upload the log file automatically to a CDN, call `setLocalAccessPoint(LocalAccessPointConfiguration config)` to specify the local access point and assign the native access module to the SDK.
 
 <ProductWrapper product="interactive-live-streaming">
 7. **Set the latency level**
 
-    Add the following code to the `joinChannel` method, after `if (audienceRole.isChecked()) {`, to specify the audience latency level. For <Vpd k="PRODUCT" /> choose `AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY`. Ultra-low latency is a feature of <Vg k="ILS" /> and its use is subject to special [pricing](../reference/pricing#unit-pricing).
+    For ultra low-latency applications, set the appropriate `audienceLatencyLevel` when joining a channel. Ultra-low latency is a feature of <Vg k="ILS" /> and its use is subject to special [pricing](../reference/pricing#unit-pricing).
 
-    ```java
+    ``` kotlin
     // Set the latency level
     options.audienceLatencyLevel= Constants.AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY;
     ```
@@ -326,9 +247,9 @@ To implement the call quality features, take the following steps:
 <ProductWrapper product="broadcast-streaming">
 7. **Set the latency level**
 
-    Add the following code to the `joinChannel` method, after `if (audienceRole.isChecked()) {`, to specify the audience latency level. For <Vpd k="PRODUCT" /> choose `AUDIENCE_LATENCY_LEVEL_LOW_LATENCY`. Low latency is a feature of <Vg k="BS" /> and its use is subject to special [pricing](../reference/pricing#unit-pricing).
+    For low-latency applications, set the appropriate `audienceLatencyLevel` when joining a channel. Low latency is a feature of <Vg k="BS" /> and its use is subject to special [pricing](../reference/pricing#unit-pricing).
 
-    ```java
+    ``` kotlin
     // Set the latency level
     options.audienceLatencyLevel= Constants.AUDIENCE_LATENCY_LEVEL_LOW_LATENCY;
     ```

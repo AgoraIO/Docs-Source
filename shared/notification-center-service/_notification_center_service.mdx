@@ -1,8 +1,9 @@
 import EnableNcs from '@docs/shared/notification-center-service/enable-notification-center-service.mdx';
 import RequestHeadBody from './request-header-body.mdx'
-import ChannelEvents from '@docs/shared/notification-center-service/channel-events.mdx';
-import CloudRecordingEvents from './channel-recording-events.mdx'
+import EventTypes from '@docs/shared/notification-center-service/event-types/index.mdx';
+import EventHandler from './event-handler/index.mdx'
 import MaintainStatus from '@docs/shared/notification-center-service/maintain-user-online-status.mdx';
+import RedundantNotifications from '@docs/shared/notification-center-service/redundant-notifications.mdx';
 import SignatureVerification from '@docs/shared/notification-center-service/signature-verification.mdx';
 
 A webhook is a user-defined callback over HTTP. You use webhooks to notify your <Vpl k="CLIENT" /> or back-end system when certain <Vpd k="PRODUCT" /> events occur. <Vg k="COMPANY" /> <Vg k="NCS_LONG" /> enables you to subscribe to events and receive notifications about them across multiple product lines.
@@ -11,14 +12,22 @@ A webhook is a user-defined callback over HTTP. You use webhooks to notify your 
 
 Using <Vg k="CONSOLE" /> you subscribe to specific events for your project and tell <Vg k="NCS_LONG" /> the URL of the webhooks you have configured to receive these events. <Vg k="NCS_LONG" /> sends notifications of your events to your webhooks every time they occur. Your server authenticates the notification and returns `200 Ok` to confirm reception. You use the information in the JSON payload of each notification to give the best user experience to your users.
 
-The following figure illustrates the workflow when <Vg k="NCS_LONG" /> is enabled for the specific events you subscribe to:
+The following figure illustrates the workflow when <Vg k="NCS_LONG" /> is enabled for the specific <Vpd k="NAME" /> events you subscribe to:
 
-<ProductWrapper notAllowed="cloud-recording">
-![](/images/shared/ncs-worklow.png)
+<ProductWrapper product="video-calling, voice-calling, interactive-live-streaming, broadcast-streaming">
+![rtc-channel](/images/shared/ncs-worklow.png)
 </ProductWrapper>
 
 <ProductWrapper product="cloud-recording">
-![](/images/notification-center-service/ncs-cloud-recording-workflow.svg)
+![cloud-recording](/images/notification-center-service/ncs-cloud-recording-workflow.svg)
+</ProductWrapper>
+
+<ProductWrapper product="media-pull">
+![media-pull](/images/notification-center-service/ncs-media-pull.svg)
+</ProductWrapper>
+
+<ProductWrapper product="media-push">
+![media-push](/images/notification-center-service/ncs-media-push.svg)
 </ProductWrapper>
 
 1. A user commits an action that creates an event. For example, creates a channel.
@@ -29,7 +38,7 @@ If <Vg k="NCS_LONG" /> receives `200 OK` within 10 seconds of sending the initia
 
 ## Prerequisites
 
-To set up and use Agora NCS, you must have:
+To set up and use <Vg k="NCS_LONG" />, you must have:
 
 - A [valid Agora account](../reference/manage-agora-account#create-an-agora-account).
 - An [active Agora project](../reference/manage-agora-account#create-an-agora-project).
@@ -40,13 +49,13 @@ To set up and use Agora NCS, you must have:
 ## Handle notifications for specific events
 
 In order to handle notifications for the events you subscribe to, you need to:
-
 - [Create your webhook](#create-your-webhook)
 - [Enable <Vg k="NCS_LONG" />](#enable-notifications)
 - [Verify <Vg k="NCS_LONG" /> signatures](#add-signature-verification)
-<ProductWrapper notAllowed="cloud-recording">
+<ProductWrapper product="video-calling, voice-calling, interactive-live-streaming, broadcast-streaming">
+- [Handle redundant notifications and abnormal user activity](#handle-redundant-notifications-and-abnormal-user-activity)
 - [Implement online user status tracking](#implement-online-user-status-tracking)
-- [Handle redundant notifications and abnormal user activity](#handle-redundand-notifications-and-abnormal-user-activity)
+ 
 </ProductWrapper>
 
 ### Create your webhook
@@ -81,7 +90,7 @@ To do this, take the following steps:
         public void Start(int port) {
           try {
             server = HttpServer.create(new InetSocketAddress(port), 0);
-            System.out.println("Notifications webhook server started at port " + port);
+            System.out.println("Notifications webhook server started on port " + port);
             server.createContext("/", new Handlers.RootHandler());
             server.createContext("/ncsNotify", new Handlers.NcsHandler());
             server.setExecutor(null);
@@ -104,227 +113,9 @@ To do this, take the following steps:
 
 1. **Handle <Vg k="NCS_LONG" /> callbacks**
 
-    To define the `RootHandler` and the `NcsHandler`, create a new file named `Handlers.java` in your JAVA project folder. Add the following code to this file:
+    To define the `RootHandler` and the `NcsHandler`, create a new file named `Handlers.java` in your Java project folder. Add the following code to this file:
 
-    <ProductWrapper product="cloud-recording">
-
-    ```java
-    import java.io.BufferedReader;
-    import java.io.IOException;
-    import java.io.InputStreamReader;
-    import java.io.OutputStream;
-    import java.util.stream.Collectors;
-
-    import com.sun.net.httpserver.Headers;
-    import com.sun.net.httpserver.HttpExchange;
-    import com.sun.net.httpserver.HttpHandler;
-    import org.json.simple.JSONObject;
-    import org.json.simple.parser.JSONParser;
-
-    public class Handlers {
-
-        public static class RootHandler implements HttpHandler {
-
-            @Override
-            public void handle(HttpExchange he) throws IOException {
-                String response = "<h1>Agora NCS Demo</h1>" + "<h2>Port: " + Main.port + "</h2>";
-                he.sendResponseHeaders(200, response.length());
-                OutputStream os = he.getResponseBody();
-                os.write(response.getBytes());
-                os.close();
-            }
-        }
-
-        public static class NcsHandler implements HttpHandler {
-
-            @Override
-            public void handle(HttpExchange he) throws IOException {
-                Headers headers = he.getRequestHeaders();
-                String agoraSignature = headers.getFirst("Agora-Signature");
-                // String agoraSignatureV2 = headers.getFirst("Agora-Signature-V2");
-
-                InputStreamReader isr = new InputStreamReader(he.getRequestBody(), "utf-8");
-                BufferedReader br = new BufferedReader(isr);
-
-                String body = br.lines()
-                        .collect(Collectors.joining(System.lineSeparator()));
-
-                // Parse request body
-                String noticeId, channelName = "";
-                long productId, clientSeq = 0;
-                int uid = 0, eventType;
-
-                try {
-                    JSONObject jsonObj = (JSONObject) new JSONParser().parse(body);
-
-                    noticeId = (String) jsonObj.get("noticeId");
-                    productId = (long) jsonObj.get("productId");
-                    eventType = (int) (long) jsonObj.get("eventType");
-                    JSONObject payload = (JSONObject) jsonObj.get("payload");
-
-                    if (productId == 3) { // Cloud Recording
-
-                        // Read payload parameters
-                        if (payload.containsKey("sequence"))
-                            clientSeq = (long) payload.get("sequence");
-
-                        if (payload.containsKey("uid"))
-                            uid = Integer.parseInt(payload.get("uid").toString());
-
-                        if (payload.containsKey("cname"))
-                            channelName = (String) payload.get("cname");
-
-                        System.out.println(
-                                "Event code: " + eventType
-                                        + " Uid: " + uid
-                                        + " Channel: " + channelName
-                                        + " ClientSeq: " + clientSeq);
-
-                        // Read and print event details
-                        System.out.println(eventDetails(eventType, (JSONObject) payload.get("details")));
-                    }
-                } catch (Exception e) {
-                    System.out.println("Error parsing JSON: " + e.toString());
-                    return;
-                }
-
-                // send response
-                String response = "Ok";
-                he.sendResponseHeaders(200, response.length());
-                OutputStream os = he.getResponseBody();
-                os.write(response.toString().getBytes());
-                os.close();
-            }
-
-            String eventDetails(int eventType, JSONObject details) {
-                String info;
-
-                switch (eventType) {
-                    case 1: // cloud_recording_error
-                        info = "ERROR: " + details.get("errorMsg").toString();
-                        break;
-                    case 2: // cloud_recording_warning
-                        info = "WARNING: " + details.get("warnCode").toString();
-                        break;
-                    case 40: // recorder_started
-                        info = "Recorder started, Status code: " + details.get("status").toString();
-                        break;
-                    case 41: // recorder_leave
-                        info = "Recorder has left the channel, Code: " + details.get("leaveCode").toString();
-                        break;
-                    case 11: // session_exit
-                        info = "Session exit status: " + details.get("exitStatus").toString();
-                        break;
-                    case 30: // uploader_started
-                        info = "Recorder video stream state: " + details.get("status").toString();
-                        break;					
-                    case 31: // uploaded
-                        info = "Recorded file uploaded: " + details.get("status").toString();
-                        break;
-                    default:
-                        info = details.toString();
-                }
-
-                return info;
-            }
-        }
-
-    }
-    ```
-
-    </ProductWrapper>
-
-    <ProductWrapper notAllowed="cloud-recording">
-
-    ```java
-    import java.io.BufferedReader;
-    import java.io.IOException;
-    import java.io.InputStreamReader;
-    import java.io.OutputStream;
-    import java.util.stream.Collectors;
-
-    import com.sun.net.httpserver.Headers;
-    import com.sun.net.httpserver.HttpExchange;
-    import com.sun.net.httpserver.HttpHandler;
-    import org.json.simple.JSONObject;
-    import org.json.simple.parser.JSONParser;
-
-    public class Handlers {
-
-        public static class RootHandler implements HttpHandler {
-            @Override
-            public void handle(HttpExchange he) throws IOException {
-                String response = "<h1>Agora Notifications demo</h1>" + "<h2>Port: " + Main.port + "</h2>";
-                he.sendResponseHeaders(200, response.length());
-                OutputStream os = he.getResponseBody();
-                os.write(response.getBytes());
-                os.close();
-            }
-        }
-
-        public static class NcsHandler implements HttpHandler {
-
-            @Override
-            public void handle(HttpExchange he) throws IOException {
-                Headers headers = he.getRequestHeaders();
-                // Read signatures from the request header
-                String agoraSignature = headers.getFirst("Agora-Signature");
-                //String agoraSignatureV2 = headers.getFirst("Agora-Signature-V2");
-
-                InputStreamReader isr = new InputStreamReader(he.getRequestBody(), "utf-8");
-                BufferedReader br = new BufferedReader(isr);
-                
-                // Read the request body
-                String body = br.lines()
-                    .collect(Collectors.joining(System.lineSeparator()));
-
-                String noticeId, channelName = "";
-                long productId, clientSeq = 0;
-                int uid = 0, eventType;
-
-                // Read event parameters from JSON in the request body
-                try {
-                    JSONObject jsonObj = (JSONObject) new JSONParser().parse(body);
-
-                    noticeId = (String) jsonObj.get("noticeId");
-                    productId = (long) jsonObj.get("productId");
-                    eventType = (int) (long) jsonObj.get("eventType");
-                    JSONObject payload = (JSONObject) jsonObj.get("payload");
-
-                    // Read payload
-                    if (payload.containsKey("clientSeq"))
-                        clientSeq = (long) payload.get("clientSeq");
-
-                    if (payload.containsKey("uid"))
-                        uid = (int) (long) payload.get("uid");
-
-                    if (payload.containsKey("channelName"))
-                        channelName = (String) payload.get("channelName");
-
-                    System.out.println(
-                        "Event code: " + eventType
-                                    + " Uid: " + uid
-                                    + " Channel: " + channelName
-                                    + " ClientSeq: " + clientSeq);
-
-                } catch (Exception e) {
-                    System.out.println("Error parsing JSON: " + e.toString());
-                    return;
-                }
-
-                // Send OK response code 200
-                String response = "Ok";
-                he.sendResponseHeaders(200, response.length());
-                OutputStream os = he.getResponseBody();
-                os.write(response.toString().getBytes());
-                os.close();
-
-            }
-        }
-
-    }
-    ```
-    </ProductWrapper>
+    <EventHandler />
 
 1. **Create a public URL for your server**
 
@@ -361,212 +152,20 @@ To do this, take the following steps:
 
 <SignatureVerification />
 
-
-<ProductWrapper notAllowed="cloud-recording">
-
-### Implement online user status tracking
-
-This section provides sample Java code to show how to use channel event callbacks to maintain online user status at your app server.
-
-To maintain a user registry, take the following steps:
-
-1. Create a new file in you JAVA project folder named `UserRegistry.java` containing the following code.
-
-    ```java
-    import java.util.HashMap;
-    import java.util.Timer;
-    import java.util.TimerTask;
-
-    public class UserRegistry {
-        public static int EVENT_BROADCASTER_JOIN = 103;
-        public static int EVENT_BROADCASTER_QUIT = 104;
-        public static int EVENT_AUDIENCE_JOIN = 105;
-        public static int EVENT_AUDIENCE_QUIT = 106;
-        public static int EVENT_CHANGE_ROLE_TO_BROADCASTER = 111;
-        public static int EVENT_CHANGE_ROLE_TO_AUDIENCE = 112;
-        
-        public static int ROLE_BROADCASTER = 1;
-        public static int ROLE_AUDIENCE = 2;
-        public static int WAIT_TIMEOUT_MS = 60 * 1000;
-        private static Timer timer = new Timer();
-
-        class User { // Holds user information
-            int uid; // user ID
-            int role; // user role
-            boolean isOnline; // whether the user is in a channel
-            long lastClientSeq; // clientSeq of the last event handled by your server
-
-            public User(int uid, int role, boolean isOnline, long clientSeq) {
-                this.uid = uid;
-                this.role = role;
-                this.isOnline = isOnline;
-                this.lastClientSeq = clientSeq;
-            }
-        };
-
-        // Channel list
-        private static HashMap<String, Channel> channels = new HashMap<>();;
-
-        class Channel { // Holds the list of users in each channel
-            HashMap<Integer, User> users = new HashMap<>();
-        };
-
-        // Process Agora Notifications  callbacks to update user registry
-        public void HandleNcsEvent(String channelName, int uid, int eventType, long clientSeq) {
-            // Check the eventType to process events that notify of users joining or
-            // leaving a channel or a change in the user role
-            if (eventType != EVENT_BROADCASTER_JOIN &&
-                eventType != EVENT_BROADCASTER_QUIT &&
-                eventType != EVENT_AUDIENCE_JOIN &&
-                eventType != EVENT_AUDIENCE_QUIT &&
-                eventType != EVENT_CHANGE_ROLE_TO_BROADCASTER &&
-                eventType != EVENT_CHANGE_ROLE_TO_AUDIENCE) {
-                
-                return;
-            }
-
-            // Determine whether a user is online
-            boolean isOnlineInNotice = IsUserOnlineInNotice(eventType);
-            // Get the user role from eventType
-            int roleInNotice = GetUserRoleInNotice(eventType);
-
-            Channel channel = channels.get(channelName);
-            if (channel == null) {
-                // If a channel does not exist, create a channel and add it to the list
-                channel = new Channel();
-                channels.put(channelName, channel);
-                System.out.println("New channel " + channelName + " created");
-            }
-
-            User user = channel.users.get(uid);
-            // Get whether a user has left a channel
-            boolean isQuit = !isOnlineInNotice && (user == null || user.isOnline);
-            if (user == null) {
-                // Create a new user and add it to the user list of the corresponding channel
-                user = new User(uid, roleInNotice, isOnlineInNotice, clientSeq);
-                channel.users.put(uid, user);
-
-                if (isOnlineInNotice) {
-                    System.out.println("New User " + uid + " joined channel " + channelName);
-                } else {
-                    // Set a timer for deleting a user's data after the user leaves a channel
-                    DelayedRemoveUserFromChannel(channelName, uid, clientSeq);
-                }
-            } else if (clientSeq > user.lastClientSeq) {
-                /*
-                * If the data for a user already exists, compare the clientSeq
-                * of the latest notification with that of the last notification
-                * callback handled by your server. If the latest value is greater,
-                * update the user data; otherwise, ignore the notification callback.
-                */
-                user.role = roleInNotice;
-                user.isOnline = isOnlineInNotice;
-                user.lastClientSeq = clientSeq;
-
-                if (isQuit) {
-                    // Mark the status of a user as offline, and delete the user after one minute
-                    System.out.println("User " + uid + " quit channel " + channelName);
-                    DelayedRemoveUserFromChannel(channelName, uid, clientSeq);
-                }
-            }
-        }
-
-        // Set a timer for deleting the data of an offline user
-        private void DelayedRemoveUserFromChannel(final String channelName, final int uid, final long clientSeq) {
-            timer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    Channel channel = channels.get(channelName);
-                    if (channel == null) return;
-                    User user = channel.users.get(uid);
-                    if (user == null) return;
-
-                    // If the value in the clientSeq field changes, do not delete data
-                    if (user.lastClientSeq != clientSeq) return;
-
-                    if (!user.isOnline) {
-                        // Delete user data only when the user is offline
-                        channel.users.remove(uid);
-                        System.out.println("Removed user " + uid + " from channel " + channelName);
-                    } else {
-                        System.out.println("User " + uid + " is online while delayed removing, cancelled");
-                    }
-
-                    // If there are no users left in the channel, delete the channel
-                    if (channel.users.isEmpty()) {
-                        channels.remove(channelName);
-                        System.out.println("Removed channel " + channelName);
-                    }
-                }
-            }, WAIT_TIMEOUT_MS);
-        }
-
-        // Determine whether a user is online.
-        private static boolean IsUserOnlineInNotice(int eventType) {
-            return eventType == EVENT_BROADCASTER_JOIN ||
-                eventType == EVENT_AUDIENCE_JOIN ||
-                eventType == EVENT_CHANGE_ROLE_TO_BROADCASTER ||
-                eventType == EVENT_CHANGE_ROLE_TO_AUDIENCE;
-        }
-
-        // Get the user role.
-        private static int GetUserRoleInNotice(int eventType) {
-            if (eventType == EVENT_BROADCASTER_JOIN ||
-                eventType == EVENT_BROADCASTER_QUIT ||
-                eventType == EVENT_CHANGE_ROLE_TO_BROADCASTER) {
-            return ROLE_BROADCASTER;
-            } else {
-                return ROLE_AUDIENCE;
-            }
-        }
-    }
-    ```
-
-1. Instantiate the `UserRegistry` class
-
-    Add the following code to the `Handlers` class after `public class Handlers ` :
-
-    ```java
-      public static UserRegistry userRegistry = new UserRegistry();
-    ```
-
-
-1. To update the user registry when you receive a <Vg k="NCS_LONG" /> callback, add the following code to the `handle` method in the `NcsHandler` class after `os.close();`:
-
-    ```java
-    // Maintain user registry
-    userRegistry.HandleNcsEvent(channelName, uid, eventType, clientSeq);
-    ```
-
-When adopting the solutions recommended by <Vg k="COMPANY" /> to maintain user online status, you need to recognize the following:
-
-* The solutions only guarantee eventual consistency of user status.
-* To improve accuracy, notification callbacks specific to one channel must be handled in a single process.
-
-### Handle redundant notifications and abnormal user activity
+<RedundantNotifications />
 
 <MaintainStatus />
 
-</ProductWrapper>
 
 ## Reference
 
-This section contains in depth information about <Vg k="NCS_LONG" />
+This section contains in depth information about <Vg k="NCS_LONG" />.
 
 <RequestHeadBody />
 
-<ProductWrapper product="cloud-recording">
+### Event types
 
-<CloudRecordingEvents />
-
-</ProductWrapper>
-
-<ProductWrapper notAllowed="cloud-recording">
-
-<ChannelEvents />
-
-</ProductWrapper>
-
+<EventTypes />
 
 ### IP address query API
 
@@ -612,7 +211,7 @@ Each primary IP field shows an IP address of <Vg k="NCS_LONG" /> server. When yo
 
 ### Considerations
 
-* The Agora <Vg k="NCS_LONG" /> does not guarantee that notification callbacks arrive at your server in the same order as events occur.
+* <Vg k="NCS_LONG" /> does not guarantee that notification callbacks arrive at your server in the same order as events occur.
 * Your server needs to be able to handle messages arriving out of order.
 * To improve the reliability of <Vg k="NCS_LONG" />, there can be more than one notification callback for each event, and your server needs to be able to handle repeated messages.
 

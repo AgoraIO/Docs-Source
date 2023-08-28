@@ -1,5 +1,127 @@
 <PlatformWrapper platform="android">
 
+<ProductWrapper notAllowed="iot">
+
+1. **Import <Vpd k="SDK" /> classes and interfaces**
+
+    ``` kotlin
+    import io.agora.rtc2.*
+    ```
+
+2.  **Declare variables for your request to the token server**
+
+    ``` kotlin
+    var serverUrl : String // The base URL to your token server
+    private val tokenExpiryTime : Int // Time in seconds after which the token will expire.
+    ```
+
+1.  **Retrieve an RTC token from the server**
+
+    Use a GET request to retrieve an authentication token for a specific channel from the token server.
+
+    ``` kotlin
+    fun fetchToken(channelName: String, uid: Int, callback: TokenCallback) {
+        val tokenRole = if (isBroadcaster) 1 else 2
+        // Prepare the Url
+        val urlLString = "$serverUrl/rtc/$channelName/$tokenRole/uid/$uid/?expiry=$tokenExpiryTime"
+
+        val client = OkHttpClient()
+
+        // Create a request
+        val request: Request = Builder()
+            .url(urlLString)
+            .header("Content-Type", "application/json; charset=UTF-8")
+            .get()
+            .build()
+
+        // Send the async http request
+        val call = client.newCall(request)
+        call.enqueue(object : Callback {
+            // Receive the response in a callback
+            @Throws(IOException::class)
+            override fun onResponse(call: Call, response: Response) {
+                if (response.isSuccessful) {
+                    try {
+                        // Extract rtcToken from the response
+                        val responseBody = response.body!!.string()
+                        val jsonObject = JSONObject(responseBody)
+                        val rtcToken = jsonObject.getString("rtcToken")
+                        // Return the token
+                        callback.onTokenReceived(rtcToken)
+                    } catch (e: JSONException) {
+                        e.printStackTrace()
+                        callback.onError("Invalid token response")
+                    }
+                } else {
+                    callback.onError("Token request failed")
+                }
+            }
+
+            override fun onFailure(call: Call, e: IOException) {
+                callback.onError("IOException: $e")
+            }
+        })
+    }
+    ```
+
+1.  **Join a channel using a token from the token server**
+
+    Use `fetchToken` to retrieve a token before joining a channel.
+
+    ``` kotlin
+    fun joinChannelWithToken(channelName: String): Int {
+        if (agoraEngine == null) setupAgoraEngine()
+        return if (isValidURL(serverUrl)) { // A valid server url is available
+            // Fetch a token from the server for channelName
+            fetchToken(channelName, object : TokenCallback {
+                override fun onTokenReceived(rtcToken: String?) {
+                    // Handle the received rtcToken
+                    joinChannel(channelName, rtcToken)
+                }
+
+                override fun onError(errorMessage: String) {
+                    // Handle the error
+                    sendMessage("Error: $errorMessage")
+                }
+            })
+            0
+        } else { // use the token from the config.json file
+            val token = config!!.optString("rtcToken")
+            joinChannel(channelName, token)
+        }
+    }
+    ```
+   
+1.  **Renew an expiring token**
+
+    A token expires either after the `tokenExpiryTime` specified in the call to the token server or, if the time is not specified, after 24 hours. When the `onTokenPrivilegeWillExpire` event in the `IRtcEngineEventHandler` receives a callback, you retrieve a fresh token and call `renewToken`.
+
+    ``` kotlin
+    // Listen for the event that the token is about to expire
+    override fun onTokenPrivilegeWillExpire(token: String) {
+        sendMessage("Token is about to expire")
+        // Get a new token
+        fetchToken(channelName, object : TokenCallback {
+            override fun onTokenReceived(rtcToken: String?) {
+                // Use the token to renew
+                agoraEngine!!.renewToken(rtcToken)
+                sendMessage("Token renewed")
+            }
+
+            override fun onError(errorMessage: String) {
+                // Handle the error
+                sendMessage("Error: $errorMessage")
+            }
+        })
+        super.onTokenPrivilegeWillExpire(token)
+    }
+    ```
+
+</ProductWrapper>
+
+
+<ProductWrapper product="iot">
+
 1.  **Add the necessary dependencies**
 
     In order to make HTTPS calls to a token server and interpret the JSON return parameters, integrate the `OkHttp` client and `Gson` library into your Android project. In `/Gradle Scripts/build.gradle (Module: <projectname>.app)`, add the following lines under `dependencies`.
@@ -129,58 +251,7 @@
 
     In the `MainActivity` class, add the following `setToken` method:
 
-    <ProductWrapper product="video-calling">
-    ``` java
-    void setToken(String newValue) {
-        token = newValue;
-        if (!isJoined) { // Join a channel
-            ChannelMediaOptions options = new ChannelMediaOptions();
-            // For a Video call, set the channel profile as COMMUNICATION.
-            options.channelProfile = Constants.CHANNEL_PROFILE_COMMUNICATION;
-            // Set the client role as BROADCASTER or AUDIENCE according to the scenario.
-            options.clientRoleType = Constants.CLIENT_ROLE_BROADCASTER;
-            // Start local preview.
-            agoraEngine.startPreview();
 
-            // Join the channel with a token.
-            agoraEngine.joinChannel(token, channelName, uid, options);
-        } else { // Already joined, renew the token by calling renewToken
-            agoraEngine.renewToken(token);
-            showMessage("Token renewed");
-        }
-    }
-    ```
-    </ProductWrapper>
-
-    <ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
-    ``` java
-    void setToken(String newValue) {
-        token = newValue;
-        if (!isJoined) { // Join a channel
-            ChannelMediaOptions options = new ChannelMediaOptions();
-
-            // For Live Streaming, set the channel profile as LIVE_BROADCASTING.
-            options.channelProfile = Constants.CHANNEL_PROFILE_LIVE_BROADCASTING;
-            // Set the client role as BROADCASTER or AUDIENCE according to the scenario.
-            if (audienceRole.isChecked()) { //Audience
-                options.clientRoleType = Constants.CLIENT_ROLE_AUDIENCE;
-            } else { //Host
-                options.clientRoleType = Constants.CLIENT_ROLE_BROADCASTER;
-                // Start local preview.
-                agoraEngine.startPreview();
-            }
-
-            // Join the channel with a token.
-            agoraEngine.joinChannel(token, channelName, uid, options);
-        } else { // Already joined, renew the token by calling renewToken
-            agoraEngine.renewToken(token);
-            showMessage("Token renewed");
-        }
-    }
-    ```
-    </ProductWrapper>
-
-    <ProductWrapper product="iot">
     ``` java
     void setToken(String newValue) {
         token = newValue;
@@ -209,41 +280,23 @@
         }
     }
     ```
-    </ProductWrapper>
 
 9.  **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
 
     A token expires after the `expireTime` specified in the call to the token server or expires after 24 hours, if the time is not specified. The `onTokenPrivilegeWillExpire` event receives a callback when the current token is about to expire so that a fresh token may be retrieved and used.
 
-    <ProductWrapper notAllowed="iot">
-    In the `MainActivity` class, add the following method after `private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {`
-
-    ``` java
-    // Listen for the event that the token is about to expire
-    @Override
-    public void onTokenPrivilegeWillExpire(String token) {
-        Log.i("i", "Token Will expire");
-        fetchToken(uid, channelName, tokenRole);
-        super.onTokenPrivilegeWillExpire(token);
-    }
-    ```
-    </ProductWrapper>
-
-    <ProductWrapper product="iot">
     In the `MainActivity` class, add the following code inside the `onTokenPrivilegeWillExpire` method of the `AgoraRtcEvents` instance:
 
     ``` java
     Log.i("i", "Token Will expire");
     fetchToken(uid, channelName, tokenRole);
     ```
-    </ProductWrapper>
     
 
 10. **Update the `joinChannel` method to fetch a token**
 
     In the `MainActivity` class, replace the `joinChannel` method with the following:
 
-    <ProductWrapper product="iot">
     ```java
     public void joinChannel(View view) {
         channelName = editChannelName.getText().toString();
@@ -264,61 +317,5 @@
         }
     }
     ```
-    </ProductWrapper>
-
-    <ProductWrapper product="video-calling">
-    ``` java
-    public void joinChannel(View view) {
-        channelName = editChannelName.getText().toString();
-        if (channelName.length() == 0) {
-            showMessage("Type a channel name");
-            return;
-        } else if (!serverUrl.contains("http")) {
-            showMessage("Invalid token server URL");
-            return;
-        }
-
-        if (checkSelfPermission()) {
-            tokenRole = Constants.CLIENT_ROLE_BROADCASTER;
-            // Display LocalSurfaceView.
-            setupLocalVideo();
-            localSurfaceView.setVisibility(View.VISIBLE);    
-            fetchToken(uid, channelName, tokenRole);
-        } else {
-            showMessage("Permissions was not granted");
-        }
-    }
-    ```
-    </ProductWrapper>
-
-    <ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
-    ``` java
-    public void joinChannel(View view) {
-        channelName = editChannelName.getText().toString();
-        if (channelName.length() == 0) {
-            showMessage("Type a channel name");
-            return;
-        } else if (!serverUrl.contains("http")) {
-            showMessage("Invalid token server URL");
-            return;
-        }
-
-        if (checkSelfPermission()) {
-            if (audienceRole.isChecked()) { //Audience
-                tokenRole = Constants.CLIENT_ROLE_AUDIENCE;
-            } else { //Host
-                tokenRole = Constants.CLIENT_ROLE_BROADCASTER;
-                // Display LocalSurfaceView.
-                setupLocalVideo();
-                localSurfaceView.setVisibility(View.VISIBLE);
-            }
-            audienceRole.setEnabled(false); // Disable the switch
-            fetchToken(uid, channelName, tokenRole);
-        } else {
-            showMessage("Permissions was not granted");
-        }
-    }
-    ```
-    </ProductWrapper>
-    
+</ProductWrapper>
 </PlatformWrapper>

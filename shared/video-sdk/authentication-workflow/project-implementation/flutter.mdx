@@ -3,8 +3,8 @@
 1. **Import <Vpd k="SDK" /> classes and interfaces**
 
     ``` dart
-    import 'package:flutter_reference_app/agora-manager/agora_manager.dart';
     import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+    import 'package:flutter_reference_app/agora-manager/agora_manager.dart';
     import 'package:http/http.dart' as http;
     import 'dart:convert';
     ```
@@ -15,23 +15,27 @@
 
     ``` dart
     Future<String> fetchToken(int uid, String channelName) async {
-        // Token role, use 1 for Host/Broadcaster, 2 for Subscriber/Audience
+        // Set the token role, 
+        // use 1 for Host/Broadcaster, 2 for Subscriber/Audience
         int tokenRole = isBroadcaster ? 1 : 2;
+        
         // Prepare the Url
-        String url =
-            '${config['serverUrl']}/rtc/$channelName/${tokenRole.toString()}/uid/${uid.toString()}?expiry=${config['tokenExpiryTime'].toString()}';
+        String url = '${config['serverUrl']}/rtc/$channelName/'
+            '${tokenRole.toString()}/uid/${uid.toString()}'
+            '?expiry=${config['tokenExpiryTime'].toString()}';
 
-        // Send the request
+        // Send the http GET request
         final response = await http.get(Uri.parse(url));
 
-        if (response.statusCode == 200) {
-            // If the server returns an OK response, then parse the JSON.
+        // Read the response
+        if (response.statusCode == 200) { // The server returned an OK response
+            // Parse the JSON.
             Map<String, dynamic> json = jsonDecode(response.body);
             String newToken = json['rtcToken'];
-            // Update the config
+            // Store the channelName and uid
             this.channelName = channelName;
             localUid = uid;
-            // Use the token to join a channel or renew an expiring token
+            // Return the token
             return newToken;
         } else {
             // Throw an exception.
@@ -46,26 +50,22 @@
     Use `fetchToken` to retrieve a token before joining a channel.
 
     ``` dart
-    fun joinChannelWithToken(channelName: String): Int {
-        if (agoraEngine == null) setupAgoraEngine()
-        return if (isValidURL(serverUrl)) { // A valid server url is available
-            // Fetch a token from the server for channelName
-            fetchToken(channelName, object : TokenCallback {
-                override fun onTokenReceived(rtcToken: String?) {
-                    // Handle the received rtcToken
-                    joinChannel(channelName, rtcToken)
-                }
+    Future<void> joinChannelWithToken([String? channelName]) async {
+        String token='';
+        channelName ??= this.channelName;
 
-                override fun onError(errorMessage: String) {
-                    // Handle the error
-                    sendMessage("Error: $errorMessage")
-                }
-            })
-            0
+        if (isValidURL(config['serverUrl'])) { // A valid server url is available
+            // Retrieve a token from the server
+            token = await fetchToken(localUid, channelName);
         } else { // use the token from the config.json file
-            val token = config!!.optString("rtcToken")
-            joinChannel(channelName, token)
+            token = config['rtcToken'];
         }
+
+        return join(
+            channelName: channelName,
+            token: token,
+            clientRole: (isBroadcaster) ? ClientRoleType.clientRoleBroadcaster : ClientRoleType.clientRoleAudience
+        );
     }
     ```
 
@@ -79,25 +79,25 @@
         return RtcEngineEventHandler(
             // Listen for the event that the token is about to expire
             onTokenPrivilegeWillExpire: (RtcConnection connection, String token) {
-            messageCallback('Token expiring...');
-            renewToken();
-            // Notify the UI through the eventCallback
-            Map<String, dynamic> eventArgs = {};
-            eventArgs["connection"] = connection;
-            eventArgs["token"] = token;
-            eventCallback("onTokenPrivilegeWillExpire", eventArgs);
-        }
+                messageCallback('Token expiring...');
+                renewToken();
+                // Notify the UI through the eventCallback
+                Map<String, dynamic> eventArgs = {};
+                eventArgs["connection"] = connection;
+                eventArgs["token"] = token;
+                eventCallback("onTokenPrivilegeWillExpire", eventArgs);
+            }
+            // Other event handlers
         );
     }
 
     void renewToken() async {
-        // Retrieve a token from the server
         String token;
-        try {
+
+        try { // Retrieve a token from the server
             token = await fetchToken(localUid, channelName);
-            // Proceed with token usage or further operations
         } catch (e) {
-            // Handle the exception or display an error message
+            // Handle the exception
             messageCallback('Error fetching token');
             return;
         }

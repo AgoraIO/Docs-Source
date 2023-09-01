@@ -151,6 +151,7 @@ export const RTEE_VB = 'Virtual Background';
 export const RTEE_FU = 'FaceUnity';
 export const RTEE_AF = 'ActiveFence';
 export const RTEE_AF_D = `ActiveOS`;
+export const RTEE_HT3D = `HTEffect 3D Avatar`
 export const AA = `${COMPANY} Analytics`;
 export const AA_DI = `Data Insights`;
 export const AA_DIP = `Data Insights Plus`;

@@ -38,8 +38,10 @@ The platforms supported by Flexible Classroom and their compatibility requiremen
 
 | Platform | Compatibility requirements | Recommended hardware settings |
 | :------ |:--------| :--------- |
-| Electron | The browsers supported by the web client of Flexible Classroom are as follows:<ul><li>Windows: <ul><li>Chrome 89 or later</li></ul><li>macOS:<ul><li>Safari 13 or later</li><li>Chrome 89 or later</li></ul></li><li>Android:<ul><li>The latest version of Chrome</li><li>The latest version of the WeChat browser</li></ul></li></li><li>iOS:<ul><li>The latest version of Safari, Chrome, and the WeChat browser</li><li>Safari and Chrome on Apple iPad 10.0 or later</li></ul></li></ul> | <li>Using the web client of Flexible Classroom on mobile browsers has several known issues. For details, see the <a href="/en/Video/web_sdk_known_issues#mobile" target="_blank">known issues</a>.</li><li>To ensure a better end-user experience, Agora highly recommends using Flexible Classroom on the latest version of Desktop Chrome.</li> |
-
+| Android H5 | <ul><li>Supported browsers:<ul><li>Chrome browser latest version</li><li>WeChat browser latest version</li></ul></li><li>Not supported:<ul><li>UC Browser</li><li>Quark Browser</li><li>Xiaomi browser</li></ul></li></ul> | To ensure the best user experience, Agora recommends using the latest version of the mobile Chrome browser. |
+| iOS H5 | Browser requirements:<ul><li>`VP8`:<ul><li>Chrome browser latest version</li><li>WeChat browser latest version</li><li>Safari browser</li></ul></li><li>`H264`:<ul><li>Chrome browser latest version</li><li>WeChat browser latest version</li><li>Safari browser</li></ul></li></ul> | <ul><li>iOS version 12.2 and above is recommended for `VP8`</li><li> iOS version 12.1.4 and above is recommended for `H264`.</li></ul> |
+| Windows | <ul><li>Windows 7 and above</li><li>Chrome 89 or later</li></ul> | <ul><li>Recommended processor i5 8th generation or above</li><li>Recommended memory 8 GB or above</li></ul> |
+| macOS | <ul><li>Safari 13 or later</li><li>Chrome 89 or later</li></ul> | <ul><li>Intel chip: Recommended memory 4GB or above</li><li>M1 chip: Recommended memory 8GB or above.</li></ul> |
 
 </PlatformWrapper>
 

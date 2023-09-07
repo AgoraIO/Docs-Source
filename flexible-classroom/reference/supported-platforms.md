@@ -20,8 +20,8 @@ The platforms supported by Flexible Classroom and their compatibility requiremen
 <PlatformWrapper platform="android">
 
 | Platform | Compatibility requirements | Recommended hardware settings |
-| :------ |:--------| :--------- |
-| Android | <li>Supports Android 6 or later</li><li>Supports HarmonyOS</li>  | Agora recommends using mid-to-high-end Android devices with a RAM of 3GB or more. |
+| :------ |:---------------- | :------------------ |
+| Android | <ul><li>Supports Android 6 or later</li><li>Supports HarmonyOS</li></ul> | Agora recommends using mid-to-high-end Android devices with a RAM of 3GB or more. |
 
 </PlatformWrapper>
 

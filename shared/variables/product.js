@@ -96,6 +96,14 @@ const data = {
     SDK: 'Media Push',
     PRODUCT: 'Media Push'
   },
+
+  'agora-chat': {
+    NAME: 'Chat',
+    PATH: 'agora-chat',
+    SDK: 'Chat SDK',
+    PRODUCT: 'Peer-to-Peer Messaging',
+    IOS_PACKAGE_NAME: 'AgoraChat_iOS'
+}
 };
 
 export default data;

@@ -1,0 +1,203 @@
+<PlatformWrapper platform="web">
+
+
+1.  **Declare the variables to create an <Vg k="MESS_ENGINE" /> instance**
+
+    You use these objects to communicate with <Vg k="MESS" />.
+
+    ``` typescript
+    // The Signaling RTMEngine instance
+    let signalingEngine = null;
+    let signalingChannel = null;
+    ```
+
+1.  **Declare the variables to join a channel**
+
+    Best practice is to keep these variables separate from your code. For example, in the <Vg k="MESS" />
+  reference app, we use the following JSON configuration file.
+
+    ``` json
+    {
+        "uid": "1",
+        "appId": "",
+        "channelName": "",
+        "token": "",
+        "proxyUrl": "http://localhost:8080/",
+        "serverUrl": "<URL to a token server>",
+        "tokenExpiryTime": "600",
+        "encryptionMode": 1,
+        "salt": "",
+        "cipherKey": "",
+        "presenceTimeout": 300,
+        "logUpload": false,
+        "logLevel": "debug",
+        "cloudProxy": true,
+        "useStringUserId": false,
+        "rtcToken": ""
+    }
+    ```
+    To learn more about the configuration parameters, see [RTMConfig](/en/signaling/reference/api#rtmconfig).
+
+3.  **Configure a <Vg k="MESS_ENGINE" /> instance**
+
+    Your code reads the parameters from the configuration file, initializes the SignalingEngine instance and adds the event listeners.
+
+    ``` typescript
+    // Set up the signaling engine with the provided App ID, UID, and configuration
+    const setupSignalingEngine = async (rtmConfig) => {
+      try {
+        rtmConfig = rtmConfig || {
+          token: config.token,
+          useStringUserId: config.useStringUserId,
+          logUpload: config.logUpload,
+          presenceTimeout: config.presenceTimeout,
+        };
+        signalingEngine = new AgoraRTM.RTM(config.appId, config.uid, rtmConfig);
+      } catch (error) {
+        console.log("Error:", error);
+      }
+    };
+    ```
+
+4.  **Handle and respond to  <Vg k="MESS" /> events**
+    <a name="handle-events" />
+    The following event listeners handle notification events for <Vg k="MESS" /> features:
+    - [Messages](/en/signaling/reference/api#messages): send and receive messages between users
+    - [Presence](/en/signaling/reference/api#presence): monitor user online, offline, subscription and user historical
+  status change
+    - [Storage](/en/signaling/reference/api#storage): dynamically set, store, update, and delete channel and user metadata
+    - [Topics](/en/signaling/reference/api#topics): subscribe and distribute data streams
+    - [Lock](/en/signaling/reference/api#lock): lock a resource when it is shared between different processes
+    - [Status](en/signaling/reference/api?platform=web#setstate): add custom statuses such as scores, game status, location, mood, and hosting status for themselves.
+    - [token expiration](/en/signaling/reference/api#event-listeners): ensure the users is always connected to <Vg k="MESS" />
+
+    The following code sets up event handlers for <Vg k="MESS" /> events:
+
+    ``` typescript
+    // Add listeners to handle event notifications
+    // Message event handler
+    signalingEngine.addEventListener("message", eventArgs => {
+      eventsCallback("message", eventArgs);
+      messageCallback(
+        "Received message from " +
+          eventArgs.publisher +
+          ": " +
+          eventArgs.message
+      );
+    });
+    // State event handler
+    signalingEngine.addEventListener("status", eventArgs => {
+      eventsCallback("status", eventArgs);
+      messageCallback(
+        "Connection state changed to: " +
+          eventArgs.state +
+          ", Reason: " +
+          eventArgs.reason
+      );
+    });
+    // Presence event handler
+    signalingEngine.addEventListener("presence", eventArgs => {
+      eventsCallback("presence", eventArgs);
+      if (eventArgs.eventType === "SNAPSHOT") {
+        messageCallback(
+          `User ${eventArgs.snapshot[0].userId} joined channel ${eventArgs.channelName}`
+        );
+      } else {
+        messageCallback(
+          "Presence event: " +
+            eventArgs.eventType +
+            ", User: " +
+            eventArgs.publisher
+        );
+      }
+    });
+    // Storage event handler
+    signalingEngine.addEventListener("storage", eventArgs => {
+      eventsCallback("storage", eventArgs);
+    });
+    // Topic event handler
+    signalingEngine.addEventListener("topic", eventArgs => {
+      eventsCallback("topic", eventArgs);
+    });
+    // Lock event handler
+    signalingEngine.addEventListener("lock", eventArgs => {
+      eventsCallback("lock", eventArgs);
+    });
+    // TokenPrivilegeWillExpire event handler
+    signalingEngine.addEventListener("TokenPrivilegeWillExpire", eventArgs => {
+      eventsCallback("TokenPrivilegeWillExpire ", eventArgs);
+    });  
+    ```
+
+1.  **Login to <Vg k="MESS" />**
+
+      In <Vg k="MESS" />, each token is specific to a user ID. If `uid` and `token` do not match, your user cannot initiate <Vg k="MESS_ENGINE" />.
+
+      ``` typescript
+      // Login to the signaling engine
+      const login = async (uid, token) => {
+        try {
+          if (uid !== undefined) config.uid = uid;
+          if (token !== undefined) config.token = token;
+
+          await setupSignalingEngine(rtmConfig);
+          const result = await signalingEngine.login();
+          console.log(result);
+        } catch (error) {
+          console.log(error);
+        }
+      };
+      ```
+
+1.  **Monitor users in channel using presence**
+
+      In <Vg k="MESS" />, you can use `presence` to get information about users in the channel. To get a list of active users, call `presence.getOnlineUsers()`:
+
+      ``` typescript
+      // Get list of active members in the channel
+      const getOnlineMembersInChannel = async (channelName, channelType) => {
+        const result = await getSignalingEngine().presence.getOnlineUsers(
+          channelName,
+          channelType
+        );
+        return result.occupants;
+      };
+      ```
+
+1.  **Send a message**
+
+    Messages are sent directly to a channel.
+
+    ``` typescript
+      // Send a message to a channel
+      const sendChannelMessage = async (channelName, Message) => {
+        const payload = { type: "text", message: Message };
+        const publishMessage = JSON.stringify(payload);
+        try {
+          const sendResult = await signalingEngine.publish(
+            channelName,
+            publishMessage
+          );
+          messageCallback(`Message sent to channel ${channelName}: ${Message}`);
+        } catch (error) {
+          console.log(error);
+        }
+      };
+    ```
+
+    You setup the event handlers for messages received from other users during <Vg k="MESS_ENGINE" /> initiation.
+
+
+1.  **Logout of <Vg k="MESS" />**
+
+    Had enough of the conversation? Just logout.
+
+    ``` typescript
+      // Logout from the signaling engine
+      const logout = async () => {
+        await signalingEngine.logout();
+      };
+    ```
+
+You have just implemented the <Vg k="MESS" /> workflow. Yes, it's as easy as that.
+</PlatformWrapper>

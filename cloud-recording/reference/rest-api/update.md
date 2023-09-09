@@ -55,6 +55,8 @@ The following parameters are required in the request body:
 
   - (Default) `false`: Continues the web page recording. If the recording has been paused, call the `update` method and set the `onhold` parameter to false to continue the recording. If you need to continuously call the `update` method to pause or resume page recording, call it after receiving the last HTTP response of `update`; otherwise the actual result may be inconsistent with your expectation.
 
+- `url`: (Optional) String. Sets the address of the web page to record.
+
 `rtmpPublishConfig` requires the following parameters:
 - `outputs`：JSON Array. Configure as follows:
 - `rtmpUrl`：String. The CDN address which you want to push stream to.
@@ -102,7 +104,8 @@ https://api.agora.io/v1/apps/<appid>/cloud_recording/resourceid/<resourceid>/sid
     "uid":"527841",
     "clientRequest":{
         "webRecordingConfig":{
-            "onhold": true
+            "url": "https://xxxxx", 
+            "onhold": false
         }
    }
 }

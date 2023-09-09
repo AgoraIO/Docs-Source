@@ -81,17 +81,7 @@ If the returned HTTP status code is `200`, it means the request was successful, 
    - `recordingService`: String. The status of the video subscription submodule. For details, see [Service status](../common-errors#service-status). 
   - `extensionServiceState`: JSONArray. An array of the detailed status information of each extension service. 
 	  
-	**ApsaraVideo for VoD**
-	  - `serviceName`: String. The name of the extension service. `aliyun_vod_service` means ApsaraVideo for VoD.
-  	- `payload`: JSON. The status of the extension service.
-        - `state`: String. The status of uploading media content to the extension service.
-          - `"inProgress"`: The recorded files are being uploaded to the extension service.
-          - `"idle"`: No user is sending streams in the channel. Nothing is being uploaded.
-        - `videoInfo`: JSONArray. An array of the M3U8 files and their corresponding video IDs. ApsaraVideo for VoD generates a video ID for each M3U8 file uploaded.
-          - `fileName`: String. The name of the M3U8 file.
-          - `videoId`: String. The corresponding video ID of the M3U8 file.
-
-   **Web page recording**
+  **Web page recording**
 
    - `serviceName`: String . The name of the extension service. `"web_recorder_service"` means web page recording.
    - `payload`: JSON. The status of the extension service.

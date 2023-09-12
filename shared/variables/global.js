@@ -29,7 +29,11 @@ export const API_REF_IOS_ROOT_RTC_ENGINE_KIT = `${API_REF_IOS_ROOT_RTC_KIT}/agor
 export const API_REF_IOS_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/ios/${VSDK_RELEASE_API}/documentation`;
 export const API_REF_IOS_ROOT_RTC_KIT_VOICE_SDK = `${API_REF_IOS_ROOT_VOICE_SDK}/agorartckit`;
 export const API_REF_IOS_ROOT_RTC_ENGINE_KIT_VOICE_SDK = `${API_REF_IOS_ROOT_RTC_KIT_VOICE_SDK}/agorartcenginekit`;
+export const API_REF_RNJS_ROOT  = `${API_REF_ROOT}/reactjs/2.x`;
+export const API_REF_RNJS_ROOT_VOICE = `${API_REF_ROOT_VOICE_SDK}/reactjs/2.x`;
 export const API_REF_RN_ROOT  = `${API_REF_ROOT}/react-native/${MAJOR_VERSION}/API`;
+
+export const API_REF_UE_ROOT  = `${API_REF_ROOT}/unreal-engine/${MAJOR_VERSION}/API`;
 export const API_REF_RN_PREVIOUS_ROOT  = `${API_REF_ROOT}/react-native/${VSDK_PREVIOUS_RELEASE_API}`;
 export const API_REF_RN_ROOT_VOICE = `${API_REF_ROOT_VOICE_SDK}/react-native/${MAJOR_VERSION}/API`;
 export const API_REF_MACOS_ROOT = `${API_REF_ROOT}/macos/${VSDK_RELEASE_API}/documentation`;
@@ -68,6 +72,7 @@ export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
 
 export const ENGINE = `${COMPANY} Engine`;
+
 export const RTE = 'Real-Time Engagement';
 export const RTEC = `${RTE} Core`;
 export const RTES = `${RTE} SDK`;
@@ -85,6 +90,8 @@ export const ILS = 'Interactive Live Streaming';
 export const ILSS = 'Interactive Live Streaming Standard';
 export const ILSP = 'Interactive Live Streaming Premium';
 export const VSDK = 'Video SDK';
+
+export const RTT = 'Real-Time Transcription';
 export const GET_STARTED = 'SDK quickstart';
 export const VSDK_RELEASE = '4.x';
 // A variable to update the version of SDK in release notes.
@@ -102,11 +109,12 @@ export const AV = 'Audio/Video';
 
 export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
+export const MESS_ENGINE = `${MESS} Engine`;
 export const EASEMOB_SDK = `Easemob IM SDK`;
 export const NCS = `NCS`;
 export const NCS_LONG = `Notifications`;
 export const SIG = `${MESS}`;
-export const SIG_RELEASE_API = `1.x`;
+export const SIG_RELEASE_API = `2.x`;
 export const SIG_SDK_API_REF_ROOT = `${API_ROOT}/signaling-sdk`;
 export const SIG_SDK_API_ANDROID = `${SIG_SDK_API_REF_ROOT}/android/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_WIN_CPP = `${SIG_SDK_API_REF_ROOT}/windows-cpp/${SIG_RELEASE_API}`;
@@ -185,6 +193,7 @@ export const CREC_FCS = 'https://download.agora.io/acrsdk/release/cloud_recordin
 
 
 export const CGATE = 'Cloud Gateway';
+export const MEDGATE = 'Media Gateway';
 
 export const CGATE_RELEASE_API = `3.x`;
 export const API_REF_ROOT_CGATE_SDK = `${API_ROOT}/server-gateway-sdk`;
@@ -238,6 +247,9 @@ export const DEMO_BASIC_VIDEO_CALL_URL =
   'https://webdemo.agora.io/basicVideoCall/index.html';
 
 export const DEMO_PAGE_LINK = `<Link to="{{Global.DEMO_BASIC_VIDEO_CALL_URL}}"><Vg k="COMPANY" /> web demo</Link>`;
+
+export const DEMO_TOKEN_BUILDER_URL =
+  'https://webdemo.agora.io/token-builder';
 
 
 export const AGORA_DYNAMIC_KEY_CODE_BASE_URL =

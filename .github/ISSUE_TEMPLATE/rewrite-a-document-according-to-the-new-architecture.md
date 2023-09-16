@@ -1,7 +1,7 @@
 ---
 name: Rewrite a document according to the new architecture
 about: Describe this issue template's purpose here.
-title: Rewrite '<Doc Title>' doc in POC3 style
+title: Rewrite the '<Doc Title>' doc in POC3 style
 labels: ''
 assignees: saudsami
 
@@ -20,8 +20,8 @@ assignees: saudsami
 * The Video calling document for the feature: <document-link>
 
 - [ ] [Android](https://github.com/AgoraIO/video-sdk-samples-android) - Saud
-    - [x] Code repository
-    - [x] README
+    - [ ] Code repository
+    - [ ] README
     - [ ] Product docs
 - [ ] [iOS](https://github.com/AgoraIO/video-sdk-samples-ios) - Dasun
     - [ ] Code repository

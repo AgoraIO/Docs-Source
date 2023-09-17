@@ -3,7 +3,7 @@ name: Docs update issue
 about: Request an update to a doc
 title: ''
 labels: ''
-assignees: ''
+assignees: saudsami, atovpeko
 
 ---
 

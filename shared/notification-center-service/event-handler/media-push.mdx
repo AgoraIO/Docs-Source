@@ -1,0 +1,109 @@
+<ProductWrapper product="media-push">
+
+```java
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.util.stream.Collectors;
+
+import com.sun.net.httpserver.Headers;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+
+public class Handlers {
+
+    public static class RootHandler implements HttpHandler {
+
+        @Override
+        public void handle(HttpExchange he) throws IOException {
+            String response = "<h1>Agora NCS Demo</h1>" + "<h2>Port: " + Main.port + "</h2>";
+            he.sendResponseHeaders(200, response.length());
+            OutputStream os = he.getResponseBody();
+            os.write(response.getBytes());
+            os.close();
+        }
+    }
+
+    public static class NcsHandler implements HttpHandler {
+
+        @Override
+        public void handle(HttpExchange he) throws IOException {
+            Headers headers = he.getRequestHeaders();
+            String agoraSignature = headers.getFirst("Agora-Signature");
+            // String agoraSignatureV2 = headers.getFirst("Agora-Signature-V2");
+
+            InputStreamReader isr = new InputStreamReader(he.getRequestBody(), "utf-8");
+            BufferedReader br = new BufferedReader(isr);
+
+            String body = br.lines()
+                    .collect(Collectors.joining(System.lineSeparator()));
+
+            // Parse request body
+            String noticeId;
+            long productId, lts = 0;
+            int eventType;
+
+            try {
+                JSONObject jsonObj = (JSONObject) new JSONParser().parse(body);
+
+                noticeId = (String) jsonObj.get("noticeId");
+                productId = (long) jsonObj.get("productId");
+                eventType = (int) (long) jsonObj.get("eventType");
+                JSONObject payload = (JSONObject) jsonObj.get("payload");
+
+                if (productId == 5) { // Media Push
+
+                    // Read payload parameters
+                    if (payload.containsKey("lts"))
+                        lts = (long) payload.get("lts");
+
+                    System.out.println(
+                            "Event type: " + eventType
+                                    + ", Notice ID: " + noticeId
+                                    + ", Time stamp: " + lts
+                                    + ", " + eventDetails(eventType, (JSONObject) payload));
+                }
+            } catch (Exception e) {
+                System.out.println("Error parsing JSON: " + e.toString());
+                return;
+            }
+
+            // Send response
+            String response = "Ok";
+            he.sendResponseHeaders(200, response.length());
+            OutputStream os = he.getResponseBody();
+            os.write(response.toString().getBytes());
+            os.close();
+        }
+
+        String eventDetails(int eventType, JSONObject details) {
+            String info;
+
+            switch (eventType) {
+                case 1: 
+                    info = "Converter created, rtmp url: " + ((JSONObject) details.get("converter")).get("rtmpUrl").toString();
+                    break;
+                case 2: 
+                    info = "Converter configuration changed, fields: " + details.get("fields").toString();
+                    break;                    
+                case 3: 
+                    info = "Converter status changed, state: " + ((JSONObject) details.get("converter")).get("state").toString();
+                    break;
+                case 4: 
+                    info = "Converter destroyed, reason: " + details.get("destroyReason").toString();
+                    break;
+                default:
+                    info = details.toString();
+            }
+
+            return info;
+        }
+    }
+
+}
+
+```
+</ProductWrapper>

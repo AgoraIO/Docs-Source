@@ -7,6 +7,8 @@ description: >
    Guidelines for integrating cloud recording into your app.
 ---
 
+import SwitchDomainName from '@docs/shared/common/_switch-domain-name.mdx';
+
 To improve application robustness, Agora recommends that you do the following when integrating Cloud Recording RESTful APIs:
 
 ## Use dual domain names
@@ -19,7 +21,7 @@ Agora recommends that you use a backoff strategy, for example, retry after 1, 3,
 
 You use Cloud Recording RESTful APIs to get the status of the recording service.
 
-Agora recommends that core apps should not rely on the <Vg k="NCS_LONG" /> (<Vg k="NCS" />). If your apps already rely heavily on the <Vg k="NCS" />, Agora recommends that you contact <a href="mailto:support@agora.io">support@agora.io</a> to enable the message notification function, which doubles the received notifications and reduces the probability of message loss. After enabling the message notification function, you need to deduplicate messages based on `sid`. Message notification still cannot guarantee a 100% arrival rate.
+Best practice is that core apps do not rely on <Vg k="NCS_LONG" /> (<Vg k="NCS" />). If your apps already rely heavily on the <Vg k="NCS" />, contact <a href="mailto:support@agora.io">support@agora.io</a> and enable the redundant message notification function. This doubles the received notifications and reduces the probability of message loss. After enabling the message notification function, you need to deduplicate messages based on `sid`. Message notification still cannot guarantee a 100% arrival rate.
 
 The initial QPS limit is 10 per App ID when you register. You can estimate the QPS quota your project needs according to your Peak Concurrent Worker (PCW) quota and query frequency. The initial PCW limit is 50 per AppID when you register. If the RESTful API returns QPS limitation error code `429`, or PCW quota limitation error code `406`, then retry, or contact support@agora.io to increase your QPS or PCW quota.
 
@@ -94,9 +96,12 @@ To guarantee high availability of important scenes with a large audience, best p
 1. Use Notifications to [Handle notifications for specific events](/en/cloud-recording/develop/receive-notifications#cloud-recording-callback-events). After starting the recording, if you don't receive event `13` `High availability register success` within 10 seconds, create a new recording task with a different UID.
 
 These fault recovery methods may result in multiple recording tasks. You are charged separately for each task. For more information, see [Pricing](../reference/pricing).
- 
 
-## Integration requirements checklist
+<SwitchDomainName />
+
+## Reference
+
+### Integration requirements checklist
 
 To ensure reliability of the cloud recording service, refer to the following checklist to confirm that your solution meets the integration requirements:
 
@@ -113,25 +118,4 @@ To ensure reliability of the cloud recording service, refer to the following che
 | 9 | optional | Use dual domain names | If the request fails with the primary domain name `api.agora.io`, try again with the primary domain name. If it fails again, switch to the secondary domain name `api.sd-rtn.com` and send the request again. |
 | 10 | optional | timeout logic | Make sure that the `maxIdleTime` setting is reasonable. The recommended value is 300 seconds. |
 
-## Reference
 
-### Domain name table
-
-|Primary domain name  |Region domain name	|Region|
-|:--------------------|:--------------------|:-----|
-|`api.sd-rtn.com`      |`api-us-west-1.sd-rtn.com` |Western United States|
-|                      |`api-us-east-1.sd-rtn.com` |Eastern United States|
-|                      |`api-ap-southeast-1.sd-rtn.com`|Southeast Asia Pacific|
-|                      |`api-ap-northeast-1.sd-rtn.com`| Northeast Asia Pacific|
-|                      |`api-eu-west-1.sd-rtn.com` |Western Europe|
-|                      |`api-eu-central-1.sd-rtn.com` |Central Europe|
-|                      |`api-cn-east-1.sd-rtn.com`|East China|
-|                      |`api-cn-north-1.sd-rtn.com`|North China|
-|`api.agora.io`         |`api-us-west-1.agora.io`|Western United States|
-|                       |`api-us-east-1.agora.io`|Eastern United States|
-|                       |`api-ap-southeast-1.agora.io`|Southeast Asia Pacific|
-|                       |`api-ap-northeast-1.agora.io`|Northeast Asia Pacific|
-|                	    |`api-eu-west-1.agora.io`|Western Europe|
-|                       |`api-eu-central-1.agora.io`|Central Europe|
-|                       |`api-cn-east-1.agora.io`|East China|
-|                       |`api-cn-north-1.agora.io`|North China|

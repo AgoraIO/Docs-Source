@@ -1,0 +1,85 @@
+
+    ``` swift
+    struct CallQualityView: View {
+        // The Agora SDK manager for call quality.
+        @ObservedObject var agoraManager = CallQualityManager(
+            appId: DocsAppConfig.shared.appId, role: .broadcaster
+        )
+
+        @State var channelJoined = false
+        @State var betweenChannel = false
+
+        func streamQualityOverlay(for uid: UInt) -> some View {
+            ZStack(alignment: .top) {
+                HStack(alignment: .top) {
+                    self.callQualityOverlay(for: uid)
+                    Spacer()
+                    if uid != agoraManager.localUserId {
+                        VStack(alignment: .trailing) {
+                            Text("Stream Quality")
+                            Toggle(isOn: qualityBinding(for: uid)) {}
+                        }
+                    }
+                }.padding(3)
+                let streamType = agoraManager.streamType[uid] ?? .high
+                RoundedRectangle(cornerRadius: 10).strokeBorder(
+                    (streamType == .low ? .red : .green)
+                )
+            }
+        }
+
+        var body: some View {
+            ZStack {
+                VStack {
+                    if let (qualityStr, color) = agoraManager.lastMileQuality.qualityDetails {
+                        Text("Call Quality: \(qualityStr)")
+                            .padding(4)
+                            .background(color)
+                            .cornerRadius(8)
+                    }
+                    ScrollView {
+                        VStack {
+                            ForEach(Array(agoraManager.allUsers), id: \.self) { uid in
+                                AgoraVideoCanvasView(manager: agoraManager, uid: uid)
+                                    .aspectRatio(contentMode: .fit).cornerRadius(10)
+                                    .overlay(alignment: .topLeading) {
+                                        self.streamQualityOverlay(for: uid)
+                                    }
+                            }
+                        }.padding(20)
+                    }
+                    HStack {
+                        if !self.channelJoined, !self.betweenChannel { Button {
+                            self.agoraManager.agoraEngine.stopLastmileProbeTest()
+                            self.agoraManager.startProbeTest()
+                        } label: {
+                            Text("Run Probe Test")
+                                .foregroundColor(.primary).padding(5)
+                                .background(.secondary).cornerRadius(5)
+                        }}
+                        Button {
+                            if channelJoined {
+                                self.channelJoined = agoraManager.leaveChannel(destroyInstance: false) != 0
+                            } else {
+                                betweenChannel = true
+                                Task {
+                                    self.channelJoined = await agoraManager
+                                        .joinChannel(DocsAppConfig.shared.channel) == 0
+                                    betweenChannel = false
+                                }
+                            }
+                        } label: {
+                            Text((self.channelJoined ? "Leave" : "Join") + " Channel")
+                                .foregroundColor(.primary).padding(5)
+                                .background(.secondary).cornerRadius(5)
+                        }.disabled(betweenChannel)
+
+                    }
+                }
+                ToastView(message: $agoraManager.label)
+            }.onDisappear {
+                agoraManager.leaveChannel()
+            }
+        }
+    }
+    ```

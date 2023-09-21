@@ -26,6 +26,7 @@ The unit pricing for audio and video usage is as follows:
 | Option: Standalone screenshot by video | Full HD (720P - 1080P)   | 13.49     |
 | Option: Standalone screenshot by video | 2K (1080P to 2K)       | 23.99       |
 
+
 Agora determines video category based on **aggregate video resolution**, which is the sum of resolutions of all the video 
 streams a user subscribes to at the same time. Agora adds up the resolution of all the video streams recorded at the same 
 time to get the aggregate resolution, which categorizes video as follows:

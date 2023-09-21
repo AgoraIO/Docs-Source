@@ -9,9 +9,8 @@ plans and carries out documentation activities to make sure that everything on A
 
 Currently, the EN doc team includes the following roles and members:
 
-* Documentation Architect: [Iain](https://github.com/billy-the-fish)
 * Technical Writer Lead: [Saud](https://github.com/saudsami)
-* Editor: [Anastasia](https://github.com/atovpeko)
+* Editor/Project Manager: [Anastasia](https://github.com/atovpeko)
 * Technical Writers: [Dasun](https://github.com/nirm2009), [Hussain](https://github.com/hussain-khalid), [Pankaj](https://github.com/Pankajg123), and [Kishan](https://github.com/Kishan-Dhakan).
 
 ## Documentation work lifecycle
@@ -34,18 +33,15 @@ To set up your development environment, refer to the prerequisites section of th
 
 ### 1. Documentation request
 
-The need to deliver new or update the existing documentation may arise from the [roadmap of product releases](insert link to the roadmap,
-if possible), requests from product or development teams, customer feedback on documentation, or internal
-documentation analysis.
+The need to deliver new or update the existing documentation may arise from requests from product or development teams, customer feedback on documentation, or internal
+documentation analysis. In case of new product releases, the SDK to be released is first tested and approved by the DevRel team. Only after an official approval the TW team starts 
+documentation work.
 
 //Insert a matrix of stakeholders (PMs, devs, etc.) with the products/areas they are responsible for.
 
 ### 2. Project planning and management
 
-The TW Lead and Editor analyze the documentation request and, with help and consult of the Documentation Architect, plan and
-assign the work in the form of milestones and related issues.
-
-//Clarify whether we need to do costing before we start on a milestone
+The TW Lead and Editor analyze the documentation request and plan and assign the work in the form of milestones and related issues. 
 
 #### Milestones
 
@@ -141,6 +137,8 @@ Backup writers change their platform every quarter.
 | General improvement tickets                     | Every TW in turn                             | Every TW in turn                             |                |
 | Release notes, API reference, and SDK downloads | [Anastasia](https://github.com/atovpeko)     | [Dasun](https://github.com/nirm2009)         |
 
+After a milestone is created, it is sent to the responsible PO for approval. Once the milestone is approved, the documentation work starts. 
+
 ### Writing
 
 All Agora documentation is written in a clear, consistent American English,
@@ -149,7 +147,7 @@ following [Google developer documentation style guide](https://developers.google
 For issues that require technical implementation, the doc team follows this process:
 
 1. The TW Lead develops implementation for their platform
-1. The TW Lead raises a PR, and requests a review from the Documentation Architect and the Editor.
+1. The TW Lead raises a PR, and requests a review from the Editor.
 1. Once all possible comments have been addressed and technical/language review is passed, the TW Lead passes
    their implementation to other TWs.
 1. TWs adapt the implementation for their respective platforms.
@@ -170,7 +168,7 @@ Some product releases do not require any major doc updates and only include the 
 
 To document such releases:
 
-1. Create 3 milestone branches with the same name in Docs, Docs-Source-Private, and API-Reference repositories following the naming convention above, if not already created by the Documentation Architect. 
+1. Create 3 milestone branches with the same name in Docs, Docs-Source-Private, and API-Reference repositories following the naming convention above. 
 
 1. Create an update branch under the same name from each of those milestone branches. 
 

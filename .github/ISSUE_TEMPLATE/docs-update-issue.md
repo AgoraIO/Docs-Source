@@ -1,13 +1,13 @@
 ---
-name: Agora documentation issue
-about: Template for documentation tasks.
+name: Docs update issue
+about: Request an update to a doc
 title: ''
 labels: ''
-assignees: ''
+assignees: saudsami, atovpeko
 
 ---
 
-**Business case**: How will this issue help our customers.
+**Business case**: How will this issue help our customers?
 
 **Subject Matter Expert**:
 - *Technical*:
@@ -19,5 +19,4 @@ assignees: ''
 **Acceptance criteria**: The documentation is technically correct, easy to use, follows the template structure and
 follows the Google Developer Style Guide.
 
-**Additional valuable information**: Anything else that will help with this issue.
-
+**Additional valuable information**: Anything else that will help with this issue?

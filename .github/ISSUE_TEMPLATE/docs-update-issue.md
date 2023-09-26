@@ -2,21 +2,33 @@
 name: Docs update issue
 about: Request an update to a doc
 title: ''
-labels: ''
+labels: 'Bug'
 assignees: saudsami, atovpeko
 
 ---
 
-**Business case**: How will this issue help our customers?
+**Business case**:
+<!-- How will this issue help Agora customers or yourself? -->
 
 **Subject Matter Expert**:
-- *Technical*:
-- *Language*: Iain
-- *PM*: only if essential
+<!--
+- *Technical*: @saudsami
+- *Language*: @atovpeko
+-->
 
-**Scope**: The products and documents to be updated. If you are not sure, leave it to Iain.
+**Doc Link**
+ <!-- Add links to any examples of the missing/incorrect docs, if applicable -->
 
-**Acceptance criteria**: The documentation is technically correct, easy to use, follows the template structure and
-follows the Google Developer Style Guide.
+**Scope**:
+<!-- The products and documents to be updated. If you are not sure, leave it to @atovpeko. -->
 
-**Additional valuable information**: Anything else that will help with this issue?
+**Acceptance criteria**:
+
+- technically correct
+- easy to use
+- follows the template structure
+- follows the Google Developer Style Guide
+
+**Additional valuable information**
+
+<!-- Anything else that will help with this issue? (eg Screenshots) -->

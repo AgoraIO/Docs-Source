@@ -1,11 +1,13 @@
 ---
-name: Rewrite a document according to the new architecture
+name: [Internal] Rewrite a document according to the new architecture
 about: Describe this issue template's purpose here.
 title: Rewrite the '<Doc Title>' doc in POC3 style
-labels: ''
+labels: 'enhancement'
 assignees: saudsami
 
 ---
+
+<!-- This Issue is for Agora use only -->
 
 **Business case**: The POC3 reference app simplifies the integration process of Video SDK. Clients can simply clone the code repository to experience and test product features. Add code for the implementation of **Document title** to the `video-sdk-samples-<platform>` code repository. Update the document to POC3 style and include the updated code. Use conditional blocks, where required, to create variants for Interactive live streaming, Broadcast Streaming, and Voice calling
 

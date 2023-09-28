@@ -248,6 +248,56 @@ Each TW raises a PR and requests reviews following this logic:
 Publishing docs involves building locally and using Vercel to double-check doc updates while moving them all the way from a 
 milestone (if any) branch to main.
 
+#### Generating the API refs
+
+The source for the API refs is generated from the ditamaps stored in https://github.com/AgoraIO/agora_doc_source/tree/master/en-US/dita/RTC-NG.  The CN team is responsible for the content written 
+about each method and class, the EN team is responsible for the structure in the EN ditamap files. To 
+generate these docs you need an instance of OxygenXML Author v23.1. My preference is to add the oxygene plugin to 
+eclipse. For a license, ask Chen Meng. 
+
+In general, for each build you make a local branch of the repo from the 
+release tag supplied by the cn team, use the github diff to see the changes in the [cn ditamaps](https://github.com/AgoraIO/agora_doc_source/tree/master/dita/RTC-NG) and make similar updates to the en ditamaps. Be careful, the 
+ditamap structure is not the same, you see which methods have been added to the cn ditamaps, then add them to the 
+correct class or interface in the en ditamaps.   
+
+To generate the EN api references:
+
+1. Note the branch of the last EN docs you made, for example: `v4.2.1-en`.  At the time of writing, the last branch 
+   is `unreal-api-4.2.1--en`.
+2. In your IDE of choice:
+    1. Checkout the CN updates in https://github.com/AgoraIO/agora_doc_source/ from a tag. For example:  `git checkout -b v4.2.2-en tags/v4.2.2`
+    2. Pull from the previous en branch and merge.
+    3. Using the GitHup diff, check for any changes to the CN ditamaps since the previous release, add and remove the updated methods and classes in the ditamap. Pay attention for the hide and props=cn tags.
+3. In  eclipse:
+    1. Open en-US/dita/RTC-NG/config/keys-global.ditamap and edit the version number
+    2. Open en-US/dita/RTC-NG/config/filter-product.ditamap and include the product to build first. For example, for voice:
+         ```xml
+          <val>
+          <prop action="include" att="props" val="voice"/>
+          <prop action="exclude" att="props" val="video"/>
+          </val>
+         ```
+    1. For each platform to publish the API ref for voice:
+        1. Open the ditamap for the platform to generate. For example: `RTC_NG_API_Unreal.ditamap`.
+        2. Click Configure Transformation Scenario and select the scenario to match `filter-product.ditmap`. For 
+           example, if `<prop action="include" att="props" val="voice"/>`, select `Voice SDK-unreal-engine`, then 
+           click **Apply associated**.
+           The docs are generated in `en-US/dita/RTC-NG/out`.
+        3. Check the output docs have the correct version number and name.
+    2. Open `en-US/dita/RTC-NG/config/filter-product.ditamap` and include the product scenario to build. For video, exclude voice and include video:
+    3. For each platform to publish the API ref for video:
+        1. Open the ditamap for the platform to generate. For example: `RTC_NG_API_Unreal.ditamap`.
+        2. Click Configure Transformation Scenario and select the scenario to match filter-product.ditmap. For 
+           example, if `<prop action="include" att="props" val="video"/>`, select `Video SDK-unreal-engine`, then 
+           click **Apply associated**.
+        3. Check the output docs have the correct version number and name.
+1. In https://github.com/AgoraIO/API-Reference, make a milestone to match the milestone for the release.
+2. Copy the docs generated in en-US/dita/RTC-NG/out to the correct folders in your milstone.
+3. Open dir.html and check the API ref you have updated.
+4. Push to remote and check the instance built in vercel. For example: https://api-reference-staging-git-unreal-blueprint-agora-gdxe.vercel.app/dir.html
+5. When the release is GA, pull from the milestone branch to main, then push to main.
+
+
 #### API-Reference repository
 
 Whenever it is necessary to publish an update that involves main docs and API reference, make sure to publish API reference first. 

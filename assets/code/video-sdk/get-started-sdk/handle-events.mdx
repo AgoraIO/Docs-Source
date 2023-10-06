@@ -1,0 +1,103 @@
+<PlatformWrapper platform="android">
+    ```kotlin
+    protected open val iRtcEngineEventHandler: IRtcEngineEventHandler?
+        get() = object : IRtcEngineEventHandler() {
+            // Listen for a remote user joining the channel.
+            override fun onUserJoined(uid: Int, elapsed: Int) {
+                sendMessage("Remote user joined $uid")
+                // Save the uid of the remote user.
+                remoteUids.add(uid)
+                if (isBroadcaster && (currentProduct == ProductName.INTERACTIVE_LIVE_STREAMING
+                            || currentProduct == ProductName.BROADCAST_STREAMING)
+                ) {
+                    // Remote video does not need to be rendered
+                } else {
+                    // Set up and return a SurfaceView for the new user
+                    setupRemoteVideo(uid)
+                }
+            }
+
+            override fun onJoinChannelSuccess(channel: String, uid: Int, elapsed: Int) {
+                // Set the joined status to true.
+                isJoined = true
+                sendMessage("Joined Channel $channel")
+                // Save the uid of the local user.
+                localUid = uid
+                mListener!!.onJoinChannelSuccess(channel, uid, elapsed)
+            }
+
+            override fun onUserOffline(uid: Int, reason: Int) {
+                sendMessage("Remote user offline $uid $reason")
+                // Update the list of remote Uids
+                remoteUids.remove(uid)
+                // Notify the UI
+                mListener!!.onRemoteUserLeft(uid)
+            }
+
+            override fun onError(err: Int) {
+                when (err) {
+                    ErrorCode.ERR_TOKEN_EXPIRED -> sendMessage("Your token has expired")
+                    ErrorCode.ERR_INVALID_TOKEN -> sendMessage("Your token is invalid")
+                    else -> sendMessage("Error code: $err")
+                }
+            }
+        }
+    ```
+</PlatformWrapper>
+<PlatformWrapper platform="flutter">
+    ```dart
+    RtcEngineEventHandler getEventHandler() {
+        return RtcEngineEventHandler(
+            // Occurs when the network connection state changes
+            onConnectionStateChanged: (RtcConnection connection,
+                ConnectionStateType state, ConnectionChangedReasonType reason) {
+                if (reason ==
+                    ConnectionChangedReasonType.connectionChangedLeaveChannel) {
+                    remoteUids.clear();
+                    isJoined = false;
+                }
+                // Notify the UI
+                Map<String, dynamic> eventArgs = {};
+                eventArgs["connection"] = connection;
+                eventArgs["state"] = state;
+                eventArgs["reason"] = reason;
+                eventCallback("onConnectionStateChanged", eventArgs);
+            },
+            // Occurs when a local user joins a channel
+            onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
+                isJoined = true;
+                messageCallback(
+                    "Local user uid:${connection.localUid} joined the channel");
+                // Notify the UI
+                Map<String, dynamic> eventArgs = {};
+                eventArgs["connection"] = connection;
+                eventArgs["elapsed"] = elapsed;
+                eventCallback("onJoinChannelSuccess", eventArgs);
+            },
+            // Occurs when a remote user joins the channel
+            onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
+                remoteUids.add(remoteUid);
+                messageCallback("Remote user uid:$remoteUid joined the channel");
+                // Notify the UI
+                Map<String, dynamic> eventArgs = {};
+                eventArgs["connection"] = connection;
+                eventArgs["remoteUid"] = remoteUid;
+                eventArgs["elapsed"] = elapsed;
+                eventCallback("onUserJoined", eventArgs);
+            },
+            // Occurs when a remote user leaves the channel
+            onUserOffline: (RtcConnection connection, int remoteUid,
+                UserOfflineReasonType reason) {
+                remoteUids.remove(remoteUid);
+                messageCallback("Remote user uid:$remoteUid left the channel");
+                // Notify the UI
+                Map<String, dynamic> eventArgs = {};
+                eventArgs["connection"] = connection;
+                eventArgs["remoteUid"] = remoteUid;
+                eventArgs["reason"] = reason;
+                eventCallback("onUserOffline", eventArgs);
+            },
+        );
+    }
+    ```
+</PlatformWrapper>

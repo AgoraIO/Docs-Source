@@ -1,83 +1,11 @@
 
-1.  **Declare variables for your request to the token server**:
+1.  **Declare the required variables**
 
     ``` csharp
-    private string serverUrl = ""; // The base URL to your token server. For example, https://agora-token-service-production-92ff.up.railway.app"
-    private int ExpireTime = 60 ; //Expire time in Seconds.
-    private string uid = "0"; // An integer that identifies the user.
+    public int role = 1; // By default, the user role is host.
     ```
 
-1.  **Retrieve a token from the server**:
-
-    Use a GET request to retrieve an authentication token for a specific channel from the token server.
-
-    <ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
-    ``` csharp
-    // Fetches the <Vg k="VSDK" /> token
-    IEnumerator FetchToken(string url, string channel, string userId, int TimeToLive, Action<string> callback = null)
-    {
-        int role;
-        if(toggle1.isOn == true)
-        {
-            role = 1;
-        }
-        else
-        {
-            role = 2;
-        }
-        UnityWebRequest request = UnityWebRequest.Get(
-        string.Format("{0}/rtc/{1}/{2}/uid/{3}/?expiry={4}", url,channel,role, userId, TimeToLive)
-        );
-
-        yield return request.SendWebRequest();
-        if (request.isNetworkError || request.isHttpError)
-        {
-            Debug.Log(request.error);
-            callback(null);
-            yield break;
-        }
-        TokenStruct tokenInfo = JsonUtility.FromJson<TokenStruct>(request.downloadHandler.text);
-        callback(tokenInfo.rtcToken);
-    }
-    void FetchRenew(string newToken)
-    {
-        // Update RTC Engine with new token, which will not expire so soon
-        RtcEngine.RenewToken(newToken);
-        _token = newToken;
-        Debug.Log(newToken);
-    }
-    ```
-    </ProductWrapper>
-
-    <ProductWrapper product="video-calling">
-    ``` csharp
-    // Fetches the <Vg k="VSDK" /> token
-    IEnumerator FetchToken(string url, string channel, string userId, int TimeToLive, Action<string> callback = null)
-    {
-        UnityWebRequest request = UnityWebRequest.Get(
-        string.Format("{0}/rtc/{1}/1/uid/{2}/?expiry={3}", url, channel, userId, TimeToLive)
-        );
-        yield return request.SendWebRequest();
-        if (request.isNetworkError || request.isHttpError)
-        {
-            Debug.Log(request.error);
-            callback(null);
-            yield break;
-        }
-        TokenStruct tokenInfo = JsonUtility.FromJson<TokenStruct>(request.downloadHandler.text);
-        callback(tokenInfo.rtcToken);
-    }
-    void FetchRenew(string newToken)
-    {
-        // Update RTC Engine with new token, which will not expire so soon
-        RtcEngine.RenewToken(newToken);
-        _token = newToken;
-        Debug.Log(newToken);
-    }
-    ```
-    </ProductWrapper>
-
-5. **Add a class to hold the token extracted from a JSON object**
+1. **Add a class to hold the token extracted from a JSON object**
 
     ``` csharp
     public class TokenStruct
@@ -86,30 +14,88 @@
     }
     ```
 
-6. **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
-
-    A token expires after the `ExpireTime` specified in the call to the token server or after 24 hours, if the time is not specified. The `OnTokenPrivilegeWillExpire` event receives a callback when the current token is about to expire so that a fresh token may be retrieved and used.
+1.  **Retrieve a token from the server**:
 
     ``` csharp
-    public override void OnTokenPrivilegeWillExpire(RtcConnection connection, string token)
+    public async Task FetchToken()
     {
-        // Retrieve a fresh token from the token server.
-        _videoSample.StartCoroutine(_videoSample.FetchToken(_videoSample.serverUrl, _videoSample._channelName , _videoSample.uid, _videoSample.ExpireTime, _videoSample.FetchRenew));
-        Debug.Log("Token Expired");
+        if(userRole == "Host")
+        {
+            role = 1;
+        }
+        else if (userRole == "Audience")
+        {
+            role = 2;
+        }
+
+        string url = string.Format("{0}/rtc/{1}/{2}/uid/{3}/?expiry={4}", configData.tokenUrl, configData.channelName, role ,configData.uid, configData.tokenExpiryTime);
+
+        UnityWebRequest request = UnityWebRequest.Get(url);
+        
+        var operation = request.SendWebRequest();
+
+        while (!operation.isDone)
+        {
+            await Task.Yield();
+        }
+
+        if (request.isNetworkError || request.isHttpError)
+        {
+            Debug.Log(request.error);
+            return;
+        }
+
+        TokenStruct tokenInfo = JsonUtility.FromJson<TokenStruct>(request.downloadHandler.text);
+        Debug.Log("Retrieved token : " + tokenInfo.rtcToken);
+        _token = tokenInfo.rtcToken;
+        _channelName = configData.channelName;
     }
     ```
 
-7. **Update the `Join` method to fetch a token**
+1. **Replace the expired token**
 
-    Use `FetchToken` to retrieve a fresh token from server before joining a channel. In your script file, locate `Join()` and add the following before `RtcEngine.EnableVideo();`:
-
-    ``` csharp
-    _channelName = GameObject.Find("textbox").GetComponent<TMP_InputField>().text;
-    if (_channelName == "")
+    ```csharp
+    public void RenewToken()
     {
-        Debug.Log("Channel name is required!");
-        return;
+        if(_token == "")
+        {
+            Debug.Log("Token was not retrieved");
+            return;
+        }
+        // Update RTC Engine with new token, which will not expire so soon
+        agoraEngine.RenewToken(_token);
     }
-    StartCoroutine(FetchToken(serverUrl, _channelName , uid, ExpireTime, this.FetchRenew));
+    ```
+
+1. **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
+
+    A token expires after the `tokenExpiryTime` specified in the call to the token server or after 24 hours, if the time is not specified. The `OnTokenPrivilegeWillExpire` event receives a callback when the current token is about to expire so that a fresh token may be retrieved and used.
+
+    ```csharp
+    internal class AuthenticationWorkflowEventHandler : UserEventHandler
+    {
+        private AuthenticationWorkflowManager authenticationWorkflowManager;
+        
+        internal AuthenticationWorkflowEventHandler(AuthenticationWorkflowManager refAuthenticationWorkflow) : base(refAuthenticationWorkflow)
+        {
+            authenticationWorkflowManager = refAuthenticationWorkflow;
+        }
+        
+        public override async void OnTokenPrivilegeWillExpire(RtcConnection connection, string token)
+        {
+            Debug.Log("Token Expired");
+            // Retrieve a fresh token from the token server.
+            await authenticationWorkflowManager.FetchToken();
+            authenticationWorkflowManager.RenewToken();
+        }
+
+        public override async void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole, CLIENT_ROLE_TYPE newRole, ClientRoleOptions newRoleOptions)
+        {
+            // Retrieve a fresh token from the token server for the new role.
+            Debug.Log("Role is set to " + newRole.ToString());
+            await authenticationWorkflowManager.FetchToken();
+            authenticationWorkflowManager.RenewToken();
+        }
+    }
     ```
 

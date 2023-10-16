@@ -72,7 +72,6 @@ export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
 
 export const ENGINE = `${COMPANY} Engine`;
-
 export const RTE = 'Real-Time Engagement';
 export const RTEC = `${RTE} Core`;
 export const RTES = `${RTE} SDK`;
@@ -109,7 +108,6 @@ export const AV = 'Audio/Video';
 
 export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
-export const MESS_ENGINE = `${MESS} Engine`;
 export const EASEMOB_SDK = `Easemob IM SDK`;
 export const NCS = `NCS`;
 export const NCS_LONG = `Notifications`;

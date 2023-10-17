@@ -1,0 +1,360 @@
+<PlatformWrapper platform="web">
+
+### Implement the user interface
+
+To create a simple interface to test this feature, you add the following buttons to the UI. To do this:
+
+1. Open `index.html` and add the following lines after `<button type="button" id="leave">Leave</button>`:
+    ```html
+    <button type="button" id="realTimeTranscription">Start real-time transcription</button>
+    <button type="button" id="realTimeTranscriptionQuery">Query real-time transcription</button>
+    ```
+
+### Handle the system logic
+
+To integrate HTTP and JSON capabilities into your <Vpl k="CLIENT" /> for real-time transcription:
+
+1. **Install the necessary modules into your project**
+
+    To call `HTTP` methods that start, stop, and query a real-time transcription task, you add the `axios` module to your project. To generate the base-64 authorization header, you add the `Buffer` module.
+
+    In Terminal, run the following commands:
+
+    ```bash
+    npm install Buffer
+    npm install axios
+    ```
+
+1. **Import the modules into your project**
+
+    In `main.js`, add the following import statements:
+
+    ```bash
+    import { Buffer } from "buffer/"; // the trailing slash is important!
+    import axios from "axios";
+    ```
+
+1. **Define variables to manage real-time transcription tasks**
+
+    In `main.js`, add the following declarations after the import statements:
+
+    ```java
+    // Pass your App ID here.
+    const appId = '';
+    // Set the channel name.
+    const channel = '';
+    // Pass your temp token here.
+    const token = '';
+    // Set the user ID.
+    const uid = 1;
+    var baseUrl = "https://api.agora.io";
+    var apiKey = "<your Customer ID from Agora console>";
+    var apiSecret = "<your Customer secret from Agora console>";
+    var instanceID = "Test-1";
+    var authorizationHeader, builderToken;
+    var realTimeTranscriptionTaskId = ""; // Returned by the start method
+    var isRealTimeTranscriptionRunning = false;
+    ```
+
+### Manage a real-time transcription task
+
+To start, stop, and query a real-time transcription task in your <Vpl k="CLIENT" />, do the following.
+
+1. **Get a `builderToken`**
+
+    To acquire a `builderToken`, you:
+
+    1. Generate a Base64-encoded credential from the API key and secret associated with your <Vg k="COMPANY" /> project.
+    1. Add this credential to the request header as a parameter named `Authorization`.
+    1. In the request body, pass the `instanceID` that you use to identify the instance.
+
+    In `main.js`, add the following before `document.getElementById("join").onclick = async function ()`:
+
+    ```javascript
+    document.getElementById("realTimeTranscription").onclick = async function ()
+    {
+        if(isRealTimeTranscriptionRunning)
+        {
+            stopRealTimeTranscription();
+            return;
+        }
+        var path =  "/v1/projects/" + appId + "/rtsc/speech-to-text/builderTokens";
+        var plainCredentials = apiKey + ":" + apiSecret;
+        console.log(plainCredentials)
+        var base64Credentials = Buffer.from(plainCredentials).toString('base64')
+        authorizationHeader = "Basic " + base64Credentials;
+        var postData = JSON.stringify(
+            {
+            "instanceId": instanceID
+            });
+        // Set request parameters
+        const options = 
+        {
+            hostname: baseUrl,
+            port: 443,
+            path: path,
+            method: 'POST',
+            headers: 
+            {
+            'Authorization':authorizationHeader,
+            'Content-Type': 'application/json',
+            // 'Content-Length': postData.length
+            }
+        }
+        // Create request object and send request
+        console.log("header", options.headers)
+        console.log("URL", options.hostname, options.path)
+        console.log("postdata", postData)
+        axios.post(options.hostname + options.path, postData, { headers: options.headers })
+        .then(res => {
+            console.log(`Status code: ${res.status}`);
+            const data = res.data;
+            builderToken = data.tokenName;
+            console.log(builderToken);
+            startRealTimeTranscription();
+        })
+        .catch(error => {
+            console.error(error);
+        });  
+    }
+    ```
+
+    A `builderToken` is usable for 5 minutes. After the time has expired, you must generate a new token.
+
+1. **Start a real-time transcription task**
+
+    To start a real-time transcription task, you:
+    1. Create a JSON configuration and pass it in the body of a `POST` request.
+    1. Add the `builderToken` as a query parameter to the URL.
+    1. Make a `POST` call to  <Vg k="AGORA_BACKEND" />.
+      On success, the method returns a `taskId` that you use to query or stop the task.
+
+    To start a task, in `main.js`, add the following method before `window.onload = () =>`:
+
+    ```javascript
+    function startRealTimeTranscription()
+    {
+        var url = "/v1/projects/" + appId + "/rtsc/speech-to-text/tasks?" + "builderToken=" + builderToken;
+        var body = JSON.stringify(
+            {
+                "audio": 
+                {
+                    "subscribeSource": "AGORARTC",
+                    "agoraRtcConfig": 
+                    {
+                        "channelName": channel,
+                        "uid": "1",
+                        "token": token,
+                        "channelType": "LIVE_TYPE",
+                        "subscribeConfig": 
+                        {
+                            "subscribeMode": "CHANNEL_MODE"
+                        },
+                        "maxIdleTime": 60
+                    }
+                },
+                "config": 
+                {
+                    "features": 
+                    [
+                        "RECOGNIZE"
+                    ],
+                    "recognizeConfig": 
+                    {
+                        "language": "ENG",
+                        "model": "Model",
+                        "output": 
+                        {
+                            "destinations": 
+                            [
+                                "AgoraRTCDataStream",
+                                "Storage"
+                            ],
+                            "agoraRTCDataStream": 
+                            {
+                                "channelName": channel,
+                                "uid": "1",
+                                "token": token
+                            },
+                            "cloudStorage": 
+                            [
+                                {
+                                    "format": "HLS",
+                                    "storageConfig": 
+                                    {
+                                        "vendor": 0,
+                                        "region": 0,
+                                        "bucket":"<YourBucket>",
+                                        "accessKey":"<YourOssAccessKey>",
+                                        "secretKey":"<YourOssSecretKey>"
+                                    },
+                                    "fileNamePrefix":
+                                    [
+                                        "directory1",
+                                        "directory2"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                }
+            });
+        const options = 
+        {
+            hostname: baseUrl,
+            path: url,
+            method: 'POST',
+            headers: 
+            {
+                'Authorization':authorizationHeader,
+                'Content-Type': 'application/json',
+                'Content-Length': body.length
+            }
+        }
+        // Create request object and send request
+        axios.post(options.hostname + options.path, body, { headers: options.headers })
+        .then(res => {
+            console.log(`Status code: ${res.status}`);
+            const data = res.data;
+            const status = data.status;
+            realTimeTranscriptionTaskId = data.taskId;
+            if (status == "STARTED" || status == "IN_PROGRESS") {
+            isRealTimeTranscriptionRunning = true;
+            taskId = data.taskId;
+            document.getElementById("realTimeTranscription").innerHTML = "Stop real-time transcription";
+            console.log("real-time transcription task started");
+            } else {
+            isRealTimeTranscriptionRunning = false;
+            console.log("real-time transcription status: " + status);
+            }
+        })
+        .catch(error => {
+            console.error("Error parsing query call response: " + error);
+        });
+    }  
+    ```
+
+1. **Query task status**
+
+    To notify the user of any change to the real-time transcription task, you query the task status using a `GET` request containing the `taskId` and `builderToken`.
+
+    In `main.js`, add the following method before `document.getElementById("join").onclick = async function ()`:
+
+    ```javascript
+    document.getElementById("realTimeTranscriptionQuery").onclick = async function ()
+    {
+        var path = "/v1/projects/" + appId + "/rtsc/speech-to-text/tasks/" + realTimeTranscriptionTaskId + "?builderToken=" + builderToken;
+        // Set request parameters
+        const options = 
+        {
+            hostname: baseUrl,
+            port: 443,
+            path: path,
+            method: 'GET',
+            headers: 
+            {
+                'Authorization':authorizationHeader,
+                'Content-Type': 'application/json',
+            }
+        }
+        axios.get(options.hostname + options.path, { headers: options.headers })
+        .then(res => {
+            console.log(`Status code: ${res.status}`);
+            const data = res.data;
+            const status = data.status;
+            realTimeTranscriptionTaskId = data.taskId;
+            if (status == "IN_PROGRESS") {
+            isRealTimeTranscriptionRunning = true;
+            document.getElementById("realTimeTranscription").innerHTML = "Stop real-time transcription";
+            console.log("real-time transcription is running");
+            } else {
+            isRealTimeTranscriptionRunning = false;
+            realTimeTranscriptionTaskId = "";
+            console.log("real-time transcription status: " + status + "");
+            document.getElementById("realTimeTranscription").innerHTML = "Start real-time transcription";
+            }
+        })
+        .catch(error => {
+            console.error(error);
+        });  
+    }
+    ```
+
+1. **Stop the task**
+
+    To stop real-time transcription, you send a `DELETE` request with the `appId`, `taskId`, and `builderToken` in the URL.
+
+    In the `main.js`, add the following method before `window.onload = () =>`:
+
+    ```javascript
+    function stopRealTimeTranscription()
+    {
+      var path =  "/v1/projects/" + appId
+      + "/rtsc/speech-to-text/tasks/" + realTimeTranscriptionTaskId
+      + "?builderToken=" + builderToken;
+      const options = 
+      {
+        hostname: baseUrl,
+        port: 443,
+        path: path,
+        method: 'DELETE',
+        headers: 
+        {
+          'Authorization': authorizationHeader,
+          'Content-Type': 'application/json',
+        }
+      }
+      // Create request object and send request
+      axios.post(options)
+      .then(res => {
+        console.log(`Status code: ${res.status}`)
+        if(res.status === 200) {
+          console.log("Real-time transcription task stopped");
+          realTimeTranscriptionTaskId = "";
+          document.getElementById("realTimeTranscription").innerHTML = "Start real-time transcription"
+          isRealTimeTranscriptionRunning = false;
+        }
+        console.log(res.data);
+      })
+      .catch(error => {
+        console.error("Error while stopping the real-time transcription task: " + error)
+      });  
+    }
+    ```
+
+1. **Receive and display the text stream**
+
+    When you set one of the `destinations` in the starting configuration as `AgoraRTCDataStream`, the real-time transcription conversion output stream is pushed to your channel.
+
+    To receive this stream and display the text in your <Vpl k="CLIENT" />, in `main.js`, add the following code after the declarations:
+
+    ```javascript
+    const EventHandles = 
+    {
+        // Listen for the onUserJoined to setup the remote view.
+        onUserJoined: (connection, remoteUid, elapsed) => 
+        {
+            // Save the remote UID for reuse.
+            remoteUid = remoteUid;
+            // Assign the remote UID to the local video container.
+            remoteVideoContainer.textContent = "Remote user " + remoteUID.toString();
+            // Setup remote video to display the remote video.
+            agoraEngine.setupRemoteVideoEx(
+            {
+                sourceType: VideoSourceType.VideoSourceRemote,
+                uid: remoteUid,
+                view:remoteVideoContainer,
+                renderMode: RenderModeType.RenderModeFit,
+            },
+            {
+                channelId: connection.channelId
+            });
+        },
+        onStreamMessage: (connection, remoteUid, streamId, data, length, sentTs) =>
+        {
+        var text =  new TextDecoder().decode(data);
+        console.log(text);
+        }, 
+    };
+    ```
+</PlatformWrapper>

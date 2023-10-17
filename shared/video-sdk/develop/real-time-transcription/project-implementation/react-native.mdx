@@ -1,0 +1,338 @@
+<PlatformWrapper platform="react-native">
+
+### Implement the user interface
+
+To create a simple interface to test this feature, add `Start` and `Query` buttons to the UI.
+
+1. Open `App.tsx` and add the following lines after `<Text onPress={leave} style={styles.button}>Leave</Text>`:
+
+    ```typescript
+    <Text onPress={realTimeTranscription} style={styles.button}>
+        Start real-time transcription
+    </Text>
+    <Text onPress={realTimeTranscriptionQuery} style={styles.button}>
+        Query real-time transcription
+    </Text>
+    ```
+
+### Handle the system logic
+
+To integrate HTTP and JSON capabilities into your <Vpl k="CLIENT" /> for real-time transcription:
+
+1. **Import the `https` module into your project**
+
+    To call `HTTP` methods that start, stop, and query a real-time transcription task, you add an `https` module to your project. Open `App.tsx` and add the following with the declarations:
+
+    ```javascript
+    var https = require('https');
+    ```
+1.  **Install and Import the necessary modules**
+
+    To convert your credentials to base-64 format, use the `Buffer` module. For text decoding, use the `TextDecoder`
+  module. To add these modules:
+
+    1. Run the following command in your terminal:
+    
+        ```bash
+        npm install buffer
+        npm install text-decoding
+        ```
+
+    1. In `App.tsx`, add the following after the import statements:
+
+        ```typescript
+        import {Buffer} from 'buffer';
+        import {TextDecoder} from 'text-decoding'
+        ```
+
+1. **Define variables to manage real-time transcription tasks**
+
+    In `App.tsx`, add the following to the declarations:
+
+    ```typescript
+    var baseUrl = "api.agora.io";
+    var apiKey = "<your Customer ID from Agora console>";
+    var apiSecret = "<your Customer secret from Agora console>";
+    var instanceID = "Test-1";
+    var authorizationHeader, builderToken;
+    var realTimeTranscriptionTaskId = ""; // Returned by the start method
+    var isRealTimeTranscriptionRunning = false;
+    ```
+
+### Manage a real-time transcription task
+
+Take the following steps to start, stop, and query a real-time transcription task in your <Vpl k="CLIENT" />.
+
+1. **Get a `builderToken`**
+
+    To acquire a `builderToken`, you:
+
+    1. Generate a Base64-encoded credential from the API key and secret associated with your <Vg k="COMPANY" /> project.
+    1. Add this credential to the request header as a parameter named `Authorization`.
+    1. In the request body, pass the `instanceID` that you use to identify the instance.
+
+    To acquire a `builderToken`, in `App.tsx`, add the following before `const join = async () => {}`:
+
+    ```typescript
+    const realTimeTranscription = () => {
+      if (isRealTimeTranscriptionRunning) {
+        stopRealTimeTranscription();
+        return;
+      }
+      var path = '/v1/projects/' + appId + '/rtsc/speech-to-text/builderTokens';
+      var plainCredentials = apiKey + ':' + apiSecret;
+      var base64Credentials = Buffer.from(plainCredentials).toString('base64');
+      authorizationHeader = 'Basic ' + base64Credentials;
+      var postData = JSON.stringify({
+        instanceId: instanceID,
+      });
+      // Set request parameters
+      const options = {
+        hostname: baseUrl,
+        port: 443,
+        path: path,
+        method: 'POST',
+        headers: {
+          Authorization: authorizationHeader,
+          'Content-Type': 'application/json',
+          'Content-Length': postData.length,
+        },
+      };
+      // Create a request object and send request.
+      const req = https.request(options, (res: any) => {
+        console.log(`Status code: ${res.statusCode}`);
+        res.on('data', function (data: any) {
+          // Parse the response to extract the token.
+          var data = JSON.parse(data);
+          builderToken = data.tokenName;
+          startRealTimeTranscription();
+          console.log(builderToken);
+        });
+      });
+      req.on('error', (error: Error) => {
+        // Display the error result when the request fails.
+        console.error(error);
+      });
+      // Send the post request data to the upstream server.
+      req.write(postData);
+      // End the request.
+      req.end();
+    };
+    ```
+
+    A `builderToken` is usable for 5 minutes. After the time has expired, you must generate a new token.
+
+1. **Start a real-time transcription task**
+
+    To start a real-time transcription task, you:
+    1. Create a JSON configuration and pass it in the body of a `POST` request.
+    1. Add the `builderToken` as a query parameter to the URL.
+    1. Make a `POST` call to  <Vg k="AGORA_BACKEND" />.
+    On success, the method returns a `taskId` that you use to query or stop the task.
+
+    To start a task, in `App.tsx`, add the following method before `const join = async () => {}`:
+
+    ```typescript
+    const startRealTimeTranscription = () => {
+      var url =
+        '/v1/projects/' +
+        appId +
+        '/rtsc/speech-to-text/tasks?' +
+        'builderToken=' +
+        builderToken;
+      // Setup a JSON string to specify the real-time transcription configuration.
+      var body = JSON.stringify({
+        audio: {
+          subscribeSource: 'AGORARTC',
+          agoraRtcConfig: {
+            channelName: channelName,
+            uid: '1',
+            token: token,
+            channelType: 'LIVE_TYPE',
+            subscribeConfig: {
+              subscribeMode: 'CHANNEL_MODE',
+            },
+            maxIdleTime: 60,
+          },
+        },
+        config: {
+          features: ['RECOGNIZE'],
+          recognizeConfig: {
+            language: 'ENG',
+            model: 'Model',
+            output: {
+              destinations: ['AgoraRTCDataStream', 'Storage'],
+              agoraRTCDataStream: {
+                channelName: channelName,
+                uid: '1',
+                token: token,
+              },
+              cloudStorage: [
+                {
+                  format: 'HLS',
+                  storageConfig: {
+                    vendor: 0,
+                    region: 0,
+                    bucket: '<YourBucket>',
+                    accessKey: '<YourOssAccessKey>',
+                    secretKey: '<YourOssSecretKey>',
+                  },
+                  fileNamePrefix: ['directory1', 'directory2'],
+                },
+              ],
+            },
+          },
+        },
+      });
+      const options = {
+        hostname: baseUrl,
+        path: url,
+        method: 'POST',
+        headers: {
+          Authorization: authorizationHeader,
+          'Content-Type': 'application/json',
+          'Content-Length': body.length,
+        },
+      };
+      // Create request object and send request
+      const req = https.request(options, (res: any) => {
+        console.log(`Status code: ${res.statusCode}`);
+        res.on('data', (d: any) => {
+          // Parse the response to learn about the status of the real-time transcription task.
+          var data = JSON.parse(d);
+          var status = data.status;
+          realTimeTranscriptionTaskId = data.taskId;
+          if (status === 'STARTED' || status === 'IN_PROGRESS') {
+            isRealTimeTranscriptionRunning = true;
+            realTimeTranscriptionTaskId = data.taskId;
+            console.log('real-time transcription task started');
+          } else {
+            isRealTimeTranscriptionRunning = false;
+            console.log('real-time transcription status: ' + status);
+          }
+        });
+      });
+      req.on('error', (error: any) => {
+        // Display the error result when the request fails.
+        console.error('Error parsing query call response: ' + error);
+      });
+      // Send the post request data to the upstream server.
+      req.write(body);
+      // End the request.
+      req.end();
+    };
+    ```
+
+1. **Query task status**
+
+    To notify the user of any change to the real-time transcription task, you query the task status using a `GET` request containing the `taskId` and `builderToken`.
+
+    In `App.tsx`, add the following method before `const join = async () => {}`:
+
+    ```typescript
+    const realTimeTranscriptionQuery = () => {
+      var path =
+        '/v1/projects/' +
+        appId +
+        '/rtsc/speech-to-text/tasks/' +
+        realTimeTranscriptionTaskId +
+        '?builderToken=' +
+        builderToken;
+      // Set request parameters
+      const options = {
+        hostname: baseUrl,
+        port: 443,
+        path: path,
+        method: 'GET',
+        headers: {
+          Authorization: authorizationHeader,
+          'Content-Type': 'application/json',
+        },
+      };
+      // Create a request object and send request
+      const req = https.request(options, (res: any) => {
+        console.log(`Status code: ${res.statusCode}`);
+        res.on('data', function (data: any) {
+          // Parse the response to extract the query results.
+          var data = JSON.parse(data);
+          var status = data.status;
+          realTimeTranscriptionTaskId = data.taskId;
+          if (status === 'IN_PROGRESS') {
+            isRealTimeTranscriptionRunning = true;
+            console.log('real-time transcriptionis running');
+          } else {
+            isRealTimeTranscriptionRunning = false;
+            realTimeTranscriptionTaskId = '';
+            console.log('real-time transcriptionstatus: ' + status + '');
+          }
+        });
+      });
+      req.on('error', (error: any) => {
+        // Display the error result when the request fails.
+        console.error(error);
+      });
+      // End the request.
+      req.end();
+    };
+    ```
+
+1. **Stop the task**
+
+    To stop real-time transcription, you send a `DELETE` request with the `appId`, `taskId`, and `builderToken` in the URL.
+
+    In the `App.tsx`, add the following method before `const join = async () => {}`:
+
+    ```typescript
+    const stopRealTimeTranscription = () => {
+      var path =
+        '/v1/projects/' +
+        appId +
+        '/rtsc/speech-to-text/tasks/' +
+        realTimeTranscriptionTaskId +
+        '?builderToken=' +
+        builderToken;
+      const options = {
+        hostname: baseUrl,
+        port: 443,
+        path: path,
+        method: 'DELETE',
+        headers: {
+          Authorization: authorizationHeader,
+          'Content-Type': 'application/json',
+        },
+      };
+      // Create a request object and send request
+      const req = https.request(options, (res: any) => {
+        console.log(`Status code: ${res.statusCode}`);
+        if (res.statusCode === '200') {
+          console.log('Real-time transcription task stopped');
+          realTimeTranscriptionTaskId = '';
+          isRealTimeTranscriptionRunning = false;
+        }
+        res.on('data', (d: any) => {
+          console.log(d);
+        });
+      });
+      req.on('error', (error: any) => {
+        // Display the error result when the request fails.
+        console.error('Error while stopping the real-time transcription task: ' + error);
+      });
+      // End the request.
+      req.end();
+    };
+    ```
+
+1. **Receive and display the text stream**
+
+    When you set one of the `destinations` in the starting configuration as `AgoraRTCDataStream`, the real-time transcription conversion output stream is pushed to your channel and you receive it using `onStreamMessage`.
+
+    To receive this stream and display the text in your <Vpl k="CLIENT" />, in `App.tsx`, add the following code inside `agoraEngine.registerEventHandler({})`:
+
+    ```typescript
+    onStreamMessage: (connection, _remoteUid, streamId, data, _length) => {
+      var text = new TextDecoder().decode(data);
+      console.log(text);
+    },
+    ```
+
+</PlatformWrapper>

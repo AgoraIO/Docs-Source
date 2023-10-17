@@ -8,14 +8,15 @@ description: >
 ---
 
 
-## Overview
-
 You can use Cloud Recording RESTful API to take screenshots of a video stream in a channel and upload the screenshots to your third-party cloud storage.
 
 The following two screenshot methods are supported:
 
 - Take screenshots only.
 - Capture screenshots and recording during a recording process. Agora only charges recording fees.
+
+For pricing details, see [Pricing](../reference/pricing).
+To implement client-side screen capture, see [Screenshot Upload](../../video-calling/enable-features/screenshot-upload).
 
 
 ## Implementation

@@ -1,0 +1,311 @@
+<PlatformWrapper platform="flutter">
+
+### Implement the user interface
+
+To create a simple interface to test this feature, add buttons to start and query real-time transcription. Open `/lib/main.dart` and add the following code to the `build` method after `ListView(...children: [`:
+
+```dart
+ElevatedButton(
+    onPressed: !_isJoined ? null : () => {realTimeTranscription()},
+    child: isRealTimeTranscriptionRunning ? const Text("Stop real-time transcription")
+        : const Text("Start real-time transcription"),
+),
+ElevatedButton(
+    onPressed: (_isJoined && isRealTimeTranscriptionRunning) ? () => {query()} : null,
+    child: const Text("Query real-time transcription"),
+),
+```
+
+You see errors in your IDE. This is because these widgets refer to variables and methods that you create later.
+
+### Handle the system logic
+
+1. **Integrate an `HTTP` client library into your project**
+
+    To call `HTTP` methods that start, stop, and query a real-time transcription task, you add an `HTTP` client library to your project. Open `pubspec.yaml` and add the following line under `dependencies:`
+
+    ```groovy
+      http: ^0.13.5
+    ```
+
+1. **Import the required classes**
+
+    To use the relevant `HTTP` classes and process response data, add the following statements after the last `import` statement in `/lib/main.dart`:
+
+    ```dart
+    import 'dart:typed_data';
+    import 'dart:convert';
+    import 'package:http/http.dart' as http;
+    ```
+
+1. **Define variables to manage a real-time transcription task**
+
+    In `/lib/main.dart`, add the following declarations to the `_MyAppState` class:
+
+    ```dart
+    String baseUrl = "https://api.agora.io";
+    String apiKey = "<your Customer ID from Agora console>";
+    String apiSecret = "<your Customer secret from Agora console>";
+    String instanceId = "Test-1";
+    String authorizationHeader = "", builderToken = "";
+    String realTimeTranscriptionTaskId = ""; // Returned by the start method
+    bool isRealTimeTranscriptionRunning = false;
+    ```
+
+### Manage a real-time transcription task
+
+Take the following steps to start, stop, and query a real-time transcription task in your <Vpl k="CLIENT" />.
+
+1. **Get a `builderToken`**
+
+    To acquire a `builderToken`, you:
+
+    1. Generate a Base64-encoded credential from the API key and secret associated with your <Vg k="COMPANY" /> project.
+    1. Add this credential to the request header as a parameter named `Authorization`.
+    1. In the request body, pass the `instanceID` that you use to identify the instance.
+
+    To acquire a `builderToken`, add the following method to the `_MyAppState` class:
+
+    ```dart
+    Future<void> getBuilderToken() async {
+        String url = "$baseUrl/v1/projects/$appId/rtsc/speech-to-text/builderTokens";
+        // Concatenate the key and secret and use base64 encoding
+        String plainCredentials = "$apiKey:$apiSecret";
+        String base64Credentials = base64Encode(utf8.encode(plainCredentials));
+        // Create authorization header
+        authorizationHeader = "Basic $base64Credentials";
+
+        // Send the http POST request
+        final response = await http.post(
+            Uri.parse(url),
+            headers: <String, String>{
+                'Content-Type': 'application/json; charset=UTF-8',
+                "Authorization": authorizationHeader
+            },
+            body: jsonEncode(<String, String>{
+                'instanceId': instanceId,
+            }),
+        );
+
+        if (response.statusCode == 200) {
+            // Server returned an OK response, parse the JSON
+            Map<String, dynamic> json = jsonDecode(response.body);
+            builderToken = json["tokenName"];
+            showMessage("builderToken received");
+        } else {
+            Map<String, dynamic> json = jsonDecode(response.body);
+            String message = json["message"];
+            showMessage("builderToken not received: $message");
+        }
+    }
+    ```
+
+    A `builderToken` is usable for 5 minutes. After the time has expired, you must generate a new token.
+
+1. **Start a real-time transcription task**
+
+      To start a real-time transcription task, you:
+      1. Create a JSON configuration and pass it in the body of a `POST` request.
+      1. Add the `builderToken` as a query parameter to the URL.
+      1. Make a POST call to  <Vg k="AGORA_BACKEND" />.
+      On success, the method returns a `taskId` that you use to query or stop the task.
+
+      To start a task, add the following method to the `_MyAppState` class:
+
+    ```dart
+    Future<void> startRealTimeTranscription() async {
+        String url = "$baseUrl/v1/projects/$appId/rtsc/speech-to-text/tasks?builderToken=$builderToken";
+
+        // Specify real-time transcription-configuration
+        var config = {
+            'audio': {
+                'subscribeSource': 'AGORARTC',
+                'agoraRtcConfig': {
+                'channelName': channelName,
+                'uid': uid.toString(),
+                'token': token,
+                'channelType': 'LIVE_TYPE',
+                'subscribeConfig': {'subscribeMode': 'CHANNEL_MODE'},
+                'maxIdleTime': 60
+                }
+            },
+            'config': {
+                'features': ['RECOGNIZE'],
+                'recognizeConfig': {
+                'language': 'ENG',
+                'model': 'Model',
+                'output': {
+                    'destinations': ['AgoraRTCDataStream', 'Storage'],
+                    'agoraRTCDataStream': {
+                    'channelName': channelName,
+                    'uid': uid.toString(),
+                    'token': token,
+                    },
+                    'cloudStorage': [
+                        {
+                            'format': 'HLS',
+                            'storageConfig': {
+                            'accessKey': '<YourOssAccessKey>',
+                            'secretKey': '<YourOssSecretKey>',
+                            'bucket': '<YourOssBucketName>',
+                            'vendor': 0,
+                            'region': 0,
+                            'fileNamePrefix': ['directory', 'subDirectory']
+                            }
+                        }
+                    ]
+                }
+                }
+            }
+        };
+
+        // Build Request body JSON
+        String body = jsonEncode(config);
+
+        // Send the http POST request
+        final response = await http.post(
+            Uri.parse(url),
+            headers: <String, String>{
+                'Content-Type': 'application/json; charset=UTF-8',
+                "Authorization": authorizationHeader
+            },
+            body: body,
+        );
+
+        if (response.statusCode == 200) {
+            // Server returned an OK response, parse the JSON
+            Map<String, dynamic> json = jsonDecode(response.body);
+            String status = json["status"];
+            realTimeTranscriptionTaskId = json["taskId"];
+            if (status.compareTo("STARTED") == 0 || status.compareTo("IN_PROGRESS") == 0) {
+                setState((){
+                    isRealTimeTranscriptionRunning = true;
+                });
+            }
+            showMessage("Real-time transcription task started");
+        } else {
+            Map<String, dynamic> json = jsonDecode(response.body);
+            String message = json["message"];
+            showMessage("Real-time transcription task could not be started: $message");
+        }
+    }
+    ```
+
+1. **Query task status**
+
+    You query the status of a real-time transcription task using a `GET` request to notify the user of any change. The request URL contains the `taskId` and `builderToken`. To do this, add the following method to the `_MyAppState`class:
+
+    ```dart
+    Future<void> queryRealTimeTranscription  () async {
+        String url = "$baseUrl/v1/projects/$appId/rtsc/speech-to-text/tasks/$realTimeTranscriptionTaskId?builderToken=$builderToken";
+
+        // Send the http GET request
+        final response = await http.get(
+            Uri.parse(url),
+            headers: <String, String>{
+                'Content-Type': 'application/json; charset=UTF-8',
+                "Authorization": authorizationHeader
+            },
+        );
+
+        if (response.statusCode == 200) {
+            // Server returned an OK response, parse the JSON
+            Map<String, dynamic> json = jsonDecode(response.body);
+            String status = json["status"];
+            realTimeTranscriptionTaskId = json["taskId"];
+
+            if (status.compareTo("IN_PROGRESS") == 0) {
+                setState(() {
+                    isRealTimeTranscriptionRunning = true;
+                });
+                showMessage("Real-time transcription is running");
+            } else{
+                setState(() {
+                    isRealTimeTranscriptionRunning = false;
+                });
+                realTimeTranscriptionTaskId = "";
+                showMessage("Real-time transcription status: $status");
+            }
+        } else {
+            Map<String, dynamic> json = jsonDecode(response.body);
+            String message = json["message"];
+            showMessage("Exception querying real-time transcription task: $message");
+        }
+    }
+    ```
+
+1. **Stop the task**
+
+    To stop real-time transcription, you send an `HTTP DELETE` request with the `appId`, `taskId`, and `builderToken` in the URL. In the `_MyAppState` class, add the following method:
+
+    ```dart
+    Future<void> stopRealTimeTranscription() async {
+        String url = "$baseUrl/v1/projects/$appId/rtsc/speech-to-text/tasks/$realTimeTranscriptionTaskId?builderToken=$builderToken";
+
+        // Send the http DELETE request
+        final response = await http.delete(
+            Uri.parse(url),
+            headers: <String, String>{
+                'Content-Type': 'application/json; charset=UTF-8',
+                "Authorization": authorizationHeader
+            },
+        );
+
+        if (response.statusCode == 200) {
+            // Server returned an OK response, parse the JSON
+            showMessage("Real-time transcription task stopped");
+            realTimeTranscriptionTaskId = "";
+            setState(() {
+                isRealTimeTranscriptionRunning = false;
+            });
+        } else {
+            Map<String, dynamic> json = jsonDecode(response.body);
+            String message = json["message"];
+            showMessage("Exception stopping real-time transcription task: $message");
+        }
+    }
+    ```
+
+1. **Receive and display the text stream**
+
+      When you set one of the `destinations` in the starting configuration as `AgoraRTCDataStream`, the real-time transcription conversion output stream is pushed to your channel  and you receive it using `onStreamMessage`.
+
+     To receive this stream in a callback and display the text in your <Vpl k="CLIENT" />, add the following code after `agoraEngine.registerEventHandler(RtcEngineEventHandler(` in `setupVideoSDKEngine()`:
+
+    ```dart
+    onStreamMessage: (RtcConnection connection, int remoteUid, int streamId,
+        Uint8List data, int length, int sentTs) {
+        showMessage(utf8.decode(data));
+    }, 
+    ```
+
+1. **Enable a user to start, query, and stop a task**
+
+    In this example, you use buttons to manage a real-time transcription task.
+
+        1. When a user presses the first button, the <Vpl k="CLIENT" /> requests a `builderToken`. If the request is successful, the <Vpl k="CLIENT" /> starts a real-time transcription task. If a task is already running, you stop the task. To implement this functionality, add the following method to the `_MyAppState` class:
+
+            ```dart
+            void realTimeTranscription() async {
+                if (!isRealTimeTranscriptionRunning) {
+                    await getBuilderToken();
+                    startRealTimeTranscription();
+                } else {
+                    stopRealTimeTranscription();
+                }
+            }
+            ```
+
+        1. When a user presses the query status button, you call the query method to inform the user of the current task status and update the user interface. To implement this functionality, add the following method to the `_MyAppState` class.
+
+            ```dart
+            void query() async {
+                if (isRealTimeTranscriptionRunning) {
+                    queryRealTimeTranscription();
+                } else {
+                    showMessage("Real-time transcription task is not running");
+                }
+            }
+            ```
+
+</PlatformWrapper>

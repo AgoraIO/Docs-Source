@@ -36,7 +36,7 @@ The following parameters are required in the request body.
 | :-------------- | :----- | :----------------------------------------------------------- |
 | `cname`         | String | <ul><li> In web page recording mode, use `cname` to distinguish between recording sessions.</li><li> In other recording modes, use `cname` to set the name of the channel to be recorded. </li></ul>              |
 | `uid`           | String | A string containing the user ID of the recording client. Must be the same `uid` used in the [`acquire`](../rest-api/acquire) method. |
-| `clientRequest` | JSON   | A specific client request that requires the following parameters: <li>[`token`](../glossary#token): String. The dynamic key used for the channel to record. Ensure that you set this parameter if App Certificate is enabled for your application. See [Authenticate Your Users with Tokens](../../develop/authentication-workflow).</li><li>[`recordingConfig`](#recordingConfig): JSON. Configurations for subscribing to media streams.</li><li>[`recordingFileConfig`](#recordingFileConfig): JSON. Configurations for the recorded files.</li><li>[`snapshotConfig`](#snapshotConfig): JSON. Video screenshot configurations.</li><li>[`storageConfig`](#storageConfig): JSON. Third-party cloud storage configurations.</li><li>[`extensionServiceConfig`](#extensionServiceConfig): JSON. Configurations for third-party extension services. Currently supports ApsaraVideo for VoD and web page recording.</li> |
+| `clientRequest` | JSON   | A specific client request that requires the following parameters: <li>[`token`](../glossary#token): String. The dynamic key used for the channel to record. Ensure that you set this parameter if App Certificate is enabled for your application. See [Authenticate Your Users with Tokens](../../develop/authentication-workflow).</li><li>[`recordingConfig`](#recordingConfig): JSON. Configurations for subscribing to media streams.</li><li>[`recordingFileConfig`](#recordingFileConfig): JSON. Configurations for the recorded files.</li><li>[`snapshotConfig`](#snapshotConfig): JSON. Video screenshot configurations.</li><li>[`storageConfig`](#storageConfig): JSON. Third-party cloud storage configurations.</li><li>[`extensionServiceConfig`](#extensionServiceConfig): JSON. Configurations for third-party extension services. </li> |
 
 ### Application configuration
 
@@ -69,7 +69,7 @@ The following parameters are required in the request body.
   The following table compares various aspects of the three modes of `streamMode`:
   | streamMode | Description                                                  | Index file generated                                         | Slice file generated                                         | Video encoded       | Audio encoded       | Features supported                                           |
   | :--------- | :----------------------------------------------------------- | :----------------------------------------------------------- | :----------------------------------------------------------- | :------------------ | :------------------ | :----------------------------------------------------------- |
-  | `default`  | Default mode.                                                | One M3U8 audio index file and one M3U8 video index file are generated per user ID. | Multiple TS audio slice files and multiple TS video slice files are generated per user ID. | Does not transcode. | Transcodes.         | Individual Recording, Capturing Screenshots, ApsaraVideo for VoD (VoD). |
+  | `default`  | Default mode.                                                | One M3U8 audio index file and one M3U8 video index file are generated per user ID. | Multiple TS audio slice files and multiple TS video slice files are generated per user ID. | Does not transcode. | Transcodes.         | Individual Recording, Capturing Screenshots. |
   | `standard` | Standard mode.                                               | One M3U8 audio index file, one M3U8 video index file, and one combined M3U8 audio and video index file are generated per user ID. If VP9 encoding is used on the web side, a combined MPD audio and video index file is generated per user ID. | Multiple TS audio slice files and multiple TS video slice files are generated per user ID.If VP9 encoding is used on the web side, multiple WebM audio slice files and multiple WebM video slice files are generated per user ID. | Does not transcode. | Transcodes.         | Individual Recording and Capturing Screenshots.              |
   | `original` | Original encoding mode, which takes effect only when `streamTypes` is `0`. | One M3U8 audio index file is generated per user ID.          | Multiple TS audio slice files per user ID.                   | Not applicable.     | Does not transcode. | Individual Audio Non-transcoding Recording and Postpone Audio Mixing. |
 - `decryptionMode`: (Optional) Number. The decryption mode, which corresponds to the encryption mode set by the Agora Native/Web SDK. When the channel is encrypted, Agora Cloud Recording uses `decryptionMode` to enable the built-in decryption function.
@@ -193,7 +193,6 @@ Agora supports only taking screenshots in a recording process or recording and t
 
 - `vendor`: Number. The third-party cloud storage vendor.
 
-  - `0`: [Qiniu Cloud](https://www.qiniu.com/en/products/kodo)
   - `1`: [Amazon S3](https://aws.amazon.com/s3/?nc1=h_ls)
   - `2`: [Alibaba Cloud](https://www.alibabacloud.com/product/object-storage-service)
   - `3`: [Tencent Cloud](https://intl.cloud.tencent.com/product/cos)
@@ -206,14 +205,7 @@ Agora supports only taking screenshots in a recording process or recording and t
 - `region`: Number. The region information specified for the third-party cloud storage. The recording service only supports regions in the following lists:
 
   In order to improve the success rate and real-time performance when uploading recording files, if you set the `region` of the cloud recording service in the `acquire` method, make sure that the region of the third-party cloud storage corresponds to the same geographical region. For example, if the region of the cloud recording service is set to `NA` (North America), the third-party cloud storage needs to be set to a location within North America.
-
-  - Third-party cloud storage is Qiniu Cloud (`vendor` = 0):
-    - `0`: East China
-    - `1`: North China
-    - `2`: South China
-    - `3`: North America
-    - `4`: Southeast Asia
-  
+ 
   - Third-party cloud storage is Amazon S3 (`vendor` = 1):
     - `0`: US_EAST_1 
     - `1`: US_EAST_2 
@@ -239,7 +231,7 @@ Agora supports only taking screenshots in a recording process or recording and t
     - `23`：US_GOV_EAST_1
     - `24`: AP_SOUTHEAST_3
     - `25`: EU_SOUTH_1
-    - `26`: AWS_REGION_NUM
+    
   - Third-party cloud storage is Alibaba Cloud (`vendor` = 2):
     - `0`: CN_Hangzhou 
     - `1`: CN_Shanghai 
@@ -264,6 +256,11 @@ Agora supports only taking screenshots in a recording process or recording and t
     - `20`：CN_Heyuan	
     - `21`：CN_Guangzhou		
     - `22`：CN_Chengdu
+    - `23`: CN_Nanjing
+    - `24`: CN_Fuzhou
+    - `25`: CN_Wulanchabu
+    - `26`: CN_Northeast_2
+    - `27`: CN_Southeast_7
     For details, see <a href="https://www.alibabacloud.com/help/doc-detail/31837.html">Alibaba Cloud Documentation</a>.
   - Third-party cloud storage is Tencent Cloud (`vendor` = 3):
     - `0`：AP_Beijing_1
@@ -373,26 +370,6 @@ Agora supports only taking screenshots in a recording process or recording and t
 
 Currently you cannot configure more than one extension service per recording session.
 
-**ApsaraVideo for VoD**
-When using ApsaraVideo for VoD,` extensionServicesextensionServices` includes the following fields:
-- `serviceName`: String. The name of the extension service. To use ApsaraVideo for VoD, set it as `"aliyun_vod_service"`.
-- `errorHandlePolicy`: (Optional) String. Error handling policy. You can only set it to the default value, `"error_abort"`, which means that if an error occurs to the current extension service, other extension services also stop.
-  - `serviceParam`: JSON. Configurations for an extension service. To use ApsaraVideo for VoD, configure as follows:
-  - `accessKey`: String. Corresponds to the `AccessKeyId` in the AccessKey of Alibaba Cloud. For details, see [Alibaba Cloud's documentation](https://www.alibabacloud.com/help/doc-detail/53045).
-  - `secretKey`: String. Corresponds to the `AccessKeySecret` in the AccessKey of Alibaba Cloud. For details, see [Alibaba Cloud's documentation](https://www.alibabacloud.com/help/doc-detail/53045).
-  - `regionId`: String. The service region. For details, see [Alibaba Cloud's documentation](https://www.alibabacloud.com/help/doc-detail/43248).
-  - `apiData`: JSON. Configurations for ApsaraVideo for VoD.
-    - `videoData`: JSON. Video configurations. See [Alibaba Cloud's documentation](https://www.alibabacloud.com/help/doc-detail/55407) for details about the following parameters:
-      - `title`: String. The title of the video.
-      - `description`: (Optional) String. The description of the video.
-      - `coverUrl`: (Optional) String. The URL of the custom video thumbnail.
-      - `cateId`: (Optional) String. The ID of the video category. The ID must be an integer.
-      - `tags`: (Optional) String. The tags of the video.
-      - `templateGroupId`: (Optional) String. The ID of the transcoding template group.
-      - `userData`: (Optional) String. The custom configurations.
-      - `storageLocation`: (Optional) String. The bucket.
-      - `workflowId`: (Optional) String. The ID of the workflow.
-
 Currently only composite recording is supported.
 
 **Web page recording**
@@ -413,8 +390,8 @@ When using web page recording, `extensionServices` includes the following fields
 - `videoHeight`：Number. Sets the height of the video (pixels). The value range is [480,1920]. The product of `videoWidth` and `videoHeight` should not exceed 2,073,600 (1920 × 1080).
 - `maxRecordingHour`: Number. Sets the maximum recording length (hours). If the limit is exceeded, the recording stops automatically. The value range is [1,720]. Agora recommend that you set a value smaller than the value of `resourceExpiredHour` specified in the `acquire` method.
   The charging will continue until the web page recording stops. You should set a reasonable `maxRecordingHour` based on the actual business scenario or actively stop the web page recording.
-  - `maxVideoDuration`: (Optional) Number. Sets the maximum duration (in minutes) of the MP4 slice file generated by the web page recording. The value range is [30,240], and the default value is 120 minutes. During a web page recording, when the length of the recorded file reaches around `maxVideoDuration`, the recording service creates another MP4 slice file.
-  - `onhold`: (Optional) Bool. Sets whether to pause the web page recording when starting the web page recording task.
+- `maxVideoDuration`: (Optional) Number. Sets the maximum duration (in minutes) of the MP4 slice file generated by the web page recording. The value range is [30,240], and the default value is 120 minutes. During a web page recording, when the length of the recorded file reaches around `maxVideoDuration`, the recording service creates another MP4 slice file.
+- `onhold`: (Optional) Bool. Sets whether to pause the web page recording when starting the web page recording task.
   - `true`：Pauses the web page recording when starting the web page recording task. After the web page recording task is started, the web page recording is paused immediately. The recording service opens and renders the page to be recorded, but does not generate a slice file.
   - (Default) `false`: Starts the web page recording task and continue web page recording.
 > Agora recommends that you use the `onhold` parameter as follows:

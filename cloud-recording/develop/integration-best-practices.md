@@ -23,7 +23,41 @@ You use Cloud Recording RESTful APIs to get the status of the recording service.
 
 Best practice is that core apps do not rely on <Vg k="NCS_LONG" /> (<Vg k="NCS" />). If your apps already rely heavily on the <Vg k="NCS" />, contact <a href="mailto:support@agora.io">support@agora.io</a> and enable the redundant message notification function. This doubles the received notifications and reduces the probability of message loss. After enabling the message notification function, you need to deduplicate messages based on `sid`. Message notification still cannot guarantee a 100% arrival rate.
 
-The initial QPS limit is 10 per App ID when you register. You can estimate the QPS quota your project needs according to your Peak Concurrent Worker (PCW) quota and query frequency. The initial PCW limit is 50 per AppID when you register. If the RESTful API returns QPS limitation error code `429`, or PCW quota limitation error code `406`, then retry, or contact support@agora.io to increase your QPS or PCW quota.
+### Check the PCW and QPS limits
+
+Check that the Peak Concurrent Worker (PCW) and Queries per Second (QPS) values under your App ID do not exceed the Agora limits. 
+
+#### PSW
+
+PCW limitations depend on your video stream resolution and region:
+
+| Service type         | Mainland China        | Europe               | America               | Asia (excluding mainland China) |
+|:---------------------|:----------------------|:---------------------|:----------------------|:--------------------------------|
+| Individual recording | 1000                  | 200                  | 400                   | 300                             |
+| Composite recording  | SD 100, HD 50, FHD 30 | SD 50, HD 30, FHD 10 | SD 100, HD 50, FHD 30 | SD 100, HD 50, FHD 30           |
+
+Resolution description: 
+
+- SD: Standard definition video, resolution ≤ 640 × 360
+- HD: High definition video, resolution ≤ 1280 × 720 and > 640 × 360
+- FHD: Full HD video, resolution ≤ 1920 × 1080 and > 1280 × 720 
+
+If you need to extend the limit for PSW, please contact support@agora.io.
+
+#### QPS
+
+The initial QPS limit is 10 per App ID when you register. You can estimate the QPS that your project needs according to your Peak Concurrent Worker (PCW) value and query frequency. If you need to extend the limit for QPS, please contact support@agora.io.
+
+### Check the stream limit
+
+The upper limit of video attributes supported by Agora is as follows: resolution 1920 × 1080, frame rate 30 FPS.
+The maximum number of supported streams is detailed in the table below:
+
+| Service type    | Mainland China        | Europe               | America               | Asia (excluding mainland China) |
+|:----------------|:----------------------|:---------------------|:----------------------|:--------------------------------|
+| Cloud recording | SD 100, HD 50, FHD 30 | SD 50, HD 30, FHD 10 | SD 100, HD 50, FHD 30 | SD 100, HD 50, FHD 30           |
+
+<Admonition type="caution" title="Important">If you need to record multiple streams of different resolutions at the same time, make sure you meet the following requirements:<ul><li>The number of streams in each resolution cannot exceed the corresponding limit for that resolution.</li><li>The total number of streams cannot exceed the limit set for the higher resolution. For example, if you need to use cloud recording service in mainland China to record both SD and HD, the total number of streams cannot exceed 100. If you record both HD and FHD, the total number cannot exceed 50.</li></ul></Admonition>
 
 ### Ensure the recording service starts successfully
 

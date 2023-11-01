@@ -120,6 +120,10 @@ export const SIG_SDK_API_LNX_JAVA = `${SIG_SDK_API_REF_ROOT}/linux-java/${SIG_RE
 export const SIG_SDK_API_CSHARP = `${SIG_SDK_API_REF_ROOT}/unity/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_IOS = `${SIG_SDK_API_REF_ROOT}/ios/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_MACOS = `${SIG_SDK_API_REF_ROOT}/macos/${SIG_RELEASE_API}`;
+// export const SIG2_SDK_API_IOS = `${SIG_SDK_API_REF_ROOT}/ios/${SIG_RELEASE_API}/documentation/agorartm`;
+// export const SIG2_SDK_API_MACOS = `${SIG_SDK_API_REF_ROOT}/macos/${SIG_RELEASE_API}/documentation/agorartm`;
+export const SIG2_SDK_API_IOS = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
+export const SIG2_SDK_API_MACOS = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
 export const SIG_SDK_API_WEB = `${SIG_SDK_API_REF_ROOT}/web/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/reference/user-channel-events`;
 

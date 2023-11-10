@@ -55,7 +55,7 @@ The maximum number of supported streams is as follows:
 |:----------------|:----------------------|:---------------------|:----------------------|:--------------------------------|
 | Cloud recording | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 50</li> <li>HD 30</li> <li>FHD 10</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul>           |
 
-<Admonition type="caution" title="Note">If you need to record multiple streams of different resolutions at the same time, make sure you meet the following requirements:<ul><li>The number of streams per resolution cannot exceed the corresponding limit for that resolution.</li><li>The total number of streams cannot exceed the limit set for the higher resolution. For example, if you need to use cloud recording in mainland China to record in both SD and HD, the total number of streams cannot exceed 100. If you record in both HD and FHD, the total number cannot exceed 50.</li></ul></Admonition>
+<Admonition type="caution" title="Note">If you need to record multiple streams of different resolutions at the same time, make sure you meet the following requirements:<ul><li>The number of streams per resolution cannot exceed the corresponding limit for that resolution.</li><li>The total number of streams cannot exceed the limit set for the higher resolution. For example, if you need to use cloud recording in Europe to record in both SD and HD, the total number of streams cannot exceed 50. If you record in both HD and FHD, the total number cannot exceed 30.</li></ul></Admonition>
 
 ## Get service status
 

@@ -1,6 +1,6 @@
 ---
 title: "Merge audio and video files"
-sidebar_position: 8
+sidebar_position: 4
 type: docs
 platform_selector: false
 description: >

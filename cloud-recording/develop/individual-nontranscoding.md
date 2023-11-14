@@ -1,6 +1,6 @@
 ---
 title: "Individual audio non-transcoding recording"
-sidebar_position: 12
+sidebar_position: 3
 type: docs
 platform_selector: false
 description:

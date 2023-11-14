@@ -9,9 +9,8 @@ plans and carries out documentation activities to make sure that everything on A
 
 Currently, the EN doc team includes the following roles and members:
 
-* Documentation Architect: [Iain](https://github.com/billy-the-fish)
 * Technical Writer Lead: [Saud](https://github.com/saudsami)
-* Editor: [Anastasia](https://github.com/atovpeko)
+* Editor/Project Manager: [Anastasia](https://github.com/atovpeko)
 * Technical Writers: [Dasun](https://github.com/nirm2009), [Hussain](https://github.com/hussain-khalid), [Pankaj](https://github.com/Pankajg123), and [Kishan](https://github.com/Kishan-Dhakan).
 
 ## Documentation work lifecycle
@@ -34,18 +33,15 @@ To set up your development environment, refer to the prerequisites section of th
 
 ### 1. Documentation request
 
-The need to deliver new or update the existing documentation may arise from the [roadmap of product releases](insert link to the roadmap,
-if possible), requests from product or development teams, customer feedback on documentation, or internal
-documentation analysis.
+The need to deliver new or update the existing documentation may arise from requests from product or development teams, customer feedback on documentation, or internal
+documentation analysis. In case of new product releases, the SDK to be released is first tested and approved by the DevRel team. Only after an official approval the TW team starts 
+documentation work.
 
 //Insert a matrix of stakeholders (PMs, devs, etc.) with the products/areas they are responsible for.
 
 ### 2. Project planning and management
 
-The TW Lead and Editor analyze the documentation request and, with help and consult of the Documentation Architect, plan and
-assign the work in the form of milestones and related issues.
-
-//Clarify whether we need to do costing before we start on a milestone
+The TW Lead and Editor analyze the documentation request and plan and assign the work in the form of milestones and related issues. 
 
 #### Milestones
 
@@ -141,6 +137,8 @@ Backup writers change their platform every quarter.
 | General improvement tickets                     | Every TW in turn                             | Every TW in turn                             |                |
 | Release notes, API reference, and SDK downloads | [Anastasia](https://github.com/atovpeko)     | [Dasun](https://github.com/nirm2009)         |
 
+After a milestone is created, it is sent to the responsible PO for approval. Once the milestone is approved, the documentation work starts. 
+
 ### Writing
 
 All Agora documentation is written in a clear, consistent American English,
@@ -149,7 +147,7 @@ following [Google developer documentation style guide](https://developers.google
 For issues that require technical implementation, the doc team follows this process:
 
 1. The TW Lead develops implementation for their platform
-1. The TW Lead raises a PR, and requests a review from the Documentation Architect and the Editor.
+1. The TW Lead raises a PR, and requests a review from the Editor.
 1. Once all possible comments have been addressed and technical/language review is passed, the TW Lead passes
    their implementation to other TWs.
 1. TWs adapt the implementation for their respective platforms.
@@ -170,7 +168,7 @@ Some product releases do not require any major doc updates and only include the 
 
 To document such releases:
 
-1. Create 3 milestone branches with the same name in Docs, Docs-Source-Private, and API-Reference repositories following the naming convention above, if not already created by the Documentation Architect. 
+1. Create 3 milestone branches with the same name in Docs, Docs-Source-Private, and API-Reference repositories following the naming convention above. 
 
 1. Create an update branch under the same name from each of those milestone branches. 
 
@@ -249,6 +247,56 @@ Each TW raises a PR and requests reviews following this logic:
 
 Publishing docs involves building locally and using Vercel to double-check doc updates while moving them all the way from a 
 milestone (if any) branch to main.
+
+#### Generating the API refs
+
+The source for the API refs is generated from the ditamaps stored in https://github.com/AgoraIO/agora_doc_source/tree/master/en-US/dita/RTC-NG.  The CN team is responsible for the content written 
+about each method and class, the EN team is responsible for the structure in the EN ditamap files. To 
+generate these docs you need an instance of OxygenXML Author v23.1. My preference is to add the oxygene plugin to 
+eclipse. For a license, ask Chen Meng. 
+
+In general, for each build you make a local branch of the repo from the 
+release tag supplied by the cn team, use the github diff to see the changes in the [cn ditamaps](https://github.com/AgoraIO/agora_doc_source/tree/master/dita/RTC-NG) and make similar updates to the en ditamaps. Be careful, the 
+ditamap structure is not the same, you see which methods have been added to the cn ditamaps, then add them to the 
+correct class or interface in the en ditamaps.   
+
+To generate the EN api references:
+
+1. Note the branch of the last EN docs you made, for example: `v4.2.1-en`.  At the time of writing, the last branch 
+   is `unreal-api-4.2.1--en`.
+2. In your IDE of choice:
+    1. Checkout the CN updates in https://github.com/AgoraIO/agora_doc_source/ from a tag. For example:  `git checkout -b v4.2.2-en tags/v4.2.2`
+    2. Pull from the previous en branch and merge.
+    3. Using the GitHup diff, check for any changes to the CN ditamaps since the previous release, add and remove the updated methods and classes in the ditamap. Pay attention for the hide and props=cn tags.
+3. In  eclipse:
+    1. Open en-US/dita/RTC-NG/config/keys-global.ditamap and edit the version number
+    2. Open en-US/dita/RTC-NG/config/filter-product.ditamap and include the product to build first. For example, for voice:
+         ```xml
+          <val>
+          <prop action="include" att="props" val="voice"/>
+          <prop action="exclude" att="props" val="video"/>
+          </val>
+         ```
+    1. For each platform to publish the API ref for voice:
+        1. Open the ditamap for the platform to generate. For example: `RTC_NG_API_Unreal.ditamap`.
+        2. Click Configure Transformation Scenario and select the scenario to match `filter-product.ditmap`. For 
+           example, if `<prop action="include" att="props" val="voice"/>`, select `Voice SDK-unreal-engine`, then 
+           click **Apply associated**.
+           The docs are generated in `en-US/dita/RTC-NG/out`.
+        3. Check the output docs have the correct version number and name.
+    2. Open `en-US/dita/RTC-NG/config/filter-product.ditamap` and include the product scenario to build. For video, exclude voice and include video:
+    3. For each platform to publish the API ref for video:
+        1. Open the ditamap for the platform to generate. For example: `RTC_NG_API_Unreal.ditamap`.
+        2. Click Configure Transformation Scenario and select the scenario to match filter-product.ditmap. For 
+           example, if `<prop action="include" att="props" val="video"/>`, select `Video SDK-unreal-engine`, then 
+           click **Apply associated**.
+        3. Check the output docs have the correct version number and name.
+1. In https://github.com/AgoraIO/API-Reference, make a milestone to match the milestone for the release.
+2. Copy the docs generated in en-US/dita/RTC-NG/out to the correct folders in your milstone.
+3. Open dir.html and check the API ref you have updated.
+4. Push to remote and check the instance built in vercel. For example: https://api-reference-staging-git-unreal-blueprint-agora-gdxe.vercel.app/dir.html
+5. When the release is GA, pull from the milestone branch to main, then push to main.
+
 
 #### API-Reference repository
 

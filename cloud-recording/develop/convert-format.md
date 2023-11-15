@@ -1,6 +1,6 @@
 ---
 title: "Convert the file format"
-sidebar_position: 9
+sidebar_position: 7
 type: docs
 platform_selector: false
 description: >

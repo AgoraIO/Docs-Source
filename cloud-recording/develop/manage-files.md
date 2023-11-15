@@ -1,6 +1,6 @@
 ---
 title: "Manage recorded files"
-sidebar_position: 11
+sidebar_position: 12
 type: docs
 platform_selector: false
 description: >

@@ -1,6 +1,6 @@
 ---
 title: "Best practice in integrating Cloud Recording"
-sidebar_position: 13
+sidebar_position: 18
 type: docs
 platform_selector: false
 description: >

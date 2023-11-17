@@ -1,6 +1,6 @@
 ---
 title: "Set the video profile"
-sidebar_position: 14
+sidebar_position: 8
 type: docs
 platform_selector: false
 description: >

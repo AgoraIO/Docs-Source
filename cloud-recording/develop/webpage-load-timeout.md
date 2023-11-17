@@ -1,6 +1,6 @@
 ---
 title: "Web page load timeout detection"
-sidebar_position: 12
+sidebar_position: 10
 type: docs
 platform_selector: false
 description: >

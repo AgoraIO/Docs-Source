@@ -1,0 +1,138 @@
+<PlatformWrapper notAllowed={['ios','macos']}>
+    Use a GET request to retrieve an RTM authentication token for initializing the <Vg k="MESS" /> engine.
+</PlatformWrapper>
+<PlatformWrapper platform='android'>
+
+    ```kotlin
+    private fun fetchRTMToken(uid: Int, callback: TokenCallback) {
+        // Prepare the Url
+        val urlString = "$serverUrl/rtm/$uid/?expiry=$tokenExpiryTime"
+        fetchToken(urlString, callback)
+    }
+
+    private fun fetchToken(urlString: String, callback: TokenCallback) {
+        // Prepare the Url
+        val client = OkHttpClient()
+
+        // Create a request
+        val request: Request = Builder()
+            .url(urlString)
+            .header("Content-Type", "application/json; charset=UTF-8")
+            .get()
+            .build()
+
+        // Send the async http request
+        val call = client.newCall(request)
+        call.enqueue(object : Callback {
+            // Receive the response in a callback
+            @Throws(IOException::class)
+            override fun onResponse(call: Call, response: Response) {
+                if (response.isSuccessful) {
+                    try {
+                        // Extract token from the response
+                        val responseBody = response.body!!.string()
+                        val jsonObject = JSONObject(responseBody)
+                        val token = if (urlString.contains("/rtm/")) {
+                            // Message channel token
+                            jsonObject.getString("rtmToken")
+                        } else {
+                            // Stream channel token
+                            jsonObject.getString("rtcToken")
+                        }
+                        // Return the token
+                        callback.onTokenReceived(token)
+                    } catch (e: JSONException) {
+                        e.printStackTrace()
+                        callback.onError("Invalid token response")
+                    }
+                } else {
+                    callback.onError("Token request failed")
+                }
+            }
+
+            override fun onFailure(call: Call, e: IOException) {
+                callback.onError("IOException: $e")
+            }
+        })
+    }
+    ```
+
+</PlatformWrapper>
+<PlatformWrapper platform={['ios','macos']}>
+    Use a POST request to retrieve an RTM authentication token for initializing the <Vg k="MESS" /> engine.
+
+    Add a `channelName` if joining a stream channel, otherwise pass `nil`.
+
+    ```swift
+    extension SignalingManager {
+        struct TokenResponse: Codable {
+            var token: String
+        }
+
+        func fetchToken(from urlString: String, username: String, channelName: String? = nil) async throws -> String {
+            guard let url = URL(string: "\(urlString)/getToken") else {
+                throw URLError(.badURL)
+            }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            var userData = [
+                "tokenType": "rtm",
+                "uid": username
+            ]
+
+            // This is used only for stream channels
+            if let channelName {
+                userData["channel"] = channelName
+            }
+
+            let requestData = try JSONEncoder().encode(userData)
+            request.httpBody = requestData
+
+            let (data, _) = try await URLSession.shared.data(for: request)
+            let tokenResponse = try JSONDecoder().decode(TokenResponse.self, from: data)
+
+            return tokenResponse.token
+        }
+    }
+    ```
+</PlatformWrapper>
+
+<PlatformWrapper platform = 'web'>
+
+     ```javascript
+      // Get the config
+      const config = signalingManager.config;
+
+      // Fetches the Signaling token
+      async function fetchToken(uid) {
+        if (config.serverUrl !== "") {
+          try {
+            const res = await fetch(
+              config.proxyUrl +
+                config.serverUrl +
+                "/rtm/" +
+                uid +
+                "/?expiry=" +
+                config.tokenExpiryTime,
+              {
+                headers: {
+                  "X-Requested-With": "XMLHttpRequest",
+                },
+              }
+            );
+            const data = await res.text();
+            const json = await JSON.parse(data);
+            console.log("RTM token fetched from server: ", json.rtmToken);
+            return json.rtmToken;
+          } catch (err) {
+            console.log(err);
+          }
+        } else {
+          return config.token; // Fallback
+        }
+      }
+    ```  
+</PlatformWrapper>

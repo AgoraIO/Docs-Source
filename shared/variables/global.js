@@ -32,7 +32,6 @@ export const API_REF_IOS_ROOT_RTC_ENGINE_KIT_VOICE_SDK = `${API_REF_IOS_ROOT_RTC
 export const API_REF_RNJS_ROOT  = `${API_REF_ROOT}/reactjs/2.x`;
 export const API_REF_RNJS_ROOT_VOICE = `${API_REF_ROOT_VOICE_SDK}/reactjs/2.x`;
 export const API_REF_RN_ROOT  = `${API_REF_ROOT}/react-native/${MAJOR_VERSION}/API`;
-
 export const API_REF_UE_ROOT  = `${API_REF_ROOT}/unreal-engine/${MAJOR_VERSION}/API`;
 export const API_REF_RN_PREVIOUS_ROOT  = `${API_REF_ROOT}/react-native/${VSDK_PREVIOUS_RELEASE_API}`;
 export const API_REF_RN_ROOT_VOICE = `${API_REF_ROOT_VOICE_SDK}/react-native/${MAJOR_VERSION}/API`;
@@ -67,6 +66,9 @@ export const API_REF_WINDOWS_ROOT_CPP  = `${API_REF_ROOT}/cpp/${VSDK_RELEASE_API
 export const API_REF_UE_ROOT_VOICE_SDK  = `${API_REF_ROOT_VOICE_SDK}/unreal-engine/${VSDK_RELEASE_API}/API`;
 export const API_REF_WINDOWS_ROOT_CPP_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/cpp/${VSDK_RELEASE_API}/API`;
 
+export const API_REF_SIG_ANDROID = '../reference/api';
+export const API_REF_SIG_WEB = '../reference/api';
+export const API_REF_SIG_APPLE = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
 
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
@@ -123,6 +125,10 @@ export const SIG_SDK_API_LNX_JAVA = `${SIG_SDK_API_REF_ROOT}/linux-java/${SIG_RE
 export const SIG_SDK_API_CSHARP = `${SIG_SDK_API_REF_ROOT}/unity/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_IOS = `${SIG_SDK_API_REF_ROOT}/ios/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_MACOS = `${SIG_SDK_API_REF_ROOT}/macos/${SIG_RELEASE_API}`;
+// export const SIG2_SDK_API_IOS = `${SIG_SDK_API_REF_ROOT}/ios/${SIG_RELEASE_API}/documentation/agorartm`;
+// export const SIG2_SDK_API_MACOS = `${SIG_SDK_API_REF_ROOT}/macos/${SIG_RELEASE_API}/documentation/agorartm`;
+export const SIG2_SDK_API_IOS = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
+export const SIG2_SDK_API_MACOS = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
 export const SIG_SDK_API_WEB = `${SIG_SDK_API_REF_ROOT}/web/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/reference/user-channel-events`;
 

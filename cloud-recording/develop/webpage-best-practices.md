@@ -54,9 +54,9 @@ The upper limit of video attributes supported by Agora is as follows:
 
 The maximum number of supported streams is as follows:
 
-| Service type       | Mainland China        | Europe               | America               | Asia (excluding mainland China) |
-|:-------------------|:----------------------|:---------------------|:----------------------|:--------------------------------|
-| Web page recording | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 50</li> <li>HD 30</li> <li>FHD 10</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul>           |
+| Service type       | Mainland China        | Europe               | America               | Asia (excluding mainland China)                          |
+|:-------------------|:----------------------|:---------------------|:----------------------|:---------------------------------------------------------|
+| Web page recording | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 50</li> <li>HD 30</li> <li>FHD 10</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 100</li> <li>HD 100</li> <li>FHD 30</li></ul> |
 
 <Admonition type="caution" title="Note">If you need to record multiple streams of different resolutions at the same time, make sure you meet the following requirements:<ul><li>The number of streams per resolution cannot exceed the corresponding limit for that resolution.</li><li>The total number of streams cannot exceed the limit set for the higher resolution. For example, if you need to record in America in both SD and HD, the total number of streams cannot exceed 100. If you record in both HD and FHD, the total number cannot exceed 50.</li></ul></Admonition>
 

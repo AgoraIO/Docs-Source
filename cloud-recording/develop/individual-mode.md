@@ -1,6 +1,6 @@
 ---
 title: "Individual recording"
-sidebar_position: 1
+sidebar_position: 2
 type: docs
 platform_selector: false
 description: >

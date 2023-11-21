@@ -1,6 +1,6 @@
 ---
 title: "Web page recording"
-sidebar_position: 3
+sidebar_position: 9
 type: docs
 platform_selector: false
 description:

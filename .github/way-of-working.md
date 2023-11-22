@@ -131,7 +131,7 @@ Backup writers change their platform every quarter.
 | Windows C#                                      | [Pankaj](https://github.com/Pankajg123)      | [Hussain](https://github.com/hussain-khalid) |
 | Web                                             | [Kishan](https://github.com/Kishan-Dhakan)   | [Hussain](https://github.com/hussain-khalid) | 
 | Electron                                        | [Kishan](https://github.com/Kishan-Dhakan)   ||
-| React Native                                    | [Kishan](https://github.com/Kishan-Dhakan)   ||
+| React Native                                    | [Hussain](https://github.com/hussain-khalid) | [Kishan](https://github.com/Kishan-Dhakan)  |
 | Linux Java                                      | [Saud](https://github.com/)                                          | TBC                                          |
 | Linux C++                                       | [Pankaj](https://github.com/Pankajg123)                                          | TBC                                          |
 | General improvement tickets                     | Every TW in turn                             | Every TW in turn                             |                |
@@ -202,12 +202,12 @@ Each TW raises a PR and requests reviews following this logic:
 | Review type  | Reviewer                                                                                                                                                           | Mandatory or optional                                       |
 |--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
 | Language     | Editor                                                                                                                                                             | Mandatory                                                   |
-| Code testing | Primary writer requests a code review from the backup writer for their platform. | Mandatory for issues that require technical implementation  |
+| Code testing | The Primary writer requests a code review from the backup writer for their platform. | Mandatory for issues that require technical implementation  |
 | Technical    | Lead TW | Mandatory for issues that require technical implementation | 
 
 #### Stakeholder review
 
-[Vercel](https://vercel.com/agora-gdxe) is used for creating a staging instance so that the responsible PMs and SMEs can review and comment on doc updates before they are published. Access to Vercel is required to be able to create such instance. This review stage includes the following steps:
+[Vercel](https://vercel.com/agora-gdxe) is used for creating a staging instance so that the responsible PMs and SMEs can review and comment on doc updates before they are published. Access to Vercel is required to be able to create such an instance. This review stage includes the following steps:
 
 1. Create the initial instance for review
 
@@ -240,7 +240,7 @@ Each TW raises a PR and requests reviews following this logic:
     1. To see all comments, click on the comment icon in the Vercel popup menu at the bottom. You can filter them by page and resolved/unresolved status. 
     1. Make updates per comments, where appropriate. Commit and push your updates in the docs submodule, then commit and push the docs submodule in the Docs repo. Vercel rebuilds the instance. 
     1. Reply to ALL comments in Vercel. Resolve comment threads that have been implemented and ask for additional input or provide suggestions in others. 
-    1. Email the reviewers to let them know the staging instance has been updated and is again ready for their review.
+    1. Email the reviewers to let them know the staging instance has been updated and is again ready for review.
     1. Repeat steps 1-4 for all new and unresolved comments until the reviewers give their explicit consent to publish the docs. 
 
 ### Publishing
@@ -251,23 +251,23 @@ milestone (if any) branch to main.
 #### Generating the API refs
 
 The source for the API refs is generated from the ditamaps stored in https://github.com/AgoraIO/agora_doc_source/tree/master/en-US/dita/RTC-NG.  The CN team is responsible for the content written 
-about each method and class, the EN team is responsible for the structure in the EN ditamap files. To 
-generate these docs you need an instance of OxygenXML Author v23.1. My preference is to add the oxygene plugin to 
-eclipse. For a license, ask Chen Meng. 
+about each method and class, and the EN team is responsible for the structure in the EN ditamap files. To 
+generate these docs you need an instance of OxygenXML Author v23.1. My preference is to add the Oxygen plugin to 
+Eclipse. For a license, ask Chen Meng. 
 
 In general, for each build you make a local branch of the repo from the 
 release tag supplied by the cn team, use the github diff to see the changes in the [cn ditamaps](https://github.com/AgoraIO/agora_doc_source/tree/master/dita/RTC-NG) and make similar updates to the en ditamaps. Be careful, the 
 ditamap structure is not the same, you see which methods have been added to the cn ditamaps, then add them to the 
 correct class or interface in the en ditamaps.   
 
-To generate the EN api references:
+To generate the EN API references:
 
 1. Note the branch of the last EN docs you made, for example: `v4.2.1-en`.  At the time of writing, the last branch 
    is `unreal-api-4.2.1--en`.
 2. In your IDE of choice:
-    1. Checkout the CN updates in https://github.com/AgoraIO/agora_doc_source/ from a tag. For example:  `git checkout -b v4.2.2-en tags/v4.2.2`
+    1. Check out the CN updates in https://github.com/AgoraIO/agora_doc_source/ from a tag. For example:  `git checkout -b v4.2.2-en tags/v4.2.2`
     2. Pull from the previous en branch and merge.
-    3. Using the GitHup diff, check for any changes to the CN ditamaps since the previous release, add and remove the updated methods and classes in the ditamap. Pay attention for the hide and props=cn tags.
+    3. Using the GitHub diff, check for any changes to the CN ditamaps since the previous release. Add and remove the updated methods and classes in the ditamap. Pay attention to the hide and props=cn tags.
 3. In  eclipse:
     1. Open en-US/dita/RTC-NG/config/keys-global.ditamap and edit the version number
     2. Open en-US/dita/RTC-NG/config/filter-product.ditamap and include the product to build first. For example, for voice:
@@ -279,30 +279,48 @@ To generate the EN api references:
          ```
     1. For each platform to publish the API ref for voice:
         1. Open the ditamap for the platform to generate. For example: `RTC_NG_API_Unreal.ditamap`.
-        2. Click Configure Transformation Scenario and select the scenario to match `filter-product.ditmap`. For 
+        1. Click Configure Transformation Scenario and select the scenario to match `filter-product.ditval`. For 
            example, if `<prop action="include" att="props" val="voice"/>`, select `Voice SDK-unreal-engine`, then 
            click **Apply associated**.
            The docs are generated in `en-US/dita/RTC-NG/out`.
-        3. Check the output docs have the correct version number and name.
-    2. Open `en-US/dita/RTC-NG/config/filter-product.ditamap` and include the product scenario to build. For video, exclude voice and include video:
+
+           ![](Screenshot-dita.png)
+
+        1. Check the output docs have the correct version number and name.
+    2. Open `en-US/dita/RTC-NG/config/filter-product.ditaval` and include the product scenario to build. For video, exclude voice and include video:
     3. For each platform to publish the API ref for video:
         1. Open the ditamap for the platform to generate. For example: `RTC_NG_API_Unreal.ditamap`.
-        2. Click Configure Transformation Scenario and select the scenario to match filter-product.ditmap. For 
+        2. Click Configure Transformation Scenario and select the scenario to match filter-product.ditval. For 
            example, if `<prop action="include" att="props" val="video"/>`, select `Video SDK-unreal-engine`, then 
            click **Apply associated**.
         3. Check the output docs have the correct version number and name.
 1. In https://github.com/AgoraIO/API-Reference, make a milestone to match the milestone for the release.
-2. Copy the docs generated in en-US/dita/RTC-NG/out to the correct folders in your milstone.
+2. Copy the docs generated in en-US/dita/RTC-NG/out to the correct folders in your milestone.
 3. Open dir.html and check the API ref you have updated.
-4. Push to remote and check the instance built in vercel. For example: https://api-reference-staging-git-unreal-blueprint-agora-gdxe.vercel.app/dir.html
-5. When the release is GA, pull from the milestone branch to main, then push to main.
+4. Push to remote and check the instance built-in Vercel. For example https://api-reference-staging-git-unreal-blueprint-agora-gdxe.vercel.app/dir.html
+5. When the release is GA, pull from the milestone branch to `main`, then push to `main`.
 
+#### API-Reference updates for iOS and macOS
+
+The macOS and iOS API reference builds are automated but there’s one manual step to trigger it. 
+* Go to https://github.com/AgoraIO/AgoraRtcEngine_iOS/releases and create a new release using the lastest tag, for example 4.2.3 as the base, and drop in any relevant release notes (not required, release notes can be edited later).
+    A few minutes later, the docc archive will appear on the release 
+
+* Do the same for the AgoraRtcEngine_macOS, as well as AgoraAudio_iOS
+* Go to https://github.com/AgoraIO/API-Reference/actions/workflows/update-references.yml and trigger a new build. It fetches the doc archives from the releases and makes 3 PRs from the specified root branch (default staging)
+
+The whole process from adding the releases to the PRs being created takes approximately 30 mins. 
+
+To summarise:
+- Create releases on iOS and macOS swift package repos, this will create the API ref archives
+- Trigger build from Api-reference repo
+- Merge the 3 PRs it creates
 
 #### API-Reference repository
 
 Whenever it is necessary to publish an update that involves main docs and API reference, make sure to publish API reference first. 
 
-Publishing API reference involves the following steps: 
+Publishing API references involves the following steps: 
 
 1. Merge the PR to the milestone branch. Skip to checking deployment on Vercel for `staging` if there is no milestone branch and the PR is raised directly to `staging`.
 
@@ -372,6 +390,17 @@ Notes:
 - Make sure to check that the commits you pull and push to `staging` and `main` branches are indeed relevant and correct.
 - Add the same descriptive commit messages and tags in the Docs repo and docs submodule for traceability.
 - Whenever pushing the updated docs submodule to the Docs repo for Vercel, pay attention to where `root/.gitmodules` is pointing.
+
+### Publishing to the beta site
+
+1. Pull from staging to the milestone branch
+2. Pull from the milestone branch to the private `beta` branch
+3. Pull from the private beta branch to public `beta`
+4. Pull from the milestone branch in the Docs repo to Docs `beta` branch.
+5. Build both `beta` branches locally to check
+6. Commit and push the updated docs submodule to the Docs `beta` branch to publish.
+7. For subsequent updates, make your changes in the milestone branches and pull to the two `beta` branches.
+8. At the time of GA release pull from the milestone branches to staging.
 
 ### Samples for the docs
 

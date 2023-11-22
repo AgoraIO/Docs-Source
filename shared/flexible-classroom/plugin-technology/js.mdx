@@ -1,0 +1,281 @@
+<Vg k="FC"/> provides a plugin mechanism to help developers expand classroom capabilities under various scenarios. This mechanism also reduces the degree of code coupling between the custom application and the classroom, thereby reducing the difficulty of subsequent upgrading of the integrated source code.
+
+This document covers the following topics related to <Vg k="FC"/> plugins:
+
+* Plugin life cycle
+* Instantiation of a plugin
+* The mount point for the plugin
+* Plugin communication mechanism
+* Plugins for extending classroom capabilities
+* Plugin for invoking classroom capabilities
+* Plugin for tracking synchronization and multilingual capabilities
+
+:warning: **Note:** This document applies to <Vg k="FC" /> version `2.7.0` or later.
+
+## Plugin lifecycle
+
+The plugins provide the `AgoraWidgetLifecycle` interface, which allows you to implement custom logic based on lifecycle hooks.
+
+The `AgoraWidgetLifecycle` is defined as follows:
+
+```ts
+export interface AgoraWidgetLifecycle {
+  onInstall(controller: AgoraWidgetController): void;
+
+  onCreate(properties: any, userProperties: any): void;
+
+  onPropertiesUpdate(properties: any): void;
+
+  onUserPropertiesUpdate(userProperties: any): void;
+
+  onDestroy(): void;
+
+  onUninstall(controller: AgoraWidgetController): void;
+}
+```
+The triggering timing of each callback in the plugin lifecycle is as follows:
+
+- `onInstall`: After entering the classroom or group room, and after a `WidgetController` instance is successfully created.
+- `onCreate`:
+    - When calling `WidgetUIStore.createWidget` creates a Widget instance.
+    - When calling `Widget.setActive` activates a Widget.
+- `onPropertiesUpdate`: When Widget attributes change.
+- `onUserPropertiesUpdate`: When the corresponding user private attribute changes.
+- `onDestroy`:
+    - When calling `WidgetUIStore.destroyWidget` destroys a Widget instance.
+    - When calling `Widget.setInactive` sets Widget as inactive.
+- `onUninstall: After leaving the classroom or group room.
+
+## Plugin instantiation
+
+To instantiate a plugin, you need to know  how plugins are created and destroyed.
+
+### Create a plugin
+
+Create a plugin in any of the following ways:
+
+- Method 1: Call `WidgetUIStore.createWidget` to create a Widget instance.
+
+  <Admonition type="info" title="Notice">
+
+  - Plugins created this way are only activated on the local client. For example, when you implement the calculator function, if you only need the plugin to appear on the teacher side, you do not need the student side to see it.
+
+  - To activate the plugin for remote clients, you also need to call `Widget.setActive` or `WidgetStore.setActive`. For example, when you implement a teaching prop, if you need all users in the classroom to see the prop.
+
+  </Admonition>
+
+- Method 2: Call `WidgetStore.setActive` to create and activate a Widget. A plugin created in this way is activated on both the local client and the remote client, without the need for additional activation operations.
+
+### Destroy a plugin
+
+Different methods to destroy plugins are used depending on the situation:
+
+- If you only need to destroy the plugin on the local client, call `WidgetUIStore.destroyWidget` to destroy a Widget instance.
+- If you need to destroy the plugin on the local client and remote client, call `Widget.setInactive` to set the Widget to inactive state.
+
+## Plugin mount point
+
+The plugin mechanism provided by <Vg k="FC"/> currently supports two mount points:
+
+- Mounted in the Widget container.
+- Mounted in a specific DOM node.
+
+Widgets are mounted inside the Widget container by default. If you need to mount it at a fixed location in the classroom, you can override the `locate` method and return the DOM node to be mounted.
+
+The `AgoraWidgetRenderable` is defined as follows:
+
+```ts
+export interface AgoraWidgetRenderable {
+  render(dom: HTMLElement): void;
+
+  unload(): void;
+
+  locate(): HTMLElement | undefined | null;
+}
+```
+The callback triggering time of plugin rendering:
+
+- `render`: Called when the Widget DOM node is ready for drawing. The Widget user interface is drawn using this method.
+- `unload`: Called when the Widget DOM node is about to be unloaded.
+- `locate`: Called before the Widget is mounted. It returns a DOM node, and the Widget user interface is drawn on this node. Among the built-in plugins of <Vg k="FC"/>, the whiteboard and chatroom plugins are mounted in fixed locations, and the other built-in plugins are mounted in the Widget container. You can refer to the [built-in plugins](../develop/embed-custom-plugin) for details.
+
+## Plugin communication mechanism
+
+<Vg k="FC"/> provides a two-way communication mechanism for plugins:
+
+- Plugin sends message to classroom
+- Classroom sends message to plugin
+
+The following methods are provided for message communication in `WidgetController`:
+
+|Method	|Use|
+|:--------|:--------------|
+|`broadcast`	|Broadcast message|
+|`addBroadcastListener`|	Listen for broadcast messages|
+|`removeBroadcastListener`	|Remove a broadcast message listener|
+
+- Get the WidgetController instance in the plugin
+
+  Plugins that inherit the `AgoraWidgetBase` class can obtain the `WidgetController` instance through the `widgetController` getter method.
+
+- Get the WidgetController instance in the classroom
+
+<Vg k="FC"/> defines a set of extension protocols to transfer specific interactions to Widgets in the classroom, such as the following interactions:
+
+- Whiteboard tool switching
+- Open specific types of courseware in the cloud disk
+- Open a browser window
+- Open a synchronized video player
+
+<Vg k="FC"/> also sends event notifications between the plugin and the classroom by defining a series of events:
+
+- `AgoraExtensionRoomEvent`: Classroom incident. The event is sent by the classroom and monitored by the Widget.
+- `AgoraExtensionWidgetEvent`: Widget event. The event is sent by the Widget and monitored by the classroom.
+
+The following events are built into `AgoraExtensionRoomEvent`:
+
+```ts
+// Classroom incident. Such events are emitted from the classroom and listened to in the Widget
+export enum AgoraExtensionRoomEvent {
+  //Whiteboard events in the classroom
+  BoardSelectTool = 'board-select-tool',
+  BoardAddPage = 'board-add-page',
+  BoardRemovePage = 'board-remove-page',
+  BoardGotoPage = 'board-goto-page',
+  BoardUndo = 'board-undo',
+  BoardRedo = 'board-redo',
+  BoardClean = 'board-clean',
+  BoardPutImageResource = 'board-put-image-resource',
+  BoardPutImageResourceIntoWindow = 'board-put-image-resource-into-window',
+  BoardOpenMaterialResourceWindow = 'board-open-material-resource-window',
+  BoardOpenMediaResourceWindow = 'board-open-media-resource-window',
+  BoardOpenH5ResourceWindow = 'board-open-h5-resource-window',
+  BoardDrawShape = 'board-draw-shape',
+  BoardGrantPrivilege = 'board-grant-privilege',
+  BoardChangeStrokeWidth = 'board-change-stroke-width',
+  BoardChangeStrokeColor = 'board-change-stroke-color',
+  BoardSaveAttributes = 'board-save-attributes',
+  BoardLoadAttributes = 'board-load-attributes',
+  BoardGetSnapshotImageList = 'board-get-snapshot-image-list',
+  BoardSetDelay = 'board-set-delay',
+  // Switch whiteboard
+  ToggleBoard = 'toggle-board',
+  // Open Webview
+  OpenWebview = 'open-webview',
+  // Open streaming media player
+  OpenStreamMediaPlayer = 'open-stream-media-player',
+  // Return to authorized user list
+  ResponseGrantedList = 'response-granted-list',
+}
+```
+
+The following events are built into `AgoraExtensionWidgetEvent`:
+
+```ts
+//Widget event. Such events are emitted from within the Widget and listened to in the classroom
+export enum AgoraExtensionWidgetEvent {
+  // Whiteboard events in the plug-in
+  // Connection status change
+  BoardConnStateChanged = 'board-connection-state-changed',
+  // Mount status change
+  BoardMountStateChanged = 'board-mount-state-changed',
+  // Room property changes
+  BoardMemberStateChanged = 'board-member-state-changed',
+  // Page number attribute changes
+  BoardPageInfoChanged = 'board-page-info-changed',
+  // Redo step changes
+  BoardRedoStepsChanged = 'board-redo-steps-changed',
+  // Undo step count changes
+  BoardUndoStepsChanged = 'board-undo-steps-changed',
+  // Authorized user changes
+  BoardGrantedUsersUpdated = 'board-granted-users-updated',
+  // Received screenshot of whiteboard
+  BoardSnapshotImageReceived = 'board-snapshot-image-received',
+  // Whiteboard file drag event
+  BoardDragOver = 'board-drag-over',
+  // Whiteboard file put event
+  BoardDrop = 'board-drop',
+  // Widget will open soon
+  WidgetBecomeActive = 'widget-become-active',
+  // Widget is about to close
+  WidgetBecomeInactive = 'widget-become-inactive',
+  // Register a tool with the toolbar
+  RegisterCabinetTool = 'register-cabinet-tool',
+  // Unregister tools to the toolbar
+  UnregisterCabinetTool = 'unregister-cabinet-tool',
+  // Request a list of authorized users
+  RequestGrantedList = 'request-granted-list',
+}
+```
+
+To extend events, you can extend the protocol.
+
+## Classroom capabilities
+
+The Widget is internally injected with EduClassroomStore example. `EduClassroomStore` instances of each module are stored within the instance. For example, `CloudDriveStore`.
+
+Through `EduClassroomStore` examples, you can complete the following tasks:
+
+- Classroom capabilities are called through methods in the Edu Store API.
+- Monitor classroom events and classroom status changes through callbacks in the Edu Store API.
+
+The `EduClassroomStore` class is defined as follows:
+
+```ts
+export declare class EduClassroomStore {
+    private _api;
+    get api(): EduApiService;
+    readonly connectionStore: ConnectionStore;
+    readonly widgetStore: WidgetStore;
+    readonly cloudDriveStore: CloudDriveStore;
+    readonly userStore: UserStore;
+    readonly messageStore: MessagesStore;
+    readonly mediaStore: MediaStore;
+    readonly roomStore: RoomStore;
+    readonly statisticsStore: StatisticsStore;
+    readonly streamStore: StreamStore;
+    readonly handUpStore: HandUpStore;
+    readonly recordingStore: RecordingStore;
+    readonly groupStore: GroupStore;
+    readonly remoteControlStore: RemoteControlStore;
+    private readonly reportStore;
+    private readonly logReporter;
+    initialize(): void;
+    destroy(): void;
+}
+```
+The following sample code shows how to monitor status changes in the classroom:
+
+```ts
+// Introduce the reaction function provided by the mobx library
+import { reaction } from 'mobx';
+
+// Use reaction to monitor properties in the Store
+reaction(
+    () => this.classroomStore.navigationBarUIStore.networkQuality,
+    (networkQuality) => {
+        // networkQuality status change
+    }
+);
+```
+
+## Track synchronization and multi-language support
+
+### Implement trajectory synchronization
+
+<Vg k="FC"/> provides the plugin with the ability to track synchronization. There are two modes of track synchronization: `TrackPositionOnly` and `TrackPositionAndDimensions`.
+
+```ts
+export enum AgoraWidgetTrackMode {
+  // Only sync widget location information
+  TrackPositionOnly = 'track-position-only',
+  // Synchronize Widget position and size information
+  TrackPositionAndDimensions = 'track-position-and-dimensions',
+}
+```
+
+You can refer to [rollbook-widget](../develop/embed-custom-plugin#using-agoraedutoolwidget) for details on setting up track synchronization.
+
+### Implement multi-language support
+
+You can use the `i18next` internationalization capabilities provided by third-party open source libraries.

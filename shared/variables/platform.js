@@ -72,6 +72,12 @@ const data = {
     NAME: 'Linux C',
     PATH: 'linux-c',
     CLIENT: 'app'
+  },
+
+  'unreal': {
+    NAME: 'Unreal Engine',
+    PATH: 'unreal',
+    CLIENT: 'game'
   }
   
 };

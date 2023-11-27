@@ -1,6 +1,6 @@
 ---
 title: "Synchronous playback"
-sidebar_position: 10
+sidebar_position: 14
 type: docs
 platform_selector: false
 description: >

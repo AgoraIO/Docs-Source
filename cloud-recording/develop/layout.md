@@ -1,6 +1,6 @@
 ---
-title: "Set Video Layout"
-sidebar_position: 7
+title: "Set video layout"
+sidebar_position: 6
 type: docs
 platform_selector: false
 description: >

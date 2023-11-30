@@ -7,7 +7,7 @@ description: >
 
 export const toc = [{}]
 
-This page explains how <Vg k="COMPANY" /> calculates your monthly bill for <Vg k="FC" />. 
+This page explains how <Vg k="COMPANY" /> calculates your monthly bill for <Vg k="FC" />.  
 
 If you have already signed a contract with <Vg k="COMPANY" />, the billing terms and conditions within that contract take precedence.
 

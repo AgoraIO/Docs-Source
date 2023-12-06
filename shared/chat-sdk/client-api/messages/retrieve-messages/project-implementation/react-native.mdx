@@ -1,20 +1,19 @@
 <PlatformWrapper platform="react-native">
 
-## Retrieve a list of conversations from the server
+### Retrieve a list of conversations from the server
 
-Call `fetchConversationsFromServerWithPage` to retrieve conversations from the server with pagination. Each retrieved conversation contains one last historical message. We recommend calling this method when the app is first installed, or when there is no conversation on the local device. Otherwise, you can call `getAllConversations` to retrieve conversations on the local device.
-This retrieves up to 100 conversations per API call by default. Contact support@agora.io if you want to adjust this limit.
+Call `fetchConversationsFromServerWithCursor` to retrieve conversations from the server with pagination. The SDK returns the conversation list in the reverse chronological order of when conversations are active (the timestamp of the last message in the conversation). In the conversation list, each conversation object contains the conversation ID, conversation type, whether the conversation is pinned, the pinned time (the value is 0 for an unpinned conversation), and the last message in the conversation. After the conversation list is retrieved from the server, the local conversation list will be updated accordingly. We recommend calling this method when the app is first installed, or when there is no conversation on the local device. Otherwise, you can call `getAllConversations` to retrieve conversations on the local device.
+The server stores 100 conversations for 7 days by default. To increase the two upper limits, contact support@agora.io. Agora Chat server can store up to 3,000 conversation per end user.
 
 ```java
-// pageNum: The current page number, starting from 1.
-// pageSize: The number of conversations to get per page. The value range is [1,20].
+// cursor: If `cursor` is an empty string, the SDK retrieves from the latest conversation.
 ChatClient.getInstance()
-  .chatManager.fetchConversationsFromServerWithPage(pageSize, pageNum)
-  .then((result) => {
-    console.log("test:success:", result);
+  .chatManager.fetchConversationsFromServerWithCursor(cursor, pageSize)
+  .then(() => {
+    console.log("get conversions success");
   })
-  .catch((error) => {
-    console.warn("test:error:", error);
+  .catch((reason) => {
+    console.log("get conversions fail.", reason);
   });
 ```
 
@@ -22,31 +21,79 @@ For users that do not support `fetchConversationsFromServerWithPage`, call `fetc
 
 ### Retrieve historical messages of the specified conversation
 
-After retrieving conversations, you can retrieve historical messages by pagination from the server.
+After retrieving conversations, you can retrieve historical messages from the server.
 
-To ensure data reliablity, we recommend retrieving less than 50 historical messages for each method call. To retrieve more than 50 historical messages, call this method multiple times. Once the messages are retrieved, the SDK automatically updates these messages in the local database.
+You can set the search direction to retrieve messages in the chronological or reverse chronological order of when the server receives them, the message type, the time period, the message sender, as well as whether to save the retrieved message to the local database.
+
+If you have implemented Chat SDK after June 8, 2023, you can retrieve historical messages even before joining the Chat Group. For earlier implementations, contact [support@agora.io](mailto:support@agora.io) to enable this.
+
+The Agora Chat server stores the full message history for a certain period of time depending on your subscribed [Chat plan](../../reference/message-overview#limitations-of-message-storage-duration). After an end user logs back into Agora Chat, the servers  automatically send offline messages to them, that is, messages transmitted when that end user was offline. Offline messages are a subset of the full message history stored on Agora Chat server. Sending only a subset of messages prevents distributing too many messages to a single device, which can overwhelm it and slow down the end user login. Agora Chat server stores and manages these offline messages for every end user in the following way:
+
+- 1:1 private chat: Store 500 offline messages by default;
+- Chat Group: Store 200 offline messages by default;
+- Chatroom: Doesn't store offline messages. However, whenever an end user joins a chatroom, Agora Chat servers push the 10 latest messages/chatroom to them, by default. This number can be adjusted to 200 messages/chatroom without additional charges.
+
+For users to receive more offline messages, use the client API or a webhook to sync with Agora Chat's server. End users can also store additional messages on their local database.
+
+To ensure data reliability, we recommend retrieving less than 50 historical messages for each method call. To retrieve more than 50 historical messages, call this method multiple times. Once the messages are retrieved, the SDK automatically updates these messages in the local database.
+
+Refer to the following code sample:
 
 ```typescript
-// Specify the conversation ID.
-const convId = "convId";
-// Specify the conversation type. For details, see descriptions in  ChatConversationType.
-const convType = ChatConversationType.PeerChat;
-// Specify the maximum count of the retrieved messages.
-const pageSize = 10;
-// Specify the message ID from which to retrieve the historical messages.
-const startMsgId = "";
-// Specify the message search direction.
-const direction = ChatSearchDirection.UP;
 ChatClient.getInstance()
-  .chatManager.fetchHistoryMessages(convId, chatType, {
-    pageSize,
-    startMsgId,
-    direction,
+  .chatManager.fetchHistoryMessagesByOptions(convId, convType, {
+    cursor: cursor,
+    pageSize: pageSize,
+    options: options as ChatFetchMessageOptions,
   })
-  .then((messages) => {
-    console.log("get message success: ", messages);
+  .then((result) => {
+    console.log("get history message success", result);
   })
+  .catch((reason) => {
+    console.log("get history message fail.", reason);
+  });
 ```
+
+### Pin a conversation
+
+To keep track of an important conversation, you can pin it to the top of your conversation list. You can pin up to 50 conversations.  The pinned state is stored on the server. In a multi-device login scenario, if you pin or unpin a conversation, other login devices will receive the `CONVERSATION_PINNED` or `CONVERSATION_UNPINNED` events.
+
+Refer to the following code example to pin a conversation:
+
+```typescript
+// isPinned: Sets whether to pin a conversation.
+ChatClient.getInstance()
+  .chatManager.pinConversation(convId, isPinned)
+  .then(() => {
+    console.log("pin conversions success");
+  })
+  .catch((reason) => {
+    console.log("pin conversions fail.", reason);
+  });
+```
+
+
+### Retrieve the pinned conversations from the server with pagination
+
+End users can pin up to 50 conversations. After you call this API, the SDK returns the pinned conversations in the reverse chronological order of when they are pinned.
+
+Agora Chat servers store a list of conversations that remain active in the past 7 days, regardless of Agora Chat package subscription. A conversation is considered active if it is pinned or there are new messages in a conversation.
+
+Refer to the following code example to get a list of pinned conversations from the server with pagination:
+
+```typescript
+// pageSize: The number of sessions returned per page. The value range is [1,50]。
+// cursor：The cursor position to start getting data.
+ChatClient.getInstance()
+  .chatManager.fetchPinnedConversationsFromServerWithCursor(cursor, pageSize)
+  .then(() => {
+    console.log("get conversions success");
+  })
+  .catch((reason) => {
+    console.log("get conversions fail.", reason);
+  });
+```
+
 
 ### Delete historical messages from the server unidirectionally
 

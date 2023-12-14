@@ -185,6 +185,7 @@ export const EXTAPP = 'ExtApp';
 
 export const CREC = 'Cloud Recording';
 export const CREC_FCS = 'https://download.agora.io/acrsdk/release/cloud_recording_tools.v3.8.0.69-202302061216-release-prod.tar.gz'
+export const CREC_TRANS_SCRIPT = 'https://download.agora.io/acrsdk/release/rtsc-ha_transcoder.v1.1.9-202204180321-release-prod.tar.gz'
 
 
 export const CGATE = 'Cloud Gateway';

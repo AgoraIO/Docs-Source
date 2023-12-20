@@ -61,7 +61,7 @@ Unexpected exposure of the security credentials can cause severe security proble
 
 - File conversion, including **Docs to Picture** and **Docs to web**. 
 After enabling the file conversion feature, you can call the [RESTful APIs](../reference/whiteboard-api/file-conversion) to launch a file conversion task or query the conversion progress.
-Agora charges for the file-conversion feature. See [Pricing](../reference/pricing).
+Agora charges for the file-conversion feature. See [Pricing](../overview/pricing).
 - **Screenshot**. After enabling the screenshot feature, you can call the [RESTful APIs](../reference/whiteboard-api/screenshots) to take screenshots.
 
 Follow these steps to enable one or more features and configure the storage settings:

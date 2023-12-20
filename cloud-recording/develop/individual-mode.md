@@ -40,16 +40,16 @@ Before recording, call the [`acquire`](../reference/rest-api/acquire) method to 
 
 -   Request URL:
 
-  ``` json
+  ```json
     https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
-  ```  
+  ``` 
 -   `Content-type`: `application/json;charset=utf-8`
 
 -   `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
 
 -   Request body:
 
-  ``` json
+  ```json
   {
       "cname": "https://xxxxx",
       "uid": "527841",
@@ -79,7 +79,7 @@ In individual recording mode, you can configure the following parameters in `cli
 #### An HTTP request example of `start`
 
 -   Request URL:
-  ``` json
+  ```json
     https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/individual/start
   ```
 -   `Content-type`: `application/json;charset=utf-8`
@@ -90,7 +90,7 @@ In individual recording mode, you can configure the following parameters in `cli
 
 **Real-time recording for standard mode**
 
-``` json
+```json
 {
     "uid": "527841",
     "cname": "httpClient463224",
@@ -133,7 +133,7 @@ When a recording finishes, call [`stop`](../reference/rest-api/stop) to leave th
 #### An HTTP request example of `stop`
 
 -   The request URL is:
-  ``` json
+  ```json
      http://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/individual/stop
   ```
 -   `Content-type`: `application/json;charset=utf-8`
@@ -143,7 +143,7 @@ When a recording finishes, call [`stop`](../reference/rest-api/stop) to leave th
 
 -   Request body:
 
-  ``` json
+  ```json
   {
       "cname": "httpClient463224",
       "uid": "527841",

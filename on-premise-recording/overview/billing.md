@@ -14,7 +14,7 @@ Starting in April 2021, Agora further divided HD+ video into Full HD, 2K, and 2K
 
 ## Overview
 
-Agora calculates the billing of all projects under your [Agora account](https://console.agora.io/) monthly.
+Agora calculates the billing of all projects under your <Link to="{{Global.AGORA_CONSOLE_URL}}">Agora Account</Link> monthly.
 
 Billing for the on-premise recording service begins once you use the Agora On-Premise Recording SDK to record and save audio calls, group video calls, or interactive live video streaming made via the Agora <Vg k="VSDK" /> on your server. 
 

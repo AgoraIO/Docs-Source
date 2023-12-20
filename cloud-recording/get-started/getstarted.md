@@ -30,7 +30,7 @@ After the recording is over, the cloud recording service uploads the recording f
 
 ## Prerequisites
 
-- A valid [Agora account](https://console.agora.io/).
+- A valid <Link to="{{Global.AGORA_CONSOLE_URL}}">Agora Account</Link>.
 - A valid Agora project with an App ID and a temporary token. For details, see [Get Started with Agora](../reference/manage-agora-account#get-the-app-id).
 - A computer with access to the internet. If your network has a firewall, follow the instructions in [Firewall Requirements](../reference/firewall).
 - Ensure that a third-party cloud storage service has been enabled. The currently supported third-party cloud storage service providers are as follows:
@@ -49,7 +49,7 @@ After the recording is over, the cloud recording service uploads the recording f
 
 Enable the cloud recording service before using Agora Cloud Recording for the first time.
 
-1. Log in to [Agora Console](https://console.agora.io/), and click the **Project Management** icon on the left navigation panel.
+1. Log in to <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>, and click the **Project Management** icon on the left navigation panel.
 2. On the **Project Management** page, find the project for which you want to enable the cloud recording service, and click the edit icon. 
 3. On the **Edit Project** page, find **Cloud Recording**, and click **Enable**.
 ![](https://web-cdn.agora.io/docs-files/1638866909361)

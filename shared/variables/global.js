@@ -160,6 +160,7 @@ export const RTEE_FU = 'FaceUnity';
 export const RTEE_AF = 'ActiveFence';
 export const RTEE_AF_D = `ActiveOS`;
 export const RTEE_HT3D = `HTEffect 3D Avatar`
+export const RTEE_DUB = `Dubbing AI Voice Changer`
 export const AA = `${COMPANY} Analytics`;
 export const AA_DI = `Data Insights`;
 export const AA_DIP = `Data Insights Plus`;
@@ -186,6 +187,7 @@ export const EXTAPP = 'ExtApp';
 
 export const CREC = 'Cloud Recording';
 export const CREC_FCS = 'https://download.agora.io/acrsdk/release/cloud_recording_tools.v3.8.0.69-202302061216-release-prod.tar.gz'
+export const CREC_TRANS_SCRIPT = 'https://download.agora.io/acrsdk/release/rtsc-ha_transcoder.v1.1.9-202204180321-release-prod.tar.gz'
 
 
 export const CGATE = 'Cloud Gateway';

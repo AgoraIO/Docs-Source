@@ -82,7 +82,7 @@ Before you launch a file-conversion task, you must upload the source file to a t
 
 Refer to the following steps:
 
-1. Go to the [Project Management](https://console.agora.io/projects) page in Agora Console, find the project that has the whiteboard feature enabled, and click **Configure**.
+1. Go to the <Link to="{{Global.AGORA_CONSOLE_URL}}/project-management">Project Management</Link> page in Agora Console, find the project that has the whiteboard feature enabled, and click **Configure**.
 
 2. On the **Edit Project** page, find **Whiteboard**, and click **Config**.
 

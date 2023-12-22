@@ -297,3 +297,4 @@ export const AGORA_VIDEO_DOC_APP_FLUTTER = 'https://github.com/AgoraIO/video-sdk
 export const AGORA_VIDEO_DOC_APP_UNITY = 'https://github.com/AgoraIO/video-sdk-samples-unity'
 export const AGORA_VIDEO_DOC_APP_REACTNATIVE = 'https://github.com/AgoraIO/video-sdk-samples-reactnative'
 export const AGORA_VIDEO_DOC_APP_ELECTRON = 'https://github.com/AgoraIO/video-sdk-samples-electron'
+export const AGORA_VIDEO_DOC_APP_WINDOWS = 'https://github.com/AgoraIO/video-sdk-samples-windows'

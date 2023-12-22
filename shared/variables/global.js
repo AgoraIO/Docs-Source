@@ -1,7 +1,7 @@
 
 export const COMPANY = 'Agora';
 export const URL_ROOT = 'docs.agora.io/en';
-  export const AGORA_BACKEND = `${COMPANY} SD-RTN™`;
+export const AGORA_BACKEND = `${COMPANY} SD-RTN™`;
 export const CLIENT = platform => (platform === 'unity' ? 'game' : 'app');
 export const VSDK_RELEASE_API = '4.x'
 export const VSDK_PREVIOUS_RELEASE_API = '3.x'
@@ -66,6 +66,9 @@ export const API_REF_WINDOWS_ROOT_CPP  = `${API_REF_ROOT}/cpp/${VSDK_RELEASE_API
 export const API_REF_UE_ROOT_VOICE_SDK  = `${API_REF_ROOT_VOICE_SDK}/unreal-engine/${VSDK_RELEASE_API}/API`;
 export const API_REF_WINDOWS_ROOT_CPP_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/cpp/${VSDK_RELEASE_API}/API`;
 
+export const API_REF_SIG_ANDROID = '../reference/api';
+export const API_REF_SIG_WEB = '../reference/api';
+export const API_REF_SIG_APPLE = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
 
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
@@ -105,6 +108,7 @@ export const AV = 'Audio/Video';
 
 export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
+export const MESS_ENGINE = `${MESS}Engine`;
 export const EASEMOB_SDK = `Easemob IM SDK`;
 export const NCS = `NCS`;
 export const NCS_LONG = `Notifications`;
@@ -120,6 +124,9 @@ export const SIG_SDK_API_IOS = `${SIG_SDK_API_REF_ROOT}/ios/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_MACOS = `${SIG_SDK_API_REF_ROOT}/macos/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_WEB = `${SIG_SDK_API_REF_ROOT}/web/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/reference/user-channel-events`;
+export const SIG2_SDK_API_IOS = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
+export const SIG2_SDK_API_MACOS = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
+
 
 export const SPATIAL = '3D Spatial Audio';
 
@@ -245,7 +252,7 @@ export const DEMO_BASIC_VIDEO_CALL_URL =
   'https://webdemo.agora.io/basicVideoCall/index.html';
 
 export const DEMO_PAGE_LINK = `<Link to="{{Global.DEMO_BASIC_VIDEO_CALL_URL}}"><Vg k="COMPANY" /> web demo</Link>`;
-
+export const DEMO_TOKEN_BUILDER_URL = 'https://webdemo.agora.io/token-builder';
 
 export const AGORA_DYNAMIC_KEY_CODE_BASE_URL =
   'https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey';

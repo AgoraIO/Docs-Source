@@ -55,6 +55,9 @@ const data = {
       SDK: 'Signaling SDK',
       PRODUCT: 'Signalling',
       STREAM: 'interactive live streaming or broadcast streaming',
+      PRODUCT: 'Signalling',
+      IOS_PACKAGE_NAME: 'AgoraRTM_iOS',
+      MACOS_PACKAGE_NAME: 'AgoraRTM_macOS'
   },
 
   'server-gateway': {

@@ -69,7 +69,7 @@ If your scenario involves other Agora products or services, such as the <Vg k="V
 Billing for <Vg k="WHITE" /> begins once you enable and implement the service in your project and occurs monthly. 
 
 <Vg k="COMPANY" /> calculates your monthly pricing by adding up the usage of each whiteboard feature in all 
-projects under your [Agora account](https://console.agora.io/), subtracting your monthly free usage allowances, 
+projects under your <Link to="{{Global.AGORA_CONSOLE_URL}}">Agora Account</Link>, subtracting your monthly free usage allowances, 
 multiplying each resulting usage number by the corresponding price, and adding up the cost of each feature.
 
 The basic formulas are shown here:
@@ -137,7 +137,7 @@ Agora rounds up the total cost to two decimal places.
 
 You can check your usage of <Vg k="WHITE" /> in <Vg k="CONSOLE" />. Perform the following steps:
 
-1. Log in to [<Vg k="CONSOLE" />](https://console.agora.io/) and click the **Products & Usage** button on the left navigation panel.
+1. Log in to <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link> and click the **Usage** button on the left navigation panel.
 
 2. Click the arrowhead in the top left corner, and select the project you want to check in the drop-down box.
 

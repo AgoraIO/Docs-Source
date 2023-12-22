@@ -50,7 +50,7 @@ but affects the aggregate recording resolution.
 
 Billing for Cloud Recording begins once you use Cloud Recording to record and save audio calls, group video calls, or interactive video streaming made via the Agora <Vg k="VSDK" /> on your cloud storage.
 
-Agora calculates the billing of all projects under your [Agora account](https://console.agora.io/) monthly. 
+Agora calculates the billing of all projects under your <Link to="{{Global.AGORA_CONSOLE_URL}}">Agora Account</Link> monthly. 
 After deducting the monthly [10,000 free-of-charge minutes](../reference/billing-policies#agoras-free-of-charge-policy-for-the-first-10000-minutes) 
 that Agora grants to every account, Agora adds up the usage duration (in seconds) of audio and video in each category, 
 and divides them by 60 to get the respective service minutes (rounded up to the nearest integer). 

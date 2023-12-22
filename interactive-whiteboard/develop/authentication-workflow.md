@@ -66,7 +66,7 @@ A Task Token is linked with a file-conversion task under a whiteboard project in
 
 You can generate a token for the <Vg k="WHITE" /> through one of the following methods:
 
-- Use [<Vg k="CONSOLE" />](https://console.agora.io/). See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).
+- Use <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).
 
 This method can only generate a permanent <code>admin</code> SDK Token. Do not send this token to your app clients; otherwise, there may be a risk of exposure.
 
@@ -86,7 +86,7 @@ When generating a token, pass in the following parameters:
 
 The access keys consist of an AK (Access Key) and an SK (Secret Key). Follow these steps to get the access keys:
 
-1. On the [Project Management](https://console.agora.io/projects) page in <Vg k="CONSOLE" />, find the whiteboard project and click **Edit**.
+1. On the <Link to="{{Global.AGORA_CONSOLE_URL}}/project-management">Project Management</Link> page in <Vg k="CONSOLE" />, find the whiteboard project and click **Edit**.
 2. On the **Edit Project** page, find **Whiteboard** and click **Config**.
 3. On the **Whiteboard Configuration** page, find **AK** and **SK**. Click the eye icons on the right to copy the **AK** and **SK**, respectively, to a secure location.![](https://web-cdn.agora.io/docs-files/1619577586541)
 

@@ -1,6 +1,6 @@
 ---
 title: "Manage recorded files"
-sidebar_position: 11
+sidebar_position: 12
 type: docs
 platform_selector: false
 description: >
@@ -123,6 +123,29 @@ When [a cloud recording server is disconnected or the process killed](../overvie
 For example, in the filename `bak0_sid713476478245_cnameagora.m3u8`, `bak0` indicates that this file is generated after the service enables the high availability mechanism for the first time.
 
 After the cloud recording service enables the high availability mechanism, the names of the recorded TS/WebM files and the MP4 files are also prepended with `bak<n>`.
+
+If you want to merge the original M3U8 file and the new M3U8 file generated after enabling the high availability mechanism into an MP4 file, you can use the <Link target="_blank" to="{{Global.CREC_TRANS_SCRIPT}}">transcoding script</Link> for file merging as follows (only applicable to merged recording files):
+
+  1. Please ensure that the server executing the transcoding script uses one of the following systems:
+     - Ubuntu 14.04+ x64
+     - CentOS 7.0+ x64
+     - Debian 8.0+
+
+  1. Enter the `transcoder` and `ffmpeg` paths in the terminal.
+
+  1. Execute the following command:
+
+     ```sh
+      ./ha_transcoder.exe -inputPath "<YourinputPath>" -ignoreNotExist -concatM3u8 -concatStrategy 0
+     ```
+     
+ | Parameter      | Description | Is it required? |
+ |:---------------|:------------|:----------------|
+ | `-concatM3u8`  | Merge the original M3U8 file and the new M3U8 file generated after enabling the high availability mechanism into one MP4 file. If this parameter is not set, the original M3U8 file and the new M3U8 file will be converted into MP4 files respectively. | no | 
+ | `-concatStrategy`  | Merge strategy, this parameter must be consistent with `-concatM3u8`. Can be set to: <ul><li> 0: (Default) If there is an overlap between two M3U8 files, the overlapping part of the original M3U8 file will be cut off; if there is a time interval between the two M3U8 files, the black frame of the corresponding time interval will be added.</li><li> 1: Merge two M3U8 files regardless of the overlap or time interval.</li></ul> | no |
+ | `-ignoreNotExist` | Missing TS files are ignored and black frames are used instead. If this parameter is not set, the absence of any TS file will cause the conversion to fail. | no |
+ | `-inputPath`  | Input path, used to specify the absolute storage path of the files to be merged. | yes |
+ | `-outputPath` | Output path, used to specify the absolute storage path of the merged files. Defaults to the same as the input path. | no |
 
 ## File size
 In an individual recording, the size of a recorded file depends on the audio and video bitrates of the media source and the duration of the recording. For example, if the audio bitrate is 48 Kbps, the video bitrate is 500 Kbps, and the recording lasts for 30 minutes (1800 seconds), the size of the recorded file is approximately (48 Kbps + 500 Kbps) * 1800 s = 986.4 Mbit, or 123.3 MB.

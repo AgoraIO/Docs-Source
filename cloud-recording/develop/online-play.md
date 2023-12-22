@@ -1,6 +1,6 @@
 ---
 title: "Play recorded files online"
-sidebar_position: 5
+sidebar_position: 13
 type: docs
 platform_selector: false
 description: >

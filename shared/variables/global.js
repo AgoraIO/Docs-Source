@@ -29,7 +29,10 @@ export const API_REF_IOS_ROOT_RTC_ENGINE_KIT = `${API_REF_IOS_ROOT_RTC_KIT}/agor
 export const API_REF_IOS_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/ios/${VSDK_RELEASE_API}/documentation`;
 export const API_REF_IOS_ROOT_RTC_KIT_VOICE_SDK = `${API_REF_IOS_ROOT_VOICE_SDK}/agorartckit`;
 export const API_REF_IOS_ROOT_RTC_ENGINE_KIT_VOICE_SDK = `${API_REF_IOS_ROOT_RTC_KIT_VOICE_SDK}/agorartcenginekit`;
+export const API_REF_RNJS_ROOT  = `${API_REF_ROOT}/reactjs/2.x`;
+export const API_REF_RNJS_ROOT_VOICE = `${API_REF_ROOT_VOICE_SDK}/reactjs/2.x`;
 export const API_REF_RN_ROOT  = `${API_REF_ROOT}/react-native/${MAJOR_VERSION}/API`;
+export const API_REF_UE_ROOT  = `${API_REF_ROOT}/unreal-engine/${MAJOR_VERSION}/API`;
 export const API_REF_RN_PREVIOUS_ROOT  = `${API_REF_ROOT}/react-native/${VSDK_PREVIOUS_RELEASE_API}`;
 export const API_REF_RN_ROOT_VOICE = `${API_REF_ROOT_VOICE_SDK}/react-native/${MAJOR_VERSION}/API`;
 export const API_REF_MACOS_ROOT = `${API_REF_ROOT}/macos/${VSDK_RELEASE_API}/documentation`;
@@ -72,7 +75,7 @@ export const RTE = 'Real-Time Engagement';
 export const RTEC = `${RTE} Core`;
 export const RTES = `${RTE} SDK`;
 export const APP_ID_LINK = `http://agora.io`;
-export const AGORA_CONSOLE_URL = `https://console.agora.io`;
+export const AGORA_CONSOLE_URL = `https://console.agora.io/v2`;
 export const AGORA_WEBDEMO_URL = `https://webdemo.agora.io`;
 export const API_REF_ANDROID = `http://api.agora.io/android`;
 
@@ -157,6 +160,8 @@ export const RTEE_FU = 'FaceUnity';
 export const RTEE_AF = 'ActiveFence';
 export const RTEE_AF_D = `ActiveOS`;
 export const RTEE_HT3D = `HTEffect 3D Avatar`
+export const RTEE_LDCI = `LiveData Conversation Intelligence`
+export const RTEE_DUB = `Dubbing AI Voice Changer`
 export const AA = `${COMPANY} Analytics`;
 export const AA_DI = `Data Insights`;
 export const AA_DIP = `Data Insights Plus`;
@@ -183,6 +188,7 @@ export const EXTAPP = 'ExtApp';
 
 export const CREC = 'Cloud Recording';
 export const CREC_FCS = 'https://download.agora.io/acrsdk/release/cloud_recording_tools.v3.8.0.69-202302061216-release-prod.tar.gz'
+export const CREC_TRANS_SCRIPT = 'https://download.agora.io/acrsdk/release/rtsc-ha_transcoder.v1.1.9-202204180321-release-prod.tar.gz'
 
 
 export const CGATE = 'Cloud Gateway';
@@ -281,3 +287,14 @@ export const AGORA_API_EXAMPLES_IOS_BLOB = `${AGORA_API_EXAMPLES_BASE_URL}/blob/
 export const AGORA_API_EXAMPLES_IOS_COMMON = `${AGORA_API_EXAMPLES_BASE_URL}/blob/main/iOS/APIExample/APIExample/Common`
 export const AGORA_API_EXAMPLES_MACOS_BLOB = `${AGORA_API_EXAMPLES_BASE_URL}/blob/main/macOS/APIExample/Examples`
 export const AGORA_API_EXAMPLES_MACOS_TREE = `${MACOS_API_EXAMPLES_ROOT}/APIExample/Examples`
+
+export const AGORA_VIDEO_DOC_APP_IOS = 'https://github.com/AgoraIO/video-sdk-samples-ios'
+export const AGORA_VIDEO_DOC_APP_MACOS = 'https://github.com/AgoraIO/video-sdk-samples-macos'
+export const AGORA_VIDEO_DOC_APP_ANDROID = 'https://github.com/AgoraIO/video-sdk-samples-android'
+export const AGORA_VIDEO_DOC_APP_JS = 'https://github.com/AgoraIO/video-sdk-samples-js'
+export const AGORA_VIDEO_DOC_APP_REACTJS = 'https://github.com/AgoraIO/video-sdk-samples-reactjs'
+export const AGORA_VIDEO_DOC_APP_FLUTTER = 'https://github.com/AgoraIO/video-sdk-samples-flutter'
+export const AGORA_VIDEO_DOC_APP_UNITY = 'https://github.com/AgoraIO/video-sdk-samples-unity'
+export const AGORA_VIDEO_DOC_APP_REACTNATIVE = 'https://github.com/AgoraIO/video-sdk-samples-reactnative'
+export const AGORA_VIDEO_DOC_APP_ELECTRON = 'https://github.com/AgoraIO/video-sdk-samples-electron'
+export const AGORA_VIDEO_DOC_APP_WINDOWS = 'https://github.com/AgoraIO/video-sdk-samples-windows'

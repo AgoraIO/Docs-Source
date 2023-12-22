@@ -10,292 +10,213 @@ Choose the method that best suits your scenario and follow the step by step proc
 
 ### Channel media relay
 
-In this example, you use a single `Button` to start and stop channel media relay.
-
-#### Implement the user interface
-
-To enable your users to start and stop relaying to another channel, add a `Button` to the user interface by taking the following steps:
-
-    1. Right-click **Sample Scene**, then click **GameObject** > **UI** > **Button - TextMeshPro**. A button appears in the **Scene** Canvas.
-
-    2. In **Inspector**, rename **Button** to **StartChannelMediaRelay**, then change the following coordinates:
-
-    * **Pos X** - 350
-    * **Pos Y** - 172
-
-#### Handle the system logic
-
-In your project, import the relevant libraries and declare the required variables.
-
-1.  **Declare the variables you need**
-
-    To store source and destination channel settings and manage channel relay, in your script file, add the following declarations to `NewBehaviourScript`:
-    ``` csharp
-    private string destChannelName = "<name of the destination channel>";
-    private string destChannelToken = "<access token for the destination channel>";
-    private uint destUid = 100; // User ID that the user uses in the destination channel.
-    private string sourceChannelToken = "<access token for the source channel>"; // Generate with the _channelName and remoteUid = 0.
-    private bool mediaRelaying = false;
-    private TMP_Text channelRelayBtnText;
-    ```
-
-2.  **Add the required UI namespace**
-
-    To import the required <Vpl k="NAME" /> UI namespace, in your script file, add the following to the list of namespace declarations:
-
-    ``` csharp
-    using TMPro;
-    ```
-
-3.  **Access the channel relay button**
-
-    To programmatically access the channel media relay button, add the following at the end of `SetupUI`:
-
-    ``` csharp
-    // Access the channel relay button.
-    go = GameObject.Find("StartChannelMediaRelay");
-    go.GetComponent<Button>().onClick.AddListener(channelRelay);
-    // Access the label of the channel relay button.
-    channelRelayBtnText = go.GetComponentInChildren<TMP_Text>(true);
-    // Change the button text and font size.
-    channelRelayBtnText.text = "Relay Media";
-    channelRelayBtnText.fontSize = 14;
-    ```
-
-#### Implement channel media relay
-
-To enable <Vpl k="CLIENT" /> users to relay channel media to a destination channel, take the following steps:
+This section explains the logic to relay channel media to a destination channel:
 
 1.  **Start or stop channel media relay**
 
-When a user presses the button, the <Vpl k="CLIENT" /> starts relaying media from the source channel to the destination channel. If channel media relay is already running, the <Vpl k="CLIENT" /> stops it. To integrate this workflow, add the following method to `NewBehaviourScript`.
-
-``` csharp
-public void channelRelay() {
-    if (mediaRelaying) {
-        RtcEngine.StopChannelMediaRelay();
-        mediaRelaying = false;
-    } else {
-        // Configure the source channel information.
-        ChannelMediaRelayConfiguration mediaRelayConfiguration = new ChannelMediaRelayConfiguration();
-        // Setup the source channel information.
-        mediaRelayConfiguration.srcInfo = new ChannelMediaInfo
+    ```csharp
+    // Method to relay media to a destination channel.
+    public void StartChannelRelay()
+    {
+        if (agoraEngine != null)
+        {
+            if (string.IsNullOrEmpty(configData.destChannelName) || string.IsNullOrEmpty(configData.destToken))
             {
-                channelName = _channelName,
-                uid = 0,
-                token = sourceChannelToken
+                Debug.Log("Specify a valid destination channel name and token.");
+                return;
+            }
+
+            // Configure a ChannelMediaRelayConfiguration instance to add source/destination channels.
+            ChannelMediaRelayConfiguration mediaRelayConfiguration = new ChannelMediaRelayConfiguration();
+
+            // Configure the source channel information.
+            mediaRelayConfiguration.srcInfo = new ChannelMediaInfo
+            {
+                channelName = configData.channelName,
+                uid = configData.uid,
+                token = configData.rtcToken
             };
-        // Setup the destination channel information.
-        mediaRelayConfiguration.destInfos =  new ChannelMediaInfo[1];
+
+            // Configure the destination channel information.
+            mediaRelayConfiguration.destInfos = new ChannelMediaInfo[1];
             mediaRelayConfiguration.destInfos[0] = new ChannelMediaInfo
             {
-                channelName = destChannelName,
-                uid = 0,
-                token = destChannelToken
+                channelName = configData.destChannelName,
+                uid = configData.destUID,
+                token = configData.destToken
             };
+
+            // The number of destination channels.
             mediaRelayConfiguration.destCount = 1;
-        // Start relaying media streams across channels
-        RtcEngine.StartChannelMediaRelay(mediaRelayConfiguration);
-        mediaRelaying = true;
-    }
-}
-```
 
-2.  **Monitor the channel media relay state**
-
-   To receive the state change notifications sent during media relay, you add a method to `UserEventHandler`. Your <Vpl k="CLIENT" /> responds to connection and failure events in the `onChannelMediaRelayStateChanged` event handler. In your script file, add the following method after the `OnUserOffline`:
-
-    ``` csharp
-    public override void OnChannelMediaRelayStateChanged(int state, int code) {
-    // This example shows messages in the debug console when the relay state changes,
-    // a production level app needs to handle state change properly.
-    switch (state) {
-        case 1: // RELAY_STATE_CONNECTING:
-            Debug.Log("Channel media relay connecting.");
-            _videoSample.channelRelayBtnText.text = "Connecting...";
-            break;
-        case 2: // RELAY_STATE_RUNNING:
-            _videoSample.mediaRelaying = true;
-            Debug.Log("Channel media relay running.");
-            _videoSample.channelRelayBtnText.text = "Stop Channel Media Relay";
-            break;
-        case 3: // RELAY_STATE_FAILURE:
-            _videoSample.mediaRelaying = false;
-            Debug.Log("Channel media relay failure. Error code: " + code);
-            _videoSample.channelRelayBtnText.text = "Start Channel Media Relay";
-            break;
-        }
-        _videoSample.channelRelayBtnText.fontSize = 14;
-    }
-    ```
-
-3.  **Monitor channel media relay events**
-
-To receive notifications of important channel relay events such as network disconnection, reconnection, and users joining channels, you add the `onChannelMediaRelayEvent` method to `UserEventHandler`. To implement this callback in your <Vpl k ="CLIENT"/>, add the following method after `OnChannelMediaRelayStateChanged`:
-
-``` csharp
-public override void OnChannelMediaRelayEvent(int code)
-{
-    switch (code)
-    {
-        case 0: // RELAY_EVENT_NETWORK_DISCONNECTED
-        Debug.Log("User disconnected from the server due to a poor network connection.");
-        break;
-        case 1: // RELAY_EVENT_NETWORK_CONNECTED
-        Debug.Log("Network reconnected");
-        break;
-        case 2: // RELAY_EVENT_PACKET_JOINED_SRC_CHANNEL
-        Debug.Log("User joined the source channel");
-        break;
-    }
-}
-```
-
-### Join multiple channels
-
-The alternate approach to multi-channel live streaming is joining multiple channels. In this section, you learn how to implement joining a second channel in your <Vpl k="CLIENT" />.
-
-#### Implement the user interface
-
-In this example, you use a single `Button` to join and leave a second channel. Add a `Button` to the user interface by taking the following steps:
-
-    1. Right-click **Sample Scene**, then click **UI** > **Button - TextMeshPro**. A button appears in the **Scene** Canvas.
-
-    2. In **Inspector**, rename **Button** to **multiChannel**, then change the following coordinates:
-
-    * **Pos X** - -350
-    * **Pos Y** - 172
-
-#### Handle the system logic
-
-In your project, import the relevant libraries, declare the required variables, and acces the UI elements.
-
-1.  **Declare the variables you need**
-
-    To join and manage a second channel, in your script file, add the following declarations to `NewBehaviourScript`:
-
-    ``` csharp
-    private RtcConnection rtcSecondConnection;
-    private string secondChannelName = "<name of the second channel>";
-    private uint secondChannelUid = 100; // Uid for the second channel
-    private string secondChannelToken = "<access token for the second channel>";
-    private bool isSecondChannelJoined = false; // Track connection state of the second channel
-    private TMP_Text multiChannelBtnText;
-    ```
-
-1.  **Add the required UI namespace**
-
-    To import the required Uinty UI namespace, in your script file, add the following to the list of namespace declarations:
-
-    ``` csharp
-    using TMPro;
-    ```
-
-1.  **Access the multiple channel button in your code**
-
-    To programmatically access the button, add the following at the end of `SetupUI`:
-
-    ``` csharp
-    // Access the multi-channel button to change the button text.
-    go = GameObject.Find("multiChannel");
-    // Call joinSecondChannel method when the user presses the button.
-    go.GetComponent<Button>().onClick.AddListener(joinSecondChannel);
-    // Access the Text(TMP) sub-item of multi-channel to change the button text.
-    multiChannelBtnText = go.GetComponentInChildren<TMP_Text>(true);
-    // Change the button text and font size.
-    multiChannelBtnText.text = "Join Second Channel";
-    multiChannelBtnText.fontSize = 14;
-    ```
-
-#### Implement joining multiple channels
-
-To add multi-channel functionality to your <Vpl k="CLIENT" />, take the following steps:
-
-1.  **Use the multi-channel enabled `RtcEngineEx` interface**
-
-    In the <Vg k="GET_STARTED"/> code, the <Vg k="ENGINE" /> instance was declared as `IRtcEngine`. To implement multi-channel functionality, you use the multi-channel interface of the <Vg k="ENGINE" /> `IRtcEngineEx`. In order to
-    switch to the multi-user interface, do the following:
-
-    1.  In `NewBehaviourScript.cs`, replace the declaration `internal IRtcEngine RtcEngine;` with:
-
-    ``` csharp
-    internal IRtcEngineEx RtcEngine;
-    ```
-
-    1.  In your script file, locate `SetupVideoSDKEngine`, replace the line `RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();` with the following:
-
-    ``` csharp
-    RtcEngine = (IRtcEngineEx) Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
-    ```
-
-2.  **Join a second channel**
-
-    When a user presses the button, the <Vpl k="CLIENT" /> joins a second channel. If the <Vpl k="CLIENT" /> is already connected to a second channel, it leaves the channel. To implement this workflow, add the following method to `NewBehaviourScript`:
-
-    ``` csharp
-    public void joinSecondChannel()
-    {
-        if (isSecondChannelJoined)
-        {
-            RtcEngine.LeaveChannelEx(rtcSecondConnection);
-            isSecondChannelJoined = false;
-            multiChannelBtnText.text = "Join Second Channel";
+            // Start media relaying
+            agoraEngine.StartOrUpdateChannelMediaRelay(mediaRelayConfiguration);
         }
         else
         {
-            RtcEngine.EnableVideo();
-            // Preview the local video.
-            LocalView.SetForUser(0, "", VIDEO_SOURCE_TYPE.VIDEO_SOURCE_CAMERA);
-            LocalView.SetEnable(true);
-            ChannelMediaOptions mediaOptions = new ChannelMediaOptions();
-            mediaOptions.autoSubscribeAudio.SetValue(true);
-            mediaOptions.autoSubscribeVideo.SetValue(true);
-            mediaOptions.channelProfile.SetValue(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
-            if (clientRole == "Audience")
-            { 
-                mediaOptions.publishCameraTrack.SetValue(false);
-                mediaOptions.publishMicrophoneTrack.SetValue(false);
-                mediaOptions.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_AUDIENCE);
-            }
-            else if(clientRole == "Host")
-            { // Host Role
-                mediaOptions.publishCameraTrack.SetValue(true);
-                mediaOptions.publishMicrophoneTrack.SetValue(true);
-                mediaOptions.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
-            }
+            Debug.Log("Agora Engine is not initialized. Click 'Join' to join the primary channel and then join the second channel.");
+        }
+    }
 
-            rtcSecondConnection = new RtcConnection();
-            rtcSecondConnection.channelId = secondChannelName;
-            rtcSecondConnection.localUid = secondChannelUid;
+    // Method to stop media relaying.
+    public void StopChannelRelay()
+    {
+        if (agoraEngine != null)
+        {
+            agoraEngine.StopChannelMediaRelay();
+        }
+    }
+    ```
+    For more details, see the following:
 
-            RtcEngine.JoinChannelEx(secondChannelToken, rtcSecondConnection, mediaOptions);
-            isSecondChannelJoined = true;
-            multiChannelBtnText.text = "Leave Second Channel";
+    - <Link to= "{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_startchannelmediarelay">StartChannelMediaRelay</Link>
+    - <Link to= "{{global.API_REF_UNITY_ROOT}}/class_channelmediarelayconfiguration.html">ChannelMediaRelayConfiguration</Link>
+    - <Link to= "{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_stopchannelmediarelay">StopChannelMediaRelay</Link>
+    - <Link to= "{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_updatechannelmediarelay">UpdateChannelMediaRelay</Link>
+    - <Link to= "{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_pauseallchannelmediarelay">PauseAllChannelMediaRelay</Link>
+    - <Link to= "{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_resumeallchannelmediarelay">ResumeAllChannelMediaRelay</Link>
+
+2.  **Monitor the channel media relay state**
+
+    ```csharp
+    // Event handler class to handle the events raised by Agora's RtcEngine instance
+    internal class MultiChannelLiveStreamingEventHandler : UserEventHandler
+    {
+        private MultiChannelLiveStreamingManager multiChannelLiveStreamingManager;
+        
+        internal MultiChannelLiveStreamingEventHandler(MultiChannelLiveStreamingManager videoSample) : base(videoSample)
+        {
+            multiChannelLiveStreamingManager = videoSample;
+        }
+        
+        public override void OnChannelMediaRelayStateChanged(int state, int code)
+        {
+            // This example shows messages in the debug console when the relay state changes,
+            // a production level app needs to handle state change properly.
+            switch (state)
+            {
+                case 1: // RELAY_STATE_CONNECTING:
+                    Debug.Log("Channel media relay connecting.");
+                    break;
+                case 2: // RELAY_STATE_RUNNING:
+                    Debug.Log("Channel media relay running.");
+                    break;
+                case 3: // RELAY_STATE_FAILURE:
+                    Debug.Log("Channel media relay failure. Error code: " + code);
+                    break;
+            }
         }
     }
     ```
 
-3.  **Update `onUserJoined` callback to render the second channel remote video**
+    For more details, see the following:
+    - <Link to= "{{global.API_REF_UNITY_ROOT}}/class_irtcengineeventhandler.html#callback_irtcengineeventhandler_onchannelmediarelaystatechanged">onChannelMediaRelayStateChanged</Link>
 
-    When the user presses **Join Second Channel**, you join the channel and wait for the second channel remote user to join the channel. When a remote user joins the channel second, your <Vpl k= "CLIENT"/> stops rendering the first channel remote video and starts rendering the second channel remote video. To implement this workflow, in your script file, replace `onUserJoined` with the following:
-        ``` csharp
-        public override void OnUserJoined(RtcConnection connection, uint uid, int elapsed)
+### Join multiple channels
+
+The alternate approach to multi-channel live streaming is joining multiple channels. In this section, you learn how to implement joining a second channel in your <Vpl k="CLIENT" />. 
+
+1.  **Configure an `RtcEngineEx` instance for multiple channel live streaming**
+
+    1. Declare a variable that holds an instance of `RtcEngineEx`:
+
+        ```csharp
+        internal IRtcEngineEx agoraEngineEx;
+        ```
+
+    1. Override the `SetupAgoraEngine` method to configure the new instance: 
+
+        ```csharp
+        // Override SetupAgoraEngine to set up an instance of the `IRtcEngineEx` engine.
+        public override void SetupAgoraEngine()
         {
-            // Setup remote view.
-            GameObject go = GameObject.Find("RemoteView");
-            _videoSample.RemoteView = go.AddComponent<VideoSurface>();
-            _videoSample.RemoteView.SetForUser(uid, connection.channelId, VIDEO_SOURCE_TYPE.VIDEO_SOURCE_REMOTE);
-            if(_videoSample.clientRole == "Audience")
-            {
-                // Start rendering remote video.
-                _videoSample.RemoteView.SetEnable(true);
-            }
-            else
-            {
-                // Stop rendering remote video.
-                _videoSample.RemoteView.SetEnable(false);
-            }
-            _videoSample.remoteUid = uid;
+            base.SetupAgoraEngine();
+            // Create an Ex engine instance
+            agoraEngineEx = Agora.Rtc.RtcEngine.CreateAgoraRtcEngineEx();
+
+            // Initialize the engine
+            agoraEngineEx.Initialize(new RtcEngineContext(_appID, 0, CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
+                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT, region, null));
+
+            // Enable the video module.
+            agoraEngine.EnableVideo();
+
+            // Set the user role as broadcaster.
+            agoraEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+
+            // Initialize the event handler
+            agoraEngine.InitEventHandler(new MultiChannelLiveStreamingEventHandler(this));
         }
         ```
+        For more details, see the following:
+       
+        - <Link to= "{{global.API_REF_UNITY_ROOT}}/class_irtcengineex.html#api_createagorartcengineex">CreateAgoraRtcEngineEx</Link>
+        - <Link to= "{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_initialize">Initialize</Link>
+        - <Link to= "{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_enablevideo">EnableVideo</Link>
+        - <Link to= "{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_setclientrole">SetClientRole</Link>
+
+2.  **Join and leave the secondary channel**
+
+    ```csharp
+    // Method to join the second channel.
+    public void JoinSecondChannel()
+    {
+        if (agoraEngineEx != null)
+        {
+            if (string.IsNullOrEmpty(configData.secondChannelToken) || string.IsNullOrEmpty(configData.secondChannelName))
+            {
+                Debug.Log("please specify a valid channel name and a token for the second channel");
+                return;
+            }
+            ChannelMediaOptions mediaOptions = new ChannelMediaOptions();
+            mediaOptions.autoSubscribeAudio.SetValue(true);
+            mediaOptions.autoSubscribeVideo.SetValue(true);
+            mediaOptions.publishCameraTrack.SetValue(true);
+            mediaOptions.publishMicrophoneTrack.SetValue(true);
+            mediaOptions.channelProfile.SetValue(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
+            mediaOptions.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+            rtcSecondConnection = new RtcConnection();
+            rtcSecondConnection.channelId = configData.secondChannelName;
+            rtcSecondConnection.localUid = configData.secondChannelUID;
+            agoraEngineEx.JoinChannelEx(configData.secondChannelToken, rtcSecondConnection, mediaOptions);
+        }
+        else
+        {
+            Debug.Log("Engine was not initialized");
+        }
+    }
+
+    // Method to leave the second channel.
+    public void LeaveSecondChannel()
+    {
+        if (agoraEngineEx != null)
+        {
+            agoraEngineEx.LeaveChannelEx(rtcSecondConnection);
+        }
+    }
+    ```
+    For more details, see the following:
+
+    - <Link to= "{{global.API_REF_UNITY_ROOT}}/class_irtcengineex.html#api_irtcengine_irtcengineex_joinchannelex">JoinChannelEx</Link>
+    - <Link to= "{{global.API_REF_UNITY_ROOT}}/class_irtcengineex.html#api_irtcengine_irtcengineex_leavechannelex">LeaveChannelEx</Link>
+
+1. **Dispose of the engine instance**
+
+    ```csharp
+    // Dispose of the engine instance
+    public override void DestroyEngine()
+    {
+        base.DestroyEngine();
+        if(agoraEngineEx != null)
+        {
+            LeaveSecondChannel();
+            agoraEngineEx.Dispose();
+        }
+    }
+    ```
+    For more details, see the following:
+
+    - <Link to= "{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_release">Dispose</Link>
+ 
+
 </PlatformWrapper>

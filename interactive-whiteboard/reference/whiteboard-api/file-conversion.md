@@ -10,7 +10,7 @@ description: >
 
 <div class="alert info">This page applies to the new version of file conversion. For the main differences between the old and new versions, see [Version comparison](/en/interactive-whiteboard/develop/file-conversion-overview#version-comparison). If you use the old file conversion, see [Old File Conversion RESTful API Reference](/en/interactive-whiteboard/reference/whiteboard-api/file-conversion-deprecated). </div>
 
-<div class="alert note">Before calling the RESTful API for file conversion, ensure that you have done the following:<ul><li>You have enabled <b>Docs to Picture</b> or <b>Docs to Web</b> and configured storage settings in <a href="https://console.agora.io/">Agora Console</a>. See [Enable server-side supporting features](/en/interactive-whiteboard/develop/enable-whiteboard#enable-whiteboard-server-side-features).</li> <li>You have generated a URL address for the file you want to convert, and the address is publicly accessible.</li></ul></div>
+<div class="alert note">Before calling the RESTful API for file conversion, ensure that you have done the following:<ul><li>You have enabled <b>Docs to Picture</b> or <b>Docs to Web</b> and configured storage settings in <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>. See [Enable server-side supporting features](/en/interactive-whiteboard/develop/enable-whiteboard#enable-whiteboard-server-side-features).</li> <li>You have generated a URL address for the file you want to convert, and the address is publicly accessible.</li></ul></div>
 
 
 ## Start file conversion

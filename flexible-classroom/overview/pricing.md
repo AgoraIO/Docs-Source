@@ -1,6 +1,6 @@
 ---
 title: Pricing
-sidebar_position: 1
+sidebar_position: 8
 description: >
     Provides you with information on Flexible Classroom pricing
 ---

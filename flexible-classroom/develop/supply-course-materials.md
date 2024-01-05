@@ -1,5 +1,5 @@
 ---
-title: "Supply course materials"
+title: "Upload course materials"
 sidebar_position: 6
 type: docs
 description: >

@@ -33,7 +33,7 @@ If you want to upload the courseware to third-party cloud storage or to your own
    - `conversionFileUrl`: String. Indicates the URL of the generated image.
    - `preview`: String. Indicates the address of the preview. This field is returned only when `preview` is set as `true` and `type` is set as `dynamic` in the request body when starting file conversion.
 
-1. When you call [launch](../reference/classroom-sdk#launch) on your client, pass in the list of converted files by setting the [courseWareList](../reference/classroom-sdk#configcourseware) parameter. Then students can see the courseware in the classroom.
+1. When you call [launch](../client-api/classroom-sdk#launch) on your client, pass in the list of converted files by setting the [courseWareList](../reference/classroom-sdk#configcourseware) parameter. Then students can see the courseware in the classroom.
 
    ```json
    courseWareList:

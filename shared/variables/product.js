@@ -68,14 +68,6 @@ const data = {
       STREAM: 'interactive live streaming or broadcast streaming',
   },
 
-  'media-gateway': {
-    NAME: 'Media Gateway',
-    PATH: 'media-gateway',
-    SDK: 'Media Gateway',
-    PRODUCT: 'Media Gateway',
-    STREAM: 'RTMP/SRT streaming',
-  },
-
   'broadcast-streaming': {
     NAME: 'Broadcast Streaming',
     PATH: 'broadcast-streaming',

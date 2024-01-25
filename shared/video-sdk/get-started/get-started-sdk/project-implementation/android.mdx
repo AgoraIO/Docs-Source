@@ -1,5 +1,283 @@
 <PlatformWrapper platform = "android">
 
+This section shows you how to implement a basic, real-time audio and video <Vpl k="CLIENT"/>. 
+The following figure shows the basic process of using <Vpd k="SDK"/> to achieve audio and video interaction:
 
+![](/images/video-sdk/tmp_quick-start-sequence.jpg)
+
+A complete code sample that implements the basic process of real-time interaction is presented here for reference. Copy the sample code into your project to quickly implement the basic functions of real-time audio and video interaction. Then, follow the implementation steps to understand the core API calls.
+
+To use the sample code in your project, copy the following lines into the `/app/src/main/java/com/example/<projectname>/MainActivity.java` file and replace `package com.example.<projectname>` with the name of your project.
+
+<Admonition title="Information" type="info">In the `appId`, and `token` fields, enter the corresponding values you obtained from <Vg k="CONSOLE"/>. Use the same `channelName` you filled in when generating the temporary token.</Admonition>
+
+```java
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.view.SurfaceView;
+import android.widget.FrameLayout;
+
+import android.os.Bundle;
+import io.agora.rtc2.Constants;
+import io.agora.rtc2.IRtcEngineEventHandler;
+import io.agora.rtc2.RtcEngine;
+import io.agora.rtc2.RtcEngineConfig;
+import io.agora.rtc2.video.VideoCanvas;
+import io.agora.rtc2.ChannelMediaOptions;
+
+public class MainActivity extends AppCompatActivity {
+    // Fill in the App ID from Agora console
+    private String appId = "<Your App ID>";
+    // Fill in the channel name
+    private String channelName = "<Your channel name>";
+    // Fill in the temporary Token generated from Agora Console
+    private String token = "<Your token>";
+
+    private RtcEngine mRtcEngine;
+
+    private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {
+        @Override
+        // Monitor remote users in the channel and obtain their uid
+        public void onUserJoined(int uid, int elapsed) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    // After obtaining uid, set up the remote video view
+                    setupRemoteVideo(uid);
+                }
+            });
+        }
+    };
+
+    private void initializeAndJoinChannel() {
+        try {
+            // Create an RtcEngineConfig instance and configure it
+            RtcEngineConfig config = new RtcEngineConfig();
+            config.mContext = getBaseContext();
+            config.mAppId = appId;
+            config.mEventHandler = mRtcEventHandler;
+            // Create and initialize an RtcEngine instance
+            mRtcEngine = RtcEngine.create(config);
+        } catch (Exception e) {
+            throw new RuntimeException("Check the error.");
+        }
+        // Enable the video module
+        mRtcEngine.enableVideo();
+        
+        // Enable local preview
+        mRtcEngine.startPreview();
+
+        // Create a SurfaceView object and make it a child object of FrameLayout
+        FrameLayout container = findViewById(R.id.local_video_view_container);
+        SurfaceView surfaceView = new SurfaceView (getBaseContext());
+        container.addView(surfaceView);
+        // Pass the SurfaceView object to the SDK and set the local view
+        mRtcEngine.setupLocalVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, 0));
+
+        // Create an instance of ChannelMediaOptions and configure it
+        ChannelMediaOptions options = new ChannelMediaOptions();
+        //Set the user role to BROADCASTER or AUDIENCE according to the scenario
+        options.clientRoleType = Constants.CLIENT_ROLE_BROADCASTER;
+        // In the live broadcast scenario, set the channel scene to BROADCASTING (live broadcast scenario)
+        options.channelProfile = Constants.CHANNEL_PROFILE_LIVE_BROADCASTING;
+
+        // Use the temporary token to join thea channel
+        // Specify the user ID yourself and ensure it is unique within the channel
+        mRtcEngine.joinChannel(token, channelName, 0, options);
+    }
+
+    private void setupRemoteVideo(int uid) {
+        FrameLayout container = findViewById(R.id.remote_video_view_container);
+        SurfaceView surfaceView = new SurfaceView (getBaseContext());
+        surfaceView.setZOrderMediaOverlay(true);
+        container.addView(surfaceView);
+        // Pass the SurfaceView object to the SDK and set the remote view
+        mRtcEngine.setupRemoteVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, uid));
+    }
+
+    private static final int PERMISSION_REQ_ID = 22;
+
+    // Obtain recording, camera and other permissions required to implement real-time audio and video interaction
+    private String[] getRequiredPermissions(){
+        // Determine the permissions required when targetSDKVersion is 31 or above
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            return new String[]{
+                    Manifest.permission.RECORD_AUDIO, // Recording permission
+                    Manifest.permission.CAMERA, // Camera permission
+                    Manifest.permission.READ_PHONE_STATE, // Permission to read phone status
+                    Manifest.permission.BLUETOOTH_CONNECT // Bluetooth connection permission
+            };
+        } else {
+            return new String[]{
+                    Manifest.permission.RECORD_AUDIO,
+                    Manifest.permission.CAMERA
+            };
+        }
+    }
+
+    private boolean checkPermissions() {
+        for (String permission : getRequiredPermissions()) {
+            int permissionCheck = ContextCompat.checkSelfPermission(this, permission);
+            if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        // If authorized, initialize RtcEngine and join the channel
+        if (checkPermissions()) {
+            initializeAndJoinChannel();
+        } else {
+            ActivityCompat.requestPermissions(this, getRequiredPermissions(), PERMISSION_REQ_ID);
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Stop local video preview
+        mRtcEngine.stopPreview();
+        // Leave the channel
+        mRtcEngine.leaveChannel();
+    }
+}
+```
+
+### Handle permissions
+
+This section describes how to import Android-related classes and obtain the camera, recording, and other permissions of Android devices.
+
+1. Import Android related classes
+
+    ```java
+    import androidx.appcompat.app.AppCompatActivity;
+    import androidx.core.app.ActivityCompat;
+    import androidx.core.content.ContextCompat;
+
+    import android.Manifest;
+    import android.content.pm.PackageManager;
+    import android.view.SurfaceView;
+    import android.widget.FrameLayout;
+    ```
+
+1. Get Android permissions
+
+    When launching the app, check that the necessary permissions for real-time interaction have been granted in the app.
+
+    ```java
+    private static final int PERMISSION_REQ_ID = 22;
+
+    // Obtain recording, camera and other permissions required to implement real-time audio and video interaction
+    private String[] getRequiredPermissions(){
+        // Determine the permissions required when targetSDKVersion is 31 or above
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            return new String[]{
+                    Manifest.permission.RECORD_AUDIO, // Recording permission
+                    Manifest.permission.CAMERA, // Camera permission
+                    Manifest.permission.READ_PHONE_STATE, // Permission to read phone status
+                    Manifest.permission.BLUETOOTH_CONNECT // Bluetooth connection permission
+            };
+        } else {
+            return new String[]{
+                    Manifest.permission.RECORD_AUDIO,
+                    Manifest.permission.CAMERA
+            };
+        }
+    }
+    ```
+### Import Agora classes
+
+Import the relevant Agora classes and interfaces:
+
+```java
+import io.agora.rtc2.Constants;
+import io.agora.rtc2.IRtcEngineEventHandler;
+import io.agora.rtc2.RtcEngine;
+import io.agora.rtc2.RtcEngineConfig;
+import io.agora.rtc2.video.VideoCanvas;
+import io.agora.rtc2.ChannelMediaOptions;
+```
+
+### Define variables for the App ID and Token
+
+Pass in the App ID, and temporary token obtained from <Vg k="CONSOLE"/>. Use the channel name you filled in when generating the temporary token. You use these values to initialize the engine and join a channel.
+
+```java
+// Fill in the App ID from Agora console
+private String appId = "<Your App ID>";
+// Fill in the channel name
+private String channelName = "<Your channel name>";
+// Fill in the temporary Token generated from Agora Console
+private String token = "<#Your Token#>";
+```
+
+### Initialize the engine
+
+Call the `create` method to initialize the `RtcEngine` instance.
+
+```java
+private RtcEngine mRtcEngine;
+
+private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {
+@Override
+    // Monitor remote users in the channel and obtain their uid
+    public void onUserJoined(int uid, int elapsed) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                // After obtaining uid, set up the remote video view
+                setupRemoteVideo(uid);
+            }
+        });
+    }
+};
+
+// Create an RtcEngineConfig instance and configure it
+RtcEngineConfig config = new RtcEngineConfig();
+config.mContext = getBaseContext();
+config.mAppId = appId;
+config.mEventHandler = mRtcEventHandler;
+// Create and initialize an RtcEngine instance
+mRtcEngine = RtcEngine.create(config);
+```
+
+### Enable the video module
+
+Follow these steps to enable the video module:
+
+1. Call `enableVideo` to enable the video module.
+1. Call `startPreview` to enable local video preview.
+1. Call `setupLocalVideo` to initialize the local view and set the local video display properties.
+
+```java
+
+```
+
+### Join a channel and publish audion and video streams
+
+```java
+
+```
+
+### Set up a remote view
+
+```java
+
+```
+
+### Start and close the app
+
+```java
+
+```
 
 </PlatformWrapper>

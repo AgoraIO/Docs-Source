@@ -1,5 +1,5 @@
 ---
-title: "Capture screenshots"
+title: "Cloud-based screenshot upload"
 sidebar_position: 11
 type: docs
 platform_selector: false

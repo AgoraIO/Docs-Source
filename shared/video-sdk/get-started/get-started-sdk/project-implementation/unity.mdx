@@ -18,21 +18,23 @@ Best practice suggests separating the workflows involving <Vpd k="NAME" /> from 
 1. **Import the <Vpd k="SDK" /> classes and interfaces**
 
     ``` csharp
-    using UnityEngine.UI;
     using Agora.Rtc;
-    using System;
-    using System.IO;
     ```
 
 1.  **Declare variables to create an <Vg k="ENGINE" /> instance and join a channel**
 
     ``` csharp
-    // Define the required variables
+    // Define some variables to be used later.
     internal string _appID;
     internal string _channelName;
     internal string _token;
     internal uint remoteUid;
-    internal IRtcEngine RtcEngine;
+    internal IRtcEngine agoraEngine;
+    internal VideoSurface LocalView;
+    internal VideoSurface RemoteView;
+    internal ConfigData configData;
+    internal AREA_CODE region = AREA_CODE.AREA_CODE_GLOB;
+    internal string userRole = "";
     ```
     
 1. **Request camera and microphone permissions**
@@ -62,47 +64,225 @@ Best practice suggests separating the workflows involving <Vpd k="NAME" /> from 
 1.  **Configure an <Vg k="ENGINE" /> instance and set up an event handler**
 
     ``` csharp
-    public virtual void  SetupVideoSDKEngine()
+    // Define a public function called SetupAgoraEngine to setup the video SDK engine.
+    public virtual void SetupAgoraEngine()
     {
-        LoadConfigFromJSON();
+        if(_appID == "" || _token == "")
+        {
+            Debug.Log("Please set an app ID and a token in the config file.");
+            return;
+        }
         // Create an instance of the video SDK engine.
-        RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
-        if(configData.product == "Video Calling")
-        {
-            // Specify the context configuration to initialize the created instance.
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-            CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_COMMUNICATION,
-            AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT, AREA_CODE.AREA_CODE_GLOB, null);
+        agoraEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
 
-            // Initialize the instance with the specified context.
-            RtcEngine.Initialize(context);
-        }
-        else
-        {
-            // Specify the context configuration to initialize the created instance.
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-            CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-            AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT, AREA_CODE.AREA_CODE_GLOB, null);
+        // Set context configuration based on the product type
+        CHANNEL_PROFILE_TYPE channelProfile = configData.product == "Video Calling"
+            ? CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_COMMUNICATION
+            : CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
 
-            // Initialize the instance with the specified context.
-            RtcEngine.Initialize(context);
-        }
+        RtcEngineContext context = new RtcEngineContext(_appID, 0, channelProfile,
+            AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT, region, null);
+
+        agoraEngine.Initialize(context);
 
         // Enable the video module.
-        RtcEngine.EnableVideo();
+        agoraEngine.EnableVideo();
 
         // Set the user role as broadcaster.
-        RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+        agoraEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+
+        // Attach the eventHandler
+        InitEventHandler();
 
     }
     ```
+    For more details, see the following:
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_createagorartcengine">CreateAgoraRtcEngine</Link>
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_rtcengineconfig.html">RtcEngineContext</Link>
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_initialize">Initialize</Link>
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_enablevideo">EnableVideo</Link>
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_addhandler">InitEventHandler</Link>
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_setclientrole">SetClientRole</Link>
+
+    ``` csharp
+    // An event handler class to deal with video SDK events
+    internal class UserEventHandler : IRtcEngineEventHandler
+    {
+        internal readonly AgoraManager agoraManager;
+        internal UserEventHandler(AgoraManager videoSample)
+        {
+            agoraManager = videoSample;
+        }
+        // This callback is triggered when the local user joins the channel.
+        public override void OnJoinChannelSuccess(RtcConnection connection, int elapsed)
+        {
+            Debug.Log("You joined channel: " +connection.channelId);
+        }
+        // This callback is triggered when a remote user leaves the channel or drops offline.
+        public override void OnUserOffline(RtcConnection connection, uint uid, USER_OFFLINE_REASON_TYPE reason)
+        {
+            agoraManager.DestroyVideoView(uid);
+        }
+        public override void OnUserJoined(RtcConnection connecn, uint uid, int elapsed)
+        {
+            agoraManager.MakeVideoView(uid);
+            // Save the remote user ID in a variable.
+            agoraManager.remoteUid = uid;
+        }
+    }
+    ```
+    For more details, see the following:
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_irtcengineeventhandler.html#callback_irtcengineeventhandler_onjoinchannelsuccess">OnJoinChannelSuccess</Link>
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_irtcengineeventhandler.html#callback_irtcengineeventhandler_onuseroffline">OnUserOffline</Link>
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_irtcengineeventhandler.html#callback_irtcengineeventhandler_onuserjoined">OnUserJoined</Link>
+
+1.  **Setup remote user video views**
+
+    ``` csharp
+        // Dynamically create views for the remote users
+    public void MakeVideoView(uint uid)
+    {
+        // Create and configure a remote user's video view
+        AgoraUI agoraUI = new AgoraUI();
+        GameObject userView = agoraUI.MakeRemoteView(uid.ToString());
+        userView.AddComponent<AgoraUI>();
+
+        VideoSurface videoSurface = userView.AddComponent<VideoSurface>();
+        videoSurface.SetForUser(uid, _channelName, VIDEO_SOURCE_TYPE.VIDEO_SOURCE_REMOTE);
+        videoSurface.OnTextureSizeModify += (int width, int height) =>
+        {
+            float scale = (float)height / (float)width;
+            videoSurface.transform.localScale = new Vector3(-5, 5 * scale, 1);
+            Debug.Log("OnTextureSizeModify: " + width + " " + height);
+        };
+        videoSurface.SetEnable(true);
+        RemoteView = videoSurface;
+    }
+    ```
+    For more details, see the following:
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_agoravideosurface.html#class_agoravideosurface">VideoSurface</Link>
+
+1.  **Join a channel to start <Vpd k="PRODUCT" />**
+    <ProductWrapper product="{['interactive-live-streaming', 'broadcast-streaming']}">
+    ``` csharp
+    public virtual void Join()
+    {
+        // Create an instance of the engine.
+        SetupAgoraEngine();
+
+        // Set the local video view.
+        LocalView.SetForUser(configData.uid, _channelName);
+
+        // Start rendering local video.
+        LocalView.SetEnable(true);
+
+        // Join the channel using the specified token and channel name.
+        agoraEngine.JoinChannel(configData.rtcToken, configData.channelName);
+    }
+    public virtual void SetClientRole(string role)
+    {
+        if(agoraEngine == null)
+        {
+            Debug.Log("Click join and then change the client role!");
+            return;
+        }
+        userRole = role;
+        if (role == "Host")
+        {
+            agoraEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+        }
+        else if(role == "Audience")
+        {
+            agoraEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_AUDIENCE);
+        }
+    }
+    ```
+    </ProductWrapper>
+    <ProductWrapper product="{['video-calling']}">
+    ```csharp
+    public virtual void Join()
+    {
+        // Create an instance of the engine.
+        SetupAgoraEngine();
+
+        // Set the local video view.
+        LocalView.SetForUser(configData.uid, _channelName);
+
+        // Start rendering local video.
+        LocalView.SetEnable(true);
+
+        // Join the channel using the specified token and channel name.
+        agoraEngine.JoinChannel(configData.rtcToken, configData.channelName);
+    }
+    ```
+    </ProductWrapper>
+    For more details, see the following:
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_agoravideosurface.html#api_videosurface_setforuser">SetForUser</Link>
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_agoravideosurface.html#api_videosurface_setenable">SetEnable</Link>
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_joinchannel">JoinChannel</Link>
+
+
+1.  **Leave the channel when the local user ends the call**
+
+    ``` csharp
+    // Define a public function called Leave() to leave the channel.
+    public virtual void Leave()
+    {
+        if (agoraEngine != null)
+        {
+            // Leave the channel and clean up resources
+            agoraEngine.LeaveChannel();
+            agoraEngine.DisableVideo();
+            LocalView.SetEnable(false);
+            DestroyVideoView(remoteUid);
+            DestroyEngine();
+        }
+    }
+    ```
+    For more details, see the following:
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_leavechannel">LeaveChannel</Link>
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_disablevideo">DisableVideo</Link>
+
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_agoravideosurface.html#api_videosurface_setenable">SetEnable</Link>
+
+
+1.  **Destroy the video view on remote user exit**
+
+    ```csharp
+    // Destroy the remote user's video view when they leave
+    public void DestroyVideoView(uint uid)
+    {
+        var userView = GameObject.Find(uid.ToString());
+        if (!ReferenceEquals(userView, null))
+        {
+            userView.SetActive(false); // Deactivate the GameObject
+        }
+    }
+    ``
 
 1.  **Handle and respond to  <Vg k="ENGINE" /> events**
 
-    ``` csharp
+    ```csharp
+    // An event handler class to deal with video SDK events
     internal class UserEventHandler : IRtcEngineEventHandler
     {
         internal readonly AgoraManager _videoSample;
+        
         internal UserEventHandler(AgoraManager videoSample)
         {
             _videoSample = videoSample;
@@ -115,125 +295,34 @@ Best practice suggests separating the workflows involving <Vpd k="NAME" /> from 
         // This callback is triggered when a remote user leaves the channel or drops offline.
         public override void OnUserOffline(RtcConnection connection, uint uid, USER_OFFLINE_REASON_TYPE reason)
         {
-            _videoSample.RemoteView.SetEnable(false);
             _videoSample.DestroyVideoView(uid);
         }
         public override void OnUserJoined(RtcConnection connection, uint uid, int elapsed)
         {
             _videoSample.MakeVideoView(uid);
+            
             // Save the remote user ID in a variable.
             _videoSample.remoteUid = uid;
         }
     }
     ```
 
-1.  **Setup remote user video views**
+1.  **Clean up resources used by the app**
 
     ``` csharp
-    public void MakeVideoView(uint uid)
-    {
-        var go = GameObject.Find(uid.ToString());
-        if (!ReferenceEquals(go, null))
-        {
-            return; // reuse
-        }
-
-        // create a GameObject and assign to this new user
-        var videoSurface = MakeImageSurface(uid.ToString());
-        if (ReferenceEquals(videoSurface, null)) return;
-        // configure videoSurface
-        
-        videoSurface.SetForUser(uid, _channelName, VIDEO_SOURCE_TYPE.VIDEO_SOURCE_REMOTE);
-        videoSurface.OnTextureSizeModify += (int width, int height) =>
-        {
-            float scale = (float)height / (float)width;
-            videoSurface.transform.localScale = new Vector3(-5, 5 * scale, 1);
-            Debug.Log("OnTextureSizeModify: " + width + "  " + height);
-        };
-        videoSurface.SetEnable(true);
-    }
-    public VideoSurface MakeImageSurface(string goName)
-    {
-        GameObject go = new GameObject();
-
-        if (go == null)
-        {
-            return null;
-        }
-        go.name = goName;
-        // to be rendered onto
-        go.AddComponent<RawImage>();
-
-        go.transform.SetParent(GameObject.Find("Content").transform); // Set parent to the Content of ScrollView
-        // set up transform
-        go.transform.Rotate(0f, 0.0f, 180.0f);
-        go.transform.localPosition = Vector3.zero;
-        go.transform.localScale = new Vector3(2f, 3f, 1f);
-
-        // configure videoSurface
-        var videoSurface = go.AddComponent<VideoSurface>();
-        return videoSurface;
-    }
-    ```
-
-1.  **Join a channel to start <Vpd k="PRODUCT" />**
-
-    ``` csharp
-    public virtual void Join()
-    {
-        // Set the local video view.
-        LocalView.SetForUser(0, "", VIDEO_SOURCE_TYPE.VIDEO_SOURCE_CAMERA);
-
-        // Start rendering local video.
-        LocalView.SetEnable(true);
-
-        // Join the channel using the specified token and channel name.
-        RtcEngine.JoinChannel(_token, _channelName);
-    }
-    ```
-
-1.  **Leave the channel when the local user ends the call**
-
-    ``` csharp
-    public virtual void Leave()
-    {
-        // Leave the channel.
-        RtcEngine.LeaveChannel();
-
-        // Disable the video modules.
-        RtcEngine.DisableVideo();
-
-        // Stop rendering the remote video.
-        RemoteView.SetEnable(false);
-
-        // Stop rendering the local video.
-        LocalView.SetEnable(false);
-    }
-    ```
-
-1.  **Destroy the video view on remote user exit**
-
-    ```csharp
+    // Destroy the remote user's video view when they leave
     public void DestroyVideoView(uint uid)
     {
-        var go = GameObject.Find(uid.ToString());
-        if (!ReferenceEquals(go, null))
+        var userView = GameObject.Find(uid.ToString());
+        if (!ReferenceEquals(userView, null))
         {
-            go.SetActive(false); // Deactivate the GameObject
+            userView.SetActive(false); // Deactivate the GameObject
         }
     }
     ```
+    For more details, see the following:
 
-1.  **Clean up the resources used by the app**
+    - <Link to="{{Global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_release">Dispose</Link>
 
-    ``` csharp
-    public void OnDestroy()
-    {
-        if(RtcEngine != null)
-            RtcEngine.LeaveChannel();
-            RtcEngine.Dispose();
-    }
-    ```
 
- 
 </PlatformWrapper>

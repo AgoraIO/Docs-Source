@@ -107,6 +107,7 @@ export const VSDK_FLUTTER_RELEASE = '6.0.0-rc.2';
 export const VSDK_LATEST_RELEASE = '4.1.0';
 
 export const AV = 'Audio/Video';
+export const SCR_SHR = 'screen sharing';
 
 export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;

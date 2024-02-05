@@ -1,90 +1,41 @@
 <PlatformWrapper platform="unity">
-        
-### Implement the user interface
 
-In a real-word application, you provide several buttons to enable a user to open, play, pause and stop playing files in the media player. In this page, you use a single `Button` to demonstrate the basic media player functions. You also add a `Slider` to display the play progress to the user. To implement this user interface, take the following steps:
+The `PlayMediaManager` class manages media streaming logic within the channel:
 
-    1. Right-click **Sample Scene**, then click **Game Object** > **UI** > **Button - TextMeshPro**. A button appears in the **Scene** Canvas.
-
-    2. In **Inspector**, rename **Button** to **playMedia**, and then change the following coordinates:
-
-        * **Pos X** - 350
-        * **Pos Y** - 172
-
-    3. Right-click **Sample Scene**, then click **Game Object** > **UI** > **Slider**. A Slider appears in the **Scene** Canvas.
-
-    4. In **Inspector**, rename **Slider** to **mediaProgressBar**, and then change the following coordinates:
-    
-        * **Pos X** - -250
-        * **Pos Y** - 142
-
-### Handle the system logic
-
-To declare the required variables and access the UI elements, take the following steps:
-
-1.  **Add the required UI library**
-
-    To import the required Uinty UI library, in your script file, add the following to the list of namespace declarations:
-
-    ``` csharp
-    using TMPro;
-    ```
-
-2.  **Declare the variables you need**
-
-    To create and manage an instance of the media player and access the UI elements, in your script file, add the following declarations to `NewBehaviourScript`:
-
-    ``` csharp
-    private IMediaPlayer mediaPlayer; // Instance of the media player
-    private bool isMediaPlaying = false;
-    private long mediaDuration = 0;
-    public Slider ProgressBar;
-    // In a real world app, you declare the media location variable with an empty string
-    // and update it when a user chooses a media file from a local or remote source.
-    private string mediaLocation =
-        "https://webdemo.agora.io/agora-web-showcase/examples/Agora-Custom-VideoSource-Web/assets/sample.mp4";
-    private TMP_Text mediaBtnText;
-    private Slider mediaProgressBar;
-    ```
-
-### Implement media player functions
-
-To implement playing and publishing media files in your <Vpl k="CLIENT" />, take the following steps:
-
-1. **Access the UI elements programmatically**
-
-   To setup the event listener for the media player button and access the slider, in your script file, add the following at the end of `SetupUI`:
+1. **Import the required namespace**
 
     ```csharp
-    go = GameObject.Find("playMedia");
-    go.GetComponent<Button>().onClick.AddListener(playMedia);
-    mediaBtnText = go.GetComponentInChildren<TextMeshProUGUI>(true);
-    mediaBtnText.text = "Play Audio";
-    mediaBtnText.fontSize = 14;
-    go = GameObject.Find("mediaProgressBar");
-    mediaProgressBar = go.GetComponent<Slider>();
+    using Agora.Rtc;
+    ```
+
+1.  **Declare the variables you need**
+
+    ``` csharp
+    internal IMediaPlayer mediaPlayer; // Instance of the media player
+    internal bool isMediaPlaying = false;
+    internal long mediaDuration = 0;    
     ```
 
 1.  **Open, play and pause media files**
 
     When a user presses the button for the first time, you create an instance of the media player, set its `mediaPlayerObserver` to receive the callbacks, and open the media file. When the user presses the button again, you play the media file. On subsequent button presses, you pause or resume playing the media file alternately. To implement this workflow, in your script file, add the following method to `NewBehaviourScript`:
 
-    ``` csharp
+    ```csharp
     public void playMedia() {
         // Initialize the mediaPlayer and open a media file
         if (mediaPlayer == null) {
-            // Create an instance of the media player
-            mediaPlayer = RtcEngine.CreateMediaPlayer();
-            // Create an instance of mediaPlayerObserver class
-            MediaPlayerObserver mediaPlayerObserver = new MediaPlayerObserver(this);
-            // Set the mediaPlayerObserver to receive callbacks
-            mediaPlayer.InitEventHandler(mediaPlayerObserver);
-            // Open the media file
-            mediaPlayer.Open(mediaLocation, 0);
-            mediaBtnText.text = "Opening Media File...";
-            return;
+        // Create an instance of the media player
+        mediaPlayer = agoraEngine.CreateMediaPlayer();
+        // Create an instance of mediaPlayerObserver class
+        PlayMediaEventHandler mediaPlayerObserver = new PlayMediaEventHandler(this);
+        // Set the mediaPlayerObserver to receive callbacks
+        mediaPlayer.InitEventHandler(mediaPlayerObserver);
+        // Open the media file
+        mediaPlayer.Open(configData.mediaURL, 0);
+        playMediaBtnText.text = "Opening Media File...";
+        return;
         }
-
+        
         // Set up the local video container to handle the media player output
         // or the camera stream, alternately.
         isMediaPlaying = !isMediaPlaying;
@@ -92,20 +43,20 @@ To implement playing and publishing media files in your <Vpl k="CLIENT" />, take
         updateChannelPublishOptions(isMediaPlaying);
         // Display the stream locally
         setupLocalVideo(isMediaPlaying);
-
+        
         MEDIA_PLAYER_STATE state = mediaPlayer.GetState();
-        if (isMediaPlaying) { // Start or resume playing media
+        if (isMediaPlaying) { // Play or resume playing media
             if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_OPEN_COMPLETED) {
                 mediaPlayer.Play();
             } else if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_PAUSED) {
                 mediaPlayer.Resume();
             }
-            mediaBtnText.text = "Pause Playing Media";
+            playMediaBtnText.text = "Pause Playing Media";
         } else {
             if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_PLAYING) {
-                // Pause media file
+                // Pause media.
                 mediaPlayer.Pause();
-                mediaBtnText.text = "Resume Playing Media";
+                playMediaBtnText.text = "Resume Playing Media";
             }
         }
     }
@@ -113,59 +64,62 @@ To implement playing and publishing media files in your <Vpl k="CLIENT" />, take
 
 2.  **Manage media player callbacks**
 
-    The `IMediaPlayerSourceObserver` class implements media player callbacks. To setup the media player callback, create a new class from `IMediaPlayerSourceObserver` and specify the required callback in the class. When the player state changes, you take appropriate actions to update the UI in `OnPlayerSourceStateChanged`. You use `OnPositionChanged` to update the progress bar. To implement the media player callbacks in your <Vpl k="CLIENT" />, in your script file, add the following code to `NewBehaviourScript`:
-
     ``` csharp
-    internal class MediaPlayerObserver : IMediaPlayerSourceObserver
+    internal class PlayMediaEventHandler : IMediaPlayerSourceObserver
     {
-        private readonly NewBehaviourScript _videoSample;
-        
-        internal MediaPlayerObserver(NewBehaviourScript videoSample)
+        private PlayMediaManager playMedia;
+        internal PlayMediaEventHandler(PlayMediaManager refPlayMedia)
         {
-            _videoSample = videoSample;
+            playMedia = refPlayMedia;
         }
-        public override void OnPlayerSourceStateChanged(MEDIA_PLAYER_STATE state, MEDIA_PLAYER_ERROR error) 
+        public override void OnPlayerSourceStateChanged(MEDIA_PLAYER_STATE state, MEDIA_PLAYER_ERROR error)
         {
             Debug.Log(state.ToString());
-            if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_OPEN_COMPLETED) 
+            if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_OPEN_COMPLETED)
             {
                 // Media file opened successfully. Get the duration of file to setup the progress bar.
-                _videoSample.mediaPlayer.GetDuration(ref _videoSample.mediaDuration);
-                Debug.Log("File duration is : " + _videoSample.mediaDuration);
+                playMedia.mediaPlayer.GetDuration(ref playMedia.mediaDuration);
+                Debug.Log("File duration is : " + playMedia.mediaDuration);
                 // Update the UI
-                _videoSample.mediaBtnText.text = "Play Media File";
-                _videoSample.mediaProgressBar.value = 0;
-                _videoSample.mediaProgressBar.maxValue = _videoSample.mediaDuration/1000;
+                Debug.Log("File opened successfully click `Play Media File` to play the file");
+                playMedia.playMediaBtnText.text = "Play Media File";
+                playMedia.mediaProgressBar.value = 0;
+                playMedia.mediaProgressBar.maxValue = playMedia.mediaDuration / 1000;
             }
-            else if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_PLAYBACK_ALL_LOOPS_COMPLETED) 
+            else if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_PLAYBACK_ALL_LOOPS_COMPLETED)
             {
-                _videoSample.isMediaPlaying = false;
+                playMedia.isMediaPlaying = false;
                 // Media file finished playing
-                _videoSample.mediaBtnText.text = "Load Media File";
+                playMedia.playMediaBtnText.text = " Media File";
                 // Restore camera and microphone streams
-                _videoSample.setupLocalVideo(false);
-                _videoSample.updateChannelPublishOptions(false);
+                playMedia.setupLocalVideo(false);
+                playMedia.updateChannelPublishOptions(false);
                 // Clean up
-                _videoSample.mediaPlayer.Dispose();
-                _videoSample.mediaPlayer = null;
-                _videoSample.mediaProgressBar.value = 0;
+                playMedia.mediaPlayer.Dispose();
+                playMedia.mediaPlayer = null;
+                playMedia.mediaProgressBar.value = 0;
             }
-        }
-        public override void OnPositionChanged(long position) 
-        {
-            if (_videoSample.mediaDuration > 0) 
+            else if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_FAILED)
             {
-                int result = (int) ((float) position / (float) _videoSample.mediaDuration * 100);
-                Debug.Log(result);
-                // Update the ProgressBar
-                _videoSample.mediaProgressBar.value = result;
+                playMedia.isMediaPlaying = false;
+                Debug.Log("Media player failed :" + error);
+                playMedia.playMediaBtnText.text = "Load Media File";
             }
         }
-        public override void OnPlayerEvent(MEDIA_PLAYER_EVENT eventCode, long elapsedTime, string message) 
+        public override void OnPositionChanged(long position)
+        {
+            if (playMedia.mediaDuration > 0)
+            {
+                int result = (int)((float)position / (float)playMedia.mediaDuration * 100);
+                // Update the ProgressBar
+                playMedia.mediaProgressBar.value = result;
+            }
+        }
+        public override void OnPlayerEvent(MEDIA_PLAYER_EVENT eventCode, long elapsedTime, string message)
         {
             // Required to implement IMediaPlayerObserver
         }
-        public override void OnMetaData(byte[] type, int length) 
+        public override void OnMetaData(byte[] type, int length)
         {
             // Required to implement IMediaPlayerObserver
         }
@@ -174,35 +128,38 @@ To implement playing and publishing media files in your <Vpl k="CLIENT" />, take
 
 3.  **Configure <Vg k="ENGINE" /> to publish the media player stream**
 
-    You use `ChannelMediaOptions` and the `UpdateChannelMediaOptions` method to specify the type of stream to publish. To switch between publishing media player and camera and microphone streams, in your script file, add the following method to `NewBehaviourScript`:
-
     ``` csharp
-    private void updateChannelPublishOptions(bool publishMediaPlayer){
+    public void updateChannelPublishOptions(bool publishMediaPlayer) {
         ChannelMediaOptions channelOptions = new ChannelMediaOptions();
         channelOptions.publishMediaPlayerAudioTrack.SetValue(publishMediaPlayer);
         channelOptions.publishMediaPlayerVideoTrack.SetValue(publishMediaPlayer);
-        channelOptions.publishAudioTrack.SetValue(!publishMediaPlayer);
+        channelOptions.publishMicrophoneTrack.SetValue(!publishMediaPlayer);
         channelOptions.publishCameraTrack.SetValue(!publishMediaPlayer);
-        if (publishMediaPlayer) channelOptions.publishMediaPlayerId.SetValue(mediaPlayer.GetId());
-        RtcEngine.UpdateChannelMediaOptions(channelOptions);
+        if (publishMediaPlayer)
+        {
+            channelOptions.publishMediaPlayerId.SetValue(mediaPlayer.GetId());
+            agoraEngine.UpdateChannelMediaOptions(channelOptions);
+        }
     }
     ```
 
 4.  **Display media player output locally**
 
-    Access the `LocalView` game object from the UI and update its video surface each time when you play and pasue the media player to switch between displaying media player output and the camera stream. To implement this logic, in your script file, add the following method in `NewBehaviourScript`:
-
     ``` csharp
-    private void setupLocalVideo(bool forMediaPlayer) {
-        if (forMediaPlayer) {
-          GameObject go = GameObject.Find("LocalView");
-          // Update the VideoSurface component of the local view object.
-          LocalView = go.AddComponent<VideoSurface>();
-          go.transform.Rotate(0.0f, 180.0f, 0.0f);
-          // Setup local view to display the media file.
-          LocalView.SetForUser((uint)mediaPlayer.GetId(), "", VIDEO_SOURCE_TYPE.VIDEO_SOURCE_MEDIA_PLAYER);
-            
-        } else {
+    public void setupLocalVideo(bool forMediaPlayer)
+    {
+        if (forMediaPlayer)
+        {
+            GameObject go = GameObject.Find("LocalView");
+            // Update the VideoSurface component of the local view object.
+            LocalView = go.AddComponent<VideoSurface>();
+            go.transform.Rotate(0.0f, 180.0f, 0.0f);
+            // Setup local view to display the media file.
+            LocalView.SetForUser((uint)mediaPlayer.GetId(), "", VIDEO_SOURCE_TYPE.VIDEO_SOURCE_MEDIA_PLAYER);
+
+        }
+        else
+        {
             GameObject go = GameObject.Find("LocalView");
             // Update the VideoSurface component of the local view object.
             LocalView = go.AddComponent<VideoSurface>();
@@ -214,12 +171,16 @@ To implement playing and publishing media files in your <Vpl k="CLIENT" />, take
     ```
 6.  **Clean up when you close the <Vpl k="CLIENT" />**
 
-    To free up resources when you exit the <Vpl k="CLIENT" />, in your script file, locate `OnApplicationQuit` and add the following after `RtcEngine = null;`:
-
     ``` csharp
-    // Destroy the media player
-    if (mediaPlayer != null)
-        mediaPlayer.Stop();
-        RtcEngine.DestroyMediaPlayer(mediaPlayer);
+    public override void DestroyEngine()
+    {
+        // Destroy the media player
+        if (mediaPlayer != null)
+        {
+            mediaPlayer.Stop();
+            agoraEngine.DestroyMediaPlayer(mediaPlayer);
+        }
+        base.DestroyEngine();
+    }
     ```
 </PlatformWrapper>

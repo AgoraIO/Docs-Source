@@ -1,0 +1,340 @@
+<PlatformWrapper platform="android">
+
+### Implement the user interface
+
+To show a list of users in the channel and enable the local user to update their status, you add the following elements to the user interface:
+
+* A `TextView` to display a caption
+* A `Button` to switch the local user status
+* A `LinearLayout` inside a `ScrollView` to display a list of users in the channel and their status
+
+To update the UI, in `/app/res/layout/activity_main.xml`, replace the entire `<ScrollView>...</ScrollView>` block with the following:
+
+    ```xml
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@id/userScrollView"
+        android:layout_alignRight="@id/changeUserStatus"
+        android:text="Set status:">
+    </TextView>
+
+    <Button
+        android:id="@+id/changeUserStatus"
+        android:layout_width="125dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/statusText"
+        android:layout_marginLeft="5dp"
+        android:layout_alignParentEnd="true"
+        android:onClick="changeMyStatus"
+        android:text="Available" />
+
+    <ScrollView
+        android:id="@+id/userScrollView"
+        android:layout_width="wrap_content"
+        android:layout_height="100dp"
+        android:layout_marginTop="10dp"
+        android:layout_toLeftOf="@id/changeUserStatus"
+        android:layout_alignParentStart="true"
+        android:layout_below="@id/peer_name"
+        android:background="#eeeeee" >
+
+        <LinearLayout
+            android:id="@+id/userList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+        </LinearLayout>
+    </ScrollView>
+
+    <ScrollView
+        android:id="@+id/messagesScrollView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/userScrollView"
+        android:layout_alignParentBottom="true"
+        android:layout_marginTop="10dp"
+        android:fillViewport="true"
+        android:scrollbars="vertical"
+        android:background="#ECE5DD" >
+
+        <TextView
+            android:id="@+id/message_history"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </ScrollView>
+    ```
+
+### Handle the system logic
+
+This section describes the steps required to use the relevant libraries and declare the necessary variables.
+
+1. Import the required <Vg k="COMPANY" /> and Android libraries
+
+    To read and write metadata and manage UI elements, add the following statements after the last `import` statement in `/app/java/com.example.<projectname>/MainActivity`:
+
+    ```java
+    import io.agora.rtm.RtmMetadataItem;
+    import io.agora.rtm.RtmMetadataOptions;
+    import java.util.ArrayList;
+    import java.util.HashMap;
+    import android.graphics.Color;
+    import android.widget.LinearLayout;
+    ```
+1. Define variables to manage user `TextView`s and the user availability status
+
+    In `/app/java/com.example.<projectname>/MainActivity`, add the following declarations to the `MainActivity` class:
+
+    ```java
+    // Associate the TextView for each user with their user ID
+    private HashMap<String, TextView> userTextViews 
+        = new HashMap<String, TextView>();
+    private boolean isUserBusy = false; // User status
+    ```
+
+### Read and write metadata
+
+To implement the use of metadata, take the following steps:
+
+1. **Set local user metadata**
+
+    After a user successfully logs in to <Vpd k="PRODUCT" />, you clear unwanted metadata from a previous login, and add fresh metadata that you want to share with other users. To do this:
+
+    1. Add the following method to the `MainActivity` class:
+
+        ```java
+        void setLocalUserMetaData() {
+            // Clear previous metadata
+            mRtmClient.clearLocalUserMetadata(new RtmMetadataOptions(), new ResultCallback<Void>() {
+                @Override
+                public void onSuccess(Void unused) { 
+                    // Create an ArrayList of RtmMetadataItems
+                    ArrayList<RtmMetadataItem> metadata = new ArrayList<RtmMetadataItem>();
+                    metadata.add(new RtmMetadataItem("email", uid + "@example.com"));
+                    metadata.add(new RtmMetadataItem("gender", "F"));
+                    metadata.add(new RtmMetadataItem("myStatus", isUserBusy ? "busy" : "available"));
+                    // Set metadata options
+                    RtmMetadataOptions options = new RtmMetadataOptions();
+                    // Set local user metadata
+                    mRtmClient.setLocalUserMetadata(metadata, options, new ResultCallback<Void>() {
+                        @Override
+                        public void onSuccess(Void unused) {
+                            writeToMessageHistory( "Added LocalUserMetadata");
+                        }
+
+                        @Override
+                        public void onFailure(ErrorInfo errorInfo) {
+                            writeToMessageHistory( "addLocalUserMetadata failed, error: " + errorInfo.toString());
+                        }
+                    });
+                }
+
+                @Override
+                public void onFailure(ErrorInfo errorInfo) {
+                    writeToMessageHistory("Failed to clear local user metadata " + errorInfo.toString());
+                }
+            });
+        }
+        ```
+
+    1. Call `setLocalUserMetaData` after login succeeds.
+
+        In `onClickLogin`, add the following to the `onSuccess` callback of `mRtmClient.login`:
+
+        ```java
+        setLocalUserMetaData();
+        ```
+
+1. **Update local user metadata**
+
+    When the local user taps the button to switch their status, you update the user's metadata. To do this, add the following method to the `MainActivity` class:
+
+    ```java
+    public void changeMyStatus(View v){
+        TextView tv = (TextView) v;
+        isUserBusy = !isUserBusy; // Switch status
+        tv.setText(isUserBusy ? "Busy" : "Available"); // Change the button caption
+        ArrayList<RtmMetadataItem> metadata = new ArrayList<RtmMetadataItem>();
+        // Add a RtmMetadataItem to the ArrayList
+        metadata.add(new RtmMetadataItem("myStatus", isUserBusy ? "busy" : "available"));
+        RtmMetadataOptions options = new RtmMetadataOptions();
+        // Update metadata with the new value
+        mRtmClient.updateLocalUserMetadata(metadata, options,null);
+    }
+    ```
+
+1. **Handle the `onUserMetadataUpdated` callback**
+
+    When you receive notification of change in a user's metadata, you update the status of the user in the user list. In `onCreate`, replace the `onUserMetadataUpdated` method under `new RtmClientListener() {` with the following:
+
+    ```java
+    @Override
+    public void onUserMetadataUpdated(String userId, RtmMetadata rtmMetadata) {
+        updateUserInList(userId, rtmMetadata.items.get(0).getValue().equals("busy"));
+    }
+    ```
+
+1. **Show the list of users in a channel**
+
+    When the local user successfully joins a <Vpd k="PRODUCT" /> channel, you call `mRtmChannel.getMembers` to obtain a list of users in the channel and add each user to the user list. To do this:
+
+    1. In the `MainActivity` class, add the following method:
+
+        ```java
+        private void updateChannelMemberList() {
+            // Retrieve a list of users in the channel
+            mRtmChannel.getMembers(new ResultCallback<List<RtmChannelMember>>() {
+                @Override
+                public void onSuccess(List<RtmChannelMember> rtmChannelMembers) {
+                    for (int i = 0; i < rtmChannelMembers.size(); i++) {
+                        RtmChannelMember member = rtmChannelMembers.get(i);
+                        // Add the user to the user list
+                        updateUserInList(member.getUserId(), false);
+                    }
+                }
+
+                @Override
+                public void onFailure(ErrorInfo errorInfo) {
+
+                }
+            });
+        }
+        ```
+
+    1. Call `updateChannelMemberList` after the user successfully joins a channel
+
+        In `onClickJoin`, add the following to the `onSuccess` callback of `mRtmChannel.join`:
+
+        ```java
+        updateChannelMemberList();
+        ```
+
+1. **Display a user in the list**
+
+    To fill the channel user list, you create a `TextView` for each user. At this time, you subscribe to the user's metadata to receive notification of changes. To add or update an item in the user list: 
+    
+    1. Add the following method to the `MainActivity` class:
+
+        ```java
+        void updateUserInList(String userID, boolean busy) {
+            TextView userTextView;
+            if (userTextViews.containsKey(userID)) {
+                // User already in the list, update the TextView
+                userTextView = userTextViews.get(userID);
+            } else {
+                // Create a new TextView
+                userTextView = new TextView(getBaseContext());
+            }
+
+            int iconUnicode = busy ? 0x1F6AB : 0x2705;
+            userTextView.setText(new String(Character.toChars(iconUnicode)) + " " + userID);
+
+            if (!userTextViews.containsKey(userID)) { // Add a new user to the list
+                // Subscribe to metadata change event for the user
+                mRtmClient.subscribeUserMetadata(userID, null);
+                // Set up the user's TextView
+                userTextView.setTag(userID);
+                userTextView.setPadding(10, 5, 5, 5);
+                userTextView.setOnClickListener(onUserClick);
+                userTextView.setBackgroundColor(Color.parseColor("#ADD8E6"));
+                // Add the TextView to the LinearLayout
+                runOnUiThread(() -> {
+                    LinearLayout userList = findViewById(R.id.userList);
+                    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                    params.setMargins(5, 5, 5, 5);
+                    userTextViews.put(userID, userTextView); // Store a TextView reference for future updates
+                    userList.addView(userTextView, params);
+                });
+            }
+        }
+        ```
+
+    1. Add the following to the `onMemberJoined` callback in `onClickJoin`:
+
+        ```java
+        updateUserInList(member.getUserId(), false);
+        ```
+
+1.  **Remove a user from the list**
+
+    When a remote user leaves the channel, you remove the corresponding `TextView` from the user list. To do this:
+
+    1. Add the following method to the `MainActivity` class:
+
+        ```java
+        void removeUserFromList(String userID) {
+            TextView userTextView;
+            if (userTextViews.containsKey(userID)) {
+                // Retrieve the corresponding TextView
+                userTextView = userTextViews.get(userID);
+                LinearLayout userList = findViewById(R.id.userList);
+                // Remove TextView
+                runOnUiThread(() -> {
+                    userList.removeView(userTextView);
+                });
+                userTextViews.remove(userID);
+            }
+        }        
+        ```
+
+    1. Add the following to the `onMemberLeft` callback in `onClickJoin`:
+
+        ```java
+        removeUserFromList(member.getUserId());
+        ```
+
+1. **Retrieve and show metadata for a selected user**
+
+    When the local user selects a user from the list, you retrieve metadata for that user and display the key-value pairs in a `Toast` message. To do this, add the following method to the `MainActivity` class:
+
+    ```java
+    View.OnClickListener onUserClick = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            String userId = v.getTag().toString();
+            // Retrieve metadata for the selected user
+            mRtmClient.getUserMetadata(userId, new ResultCallback<RtmMetadata>(){
+                @Override
+                public void onSuccess(RtmMetadata userMetadata){
+                    // Concatenate keys and values in metadata items
+                    StringBuilder sb = new StringBuilder("user: " +userId);
+                    for (int j=0; j < userMetadata.items.size(); j++) {
+                        RtmMetadataItem mdItem = userMetadata.items.get(j);
+                        sb.append(", ").append(mdItem.getKey()).append(": ").append(mdItem.getValue());
+                    }
+                    runOnUiThread(() -> {
+                        Toast toast = Toast.makeText(getApplicationContext(), sb.toString(), Toast.LENGTH_LONG);
+                        toast.show();
+                    });
+                }
+
+                @Override
+                public void onFailure(ErrorInfo errorInfo) {
+
+                }
+            });
+        }
+    };
+    ```
+
+1. **Clear the user list when the local user leaves the channel**
+
+    When the local user leaves the channel, you clear the user list. To do this, in `onClickLeave`, add the following lines to the `onSuccess` callback of `mRtmChannel.leave`:
+
+    ```java
+    LinearLayout userList = findViewById(R.id.userList);
+    runOnUiThread(userList::removeAllViews);
+    userTextViews.clear();
+    ```
+
+1. **Clear metadata on logout**
+
+    When the local user logs out of <Vpd k="PRODUCT" />, you clear the local user metadata. To do this, in `onClickLogout`, add the following lines to the `onSuccess` callback of `mRtmClient.logout`:
+
+    ```java
+    mRtmClient.clearLocalUserMetadata(new RtmMetadataOptions(),null);
+    ```
+
+</PlatformWrapper>

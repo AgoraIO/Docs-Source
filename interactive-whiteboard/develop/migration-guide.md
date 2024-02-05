@@ -23,7 +23,7 @@ To migrate the projects under your current Netless account to <Vg k="CONSOLE" />
 <a name="netlessaccount"></a>
 ### A Netless account only
 
-  1. Log in to [<Vg k="CONSOLE" />](https://console.agora.io ) using the email address linked with your Netless account.
+  1. Log in to <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link> using the email address linked with your Netless account.
 
   2. Click **Send Email**. 
 
@@ -31,7 +31,7 @@ To migrate the projects under your current Netless account to <Vg k="CONSOLE" />
 
 The reset process automatically creates a new Agora account using the email address linked with your Netless account. Then you can use the following steps to migrate your projects:
 
-  1. Log in to [<Vg k="CONSOLE" />](https://console.agora.io ) again using your new password.
+  1. Log in to <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link> again using your new password.
 
   2. Follow the on-screen instructions, then click **Migrate**. 
 
@@ -39,7 +39,7 @@ The reset process automatically creates a new Agora account using the email addr
 
 ### A Netless account and an Agora account that use the same email address
 
-  1. Log in to [<Vg k="CONSOLE" />](https://console.agora.io) using the email address linked with both accounts.
+  1. Log in to <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link> using the email address linked with both accounts.
 
   2. Follow the on-screen instructions, then click **Migrate**. 
 

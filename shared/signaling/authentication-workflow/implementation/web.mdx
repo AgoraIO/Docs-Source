@@ -1,0 +1,161 @@
+<PlatformWrapper platform="web">
+
+In order to make HTTPS calls to a token server and interpret the JSON return parameters, the axios HTTP client is integrated into the reference .
+
+To retrieve tokens from the token server and use them to authenticate your <Vpl k="CLIENT" /> with <Vg k="MESS" /> using  <Vpd k="SDK" />:
+
+1.  **Retrieve an RTM token from the server**
+
+    Use a GET request to retrieve an RTM authentication token for initializing the <Vg k="MESS" /> engine.
+
+     ``` javascript
+      // Get the config
+      const config = signalingManager.config;
+
+      // Fetches the Signaling token
+      async function fetchToken(uid) {
+        if (config.serverUrl !== "") {
+          try {
+            const res = await fetch(
+              config.proxyUrl +
+                config.serverUrl +
+                "/rtm/" +
+                uid +
+                "/?expiry=" +
+                config.tokenExpiryTime,
+              {
+                headers: {
+                  "X-Requested-With": "XMLHttpRequest",
+                },
+              }
+            );
+            const data = await res.text();
+            const json = await JSON.parse(data);
+            console.log("RTM token fetched from server: ", json.rtmToken);
+            return json.rtmToken;
+          } catch (err) {
+            console.log(err);
+          }
+        } else {
+          return config.token; // Fallback
+        }
+      }
+    ```
+
+1.  **Use the token to login into the <Vg k="MESS_ENGINE" />**
+
+    Call `fetchToken` to get a fresh RTM token. Use the token in the `RTMConfig` to initiate the <Vg k="MESS_ENGINE" />.
+
+    ``` javascript
+    const fetchTokenAndLogin = async (uid) => {
+      const token = await fetchToken(uid);
+      signalingManager.login(uid, token);
+    };
+    ```
+1. **Retrieve an RTC token**
+
+    To join a stream channel you retrieve an RTC token from the token server by specifying the `uid` and `channelName`.
+
+    ```javascript
+    // Fetches an RTC token for stream channels
+    async function fetchRTCToken(uid, channelName) {
+      if (config.serverUrl !== "") {
+        try {
+          const res = await fetch(
+            config.proxyUrl +
+              config.serverUrl +
+              "/rtc/" +
+              channelName +
+              "/" +
+              role +
+              "/uid/" +
+              uid +
+              "/?expiry=" +
+              config.tokenExpiryTime,
+            {
+              headers: {
+                "X-Requested-With": "XMLHttpRequest",
+              },
+            }
+          );
+          const data = await res.text();
+          const json = await JSON.parse(data);
+          console.log("RTC token fetched from server: ", json.rtcToken);
+          return json.rtcToken;
+        } catch (err) {
+          console.log(err);
+        }
+      } else {
+        return config.rtcToken;
+      }
+    }
+    ```
+
+1.  **Use the RTC token to join a stream channel**
+
+    Create a stream channel using the channel name and call `join` with the RTC token.
+    
+    ```javascript
+    const streamChannelJoinAndLeave = async function (
+      isStreamChannelJoined,
+      uid,
+      streamChannelName
+    ) {
+      const token = await fetchRTCToken(uid, streamChannelName);
+      if (getSignalingStreamChannel() === null) {
+        streamChannel = await signalingManager
+          .getSignalingEngine()
+          .createStreamChannel(streamChannelName); // creates a stream channel
+      }
+
+      if (isStreamChannelJoined === false) {
+        await streamChannel
+          .join({
+            token: token,
+            withPresence: true,
+          })
+          .then((response) => {
+            console.log(response);
+          });
+      } else {
+        streamChannel.leave().then((response) => {
+          console.log(response);
+          messageCallback("Left the channel: " + streamChannelName);
+          streamChannel = null;
+        });
+      }
+    };
+    ```
+
+1.  **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
+
+    A token expires after the `tokenExpiryTime` specified in the call to the token server. If the expiry time
+  is not specified the default timeout is 24 hours. The  `TokenPrivilegeWillExpire` event receives a callback when
+  the current token is about to expire so that a fresh token may be retrieved and used.
+
+    ``` javascript
+    // When token-privilege-will-expire occurs, fetch a new token from the server and call renewToken to renew the token.
+      const handleSignalingEvents = (event, eventArgs) => {
+        switch (event) {
+          case "TokenPrivilegeWillExpire":
+            renewToken(uid);
+            break;
+        }
+      }
+    ```
+
+1. **Renew the token**
+
+    You persist the existing session by retrieving a fresh token and calling `renewToken`.
+
+    ``` javascript
+      const renewToken = async (uid) => {
+        const token = await fetchToken(uid);
+        const result = await signalingManager
+          .getSignalingEngine()
+          .renewToken(token);
+        messageCallback("Token was about to expire so it was renewed...");
+      };
+    ```
+
+</PlatformWrapper>

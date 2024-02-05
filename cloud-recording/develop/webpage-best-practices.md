@@ -21,6 +21,45 @@ External factors can cause problems with web page recording, including the follo
 
 To ensure reliability and consistency in the face of network issues, Agora recommends the following best practices.
 
+### Check the limits
+
+Check that your Peak Concurrent Worker (PCW), Queries Per Second (QPS), and the number of streams do not exceed the following limits set by Agora.
+
+#### PCW
+
+The PCW limit depends on your video stream resolution and region.
+
+Resolutions:
+
+- SD: Standard definition video, resolution ≤ 640 × 360
+- HD: High definition video, resolution ≤ 1280 × 720 and > 640 × 360
+- FHD: Full HD video, resolution ≤ 1920 × 1080 and > 1280 × 720
+
+| Service type         | Mainland China    | Europe      | America      | Asia (excluding mainland China) |
+|:---------------------|:------------------------|:-------------------|:--------------------------------|:------------|
+| Web page recording   | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 50</li> <li>HD 30</li> <li>FHD 10</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> |
+
+If you need to extend the PCW limit, contact support@agora.io.
+
+#### QPS
+
+The initial QPS limit is 10 per App ID when you register. You can estimate the QPS that your project needs based on your PCW value and query frequency. If you need to extend the limit for QPS, contact support@agora.io.
+
+#### Number of streams
+
+The upper limit of video attributes supported by Agora is as follows:
+
+- Resolution 1920 × 1080
+- Frame rate 30 FPS
+
+The maximum number of supported streams is as follows:
+
+| Service type       | Mainland China        | Europe               | America               | Asia (excluding mainland China)                          |
+|:-------------------|:----------------------|:---------------------|:----------------------|:---------------------------------------------------------|
+| Web page recording | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 50</li> <li>HD 30</li> <li>FHD 10</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 100</li> <li>HD 100</li> <li>FHD 30</li></ul> |
+
+<Admonition type="caution" title="Note">If you need to record multiple streams of different resolutions at the same time, make sure you meet the following requirements:<ul><li>The number of streams per resolution cannot exceed the corresponding limit for that resolution.</li><li>The total number of streams cannot exceed the limit set for the higher resolution. For example, if you need to record in America in both SD and HD, the total number of streams cannot exceed 100. If you record in both HD and FHD, the total number cannot exceed 50.</li></ul></Admonition>
+
 ### Ensure the recording service starts successfully
 
 Take the following steps to ensure that the recording service starts successfully:

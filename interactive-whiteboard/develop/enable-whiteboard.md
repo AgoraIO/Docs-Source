@@ -6,7 +6,7 @@ description: >
   Enable and configure Interactive Whiteboard
 ---
 
-To use <Vg k="WHITE" />, you need to enable and configure it in [<Vg k="CONSOLE" />](https://console.agora.io/#onboarding).
+To use <Vg k="WHITE" />, you need to enable and configure it in <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>.
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ Before enabling the whiteboard feature, ensure that you meet the following requi
 
 Follow these steps to enable the <Vg k="WHITE" /> in <Vg k="CONSOLE" />:
 
-1. Log in to [<Vg k="CONSOLE" />](https://console.agora.io/), and click the **Project Management** icon on the left navigation panel.
+1. Log in to <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>, and click the **Project Management** icon on the left navigation panel.
 
 2. On the **Project Management** page, click **Config** for the project for which you want to enable the <Vg k="WHITE" />.
  ![](https://web-cdn.agora.io/docs-files/1641971710869)
@@ -40,7 +40,7 @@ Follow these steps to enable the <Vg k="WHITE" /> in <Vg k="CONSOLE" />:
 
 To get the security credentials, do the following steps:
 
-1. On the [Project Management](https://console.agora.io/projects) page in <Vg k="CONSOLE" />, find the project that has the whiteboard feature enabled, and click **Edit**.
+1. On the <Link to="{{Global.AGORA_CONSOLE_URL}}/project-management">Projects</Link> page in <Vg k="CONSOLE" />, find the project that has the whiteboard feature enabled, and click **Edit**.
 
 2. On the **Edit Project** page, find **Whiteboard** and click **Config**.
 
@@ -61,12 +61,12 @@ Unexpected exposure of the security credentials can cause severe security proble
 
 - File conversion, including **Docs to Picture** and **Docs to web**. 
 After enabling the file conversion feature, you can call the [RESTful APIs](../reference/whiteboard-api/file-conversion) to launch a file conversion task or query the conversion progress.
-Agora charges for the file-conversion feature. See [Pricing](../reference/pricing).
+Agora charges for the file-conversion feature. See [Pricing](../overview/pricing).
 - **Screenshot**. After enabling the screenshot feature, you can call the [RESTful APIs](../reference/whiteboard-api/screenshots) to take screenshots.
 
 Follow these steps to enable one or more features and configure the storage settings:
 
-1. Go to the [Project Management](https://console.agora.io/projects) page in <Vg k="CONSOLE" />, find the project that has the whiteboard feature enabled, and click **Edit**.
+1. Go to the <Link to="{{Global.AGORA_CONSOLE_URL}}/project-management">Project Management</Link> page in <Vg k="CONSOLE" />, find the project that has the whiteboard feature enabled, and click **Edit**.
 
 2. On the **Edit Project** page, find **Whiteboard** and click **Config**.
 

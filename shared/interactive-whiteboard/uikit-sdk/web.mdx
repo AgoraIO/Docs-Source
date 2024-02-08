@@ -216,6 +216,37 @@ Sets the text color.
 
 - `textColor`: The text color in RGB format. For example, `[0, 0, 255]` represents blue. See <a href="#color"><code>Color</code></a>.
 
+### toggleDottedLine
+
+```typescript
+toggleDottedLine(force?: boolean)
+```
+
+Toggles the drawing style of the Pencil tool.
+
+When `force` is not passed, the method toggles between drawing solid and dotted lines. For example, if the Pencil tool is currently drawing solid lines, calling `toggleDottedLine()` will switch it to drawing dotted lines; if it is currently drawing dotted lines, calling `toggleDottedLine()` will switch it to drawing solid lines.
+
+**Parameters**
+
+- `force`：Boolean (optional). Forces the drawing style to switch:
+  - `true`: Switches to drawing dotted lines.
+  - `false`: Switches to drawing solid lines.
+
+### setPencilEraserSize
+
+```typescript
+setPencilEraserSize(size: number)
+```
+
+Sets the size of the Pencil Eraser tool.
+
+**Parameters**
+
+- `size`：Number. The size of the pencil eraser, supports the following values:
+  - `1`: (Default)Small.
+  - `2`: Medium.
+  - `3`: Large.
+
 ### setTextSize
 
 ```typescript
@@ -231,16 +262,19 @@ Sets the font size of the text.
 ### insertImage
 
 ```typescript
-insertImage(url: string): Promise<void>
+async insertImage(url: string, crossOrigin?: boolean | string)
 ```
 
 Inserts an image.
 
-This method inserts and displays an specified online image on the current whiteboard page.
+This method can insert and display the specified network image on the current whiteboard page. The inserted image is centered by default in the current view.
 
 **Parameters**
 
 - `url`: String. The URL address of the image. Ensure your app clients can access the URL; otherwise, the image cannot be displayed.
+- `crossOrigin`: Boolean (optional). Whether to enable Cross-Origin Resource Sharing (CORS) for the inserted image:
+  - `true`: (Default) Enable CORS.
+  - `false`: Disable CORS.
 
 ### insertMedia
 
@@ -386,6 +420,25 @@ Removes the specified whiteboard page.
 
 `false`: Failure.
 
+### jumpPage
+
+```typescript
+jumpPage(index: number)
+```
+
+Jumps to the whiteboard page with the specified page number.
+
+**Parameters**
+
+- `index`: Number. The expected whiteboard page number to jump to. Values greater than the current number of whiteboard pages cannot be passed in.
+
+### destroy
+
+```typescript
+destroy(): void
+```
+
+Destroys the Fastboard instance.
 
 ### DocsEventOptions
 

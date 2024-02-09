@@ -1,6 +1,219 @@
-
 <PlatformWrapper platform="unity">
 
+This section introduces how to implement <Vg k="SCR_SHR" /> in your project.
 
+### Android platform
+
+When enabling <Vg k="SCR_SHR" /> on Android, you only need to call the `StartScreenCapture` method. Depending on the actual business scenario, you can choose either of the following methods to implement <Vg k="SCR_SHR" />:
+
+    - **Option 1**: Call `StartScreenCapture` before joining the channel, then call `JoinChannel[2/2]` to join the channel and set `publishScreenCaptureVideo` to **true** to start <Vg k="SCR_SHR" />.
+
+    - **Option 2**: Call `StartScreenCapture` after joining the channel, then call `UpdateChannelMediaOptions` to set `publishScreenCaptureVideo` to **true** to start <Vg k="SCR_SHR" />.
+
+    ``` csharp
+      // Option 1：
+      // Call StartScreenCapture to enable screen sharing before joining a channel.
+      ScreenCaptureParameters2 screenCaptureParameters2 = new ScreenCaptureParameters2();
+      screenCaptureParameters2.captureVideo = true;
+      screenCaptureParameters2.captureAudio = true;
+      RtcEngine.StartScreenCapture(screenCaptureParameters2);
+      // Call JoinChannel to join a channel.
+      ChannelMediaOptions channelMediaOptions = new ChannelMediaOptions();
+      channelMediaOptions.publishScreenCaptureVideo.SetValue(true);
+      channelMediaOptions.publishScreenCaptureAudio.SetValue(true);
+      channelMediaOptions.publishCameraTrack.SetValue(false);
+      channelMediaOptions.publishMicrophoneTrack.SetValue(false);
+      RtcEngine.JoinChannel("token", "channelId", uid, channelMediaOptions);
+
+      // Option 2：
+      // Call JoinChannel to join the channel.
+      RtcEngine.JoinChannel(_token, _channelName);
+      ScreenCaptureParameters2 screenCaptureParameters2 = new ScreenCaptureParameters2();
+      screenCaptureParameters2.captureVideo = true;
+      screenCaptureParameters2.captureAudio = true;
+      // Enable screen sharing.
+      RtcEngine.StartScreenCapture(screenCaptureParameters2);
+      ChannelMediaOptions channelMediaOptions = new ChannelMediaOptions();
+      channelMediaOptions.publishScreenCaptureVideo.SetValue(true);
+      channelMediaOptions.publishScreenCaptureAudio.SetValue(true);
+      channelMediaOptions.publishCameraTrack.SetValue(false);
+      channelMediaOptions.publishMicrophoneTrack.SetValue(false);
+      // Update channel media options.
+      RtcEngine.UpdateChannelMediaOptions(channelMediaOptions);
+    ```
+
+### iOS platform
+
+Take the following steps to set up your <Vg k="SCR_SHR" /> project:
+
+1. Package the iOS project in **Unity Editor** and export the Xcode project.
+1. Go to your project folder and open the `unity-iphone/.xcodeproj` folder with Xcode.
+1. Create a **Broadcast Upload Extension** to enable the process of screen sharing:
+    1. Navigate to **File > New > Target...**, select **Broadcast Upload Extension** in the pop-up window, and then click **Next**:
+
+        ![Select Broadcast Upload Extension](/images/video-sdk/screen-sharing-ios-select-broadcast-upload-extension.png)
+
+    1. Fill in the **Product Name** and other information in the popup window, uncheck **Include UI Extension**, and click **Finish**. Xcode automatically creates a folder for the extension that contains the `SampleHandler.m` file.
+    1. Under **Target**, select the newly created extension. Click **General** and set the iOS version to 12.0 or later under **Deployment Info**.
+    Make sure your app and extension have the same **TARGETS/Deployment/iOS** version. The memory usage of **Broadcast Upload Extension** is limited to 50 MB. Make sure that the memory usage of **Screen Sharing Extension** does not exceed 50 MB.
+    1. Modify project settings to implement the <Vg k="SCR_SHR" /> code logic, and choose one of the following two methods according to your business needs:
+
+        - If you only need to use the functionality in the `AgoraReplayKitExtension.xcframework` dynamic library provided by <Vg k="COMPANY" />, select **Target** as the extension you just created, and change the **Value** in **Info** corresponding to **NSExtension > NSExtensionPrincipalClass** from **$(PRODUCT_MODULE_NAME}.SampleHandler** to **AgoraReplayKitHandler**:
+
+            ![Use AgoraReplayKitHandler](/images/video-sdk/screen-sharing-ios-use-agorareplaykithandler.png)
+
+        - If you need to implement some additional business logic, you can refer to the following code to modify the `SampleHandler.m` file:
+
+            ``` objective-c
+            #import "SampleHandler.h"
+            #import "AgoraReplayKitExt.h"
+            #import <sys/time.h>
+
+            @interface SampleHandler ()<AgoraReplayKitExtDelegate>
+
+            @end
+
+            @implementation SampleHandler
+
+            - (void)broadcastStartedWithSetupInfo:(NSDictionary<NSString *,NSObject *> *)setupInfo {
+              [[AgoraReplayKitExt shareInstance] start:self];
+
+            }
+
+            - (void)broadcastPaused {
+              NSLog(@"broadcastPaused");
+              [[AgoraReplayKitExt shareInstance] pause];
+            }
+
+            - (void)broadcastResumed {
+              NSLog(@"broadcastResumed");
+              [[AgoraReplayKitExt shareInstance] resume];
+
+            }
+
+            - (void)broadcastFinished {
+              NSLog(@"broadcastFinished");
+              [[AgoraReplayKitExt shareInstance] stop];
+
+            }
+
+            - (void)processSampleBuffer:(CMSampleBufferRef)sampleBuffer withType:(RPSampleBufferType)sampleBufferType {
+              [[AgoraReplayKitExt shareInstance] pushSampleBuffer:sampleBuffer withType:sampleBufferType];
+            }
+
+            #pragma mark - AgoraReplayKitExtDelegate
+
+            - (void)broadcastFinished:(AgoraReplayKitExt *_Nonnull)broadcast reason:(AgoraReplayKitExtReason)reason {
+                switch (reason) {
+                    case AgoraReplayKitExtReasonInitiativeStop:
+                    {
+
+                    }
+                    break;
+                    case AgoraReplayKitExtReasonConnectFail:
+                    {
+
+                    }
+                    break;
+
+                    case AgoraReplayKitExtReasonDisconnect:
+                    {
+
+                    }
+                    break;
+                    default:
+                    break;
+                }
+            }
+
+            @end
+            ```
+
+1. Select the extension you created in **TARGETS** and add all frameworks under the path **Frameworks/Agora-RTC-Plugin/Agora-Unity-RTC-SDK/Plugins/iOS/** in **General/Frameworks and Libraries**.
+1. To start <Vg k="SCR_SHR" />, you call `StartScreenCapture` combined with the user's action. For example, prompt the user to press and hold the **Screen Recording** button in the Control Center on iOS, and select the extension you created to start recording.
+
+### macOS and Windows platforms
+
+Take the following steps to implement <Vg k="SCR_SHR" /> on macOS and Windows platforms:
+
+1. Get a list of screens and windows that can be shared. Call `GetScreenCaptureSources` method to get the **Display ID** of the screen or the **Window ID** of the window to be shared:
+
+    ``` csharp
+    SIZE thumbSize = new SIZE(360,240);
+    SIZE iconSize = new SIZE(360,240);
+    ScreenCaptureSourceInfo[] screenCaptureSourceInfos = RtcEngine.GetScreenCaptureSources(thumbSize, iconSize, true);
+    ```
+
+1. Share the specified screen or window. Depending on the sharing object, call the `StartScreenCaptureByDisplayId` or `StartScreenCaptureByWindowId` method to start <Vg k="SCR_SHR" />:
+
+    ``` csharp
+    ScreenCaptureSourceInfo info = screenCaptureSourceInfos[0];
+    if (info.type == ScreenCaptureSourceType.ScreenCaptureSourceType_Screen)
+    {
+        ulong displayId = info.sourceId;
+        RtcEngine.StartScreenCaptureByDisplayId((uint)displayId, default(Rectangle),default(ScreenCaptureParameters));
+    }
+     else if (info.type == ScreenCaptureSourceType.ScreenCaptureSourceType_Window)
+    {
+         ulong windowId = info.sourceId;
+         RtcEngine.StartScreenCaptureByWindowId(windowId, default(Rectangle),default(ScreenCaptureParameters));
+    }
+    ```
+
+1. Join channels and post screen share streams.
+    - If you only need to publish a <Vg k="SCR_SHR" /> stream, add the following code to your project:
+
+        ``` csharp
+        ChannelMediaOptions options = new ChannelMediaOptions();
+         options.publishCameraTrack.SetValue(false);
+         options.publishScreenTrack.SetValue(true);
+
+        #if UNITY_ANDROID || UNITY_IPHONE
+          options.publishScreenCaptureAudio.SetValue(true);
+          options.publishScreenCaptureVideo.SetValue(true);
+        #endif
+           RtcEngine.UpdateChannelMediaOptions(options);
+        ```
+
+    - To publish <Vg k="SCR_SHR" /> streams and video streams captured by local cameras, add the following code to your project:
+
+        ``` csharp
+        // Join the channel and push the camera stream
+        RtcEngine.EnableAudio();
+        RtcEngine.EnableVideo();
+        RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+
+        ChannelMediaOptions options = new ChannelMediaOptions();
+        options.autoSubscribeAudio.SetValue(true);
+        options.autoSubscribeVideo.SetValue(true);
+
+        options.publishCameraTrack.SetValue(true);
+        options.publishScreenTrack.SetValue(false);
+        options.enableAudioRecordingOrPlayout.SetValue(true);
+        options.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+        RtcEngine.JoinChannel(_token, _channelName, this.Uid1, options);
+
+        // Join a channel and push screen sharing streams
+        ChannelMediaOptions options = new ChannelMediaOptions();
+        options.autoSubscribeAudio.SetValue(false);
+        options.autoSubscribeVideo.SetValue(false);
+        options.publishCameraTrack.SetValue(false);
+        options.publishScreenTrack.SetValue(true);
+        options.enableAudioRecordingOrPlayout.SetValue(false);
+        #if UNITY_ANDROID || UNITY_IPHONE
+        options.publishScreenCaptureAudio.SetValue(true);
+        options.publishScreenCaptureVideo.SetValue(true);
+        #endif
+        options.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+        var ret = RtcEngine.JoinChannelEx(_token, new RtcConnection(_channelName, this.Uid2), options);
+        ```
+
+### Limitations
+
+Be aware of the following limitations:
+
+- The video unit price for a screen-shared stream is based on the **video resolution** you set in `ScreenCaptureParameters`. If you do not pass dimensions in `ScreenCaptureParameters`, <Vg k="COMPANY" /> bills at the default resolution of 1920 x 1080 (2,073,600). See [Pricing](../overview/pricing) for details.
+- Due to system limitations, <Vg k="SCR_SHR" /> is only supported on iOS 12.0 and above.
+- This feature requires a high level of device performance. <Vg k="COMPANY" /> recommends that you use an iPhone X or above.
 
 </PlatformWrapper>

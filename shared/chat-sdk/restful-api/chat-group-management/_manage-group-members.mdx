@@ -871,7 +871,7 @@ Changes the group owner to another group member. Group owners possess all group 
 ### HTTP request
 
 ```shell
-PUT https://{host}/{org_name}/{app_name}/chatgroups/{group_id}/admin
+PUT https://{host}/{org_name}/{app_name}/chatgroups/{group_id}
 ```
 
 #### Path parameter

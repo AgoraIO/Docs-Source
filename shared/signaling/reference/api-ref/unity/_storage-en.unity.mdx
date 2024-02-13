@@ -1,0 +1,851 @@
+import * as storage from '../shared/_storage.mdx'
+import * as config from '../shared/_configuration.mdx'
+import * as lock from '../shared/_lock.mdx'
+import * as enumv from '../shared/_enumv.mdx'
+import Status from '../shared/_rtmstatus.mdx'
+
+The storage feature provides a dynamic database mechanism that allows developers to dynamically set, store, update, and delete data such as channel metadata and user metadata.
+
+<span className="index-group-irtmclient" style={{display: 'none'}}>IRtmClient</span>
+<span className="index-desc-irtmclient" style={{display: 'none'}}>Signaling client instance</span>
+
+### {storage.setchannel[props.ag_platform]}
+
+#### Description
+
+<div className="index-desc-setchannel">
+The <code>{storage.setchannel[props.ag_platform]}</code> method sets metadata for a message channel or stream channel. A channel can only have one set of metadata, but each set of metadata can have one or more metadata items. If you call this method multiple times, the SDK retrieves the `key` of the metadata items in turn and apply settings according to the following rules:
+
+- If you set metadata with different `key`, the SDK adds each set of metadata in sequence according to the order of the method calls.
+- If you set metadata with the same `key`, the `value` of the last setting overwrites the previous one.
+</div>
+
+After successfully setting channel metadata, users who subscribe to the channel and enable event listeners can receive the <code>{enumv.storagetypechannel[props.ag_platform]}</code> type of the <code>{config.onstorageevent[props.ag_platform]}</code> event notification. See [Event listeners](#event-listeners).
+
+Channel metadata also introduces the version control logic CAS (Compare And Set). This method provides two independent version control fields, and you can set one or more of them according to your actual business scenario:
+
+- Enable version number verification for the entire set of channel metadata by setting the `majorRevision` property in the <code>{storage.metadata[props.ag_platform]}</code> class.
+- Enable version number verification for a single metadata item by setting the `revision` property in the `MetadataItem` class within the <code>{storage.metadata[props.ag_platform]}</code> class.
+
+When setting channel metadata or metadata items, you can control whether to enable version number verification by specifying the revision property:
+
+- The default value of the revision property is `-1`, indicating that this method call does not perform any CAS verification. If the channel metadata or metadata item already exists, the latest value overwrites the previous one. If the channel metadata or metadata item does not exist, the SDK creates it.
+- If the revision property is a positive integer, this method call performs the CAS verification. If the channel metadata or metadata item already exists, the SDK updates the corresponding value after the version number verification succeeds. If the channel metadata or metadata item does not exist, the SDK returns the error code.
+
+#### Method
+
+You can call the <code>{storage.setchannel[props.ag_platform]}</code> method as follows:
+
+```csharp
+RtmResult<SetChannelMetadataResult> rtmClient.GetStorage().SetChannelMetadataAsync(
+    string channelName,
+    RTM_CHANNEL_TYPE channelType,
+    RtmMetadata data,
+    MetadataOptions options,
+    string lockName
+    );
+```
+
+| Parameters | Type | Required | Default | Description |
+| :--------------: | :-------------------------------------------------------------: | :------: | :-----------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `channelName` | string | Required | - | Channel name. |
+| `channelType` | <code>{enumv.channeltype[props.ag_platform]}</code> | Required | - | Channel types. See <a href="#enumvchanneltypepropsag_platform"><code>{enumv.channeltype[props.ag_platform]}</code></a>. |
+| `data` | <code>{storage.metadata[props.ag_platform]}</code> | Required | - | Metadata item. |
+| `options` | <code>{storage.metadataoptions[props.ag_platform]}</code> | Optional | - | Options for setting the channel metadata. |
+| `lockName` | string | Optional | - | Lock name. If set, only users who call the <code>{lock.acquire[props.ag_platform]}</code> method to acquire the lock can perform operations. |
+
+The <code>{storage.metadata[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :-----------------: | :--------------: | :------: | :----: | -------------------------------------------------------------------------------------------------------------- |
+|   `majorRevision`   |      Int64       |   Optional   |  `-1`  | Version control switch:<li> `-1`: Disable the version verification.</li><li>> `0`: Enable the version verification. The operation can only be performed if the target version number matches this value.</li> |
+|   `metadataItems`   | `MetadataItem[]` |   Required   |   -    |  Metadata item array.                                                                                   |
+| `metadataItemsSize` |      UInt64      |   Required   |   -    | Length of the `MetadataItem[]` array.                                                                                  |
+
+The <code>MetadataItem</code>  data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :----: | :------: | :----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key` | string | Required | - | Key. |
+| `value` | string | Required | - | Value. |
+| `authorUserId` | string | Required | - | The user ID of the editor. This value is read-only and does not support writing. |
+| `revision` | Int64 | Optional | `-1` | <li>Returns the real version number in read operations.</li><li>Serves as a version control switch in write operations:</li><ul><li> `-1`: Disable the version verification.</li><li>> `0`: Enable version verification, only perform the operation if the target version number matches this value.</li></ul> |
+| `updateTs` | Int64 | Optional | `0` | Update timestamp. This value is read-only and does not support writing. |
+
+The <code>{storage.metadataoptions[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :-----: | :------: | :-----: | ------------------------- |
+| `recordTs` | Bool | Optional | `false` | Whether to record the timestamp of the edits. |
+| `recordUserId` | Bool | Optional | `false` | Whether to record the user ID of the editor. |
+
+#### Basic usage
+
+```csharp
+var metadata = new RtmMetadata();
+metadata.majorRevision = 174298270;
+var apple = new MetadataItem()
+            {
+                key = "Apple",
+                value = "100",
+                revision = 174298200,
+            };
+var banana = new MetadataItem()
+            {
+                key = "Banana",
+                value = "200",
+                revision = 174298100,
+            };
+metadata.metadataItems = new MetadataItem[] { apple, banana };
+metadata.metadataItemsSize = 2;
+var metadataOptions = new MetadataOptions()
+            {
+                recordUserId = true,
+                recordTs = true
+            };
+var lockName = "lockName";
+
+var (status,respones) = await rtmClient.GetStorage().SetChannelMetadataAsync("channel_name", RTM_CHANNEL_TYPE.MESSAGE, metadata, metadataOptions, lockName);
+if (status.Error)
+{
+    Debug.Log(string.Format("{0} is failed, ErrorCode: {1}, due to: {2}", status.Operation, status.ErrorCode, status.Reason));
+}
+else
+{
+    Debug.Log(string.Format("Set Channel :{0} metadata success! Channel Type is :{1}! ", response.ChannelName, response.ChannelType));
+}
+```
+
+#### Return value
+
+The <code>{storage.setchannel[props.ag_platform]}</code> operation returns a `RtmResult<SetChannelMetadataResult>` data type, including the following properties:
+
+| Properties | Type | Description |
+| :--------: | :------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------- |
+|  `Status`  | <code>{config.rtmstatus[props.ag_platform]}</code> | No matter whether the operation is successful, this property returns a <code>{config.rtmstatus[props.ag_platform]}</code> data type, including the operation of the state. |
+| `Response` |                `SetChannelMetadataResult`                | After the operation succeeds, this property returns a `SetChannelMetadataResult` data type, which contains the execution result of this operation.                                   |
+
+The <code>{config.rtmstatus[props.ag_platform]}</code> data type contains the following properties:
+
+<Status />
+
+The `SetChannelMetadataResult` data type contains the following properties:
+
+| Properties | Type | Description |
+| :-----------: | :----------------: | :-------------------------------------------------------------- |
+| `channelName` | string | Channel name. |
+| `channelType` | <code>{enumv.channeltype[props.ag_platform]}</code> |  Channel types. See <a href="#enumvchanneltypepropsag_platform"><code>{enumv.channeltype[props.ag_platform]}</code></a>. |
+
+### {storage.getchannel[props.ag_platform]}
+
+#### Description
+
+<span className="index-desc-getchannel">The <code>{storage.getchannel[props.ag_platform]}</code> method can get the metadata of the specified channel.</span>
+
+#### Method
+
+You can call the <code>{storage.getchannel[props.ag_platform]}</code> method as follows:
+
+```csharp
+RtmResult<GetChannelMetadataResult> rtmClient.GetStorage().GetChannelMetadataAsync(
+    string channelName,
+    RTM_CHANNEL_TYPE channelType
+    );
+```
+
+| Parameters | Type | Required | Default | Description |
+| :--------------: | :-------------------------------------------------------------: | :------: | :-----------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `channelName` | string | Required | - | Channel name. |
+| `channelType` | <code>{enumv.channeltype[props.ag_platform]}</code> | Required | - | Channel types. See <a href="#enumvchanneltypepropsag_platform"><code>{enumv.channeltype[props.ag_platform]}</code></a>. |
+
+#### Basic usage
+
+```csharp
+var (status,respones) = await rtmClient.GetStorage().GetChannelMetadataAsync("channel_name", RTM_CHANNEL_TYPE.MESSAGE);
+if (status.Error)
+{
+    Debug.Log(string.Format("{0} is failed, ErrorCode: {1}, due to: {2}", status.Operation, status.ErrorCode, status.Reason));
+}
+else
+{
+    Debug.Log(string.Format("Get Channel :{0} metadata success! Channel Type is :{1}! ", response.ChannelName, response.ChannelType));
+    var data =  response.data;
+    if (data.metadataItemsSize != 0)
+    {
+        Debug.Log(string.Format("Channel Metadata Major Revision is :{0} ! ", data.majorRevision));
+        for ( int i =0; i < data.metadataItemsSize; i++)
+        {
+            Debug.Log(string.Format("The {0}'th iterms Key is:{1}, Value is {2} ! ", i, data.metadataItems[i].key, data.metadataItems[i].value));
+        }
+    }
+}
+```
+#### Return value
+
+The <code>{storage.getchannel[props.ag_platform]}</code> operation returns a `RtmResult<GetChannelMetadataResult>` data type, including the following properties:
+
+| Properties | Type | Description |
+| :--------: | :------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------- |
+|  `Status`  | <code>{config.rtmstatus[props.ag_platform]}</code> | No matter whether the operation is successful, this property returns a <code>{config.rtmstatus[props.ag_platform]}</code> data type, including the operation of the state. |
+| `Response` |                `GetChannelMetadataResult`                | After the operation succeeds, this property returns a `GetChannelMetadataResult` data type, which contains the execution result of this operation.                                   |
+
+The <code>{config.rtmstatus[props.ag_platform]}</code> data type contains the following properties:
+
+<Status />
+
+The `GetChannelMetadataResult` data type contains the following properties:
+
+| Properties | Type | Description |
+| :-----------: | :----------------: | :-------------------------------------------------------------- |
+| `channelName` | string | Channel name. |
+| `channelType` | <code>{enumv.channeltype[props.ag_platform]}</code> |  Channel types. See <a href="#enumvchanneltypepropsag_platform"><code>{enumv.channeltype[props.ag_platform]}</code></a>. |
+|    `Data`     | <code>{storage.metadata[props.ag_platform]}</code> | Metadata item array.                                    |
+
+The <code>{storage.metadata[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :-----------------: | :--------------: | :------: | :----: | -------------------------------------------------------------------------------------------------------------- |
+|   `majorRevision`   |      Int64       |   Optional   |  `-1`  | Version control switch:<li> `-1`: Disable the version verification.</li><li>> `0`: Enable the version verification. The operation can only be performed if the target version number matches this value.</li> |
+|   `metadataItems`   | `MetadataItem[]` |   Required   |   -    |  Metadata item array.                                                                                   |
+| `metadataItemsSize` |      UInt64      |   Required   |   -    | Length of the `MetadataItem[]` array.                                                                                  |
+
+The <code>MetadataItem</code>  data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :----: | :------: | :----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key` | string | Required | - | Key. |
+| `value` | string | Required | - | Value. |
+| `authorUserId` | string | Required | - | The user ID of the editor. This value is read-only and does not support writing. |
+| `revision` | Int64 | Optional | `-1` | <li>Returns the real version number in read operations.</li><li>Serves as a version control switch in write operations:</li><ul><li> `-1`: Disable the version verification.</li><li>> `0`: Enable version verification, only perform the operation if the target version number matches this value.</li></ul> |
+| `updateTs` | Int64 | Optional | `0` | Update timestamp. This value is read-only and does not support writing. |
+
+The <code>{storage.metadataoptions[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :-----: | :------: | :-----: | ------------------------- |
+| `recordTs` | Bool | Optional | `false` | Whether to record the timestamp of the edits. |
+| `recordUserId` | Bool | Optional | `false` | Whether to record the user ID of the editor. |
+
+### {storage.removechannel[props.ag_platform]}
+
+#### Description
+
+<span className="index-desc-removechannel">The <code>{storage.removechannel[props.ag_platform]}</code> method can remove channel metadata or metadata items.</span>
+
+When removing channel metadata or metadata items, you can control whether to enable version number verification by specifying the revision property:
+
+- The default value of the revision property is `-1`, indicating that this method call does not perform any CAS verification. If the channel metadata or metadata item already exists, the SDK removes it. If the channel metadata or metadata item does not exist, the SDK returns the error code.
+- If the revision property is a positive integer, this method call performs the CAS verification. If the channel metadata or metadata item already exists, the SDK removes the corresponding value after the version number verification succeeds. If the channel metadata or metadata item does not exist, the SDK returns the error code.
+
+After successfully removing channel metadata or metadata items, users who subscribe to the channel and enable event listeners can receive the <code>{enumv.storagetypechannel[props.ag_platform]}</code> type of the <code>{config.onstorageevent[props.ag_platform]}</code> event notification. See [Event listeners](#event-listeners).
+
+#### Method
+
+You can call the <code>{storage.removechannel[props.ag_platform]}</code> method as follows:
+
+```csharp
+RtmResult<RemoveChannelMetadataResult> rtmClient.GetStorage().RemoveChannelMetadataAsync(
+    string channelName,
+    RTM_CHANNEL_TYPE channelType,
+    RtmMetadata data,
+    MetadataOptions options,
+    string lockName
+    );
+```
+
+| Parameters | Type | Required | Default | Description |
+| :--------------: | :-------------------------------------------------------------: | :------: | :-----------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `channelName` | string | Required | - | Channel name. |
+| `channelType` | <code>{enumv.channeltype[props.ag_platform]}</code> | Required | - | Channel types. See <a href="#enumvchanneltypepropsag_platform"><code>{enumv.channeltype[props.ag_platform]}</code></a>. |
+| `data` | <code>{storage.metadata[props.ag_platform]}</code> | Required | - | Metadata item. |
+| `options` | <code>{storage.metadataoptions[props.ag_platform]}</code> | Optional | - | Options for setting the channel metadata. |
+| `lockName` | string | Optional | - | Lock name. If set, only users who call the <code>{lock.acquire[props.ag_platform]}</code> method to acquire the lock can perform operations. |
+
+The <code>{storage.metadata[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :-----------------: | :--------------: | :------: | :----: | -------------------------------------------------------------------------------------------------------------- |
+|   `majorRevision`   |      Int64       |   Optional   |  `-1`  | Version control switch:<li> `-1`: Disable the version verification.</li><li>> `0`: Enable the version verification. The operation can only be performed if the target version number matches this value.</li> |
+|   `metadataItems`   | `MetadataItem[]` |   Required   |   -    |  Metadata item array.                                                                                   |
+| `metadataItemsSize` |      UInt64      |   Required   |   -    | Length of the `MetadataItem[]` array.                                                                                  |
+
+The <code>MetadataItem</code>  data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :----: | :------: | :----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key` | string | Required | - | Key. |
+| `value` | string | Required | - | Value. |
+| `authorUserId` | string | Required | - | The user ID of the editor. This value is read-only and does not support writing. |
+| `revision` | Int64 | Optional | `-1` | <li>Returns the real version number in read operations.</li><li>Serves as a version control switch in write operations:</li><ul><li> `-1`: Disable the version verification.</li><li>> `0`: Enable version verification, only perform the operation if the target version number matches this value.</li></ul> |
+| `updateTs` | Int64 | Optional | `0` | Update timestamp. This value is read-only and does not support writing. |
+
+The <code>{storage.metadataoptions[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :-----: | :------: | :-----: | ------------------------- |
+| `recordTs` | Bool | Optional | `false` | Whether to record the timestamp of the edits. |
+| `recordUserId` | Bool | Optional | `false` | Whether to record the user ID of the editor. |
+
+#### Basic usage
+
+
+```csharp
+var metadata = new RtmMetadata();
+metadata.majorRevision = 174298270;
+var metadataItem = new MetadataItem()
+            {
+                key = "174298270",
+                revision = 174298200,
+            };
+metadata.metadataItems = new MetadataItem[] { metadataItem };
+metadata.metadataItemsSize = 1;
+var options = new MetadataOptions() { };
+
+var (status,response) = await rtmClient.GetStorage().RemoveChannelMetadataAsync("channel_name", RTM_CHANNEL_TYPE.MESSAGE, oOptions,"");
+if (status.Error)
+{
+    Debug.Log(string.Format("{0} is failed, ErrorCode: {1}, due to: {2}", status.Operation, status.ErrorCode, status.Reason));
+}
+else
+{
+    Debug.Log(string.Format("Remove Channel :{0} metadata success! Channel Type is :{1}! ", response.ChannelName, response.ChannelType));
+}
+```
+
+#### Return value
+
+The <code>{storage.removechannel[props.ag_platform]}</code> operation returns a `RtmResult<RemoveChannelMetadataResult>` data type, including the following properties:
+
+| Properties | Type | Description |
+| :--------: | :------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------- |
+|  `Status`  | <code>{config.rtmstatus[props.ag_platform]}</code> | No matter whether the operation is successful, this property returns a <code>{config.rtmstatus[props.ag_platform]}</code> data type, including the operation of the state. |
+| `Response` |              `RemoveChannelMetadataResult`               | After the operation succeeds, this property returns a `RemoveChannelMetadataResult` data type, which contains the execution result of this operation.                                |
+
+The <code>{config.rtmstatus[props.ag_platform]}</code> data type contains the following properties:
+
+<Status />
+
+The `RemoveChannelMetadataResult` data type contains the following properties:
+
+| Properties | Type | Description |
+| :-----------: | :----------------: | :-------------------------------------------------------------- |
+| `channelName` | string | Channel name. |
+| `channelType` | <code>{enumv.channeltype[props.ag_platform]}</code> |  Channel types. See <a href="#enumvchanneltypepropsag_platform"><code>{enumv.channeltype[props.ag_platform]}</code></a>. |
+
+### {storage.updatechannel[props.ag_platform]}
+
+#### Description
+
+<span className="index-desc-updatechannel">The <code>{storage.updatechannel[props.ag_platform]}</code> method can update existing channel metadata. Each time you call this method, you can update one channel metadata or a channel metadata item.</span>
+
+After successfully updating channel metadata, users who subscribe to the channel and enable event listeners can receive the <code>{enumv.storagetypechannel[props.ag_platform]}</code> type of the <code>{config.onstorageevent[props.ag_platform]}</code> event notification. See [Event listeners](#event-listeners).
+
+#### Method
+
+You can call the <code>{storage.updatechannel[props.ag_platform]}</code> method as follows:
+
+```csharp
+RtmResult<UpdateChannelMetadataResult> rtmClient.GetStorage().UpdateChannelMetadataAsync(
+    string channelName,
+    RTM_CHANNEL_TYPE channelType,
+    RtmMetadata data,
+    MetadataOptions options,
+    string lockName
+    );
+```
+
+| Parameters | Type | Required | Default | Description |
+| :--------------: | :-------------------------------------------------------------: | :------: | :-----------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `channelName` | string | Required | - | Channel name. |
+| `channelType` | <code>{enumv.channeltype[props.ag_platform]}</code> | Required | - | Channel types. See <a href="#enumvchanneltypepropsag_platform"><code>{enumv.channeltype[props.ag_platform]}</code></a>. |
+| `data` | <code>{storage.metadata[props.ag_platform]}</code> | Required | - | Metadata item. |
+| `options` | <code>{storage.metadataoptions[props.ag_platform]}</code> | Optional | - | Options for setting the channel metadata. |
+| `lockName` | string | Optional | - | Lock name. If set, only users who call the <code>{lock.acquire[props.ag_platform]}</code> method to acquire the lock can perform operations. |
+
+The <code>{storage.metadata[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :-----------------: | :--------------: | :------: | :----: | -------------------------------------------------------------------------------------------------------------- |
+|   `majorRevision`   |      Int64       |   Optional   |  `-1`  | Version control switch:<li> `-1`: Disable the version verification.</li><li>> `0`: Enable the version verification. The operation can only be performed if the target version number matches this value.</li> |
+|   `metadataItems`   | `MetadataItem[]` |   Required   |   -    |  Metadata item array.                                                                                   |
+| `metadataItemsSize` |      UInt64      |   Required   |   -    | Length of the `MetadataItem[]` array.                                                                                  |
+
+The <code>MetadataItem</code>  data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :----: | :------: | :----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key` | string | Required | - | Key. |
+| `value` | string | Required | - | Value. |
+| `authorUserId` | string | Required | - | The user ID of the editor. This value is read-only and does not support writing. |
+| `revision` | Int64 | Optional | `-1` | <li>Returns the real version number in read operations.</li><li>Serves as a version control switch in write operations:</li><ul><li> `-1`: Disable the version verification.</li><li>> `0`: Enable version verification, only perform the operation if the target version number matches this value.</li></ul> |
+| `updateTs` | Int64 | Optional | `0` | Update timestamp. This value is read-only and does not support writing. |
+
+The <code>{storage.metadataoptions[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :-----: | :------: | :-----: | ------------------------- |
+| `recordTs` | Bool | Optional | `false` | Whether to record the timestamp of the edits. |
+| `recordUserId` | Bool | Optional | `false` | Whether to record the user ID of the editor. |
+
+#### Basic usage
+
+```csharp
+var metadata = new RtmMetadata();
+metadata.majorRevision = 174298270 ;
+var apple = new MetadataItem()
+            {
+                key = "Apple",
+                value = "120",
+                revision = 174298200,
+            };
+var banana = new MetadataItem()
+            {
+                key = "Banana",
+                value = "220",
+                revision = 174298100,
+            };
+metadata.metadataItems = new MetadataItem[] { apple, banana };
+metadata.metadataItemsSize = 2;
+var options = new MetadataOptions()
+            {
+                recordUserId = true,
+                recordTs = true
+            };
+
+var lockName = "lockName";
+
+var (status,response) = await rtmClient.GetStorage().UpdateChannelMetadataAsync("channel_name", RTM_CHANNEL_TYPE.MESSAGE, data, options, lockName);
+if (status.Error)
+{
+    Debug.Log(string.Format("{0} is failed, ErrorCode: {1}, due to: {2}", status.Operation, status.ErrorCode, status.Reason));
+}
+else
+{
+    Debug.Log(string.Format("Remove Channel :{0} metadata success! Channel Type is :{1}! ", response.ChannelName, response.ChannelType));
+}
+```
+
+#### Return value
+
+The <code>{storage.updatechannel[props.ag_platform]}</code> operation returns a `RtmResult<UpdateChannelMetadataResult>` data type, including the following properties:
+
+| Properties | Type | Description |
+| :--------: | :------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------- |
+|  `Status`  | <code>{config.rtmstatus[props.ag_platform]}</code> | No matter whether the operation is successful, this property returns a <code>{config.rtmstatus[props.ag_platform]}</code> data type, including the operation of the state. |
+| `Response` |              `UpdateChannelMetadataResult`               | After the operation succeeds, this property returns a `UpdateChannelMetadataResult` data type, which contains the execution result of this operation.                                |
+
+The <code>{config.rtmstatus[props.ag_platform]}</code> data type contains the following properties:
+
+<Status />
+
+The `UpdateChannelMetadataResult` data type contains the following properties:
+
+| Properties | Type | Description |
+| :-----------: | :----------------: | :-------------------------------------------------------------- |
+| `channelName` | string | Channel name. |
+| `channelType` | <code>{enumv.channeltype[props.ag_platform]}</code> |  Channel types. See <a href="#enumvchanneltypepropsag_platform"><code>{enumv.channeltype[props.ag_platform]}</code></a>. |
+
+### {storage.setuser[props.ag_platform]}
+
+#### Description
+
+<div className="index-desc-setuser">
+The <code>{storage.setuser[props.ag_platform]}</code> method can set metadata for a user. If you call this method multiple times, the SDK retrieves the `key` of the metadata items in turn and apply settings according to the following rules:
+
+- If you set metadata with different `key`, the SDK adds each set of metadata in sequence according to the order of the method calls.
+- If you set metadata with the same `key`, the `value` of the last setting overwrites the previous one.
+</div>
+
+After successfully setting user metadata, users who subscribe to the user and enable event listeners can receive the <code>{enumv.storagetypeuser[props.ag_platform]}</code> type of the <code>{config.onstorageevent[props.ag_platform]}</code> event notification. See [Event listeners](#event-listeners).
+
+User metadata also introduces the version control logic CAS (Compare And Set). This method provides two independent version control fields, and you can set one or more of them according to your actual business scenario:
+
+- Enable version number verification for the entire set of user metadata by setting the `majorRevision` property in the <code>{storage.metadata[props.ag_platform]}</code> class.
+- Enable version number verification for a single metadata item by setting the `revision` property in the `MetadataItem` class within the <code>{storage.metadata[props.ag_platform]}</code> class.
+
+When setting user metadata or metadata items, you can control whether to enable version number verification by specifying the revision property:
+
+- The default value of the revision property is `-1`, indicating that this method call does not perform any CAS verification. If the user metadata or metadata item already exists, the latest value overwrites the previous one. If the user metadata or metadata item does not exist, the SDK creates it.
+- If the revision property is a positive integer, this method call performs the CAS verification. If the user metadata or metadata item already exists, the SDK updates the corresponding value after the version number verification succeeds. If the user metadata or metadata item does not exist, the SDK returns the error code.
+
+#### Method
+
+You can call the <code>{storage.setuser[props.ag_platform]}</code> method as follows:
+
+```csharp
+RtmResult<SetUserMetadataResult> rtmClient.GetStorage().SetUserMetadataAsync(
+    string userId,
+    RtmMetadata data,
+    MetadataOptions options
+    );
+```
+
+| Parameters | Type | Required | Default | Description |
+| :--------------: | :-------------------------------------------------------------: | :------: | :-----------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `userId` | string | Optional | User ID of the current user | User ID. |
+| `data` | <code>{storage.metadata[props.ag_platform]}</code> | Required | - | Metadata item.  |
+| `options` | <code>{storage.metadataoptions[props.ag_platform]}</code> | Required | - | Options for setting the channel metadata. |
+
+The <code>{storage.metadata[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :-----------------: | :--------------: | :------: | :----: | -------------------------------------------------------------------------------------------------------------- |
+|   `majorRevision`   |      Int64       |   Optional   |  `-1`  | Version control switch:<li> `-1`: Disable the version verification.</li><li>> `0`: Enable the version verification. The operation can only be performed if the target version number matches this value.</li> |
+|   `metadataItems`   | `MetadataItem[]` |   Required   |   -    |  Metadata item array.                                                                                   |
+| `metadataItemsSize` |      UInt64      |   Required   |   -    | Length of the `MetadataItem[]` array.                                                                                  |
+
+The <code>MetadataItem</code>  data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :----: | :------: | :----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key` | string | Required | - | Key. |
+| `value` | string | Required | - | Value. |
+| `authorUserId` | string | Required | - | The user ID of the editor. This value is read-only and does not support writing. |
+| `revision` | Int64 | Optional | `-1` | <li>Returns the real version number in read operations.</li><li>Serves as a version control switch in write operations:</li><ul><li> `-1`: Disable the version verification.</li><li>> `0`: Enable version verification, only perform the operation if the target version number matches this value.</li></ul> |
+| `updateTs` | Int64 | Optional | `0` | Update timestamp. This value is read-only and does not support writing. |
+
+The <code>{storage.metadataoptions[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :-----: | :------: | :-----: | ------------------------- |
+| `recordTs` | Bool | Optional | `false` | Whether to record the timestamp of the edits. |
+| `recordUserId` | Bool | Optional | `false` | Whether to record the user ID of the editor. |
+
+#### Basic usage
+
+
+```csharp
+var metadata = new RtmMetadata();
+metadata.majorRevision = 174298270;
+var name = new MetadataItem()
+            {
+                key = "Name",
+                value = "Tony",
+                revision = 174298200,
+            };
+var mute = new MetadataItem()
+            {
+                key = "Mute",
+                value = "true",
+                revision = 174298100,
+            };
+metadata.metadataItems = new MetadataItem[] { name, mute };
+metadata.metadataItemsSize = 2;
+var options = new MetadataOptions()
+            {
+                recordUserId = true,
+                recordTs = true
+            };
+
+var (status,response) = await rtmClient.GetStorage().SetUserMetadataAsync("Tony",  rtmMetadata, options);
+if (status.Error)
+{
+    Debug.Log(string.Format("{0} is failed, ErrorCode: {1}, due to: {2}", status.Operation, status.ErrorCode, status.Reason));
+}
+else
+{
+    Debug.Log(string.Format("Set user :{0} metadata success! ", response.UserId));
+}
+```
+
+#### Return value
+
+
+The <code>{storage.setuser[props.ag_platform]}</code> operation returns a `RtmResult<SetUserMetadataResult>` data type, including the following properties:
+
+| Properties | Type | Description |
+| :--------: | :------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------- |
+|  `Status`  | <code>{config.rtmstatus[props.ag_platform]}</code> | No matter whether the operation is successful, this property returns a <code>{config.rtmstatus[props.ag_platform]}</code> data type, including the operation of the state. |
+| `Response` |                 `SetUserMetadataResult`                  | After the operation succeeds, this property returns a `SetUserMetadataResult` data type, which contains the execution result of this operation.                                      |
+
+The <code>{config.rtmstatus[props.ag_platform]}</code> data type contains the following properties:
+
+<Status />
+
+The `SetUserMetadataResult` data type contains the following properties:
+
+| Properties | Type | Description |
+| :------: | :----: | :-------- |
+| `UserId` | string | User ID. |
+
+
+
+### {storage.getuser[props.ag_platform]}
+
+#### Description
+
+<span className="index-desc-getuser">The <code>{storage.getuser[props.ag_platform]}</code> method can get the metadata and metadata item for the specified user.</span>
+
+#### Method
+
+You can call the <code>{storage.getuser[props.ag_platform]}</code> method as follows:
+
+```csharp
+RtmResult<GetUserMetadataResult> GetUserMetadataAsync(string userId);
+```
+
+| Parameters | Type | Required | Default | Description |
+| :--------------: | :-------------------------------------------------------------: | :------: | :-----------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `userId` | string | Optional | User ID of the current user | User ID. |
+
+#### Basic usage
+
+
+```csharp
+var result = await rtmClient.GetStorage().GetUserMetadataAsync("Tony");
+if (result.Status.Error)
+{
+    Debug.Log(string.Format("{0} is failed, The error code is {1}, because of: {2}", result.Status.Operation, result.Status.ErrorCode, result.Status.Reason));
+}
+else
+{
+    Debug.Log(string.Format("Get User :{0} metadata success!  ", result.Response.UserId));
+    var data =  result.Response.data;
+    if (data.metadataItemsSize != 0)
+    {
+        Debug.Log(string.Format("Channel Metadata Major Revision is :{0} ! ", data.majorRevision));
+        for ( int i =0; i < data.metadataItemsSize; i++)
+        {
+            Debug.Log(string.Format("The {0}'th iterms Key is:{1}, Value is {2} ! ", i, data.metadataItems[i].key, data.metadataItems[i].value));
+        }
+    }
+}
+```
+
+
+#### Return value
+
+
+The <code>{storage.getuser[props.ag_platform]}</code> operation returns a `RtmResult<GetUserMetadataResult>` data type, including the following properties:
+
+| Properties | Type |  Description |
+| :------------ | :---------------: | :----------------------------------------------------------- |
+| `Status`      |     <code>{config.rtmstatus[props.ag_platform]}</code>     | No matter whether the operation is successful, this property returns a <code>{config.rtmstatus[props.ag_platform]}</code> data type, including the operation of the state. |
+| `Response`      | `GetUserMetadataResult` | After the operation succeeds, this property returns a `GetUserMetadataResult` data type, which contains the execution result of this operation. |
+
+The <code>{config.rtmstatus[props.ag_platform]}</code> data type contains the following properties:
+
+<Status />
+
+The `GetUserMetadataResult` data type contains the following properties:
+
+| Parameters | Type | Description |
+| :--------------: | :-------------------------------------------------------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UserId` | string | User ID. |
+| `Data` | <code>{storage.metadata[props.ag_platform]}</code> |  Metadata item. |
+
+The <code>{storage.metadata[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :-----------------: | :--------------: | :------: | :----: | -------------------------------------------------------------------------------------------------------------- |
+|   `majorRevision`   |      Int64       |   Optional   |  `-1`  | Version control switch:<li> `-1`: Disable the version verification.</li><li>> `0`: Enable the version verification. The operation can only be performed if the target version number matches this value.</li> |
+|   `metadataItems`   | `MetadataItem[]` |   Required   |   -    |  Metadata item array.                                                                                   |
+| `metadataItemsSize` |      UInt64      |   Required   |   -    | Length of the `MetadataItem[]` array.                                                                                  |
+
+The <code>MetadataItem</code>  data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :----: | :------: | :----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key` | string | Required | - | Key. |
+| `value` | string | Required | - | Value. |
+| `authorUserId` | string | Required | - | The user ID of the editor. This value is read-only and does not support writing. |
+| `revision` | Int64 | Optional | `-1` | <li>Returns the real version number in read operations.</li><li>Serves as a version control switch in write operations:</li><ul><li> `-1`: Disable the version verification.</li><li>> `0`: Enable version verification, only perform the operation if the target version number matches this value.</li></ul> |
+| `updateTs` | Int64 | Optional | `0` | Update timestamp. This value is read-only and does not support writing. |
+
+The <code>{storage.metadataoptions[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :-----: | :------: | :-----: | ------------------------- |
+| `recordTs` | Bool | Optional | `false` | Whether to record the timestamp of the edits. |
+| `recordUserId` | Bool | Optional | `false` | Whether to record the user ID of the editor. |
+
+### {storage.removeuser[props.ag_platform]}
+
+#### Description
+
+<span className="index-desc-removeuser">The <code>{storage.removeuser[props.ag_platform]}</code> method can remove user metadata or metadata items.</span>
+
+After successfully removing user metadata, users who subscribe to the user and enable event listeners can receive the <code>{enumv.storagetypeuser[props.ag_platform]}</code> type of the <code>{config.onstorageevent[props.ag_platform]}</code> event notification. See [Event listeners](#event-listeners).
+
+#### Method
+
+You can call the <code>{storage.removeuser[props.ag_platform]}</code> method as follows:
+
+```csharp
+RtmResult<RemoveUserMetadataResult>rtmClient.GetStorage().RemoveUserMetadataAsync(string userId, RtmMetadata data, MetadataOptions options);
+```
+
+| Parameters | Type | Required | Default | Description |
+| :--------------: | :-------------------------------------------------------------: | :------: | :-----------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `userId` | string | Optional | User ID of the current user | User ID. |
+| `data` | <code>{storage.metadata[props.ag_platform]}</code> | Required | - | Metadata item.  |
+| `options` | <code>{storage.metadataoptions[props.ag_platform]}</code> | Required | - | Options for setting the channel metadata. |
+
+The <code>{storage.metadata[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :-----------------: | :--------------: | :------: | :----: | -------------------------------------------------------------------------------------------------------------- |
+|   `majorRevision`   |      Int64       |   Optional   |  `-1`  | Version control switch:<li> `-1`: Disable the version verification.</li><li>> `0`: Enable the version verification. The operation can only be performed if the target version number matches this value.</li> |
+|   `metadataItems`   | `MetadataItem[]` |   Required   |   -    |  Metadata item array.                                                                                   |
+| `metadataItemsSize` |      UInt64      |   Required   |   -    | Length of the `MetadataItem[]` array.                                                                                  |
+
+The <code>MetadataItem</code>  data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :----: | :------: | :----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key` | string | Required | - | Key. |
+| `value` | string | Required | - | Value. |
+| `authorUserId` | string | Required | - | The user ID of the editor. This value is read-only and does not support writing. |
+| `revision` | Int64 | Optional | `-1` | <li>Returns the real version number in read operations.</li><li>Serves as a version control switch in write operations:</li><ul><li> `-1`: Disable the version verification.</li><li>> `0`: Enable version verification, only perform the operation if the target version number matches this value.</li></ul> |
+| `updateTs` | Int64 | Optional | `0` | Update timestamp. This value is read-only and does not support writing. |
+
+The <code>{storage.metadataoptions[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :-----: | :------: | :-----: | ------------------------- |
+| `recordTs` | Bool | Optional | `false` | Whether to record the timestamp of the edits. |
+| `recordUserId` | Bool | Optional | `false` | Whether to record the user ID of the editor. |
+
+#### Basic usage
+
+```csharp
+var metadata = new RtmMetadata();
+metadata.majorRevision = 174298270;
+var metadataItem = new MetadataItem()
+            {
+                key = "Mute",
+                revision = 174298100,
+            };
+var options = new MetadataOptions() {};
+
+var (status,response) = await rtmClient.GetStorage().RemoveUserMetadataAsync("channel_name", RTM_CHANNEL_TYPE.MESSAGE, options);
+if (status.Error)
+{
+    Debug.Log(string.Format("{0} is failed, ErrorCode: {1}, due to: {2}", status.Operation, status.ErrorCode, status.Reason));
+}
+else
+{
+    Debug.Log(string.Format("Remove Channel :{0} metadata success! Channel Type is :{1}! ", response.ChannelName, response.ChannelType));
+}
+```
+
+#### Return value
+
+The <code>{storage.removeuser[props.ag_platform]}</code> operation returns a `RtmResult<RemoveUserMetadataResult>` data type, including the following properties:
+
+| Properties | Type | Description |
+| :--------: | :------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------- |
+|  `Status`  | <code>{config.rtmstatus[props.ag_platform]}</code> | No matter whether the operation is successful, this property returns a <code>{config.rtmstatus[props.ag_platform]}</code> data type, including the operation of the state. |
+| `Response` |                `RemoveUserMetadataResult`                | After the operation succeeds, this property returns a `RemoveUserMetadataResult` data type, which contains the execution result of this operation.                                   |
+
+The <code>{config.rtmstatus[props.ag_platform]}</code> data type contains the following properties:
+
+<Status />
+
+The `RemoveUserMetadataResult` data type contains the following properties:
+
+| Parameters | Type |  Description |
+| :--------------: | :-------------------------------------------------------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UserId` | string |  User ID. |
+
+### {storage.updateuser[props.ag_platform]}
+
+#### Description
+
+<span className="index-desc-updateuser">The <code>{storage.updateuser[props.ag_platform]}</code> method can update existing user metadata. After successfully updating channel metadata, users who subscribe to the user and enable event listeners can receive the <code>{enumv.storagetypeuser[props.ag_platform]}</code> type of the <code>{config.onstorageevent[props.ag_platform]}</code> event notification. See [Event listeners](#event-listeners).</span>
+
+<Admonition type="info" title="Information">You cannot use this method to update metadata items which do not exist.</Admonition>
+
+#### Method
+
+You can call the <code>{storage.updateuser[props.ag_platform]}</code> method as follows:
+
+
+```csharp
+RtmResult<UpdateUserMetadataResult> rtmClient.GetStorage().UpdateUserMetadataAsync(
+    string userId,
+    RtmMetadata data,
+    MetadataOptions options
+    );
+```
+
+| Parameters | Type | Required | Default | Description |
+| :--------------: | :-------------------------------------------------------------: | :------: | :-----------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `userId` | string | Optional | User ID of the current user | User ID. |
+| `data` | <code>{storage.metadata[props.ag_platform]}</code> | Required | - | Metadata item.  |
+| `options` | <code>{storage.metadataoptions[props.ag_platform]}</code> | Required | - | Options for setting the channel metadata. |
+
+The <code>{storage.metadata[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :-----------------: | :--------------: | :------: | :----: | -------------------------------------------------------------------------------------------------------------- |
+|   `majorRevision`   |      Int64       |   Optional   |  `-1`  | Version control switch:<li> `-1`: Disable the version verification.</li><li>> `0`: Enable the version verification. The operation can only be performed if the target version number matches this value.</li> |
+|   `metadataItems`   | `MetadataItem[]` |   Required   |   -    |  Metadata item array.                                                                                   |
+| `metadataItemsSize` |      UInt64      |   Required   |   -    | Length of the `MetadataItem[]` array.                                                                                  |
+
+The <code>MetadataItem</code>  data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :----: | :------: | :----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key` | string | Required | - | Key. |
+| `value` | string | Required | - | Value. |
+| `authorUserId` | string | Required | - | The user ID of the editor. This value is read-only and does not support writing. |
+| `revision` | Int64 | Optional | `-1` | <li>Returns the real version number in read operations.</li><li>Serves as a version control switch in write operations:</li><ul><li> `-1`: Disable the version verification.</li><li>> `0`: Enable version verification, only perform the operation if the target version number matches this value.</li></ul> |
+| `updateTs` | Int64 | Optional | `0` | Update timestamp. This value is read-only and does not support writing. |
+
+The <code>{storage.metadataoptions[props.ag_platform]}</code> data type contains the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :-----: | :------: | :-----: | ------------------------- |
+| `recordTs` | Bool | Optional | `false` | Whether to record the timestamp of the edits. |
+| `recordUserId` | Bool | Optional | `false` | Whether to record the user ID of the editor. |
+
+#### Basic usage
+
+
+```csharp
+var metadata = new RtmMetadata();
+metadata.majorRevision = 174298270;
+ var metadataItem = new MetadataItem()
+            {
+                key = "Mute",
+                value = "false",
+                revision = 174298100,
+            };
+metadata.metadataItems = new MetadataItem[] { metadataItem };
+metadata.metadataItemsSize = 1;
+var options = new MetadataOptions()
+            {
+                recordUserId = true,
+                recordTs = true
+            };
+
+var (status,response) = await rtmClient.GetStorage().UpdateUserMetadataAsync("Tony", data, metadataOptions);
+if (status.Error)
+{
+    Debug.Log(string.Format("{0} is failed, ErrorCode: {1}, due to: {2}", status.Operation, status.ErrorCode, status.Reason));
+}
+else
+{
+    Debug.Log(string.Format("Update User :{0} metadata success! ", response.UserId));
+}
+```
+
+#### Return value
+
+The <code>{storage.updateuser[props.ag_platform]}</code> operation returns a `RtmResult<UpdateUserMetadataResult>` data type, including the following properties:
+
+| Properties | Type | Description |
+| :--------: | :------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------- |
+|  `Status`  | <code>{config.rtmstatus[props.ag_platform]}</code> | No matter whether the operation is successful, this property returns a <code>{config.rtmstatus[props.ag_platform]}</code> data type, including the operation of the state. |
+| `Response` |                `UpdateUserMetadataResult`                | After the operation succeeds, this property returns a `UpdateUserMetadataResult` data type, which contains the execution result of this operation.                                   |
+
+The <code>{config.rtmstatus[props.ag_platform]}</code> data type contains the following properties:
+
+<Status />
+
+The `UpdateUserMetadataResult` data type contains the following properties:
+
+| Parameters | Type |  Description |
+| :--------------: | :-------------------------------------------------------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `userId` | string | User ID. |

@@ -6,10 +6,213 @@ import TabItem from '@theme/TabItem';
 
 <Tabs groupId="language">
 <TabItem value="cpp" label="C++" default>
-1
+#### Initialize the engine
+
+Before calling other APIs, you create and initialize an instance of `IRtcEngine`.
+
+Call `createAgoraRtcEngine` and and pass in the App ID to `initialize` the IRtcEngine.
+
+```cpp
+// Create an IRtcEngine instance
+m_lpAgoraEngine = createAgoraRtcEngine();
+RtcEngineContext ctx;
+
+// Add registration callbacks and events
+ctx.eventHandler = &m_engineEventHandler;
+
+// Enter your App ID. You can get the App ID of your project from Agora console
+ctx.appId = "Your App ID";
+
+// Initialize IRtcEngine
+m_lpAgoraEngine->initialize(ctx);
+```
+
+Add callbacks to receive notification of users joining and leaving the channel.
+
+```cpp
+// Inherit the callbacks and events in the IRtcEngineEventHandler class
+    class CAGEngineEventHandler :
+    public IRtcEngineEventHandler
+{
+ public:
+    CAGEngineEventHandler();
+    ~CAGEngineEventHandler();
+    void setMainWnd(HWND wnd);
+    HWND GetMsgReceiver() {return m_hMainWnd;};
+
+    // Register onJoinChannelSuccess callback
+    // This callback is triggered when a local user joins the channel
+    virtual void onJoinChannelSuccess(const char* channel, uid_t uid, int elapsed);
+
+    // Register onLeaveChannel callback
+    // This callback is triggered when the local user leaves the channel
+    virtual void onLeaveChannel(const RtcStats& stat);
+
+    // Register onUserJoined callback
+    // This callback is triggered when a remote host joins the channel
+    // After receiving this callback, call setupRemoteVideo to set the view of the remote user.
+    virtual void onUserJoined(uid_t uid, int elapsed) override;
+
+    // Register onUserOffline callback
+    // This callback is triggered when the remote user leaves the channel or goes offline
+    virtual void onUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason);
+ private:
+    HWND m_hMainWnd;
+ };
+```
+
+#### Set up local view
+
+To display the local video during a call, refer to the following code:
+
+```cpp
+// Enable video module
+m_lpAgoraEngine->enableVideo();
+// Start local preview
+m_lpAgoraEngine->startPreview();
+// Set local view
+VideoCanvas vc;
+vc.uid = 0;
+vc.view = hVideoWnd;
+vc.renderMode = RENDER_MODE_TYPE::RENDER_MODE_HIDDEN;
+m_lpAgoraEngine->setupLocalVideo(vc);
+```
+
+#### Join a channel
+
+Set the channel name and user role, and use a temporary token to join a channel.
+
+```cpp
+void CLiveBroadcastingDlg::OnBnClickedButtonJoinchannel()
+{
+    if (!m_rtcEngine || !m_initialize)
+        return;
+    CString strInfo;
+    if (!m_joinChannel) {
+        CString strChannelName;
+        m_edtChannelName.GetWindowText(strChannelName);
+        if (strChannelName.IsEmpty()) {
+            AfxMessageBox(_T("Fill channel name first"));
+            return;
+        }
+		VideoEncoderConfiguration config;
+		if (m_cmbVideoEncoder.GetCurSel() < 3)
+			config.codecType = (VIDEO_CODEC_TYPE)(m_cmbVideoEncoder.GetCurSel() + 1);
+		else
+			config.codecType = (VIDEO_CODEC_TYPE)(m_cmbVideoEncoder.GetCurSel() + 2);
+		m_rtcEngine->setVideoEncoderConfiguration(config);
+        std::string szChannelId = cs2utf8(strChannelName);
+		ChannelMediaOptions options;
+		//Set channel profile to LIVE_BROADCASTING
+		options.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
+		// Set the user role as host
+		options.clientRoleType = CLIENT_ROLE_TYPE(m_cmbRole.GetCurSel() + 1);
+		options.autoSubscribeAudio = true;
+		options.autoSubscribeVideo = true;
+        // Use a temporary Token you generated in the Agora console to join the channel
+        if (0 == m_rtcEngine->joinChannel(APP_TOKEN, szChannelId.c_str(), 0, options)) {
+            strInfo.Format(_T("join channel %s, use ChannelMediaOptions"), getCurrentTime());
+            m_btnJoinChannel.EnableWindow(FALSE);
+        }
+    }
+    else {
+        if (0 == m_rtcEngine->leaveChannel()) {
+            strInfo.Format(_T("leave channel %s"), getCurrentTime());
+            m_btnJoinChannel.EnableWindow(FALSE);
+        }
+    }
+    m_lstInfo.InsertString(m_lstInfo.GetCount(), strInfo);
+}
+```
+
+#### Set up remote view
+
+After a remote user successfully joins the channel, the SDK triggers the `onUserJoined` callback, with the user's `uid`. Call `setupRemoteVideo` from the callback, and pass in the obtained `uid`.
+
+```cpp
+// This callback will is triggered when a remote user successfully joins the channel.
+// After receiving this callback, call setupRemoteVideo to set the view of the remote user.
+void CAGEngineEventHandler::onUserJoined(uid_t uid, int elapsed)
+{
+	LPAGE_USER_JOINED lpData = new AGE_USER_JOINED;
+
+	lpData->uid = uid;
+	lpData->elapsed = elapsed;
+
+	if(m_hMainWnd != NULL)
+		::PostMessage(m_hMainWnd, WM_MSGID(EID_USER_JOINED), (WPARAM)lpData, 0);
+}
+```
+
+```cpp
+VideoCanvas canvas;
+canvas.renderMode = RENDER_MODE_FIT;
+POSITION pos = m_listWndInfo.GetHeadPosition();
+......
+AGVIDEO_WNDINFO &agvWndInfo = m_listWndInfo.GetNext(pos);
+canvas.uid = agvWndInfo.nUID;
+canvas.view = m_wndVideo[nIndex].GetSafeHwnd();
+agvWndInfo.nIndex = nIndex;
+
+// Set the remote view
+CAgoraObject::GetEngine()->setupRemoteVideo(canvas);
+```
+
+#### Leave the channel
+
+To end a call, or when closing the App, or switching the App to the background, call `leaveChannel` to leave the current channel.
+
+```cpp
+void CLiveBroadcastingDlg::UnInitAgora()
+{
+    if (m_rtcEngine) {
+		if(m_joinChannel)
+		// Leave the channel
+		m_rtcEngine->leaveChannel();
+		m_lstInfo.InsertString(m_lstInfo.GetCount(), _T("leaveChannel"));
+        // Stop video preview
+        m_rtcEngine->stopPreview();
+        m_lstInfo.InsertString(m_lstInfo.GetCount(), _T("stopPreview"));
+        // Close the video module
+        m_rtcEngine->disableVideo();
+        m_lstInfo.InsertString(m_lstInfo.GetCount(), _T("disableVideo"));
+        // Release IRtcEngine
+        m_rtcEngine->release(true);
+        m_lstInfo.InsertString(m_lstInfo.GetCount(), _T("release rtc engine"));
+        m_rtcEngine = NULL;
+    }
+}
+```
+
 </TabItem>
 <TabItem value="cs" label="C#" default>
-2
+
+Refer to the following steps to implement audio and video interaction logic:
+
+1. In **Solution Explorer**, right-click `Form1.cs` and click **View Code**.
+
+1. In the pop-up `Form1.cs` interface, add the following code after `using System.Windows.Forms;`:
+
+    ```cs
+    using Agora.Rtc;
+    ```
+
+1. Create join channel related variables in Form1.cs, add the following code public Form1()before:
+
+    ```cs
+    // 填写项目的 App ID，可在声网控制台中生成
+    private readonly string APP_ID = "";
+
+    // 填写声网控制台中生成的临时 Token
+    private readonly string APP_TOKEN = "";
+
+    // 声明 IRtcEngine 实例
+    private IRtcEngine engine_ = null;
+
+    // 声明 RtcEventHandler
+    private RtcEventHandler handler_ = null;
+    ```
+
 </TabItem>
 </Tabs>
 </PlatformWrapper>

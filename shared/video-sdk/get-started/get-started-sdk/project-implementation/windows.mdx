@@ -189,29 +189,213 @@ void CLiveBroadcastingDlg::UnInitAgora()
 
 Refer to the following steps to implement audio and video interaction logic:
 
-1. In **Solution Explorer**, right-click `Form1.cs` and click **View Code**.
+1. In **Solution Explorer**, right-click `Form1.cs` and select **View Code**.
 
-1. In the pop-up `Form1.cs` interface, add the following code after `using System.Windows.Forms;`:
+1. In `Form1.cs`, add the following code after `using System.Windows.Forms;`:
 
-    ```cs
+    ```c#
     using Agora.Rtc;
     ```
 
-1. Create join channel related variables in Form1.cs, add the following code public Form1()before:
+1. In `Form1.cs`, declare variables to join a channel. Add the following code before `public Form1()`:
 
-    ```cs
-    // 填写项目的 App ID，可在声网控制台中生成
+    ```c#
+    // Fill in the App ID of the project from Agora console
     private readonly string APP_ID = "";
 
-    // 填写声网控制台中生成的临时 Token
+    // Fill in the temporary Token generated from Agora console
     private readonly string APP_TOKEN = "";
 
-    // 声明 IRtcEngine 实例
+    // Declare a variable to hold an IRtcEngine instance
     private IRtcEngine engine_ = null;
 
-    // 声明 RtcEventHandler
+    // Declare a variable to hold an RtcEventHandler instance
     private RtcEventHandler handler_ = null;
     ```
+
+1. To declare a `RtcEventHandler` class that handles events, in `Form1.cs` add the following code after the class definition:
+
+    ```c#
+    internal class RtcEventHandler : IRtcEngineEventHandler
+    {
+        // Declare a delegate to handle the OnUserJoined event
+        public delegate void OnUserJoinedHandler(RtcConnection connection, uint remoteUid, int elapsed);
+
+        // Declare OnUserJoined callback
+        public event OnUserJoinedHandler EventOnUserJoined;
+
+        public RtcEventHandler()
+        {
+        }
+
+        public override void OnError(int error, string msg)
+        {
+            Console.WriteLine("=====>OnError {0} {1}", error, msg);
+        }
+
+        public override void OnJoinChannelSuccess(RtcConnection connection, int elapsed)
+        {
+            Console.WriteLine("----->OnJoinChannelSuccess channel={0} uid={1}", connection.channelId, connection.localUid);
+        }
+
+        public override void OnLeaveChannel(RtcConnection connection, RtcStats stats)
+        {
+            Console.WriteLine("----->OnLeaveChannel duration={0}", stats.duration);
+        }
+
+        public override void OnUserJoined(RtcConnection connection, uint remoteUid, int elapsed)
+        {
+            Console.WriteLine("----->OnUserJoined uid={0}", remoteUid);
+
+            if (EventOnUserJoined != null)
+                EventOnUserJoined.Invoke(connection, remoteUid, elapsed);
+        }
+
+        public override void OnUserOffline(RtcConnection connection, uint remoteUid, USER_OFFLINE_REASON_TYPE reason)
+        {
+            Console.WriteLine("----->OnUserOffline, channel={0}, remoteUid={1}, reason={2}", connection.channelId, remoteUid, reason);
+        }
+
+        public override void OnRemoteVideoStateChanged(RtcConnection connection, uint remoteUid, REMOTE_VIDEO_STATE state, REMOTE_VIDEO_STATE_REASON reason, int elapsed)
+        {
+            Console.WriteLine("----->OnRemoteVideoStateChanged, channel={0}, remoteUid={1}, state={2}, reason={3}", connection.channelId, remoteUid, state, reason);
+        }
+    }
+    ```
+
+1. Create and initialize `IRtcEngine`
+
+    1. Call `CreateAgoraRtcEngine` to create an `IRtcEngine` instance. Add the following code after `InitializeComponent();`:
+
+        ```c#
+        //Create IRtcEngine
+        engine_ = RtcEngine.CreateAgoraRtcEngine();
+
+        RtcEngineContext ctx = new RtcEngineContext()
+        {
+            appId = APP_ID,
+            areaCode = AREA_CODE.AREA_CODE_GLOB,
+            logConfig =
+            {
+                filePath = "rtc.log"
+            }
+        };
+
+        //Initialize IRtcEngine
+        var ret = engine_.Initialize(ctx);
+        if(ret != 0)
+        {
+            Console.WriteLine("=====>Initialize failed {0}", ret);
+            return;
+        }
+
+        ```
+
+    1. To create and register event listeners, add the following code after the previous code:
+
+        ```c#
+        // Register event listener
+        handler_ = new RtcEventHandler();
+        handler_.EventOnUserJoined += OnUserJoined;
+        engine_.InitEventHandler(handler_);
+        ```
+
+    1. To enable the video module, add the following code after the previous code:
+
+        ```c#
+        // Enable video module
+        ret = engine_.EnableVideo();
+        if (ret != 0)
+        {
+            Console.WriteLine("=====>EnableVideo failed {0}", ret);
+        }
+        ```
+
+    1.  To enable local video, add the following code after the previous code:
+
+        ```c#
+        // Enable local video
+        ret = engine_.EnableLocalVideo(true);
+        if (ret != 0)
+        {
+            Console.WriteLine("=====>EnableLocalVideo failed {0}", ret);
+        }
+        ```
+
+    1. To enable local camera screen preview, add the following code after the previous code:
+
+        ```c#
+        // Enable local video preview
+        ret = engine_.StartPreview(VIDEO_SOURCE_TYPE.VIDEO_SOURCE_CAMERA_PRIMARY);
+        if (ret != 0)
+        {
+            Console.WriteLine("=====>StartPreview failed {0}", ret);
+        }
+        ```
+
+    1. To set up local camera preview, add the following code after the previous code
+
+        ```c#
+        // Set local video rendering properties
+        VideoCanvas canvas = new VideoCanvas();
+        canvas.view = (long)videoboxLocal.Handle;
+        canvas.renderMode = RENDER_MODE_TYPE.RENDER_MODE_FIT;
+
+        ret = engine_.SetupLocalVideo(canvas);
+        if (ret != 0)
+        {
+            Console.WriteLine("=====>SetupLocalVideo failed {0}", ret);
+        }
+        ```
+
+1. To join a channel when the app user clicks a button, replace the `btnJoin_Click` function with the following:
+
+    ```c#
+    private void btnJoin_Click(object sender, EventArgs e)
+    {
+        if (null != engine_)
+        {
+            ChannelMediaOptions options = new ChannelMediaOptions();
+            // Set the channel profile to live broadcasting
+            options.channelProfile.SetValue(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
+            // Set the user role as host
+            options.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+            // Use a temporary token to join the channel
+            var ret = engine_.JoinChannel(APP_TOKEN, txChannelName.Text, 0, options);
+
+            Console.WriteLine("=====>JoinChannel result {0}", ret);
+        }
+    }
+    ```
+
+1. Implement leave channel logic. Replace the `btnLeave_Click` function with the following:
+
+    ```c#
+    private void btnLeave_Click(object sender, EventArgs e)
+    {
+        if (null != engine_)
+        {
+            var ret = engine_.LeaveChannel();
+            Console.WriteLine("=====>LeaveChannel result {0}", ret);
+        }
+    }
+    ```
+
+1. Add a `OnUserJoined` function to receive notification when a remote user joins the channel. Use the callback to set up a video preview for the remote user. Add the following code after the `btnLeave_Click` function:
+
+    ```c#
+    private void OnUserJoined(RtcConnection connection, uint remoteUid, int elapsed)
+    {
+        VideoCanvas canvas = new VideoCanvas();
+        canvas.view = (long)videoboxRemote.Handle;
+        canvas.renderMode = RENDER_MODE_TYPE.RENDER_MODE_FIT;
+        canvas.uid = remoteUid;
+
+        int ret = engine_.SetupRemoteVideo(canvas);
+        Console.WriteLine("----->SetupRemoteVideo, ret={0}", ret);
+    }
+    ```
+
 
 </TabItem>
 </Tabs>

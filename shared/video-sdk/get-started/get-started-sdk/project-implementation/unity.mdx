@@ -1,4 +1,205 @@
 <PlatformWrapper platform="unity">
 
+### Implement the system logic
 
+This section shows you how to import the libraries required to implement <Vpd k="NAME" /> and obtain camera and microphone device permissions.
+
+1. Create a new script and import the UI library
+
+    1. In **Project**, open **Assets > Agora-Unity-RTC-SDK > Code > Rtc** , right-click and select **Create > C# Script**. This creates a file `NewBehaviourScript.cs` in your **Assets**. Rename the file to `JoinChannelVideo.cs` and open the file.
+
+    1. Import the `UnityEngine.UI` namespace to access UI components:
+
+        ```c#
+        using UnityEngine.UI;
+        ```
+
+2. Get Android permissions
+
+    In `UNITY_2018_3_OR_NEWER`, Unity does actively obtain microphone and camera permissions from the user. You call the `CheckPermission` method to obtain permissions. This step is only required for the Android platform.
+
+    1. In `Assets/Agora-Unity-RTC-SDK/Code/Rtc/JoinChannelVideo.cs`, add the following code after `UnityEngine.UI;`:
+
+        ```c#
+        #if (UNITY_2018_3_OR_NEWER && UNITY_ANDROID)
+        using UnityEngine.Android;
+        #endif
+        ```
+
+    1. Create a list of permissions that need to be obtained. Add the following code before `Start`:
+
+        ```c#
+        #if (UNITY_2018_3_OR_NEWER && UNITY_ANDROID)
+        private ArrayList permissionList = new ArrayList() { Permission.Camera, Permission.Microphone };
+        #endif
+        ```    
+
+    1. Check whether permissions have been granted. Add the following code after `Update`:
+
+        ```c#
+        private void CheckPermissions() {
+        #if (UNITY_2018_3_OR_NEWER && UNITY_ANDROID)
+                foreach (string permission in permissionList)
+                {
+                    if (!Permission.HasUserAuthorizedPermission(permission))
+                    {
+                        Permission.RequestUserPermission(permission);
+                    }
+                }
+        #endif
+        }
+        ```
+
+1. Bind the script to the Canvas. In `Assets/Agora-Unity-RTC-SDK/Code/Rtc` , select the `JoinChannelVideo.cs` file, and drag it to the Canvas. In the **Inspector** panel you see that the file has been bound to the Canvas.
+
+### Implement audio and video interaction
+Refer to the following steps to implement audio and video interaction:
+
+1. Import the Agora library in `Assets/Agora-Unity-RTC-SDK/Code/Rtc/JoinChannelVideo.cs` and add the following code after `using UnityEngine.UI;`:
+
+    ```c#
+    using Agora.Rtc;
+    ```
+
+1. Create the variables related to joining the channel. In `Assets/Agora-Unity-RTC-SDK/Code/Rtc/JoinChannelVideo.cs`, add the following code after `JoinChannelVideo: MonoBehaviour {`:
+
+    ```c#
+    // Fill in your App ID
+    private string _appID= "";
+    // Fill in your channel name
+    private string _channelName = "";
+    // Fill in Token
+    private string _token = "";
+    internal VideoSurface LocalView;
+    internal VideoSurface RemoteView;
+    internal IRtcEngine RtcEngine;
+    ```
+
+1. Create and initialize an `IRtcEngine` instance.
+
+    Before calling other Agora APIs, you create and initialize an `IRtcEngine` instance. Call `CreateAgoraRtcEngine` to create an `IRtcEngine` instance. In `Assets/AgoraEngine/Scripts/JoinChannelVideo.cs`, add the following code after `CheckPermissions`:
+
+    ```c#
+    private void SetupVideoSDKEngine()
+    {
+        // Create IRtcEngine instance
+        RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
+        RtcEngineContext context = new RtcEngineContext(_appID, 0,CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING, AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT);
+        // Initialize IRtcEngine
+        RtcEngine.Initialize(context);
+    }
+    ```
+
+1. Create an instance of the user event handler class and set the engine event handler. In `Assets/Agora-Unity-RTC-SDK/Code/Rtc/JoinChannelVideo.cs`, add the following code after `SetupVideoSDKEngine()`:
+
+    ```c#
+    // Create a user event handler instance and set the engine event handler
+    private void InitEventHandler()
+    {
+    UserEventHandler handler = new UserEventHandler(this);
+    RtcEngine.InitEventHandler(handler);
+    }
+
+    // Implement your own EventHandler class, you can inherit the IRtcEngineEventHandler interface class implementation
+    internal class UserEventHandler : IRtcEngineEventHandler
+    {
+        private readonly JoinChannelVideo _videoSample;
+        internal UserEventHandler(JoinChannelVideo videoSample)
+        {
+            _videoSample = videoSample;
+        }
+        // error callback
+        public override void OnError(int err, string msg)
+        {
+        }
+        // Triggered when a local user successfully joins the channel
+        public override void OnJoinChannelSuccess(RtcConnection connection, int elapsed)
+        {
+        _videoSample.LocalView.SetForUser(0,"");
+        }
+    }
+    ```
+
+1. UI elements are referenced in `Assets/Agora-Unity-RTC-SDK/Code/Rtc/JoinChannelVideo.cs`. To set up the user interface, add the following code before `SetupVideoSDKEngine()`:
+
+    ```c#
+    private void SetupUI()
+    {
+        GameObject go = GameObject.Find("LocalView");
+        LocalView = go.AddComponent<VideoSurface>();
+        go.transform.Rotate(0.0f, 0.0f, -180.0f);
+        go = GameObject.Find("RemoteView");
+        RemoteView = go.AddComponent<VideoSurface>();
+        go.transform.Rotate(0.0f, 0.0f, -180.0f);
+        go = GameObject.Find("Leave");
+        go.GetComponent<Button>().onClick.AddListener(Leave);
+        go = GameObject.Find("Join");
+        go.GetComponent<Button>().onClick.AddListener(Join);
+    }
+    ```
+
+1. Set up local video display and join the channel. In `Assets/Agora-Unity-RTC-SDK/Code/Rtc/JoinChannelVideo.cs`, add the following code after `InitEventHandler`:
+
+    ```c#
+    public void Join()
+    {
+        // Enable video module
+        RtcEngine.EnableVideo();
+        // Set channel media options
+        ChannelMediaOptions options = new ChannelMediaOptions();
+        // Start video rendering
+        LocalView.SetEnable(true);
+        // Automatically subscribe to all audio streams
+        options.autoSubscribeAudio.SetValue(true);
+        // Automatically subscribe to all video streams
+        options.autoSubscribeVideo.SetValue(true);
+        // Set the channel profile to live broadcast
+        options.channelProfile.SetValue(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
+        //Set the user role 
+        options.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+        // Join a channel
+        RtcEngine.JoinChannel(_token, _channelName, 0, options);
+    }
+    ```
+
+1. To display the remote video, in `Assets/AgoraEngine/Scripts/JoinChannelVideo.cs`, add the following code after `OnJoinChannelSuccess`:
+
+    ```c#
+    // When the SDK receives the first frame of a remote video stream and successfully decodes it, the OnUserJoined callback is triggered.
+    public override void OnUserJoined(RtcConnection connection, uint uid, int elapsed)
+    {
+        // Set the remote video display
+        _videoSample.RemoteView.SetForUser(uid, connection.channelId, VIDEO_SOURCE_TYPE.VIDEO_SOURCE_REMOTE);
+        // Start video rendering
+        _videoSample.RemoteView.SetEnable(true);
+        Debug.Log("Remote user joined");
+    }
+    ```
+
+1. To stop the remote video display when a remote user leaves the channel, in `Assets/Agora-Unity-RTC-SDK/Code/Rtc/JoinChannelVideo.cs`, add the following code after `OnUserJoined`:
+
+    ```c#
+    // This callback is triggered when a remote user leaves the current channel
+    public override void OnUserOffline(RtcConnection connection, uint uid, USER_OFFLINE_REASON_TYPE reason)
+    {
+        _videoSample.RemoteView.SetEnable(false);
+    }
+    ```
+
+1. Leaving the channel depends on the scene needs. For example, when ending a call, call LeaveLeave the current call channel. In Assets/Agora-Unity-RTC-SDK/Code/Rtc/JoinChannelVideo.cs, add the following code Joinafter:
+
+    ```c#
+    public void Leave()
+        {
+            Debug.Log("Leaving _channelName");
+        // Leave the channel
+            RtcEngine.LeaveChannel();
+        // Disable the video module
+            RtcEngine.DisableVideo();
+        // Stop remote video rendering
+            RemoteView.SetEnable(false);
+        // Stop local video rendering
+            LocalView.SetEnable(false);
+        }
+    ```
 </PlatformWrapper>

@@ -1,5 +1,297 @@
 <PlatformWrapper platform="react-js">
 
+### Initialize the SDK
 
+Call the `createClient` method provided by the Web SDK to create a client object for the `<AgoraRTCProvider />` component. Then use the `<AgoraRTCProvider />` component to wrap the `<App />` component to facilitate subsequent use of state and operation-related hooks.
+
+```jsx
+import React, { StrictMode }  from 'react';
+import { createRoot } from "react-dom/client";
+import AgoraRTC, { AgoraRTCProvider } from "agora-rtc-react";
+import App from "./App";
+
+const rootElement = document.getElementById("root");
+const root = createRoot(rootElement);
+
+// In the video call scenario, set mode to "rtc"
+const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+
+root.render(
+  <StrictMode>
+    // highlight-start
+    <AgoraRTCProvider client={client}>
+      <App />
+    </AgoraRTCProvider>
+    // highlight-end
+  </StrictMode>
+);
+```
+
+### Join a channel​
+In the `<App />` component, create another component `<Basics />` to implement the basic logic of audio and video calls.
+
+You use the `useJoin` hook to join a channel. The incoming `joinOptions` contains the following fields.
+
+* `appid`: Identifies the project you created in <Vg k="CONSOLE" />.
+* `channel`: Identifies the channel the user is in. Users in the same channel can interact in real time.
+* `token`: A string used to verify user permissions when joining a channel. 
+
+The <Vpl k="CLIENT"/> collects this information from the user by showing a form. You provide a **Join channel** button for users to click to indicate that they are ready to join a channel.
+
+```jsx
+import {
+  LocalUser,
+  RemoteUser,
+  useIsConnected,
+  useJoin,
+  useLocalMicrophoneTrack,
+  useLocalCameraTrack,
+  usePublish,
+  useRemoteUsers,
+} from "agora-rtc-react";
+import React, { useState } from "react";
+
+import "./styles.css";
+import logo from "./logo.png";
+export const Basics = () => {
+  
+  // Define state variables
+  const [calling, setCalling] = useState(false); // Is calling
+  const [appId, setAppId] = useState(""); // Store the App ID state
+  const [channel, setChannel] = useState(""); // Store the channel name state 
+  const [token, setToken] = useState(""); // Store the token state 
+
+  // Use App ID, channel name and Token to join the channel. 
+  // Whether to join the channel depends on the status of calling
+  useJoin({appid: appId, channel: channel, token: token ? token : null}, calling);
+
+  return (
+    <>
+      <div className="room">
+          <div className="join-room">
+            <img alt="agora-logo" className="logo" src={logo} />
+            <input
+              onChange={e => setAppId(e.target.value)}
+              placeholder="<Your App ID>"
+              value={appId}
+            />
+            <input
+              onChange={e => setChannel(e.target.value)}
+              placeholder="<Your channel Name>"
+              value={channel}
+            />
+            <input
+              onChange={e => setToken(e.target.value)}
+              placeholder="<Your token>"
+              value={token}
+            />
+
+            <button
+              className={`join-channel ${!appId || !channel ? "disabled" : ""}`}
+              disabled={!appId || !channel}
+              onClick={() => setCalling(true)}
+            >
+              <span>Join Channel</span>
+            </button>
+          </div>
+      </div>
+    </>
+  );
+};
+
+export default Basics;
+```
+
+Add CSS styles to the `<Basics />` component by modifying `Styles.css`.
+
+### Render local and remote audio and video
+
+To render local user audio and video:
+
+1. Create a microphone audio track and a camera video track using `useLocalMicrophoneTrack` and `useLocalCameraTrack`.
+1. Use `usePublish` to publish audio and video tracks for local users.
+1. Use the `<LocalUser />` component to render audio and video for the local user.
+
+To render remote user audio and video:
+
+1. Use `useRemoteUsers` to get all remote users.
+1. Use `<RemoteUser />` a component to render audio and video for each remote user.
+
+To enable users to leave the channel, or turn the local audio and video on or off, add the following buttons to your interface:
+
+* Turn microphone on/off.
+* Turn camera on/off.
+* Leave the channel.
+
+```jsx
+export const Basics = () => {
+  const [calling, setCalling] = useState(false);
+  const [appId, setAppId] = useState("");
+  const [channel, setChannel] = useState("");
+  const [token, setToken] = useState("");
+
+  useJoin({appid: appId, channel: channel, token: token ? token : null}, calling);
+
+  // Local user
+  const [micOn, setMic] = useState(true);
+  const [cameraOn, setCamera] = useState(true);
+  const { localMicrophoneTrack } = useLocalMicrophoneTrack(micOn);
+  const { localCameraTrack } = useLocalCameraTrack(cameraOn);
+  usePublish([localMicrophoneTrack, localCameraTrack]);
+
+  // Remote user
+  const remoteUsers = useRemoteUsers();
+
+  return (
+    <>
+      // highlight-start
+      <div className="room">
+          <div className="user-list">
+            <div className="user">
+              <LocalUser
+                audioTrack={localMicrophoneTrack}
+                cameraOn={cameraOn}
+                micOn={micOn}
+                videoTrack={localCameraTrack}
+                cover="https://www.agora.io/en/wp-content/uploads/2022/10/3d-spatial-audio-icon.svg"
+              >
+                <samp className="user-name">You</samp>
+              </LocalUser>
+            </div>
+            {remoteUsers.map((user) => (
+              <div className="user" key={user.uid}>
+                <RemoteUser cover="https://www.agora.io/en/wp-content/uploads/2022/10/3d-spatial-audio-icon.svg" user={user}>
+                  <samp className="user-name">{user.uid}</samp>
+                </RemoteUser>
+              </div>
+            ))}
+          </div>
+      </div>
+        <div className="control">
+          <div className="left-control">
+            <button className="btn" onClick={() => setMic(a => !a)}>
+              <i className={`i-microphone ${!micOn ? "off" : ""}`} />
+            </button>
+            <button className="btn" onClick={() => setCamera(a => !a)}>
+              <i className={`i-camera ${!cameraOn ? "off" : ""}`} />
+            </button>
+          </div>
+          <button
+            className={`btn btn-phone ${calling ? "btn-phone-active" : ""}`}
+            onClick={() => setCalling(a => !a)}
+          >
+            {calling ? <i className="i-phone-hangup" /> : <i className="i-mdi-phone" />}
+          </button>
+        </div>
+        // highlight-end
+    </>
+  );
+};
+
+export default Basics;
+
+```
+
+### Update the UI based on connection status​
+
+```jsx
+export const Basics = () => {
+  const [calling, setCalling] = useState(false);
+  const isConnected = useIsConnected(); // Store the user's connection status
+  const [appId, setAppId] = useState("");
+  const [channel, setChannel] = useState("");
+  const [token, setToken] = useState("");
+
+  useJoin({appid: appId, channel: channel, token: token ? token : null}, calling);
+
+  const [micOn, setMic] = useState(true);
+  const [cameraOn, setCamera] = useState(true);
+  const { localMicrophoneTrack } = useLocalMicrophoneTrack(micOn);
+  const { localCameraTrack } = useLocalCameraTrack(cameraOn);
+  usePublish([localMicrophoneTrack, localCameraTrack]);
+
+  const remoteUsers = useRemoteUsers();
+
+  return (
+    <>
+      <div className="room">
+        // highlight-next-line
+        {isConnected ? (
+          <div className="user-list">
+            <div className="user">
+              <LocalUser
+                audioTrack={localMicrophoneTrack}
+                cameraOn={cameraOn}
+                micOn={micOn}
+                videoTrack={localCameraTrack}
+                cover="https://www.agora.io/en/wp-content/uploads/2022/10/3d-spatial-audio-icon.svg"
+              >
+                <samp className="user-name">You</samp>
+              </LocalUser>
+            </div>
+            {remoteUsers.map((user) => (
+              <div className="user" key={user.uid}>
+                <RemoteUser cover="https://www.agora.io/en/wp-content/uploads/2022/10/3d-spatial-audio-icon.svg" user={user}>
+                  <samp className="user-name">{user.uid}</samp>
+                </RemoteUser>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="join-room">
+            <img alt="agora-logo" className="logo" src={agoraLogo} />
+            <input
+              onChange={e => setAppId(e.target.value)}
+              placeholder="<Your App ID>"
+              value={appId}
+            />
+            <input
+              onChange={e => setChannel(e.target.value)}
+              placeholder="<Your channel Name>"
+              value={channel}
+            />
+            <input
+              onChange={e => setToken(e.target.value)}
+              placeholder="<Your token>"
+              value={token}
+            />
+
+            <button
+              className={`join-channel ${!appId || !channel ? "disabled" : ""}`}
+              disabled={!appId || !channel}
+              onClick={() => setCalling(true)}
+            >
+              <span>Join Channel</span>
+            </button>
+          </div>
+        )}
+      </div>
+      {isConnected && (
+        <div className="control">
+          <div className="left-control">
+            <button className="btn" onClick={() => setMic(a => !a)}>
+              <i className={`i-microphone ${!micOn ? "off" : ""}`} />
+            </button>
+            <button className="btn" onClick={() => setCamera(a => !a)}>
+              <i className={`i-camera ${!cameraOn ? "off" : ""}`} />
+            </button>
+          </div>
+          <button
+            className={`btn btn-phone ${calling ? "btn-phone-active" : ""}`}
+            onClick={() => setCalling(a => !a)}
+          >
+            {calling ? <i className="i-phone-hangup" /> : <i className="i-mdi-phone" />}
+          </button>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default Basics;
+```
+
+### Leave the channel​
+When the user clicks the leave channel button, closes the browser window, or refreshes the browser tab, useJointhe operation of leaving the channel will be performed because the destruction of the React component is triggered. You don't need to make additional API calls.
 
 </PlatformWrapper>

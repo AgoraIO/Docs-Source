@@ -1,4 +1,218 @@
 <PlatformWrapper platform = "electron">
 
+### Create the main process
+
+To create the main application process using the Electron framework, you implement the following:
+
+1. Import the required modules
+1. Create a browser window
+1. Load the `index.html` file
+1. Handle application lifecycle events
+
+To do this, copy the following code into the `main.js` file:
+
+```js
+const { app, BrowserWindow } = require("electron");
+const path = require("path");
+
+// If using Electron 9.x and above, set allowRendererProcessReuse to false
+app.allowRendererProcessReuse = false;
+
+function createWindow() {
+    // Create a browser window
+    const mainWindow = new BrowserWindow({
+        width: 800,
+        height: 600,
+        webPreferences: {
+            // preload: path.join(__dirname, "renderer.js"),
+            // Set nodeIntegration to true and contextIsolation to false
+            nodeIntegration: true,
+            contextIsolation: false,
+        },
+    });
+
+    // Load the index.html file
+    mainWindow.loadFile("./index.html");
+    // Open developer tools
+    mainWindow.webContents.openDevTools();
+}
+
+// Manage the browser window of the Electron application
+app.whenReady().then(() => {
+    createWindow();
+    // If no window is currently open, create a new window (for macOS)
+    app.on("activate", function () {
+        if (BrowserWindow.getAllWindows().length === 0) {
+            createWindow();
+        }
+    });
+});
+
+// Exit the Electron app if all windows have been closed (for Windows)
+app.on("window-all-closed", function () {
+    if (process.platform !== "darwin") app.quit();
+});
+```
+
+### Get device permissions
+For macOS v10.14 and above, you check and obtain device permissions before using the camera and microphone. You call Electron's native `askForMediaAccess` method in the main process to request camera and microphone permissions from the user.
+
+Add the following code to the `main.js` file:
+
+```js
+// Check and get device permissions
+async function checkAndApplyDeviceAccessPrivilege() {
+  // Check and obtain camera permissions
+  const cameraPrivilege = systemPreferences.getMediaAccessStatus('camera');
+  console.log(`Camera privilege before applying: ${cameraPrivilege}`);
+  if (cameraPrivilege !== 'granted') {
+    await systemPreferences.askForMediaAccess('camera');
+    console.log('Requested camera access from user');
+  }
+
+  // Check and get microphone permission
+  const micPrivilege = systemPreferences.getMediaAccessStatus('microphone');
+  console.log(`Microphone privilege before applying: ${micPrivilege}`);
+  if (micPrivilege !== 'granted') {
+    await systemPreferences.askForMediaAccess('microphone');
+    console.log('Requested microphone access from user');
+  }
+}
+
+checkAndApplyDeviceAccessPrivilege();
+```
+
+### Import dependencies
+
+Import the modules and functions required to build the app using <Vpd k="SDK" />. Add the following code to `renderer.js`:
+
+```js
+const {
+    createAgoraRtcEngine,
+    VideoMirrorModeType,
+    VideoSourceType,
+    RenderModeType,
+    ChannelProfileType,
+    ClientRoleType,
+    AudienceLatencyLevelType,
+} = require("agora-electron-sdk");
+```
+
+### Define the basic parameters
+
+Pass in the App ID, and temporary Token obtained from <Vg k="CONSOLE"/>, and the channel name you used to generate the temporary token. You use these parameters to initialize the engine and join a channel.
+
+```js
+// Fill in your App ID
+const APPID = "<-- Insert App Id -->";
+// Fill in your temporary Token
+let token = "<-- Insert Token -->";
+// Fill in the channel name you used to generate the Token
+const channel = "<-- Insert Channel Name -->";
+// Numeric User ID, ensure that the ID is unique within the channel
+let uid = 123;
+```
+
+### Initialize the engine
+
+Call `createAgoraRtcEngine` in `renderer.js` to create an `RtcEngine` instance, and then call `initialize`.
+
+```js
+let rtcEngine;
+const os = require("os");
+const path = require("path");
+const sdkLogPath = path.resolve(os.homedir(), "./test.log");
+
+// Create an RtcEngine instance
+rtcEngine = createAgoraRtcEngine();
+
+// Initialize RtcEngine instance
+rtcEngine.initialize({
+    appId: APPID,
+    logConfig: { filePath: sdkLogPath }
+});
+```
+
+### Enable video module
+Video is disabled by default. To enable the video module call `enableVideo`. 
+To enable local video preview, call `startPreview`.
+
+```js
+// Enable the video module
+rtcEngine.enableVideo();
+// Enable camera preview
+rtcEngine.startPreview();
+```
+
+### Register the event handler
+Call `registerEventHandler` to register the following event callbacks. 
+
+* `onJoinChannelSuccess`: Triggered when the local user successfully joins a channel. Use the event to set up the local video.
+* `onLeaveChannel`: Triggered when the local user exits the channel.
+* `onUserJoined`: Triggered when a remote user joins the current channel. Use the event to set up the remote video window.
+
+```js
+const EventHandles = {
+    // Listen to local user joining channel events
+    onJoinChannelSuccess: ({ channelId, localUid }, elapsed) => {
+        console.log('Successfully joined the channel:' + channelId);
+        isJoined = true;
+        // After local users join the channel, set up the local video
+        rtcEngine.setupLocalVideo({
+            sourceType: VideoSourceType.VideoSourceCameraPrimary,
+            view: localVideoContainer,
+            mirrorMode: VideoMirrorModeType.VideoMirrorModeDisabled,
+            renderMode: RenderModeType.RenderModeFit,
+        });
+    },
+
+    //User exits channel 
+    onLeaveChannel: ({ channelId, localUid }, stats) => {
+        console.log('Successfully exited the channel: ' + channelId);
+        isJoined = false;
+    },
+
+    // Listen to remote user join event
+    onUserJoined: ({ channelId, localUid }, remoteUid, elapsed) => {
+        console.log('Remote user ' + remoteUid + ' joined');
+        // After the remote user joins the channel, set up the remote video
+        rtcEngine.setupRemoteVideoEx(
+            {
+                sourceType: VideoSourceType.VideoSourceRemote,
+                uid: remoteUid,
+                view: remoteVideoContainer,
+                mirrorMode: VideoMirrorModeType.VideoMirrorModeDisabled,
+                renderMode: RenderModeType.RenderModeFit,
+            },
+            { channelId },
+        );
+    },
+};
+
+// Register event callback
+rtcEngine.registerEventHandler(EventHandles);
+```
+
+### Join a channel 
+
+Take the following steps to join a channel and start publishing audio and video steams:
+
+1. Call `setChannelProfile` to set the channel profile to video calling or live broadcasting.
+1. Call `setClientRole` to set the user role as host or audience.
+1. Call `joinChannel` to join a channel.
+
+```js
+// Set the channel profile as live broadcasting
+rtcEngine.setChannelProfile(ChannelProfileType.ChannelProfileLiveBroadcasting);
+
+// Set the client role 
+// For host set it to ClientRoleBroadcaster, for audience set it to ClientRoleAudience
+rtcEngine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+
+// Use a temporary token to join the channel
+rtcEngine.joinChannel(token, channel, uid, {
+  audienceLatencyLevelType: AudienceLatencyLevelType.AudienceLatencyLevelUltraLowLatency
+});
+```
 
 </PlatformWrapper>

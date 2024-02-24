@@ -1,4 +1,83 @@
 <PlatformWrapper platform="windows">
+Follow the steps below to implement raw audio data functionality in your project:
 
+1. Before joining a channel, create an `IAudioFrameObserver` instance and call the `registerAudioFrameObserver` method to register an audio observer.
+1. Call `setRecordingAudioFrameParameters`, `setPlaybackAudioFrameParameters`, and `setMixedAudioFrameParameters` prefix methods to configure the audio frame format.
+1. Implement `onRecordAudioFrame`, `onPlaybackAudioFrame`, `onPlaybackAudioFrameBeforeMixing` and `onMixedAudioFrame` callbacks. These callbacks will collect and process audio frames. If the return value of these callbacks is `false`, it indicates that the processing of the audio frames is invalid.
+
+```cpp
+BOOL CAgoraOriginalAudioDlg::RegisterAudioFrameObserver(BOOL bEnable, IAudioFrameObserver *audioFrameObserver)
+{
+    agora::util::AutoPtr<agora::media::IMediaEngine> mediaEngine;
+    // Query AGORA_IID_MEDIA_ENGINE interface
+    mediaEngine.queryInterface(m_rtcEngine, agora::rtc::AGORA_IID_MEDIA_ENGINE);
+    int nRet = 0;
+    if (mediaEngine.get() == NULL)
+        return FALSE;
+    
+    if (bEnable)
+        // Register the audio observer and pass in the IAudioFrameObserver object
+        nRet = mediaEngine->registerAudioFrameObserver(audioFrameObserver);
+    else
+        // Unregister the audio observer
+        nRet = mediaEngine->registerAudioFrameObserver(NULL);
+
+    return nRet == 0 ? TRUE : FALSE;
+}
+
+// Implement the onRecordAudioFrame callback
+bool COriginalAudioProcFrameObserver::onRecordAudioFrame(const char* channelId, AudioFrame& audioFrame)
+{
+    SIZE_T nSize = audioFrame.channels * audioFrame.samplesPerChannel * 2;
+    unsigned int readByte = 0;
+    int timestamp = GetTickCount();
+    short *pBuffer = (short *)audioFrame.buffer;
+    for (SIZE_T i = 0; i < nSize / 2; i++)
+    {
+        if (pBuffer[i] * 2 > 32767) {
+            pBuffer[i] = 32767;
+        }
+        else if (pBuffer[i] * 2 < -32768) {
+            pBuffer[i] = -32768;
+        }
+        else {
+            pBuffer[i] *= 2;
+        }
+    }
+#ifdef _DEBUG
+    CString strInfo;
+    strInfo.Format(_T("audio Frame buffer size:%d, timestamp:%d \n"), nSize, timestamp);
+    OutputDebugString(strInfo);
+    audioFrame.renderTimeMs = timestamp;
+#endif
+    return true;
+}
+
+// Implement the onPlaybackAudioFrame callback
+bool COriginalAudioProcFrameObserver::onPlaybackAudioFrame(const char* channelId, AudioFrame& audioFrame)
+{
+    return true;
+}
+
+// Implement the onMixedAudioFrame callback
+bool COriginalAudioProcFrameObserver::onMixedAudioFrame(const char* channelId, AudioFrame& audioFrame)
+{
+    return true;
+}
+
+// Implement the onPlaybackAudioFrameBeforeMixing callback
+bool COriginalAudioProcFrameObserver::onPlaybackAudioFrameBeforeMixing(const char* channelId, rtc::uid_t uid, AudioFrame& audioFrame)
+{
+    return true;
+}
+
+// Call methods with 'set' prefix to configure the audio frames captured by each callback
+m_rtcEngine->setRecordingAudioFrameParameters(44100, 2, RAW_AUDIO_FRAME_OP_MODE_READ_WRITE, 1024);
+m_rtcEngine->setPlaybackAudioFrameParameters(44100, 2, RAW_AUDIO_FRAME_OP_MODE_READ_WRITE, 1024);
+m_rtcEngine->setPlaybackAudioFrameBeforeMixingParameters(44100, 2);
+m_rtcEngine->setMixedAudioFrameParameters(44100, 2, 1024);
+
+
+```
 
 </PlatformWrapper>

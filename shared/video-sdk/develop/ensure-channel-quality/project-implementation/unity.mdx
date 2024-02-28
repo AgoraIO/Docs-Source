@@ -2,36 +2,43 @@
 
 1. **Import the required Agora libraries**
 
-    ``` csharp
+    ```csharp
     using Agora.Rtc;
-    using TMPro;
-    using System.Runtime.InteropServices;
-    using System;
     ```
 
-1. **Use a probe test to check network health**
+1. **Declare the required variables**
 
-    ``` csharp
-    public void StartProbeTest()
-    {
-        // Configure a LastmileProbeConfig instance.
-        LastmileProbeConfig config = new LastmileProbeConfig();
+    ```csharp
+    private IAudioDeviceManager _audioDeviceManager; // To manage audio devices.
+    private IVideoDeviceManager _videoDeviceManager; // To manage video devices.
+    private DeviceInfo[] _audioRecordingDeviceInfos; // Represent information about audio recording devices.
+    private DeviceInfo[] _videoDeviceInfos; // Represent information about video devices.
 
-        // Probe the uplink network quality.
-        config.probeUplink = true;
+    public string networkStatus = "";
+    public List<string> videoDevices;
+    public List<string> audioDevices;
 
-        // Probe the downlink network quality.
-        config.probeDownlink = true;
+    [DllImport("user32.dll")]
+    private static extern IntPtr CreateWindowEx(uint dwExStyle, string lpClassName, string lpWindowName,
+        uint dwStyle,
+        int x, int y,
+        int nWidth,
+        int nHeight,
+        IntPtr hWndParent,
+        IntPtr hMenu,
+        IntPtr hInstance,
+        IntPtr lpParam);
+    
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
-        // The expected uplink bitrate (bps). The value range is [100000,5000000].
-        config.expectedUplinkBitrate = 100000;
+    [DllImport("user32.dll")]
+    private static extern bool DestroyWindow(IntPtr hWnd);
 
-        // The expected downlink bitrate (bps). The value range is [100000,5000000].
-        config.expectedDownlinkBitrate = 100000;
-
-        RtcEngine.StartLastmileProbeTest(config);
-        Debug.Log("Running the last mile probe test ...");
-    }
+    private const uint WS_OVERLAPPEDWINDOW = 0x00CF0000;
+    private const uint WS_VISIBLE = 0x10000000;
+    private const int SW_SHOW = 5;
+    private IntPtr hWnd;
     ```
 
 1. **Implement best practice for app initiation**
@@ -42,27 +49,31 @@
     * _Enable dual stream mode_: Required for multi-user scenarios.
     * _Set an audio profile and audio scenario_: Setting an audio profile is optional and only required if you have special requirements such as streaming  music.
     * _Set the video profile_: Setting a video profile is also optional. It is useful when you want to change one or more of `mirrorMode`, `frameRate`, `bitrate`, `dimensions`, `orientationMode`, `degradationPrefer` or `compressionPrefer` from the default setting to custom values.
-      For more information, see  [video profile table](#video-profile-table).
-
+    <ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
+    * _Set the latency level_: `audienceLatencyLevel` when joining a channel. Ultra-low latency is a feature of <Vg k="ILS" /> and its use is subject to special [pricing](../overview/pricing#unit-pricing).
+    </ProductWrapper>
+    
+    For more information, see  [video profile table](#video-profile-table).
+    <ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
     ``` csharp
     public override void SetupAgoraEngine()
     {
         base.SetupAgoraEngine();
 
         // Specify a path for the log file.
-        RtcEngine.SetLogFile("/path/to/folder/agorasdk1.log");
+        agoraEngine.SetLogFile("/path/to/folder/agorasdk1.log");
 
         // Set the log file size.
-        RtcEngine.SetLogFileSize(256); // Range 128-20480 Kb
+        agoraEngine.SetLogFileSize(256); // Range 128-20480 Kb
 
         // Specify a log level.
-        RtcEngine.SetLogLevel(LOG_LEVEL.LOG_LEVEL_WARN);
+        agoraEngine.SetLogLevel(LOG_LEVEL.LOG_LEVEL_WARN);
 
         // Enable the dual stream mode.
-        RtcEngine.EnableDualStreamMode(true);
+        agoraEngine.EnableDualStreamMode(true);
 
         // Set audio profile and audio scenario.
-        RtcEngine.SetAudioProfile(AUDIO_PROFILE_TYPE.AUDIO_PROFILE_DEFAULT, AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_CHATROOM);
+        agoraEngine.SetAudioProfile(AUDIO_PROFILE_TYPE.AUDIO_PROFILE_DEFAULT, AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_CHATROOM);
 
         // Set the video profile.
         VideoEncoderConfiguration videoConfig = new VideoEncoderConfiguration();
@@ -70,7 +81,61 @@
         // Set mirror mode.
         videoConfig.mirrorMode = VIDEO_MIRROR_MODE_TYPE.VIDEO_MIRROR_MODE_DISABLED;
 
-        // Set framerate.
+        // Set frame rate.
+        videoConfig.frameRate = (int)FRAME_RATE.FRAME_RATE_FPS_15;
+
+        // Set bitrate.
+        videoConfig.bitrate = (int)BITRATE.STANDARD_BITRATE;
+
+        // Set dimensions.
+        videoConfig.dimensions = new VideoDimensions(640, 360);
+
+        // Set orientation mode.
+        videoConfig.orientationMode = ORIENTATION_MODE.ORIENTATION_MODE_ADAPTIVE;
+
+        // Set degradation preference.
+        videoConfig.degradationPreference = DEGRADATION_PREFERENCE.MAINTAIN_BALANCED;
+
+        // Set the latency level
+        videoConfig.advanceOptions.compressionPreference = COMPRESSION_PREFERENCE.PREFER_LOW_LATENCY;
+
+        // Apply the configuration.
+        agoraEngine.SetVideoEncoderConfiguration(videoConfig);
+
+        // Attach the event handler
+        agoraEngine.InitEventHandler(new CallQualityEventHandler(this));
+    }
+    ```
+    </ProductWrapper>
+
+    <ProductWrapper product={["video-calling"]}>
+    ``` csharp
+    public override void SetupAgoraEngine()
+    {
+        base.SetupAgoraEngine();
+
+        // Specify a path for the log file.
+        agoraEngine.SetLogFile("/path/to/folder/agorasdk1.log");
+
+        // Set the log file size.
+        agoraEngine.SetLogFileSize(256); // Range 128-20480 Kb
+
+        // Specify a log level.
+        agoraEngine.SetLogLevel(LOG_LEVEL.LOG_LEVEL_WARN);
+
+        // Enable the dual stream mode.
+        agoraEngine.EnableDualStreamMode(true);
+
+        // Set audio profile and audio scenario.
+        agoraEngine.SetAudioProfile(AUDIO_PROFILE_TYPE.AUDIO_PROFILE_DEFAULT, AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_CHATROOM);
+
+        // Set the video profile.
+        VideoEncoderConfiguration videoConfig = new VideoEncoderConfiguration();
+
+        // Set mirror mode.
+        videoConfig.mirrorMode = VIDEO_MIRROR_MODE_TYPE.VIDEO_MIRROR_MODE_DISABLED;
+
+        // Set frame rate.
         videoConfig.frameRate = (int)FRAME_RATE.FRAME_RATE_FPS_15;
 
         // Set bitrate.
@@ -86,39 +151,142 @@
         videoConfig.degradationPreference = DEGRADATION_PREFERENCE.MAINTAIN_BALANCED;
 
         // Apply the configuration.
-        RtcEngine.SetVideoEncoderConfiguration(videoConfig);
-        
+        agoraEngine.SetVideoEncoderConfiguration(videoConfig);
+
+        // Attach the event handler
+        agoraEngine.InitEventHandler(new CallQualityEventHandler(this));
+    }
+    ```
+    </ProductWrapper>
+    For more details, see the following:
+
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_setlogfile">SetLogFile</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_setlogfilesize">SetLogFileSize</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_setloglevel">SetLogLevel</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_enabledualstreammode3">EnableDualStreamMode</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_setaudioprofile2">SetAudioProfile</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_setvideoencoderconfiguration">SetVideoEncoderConfiguration</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_addhandler">InitEventHandler</Link>
+
+1. **Initialize engine, retrieve audio/video devices, and initiate probe test**
+
+    ```csharp
+    public CallQualityManager()
+    {
+        // Setup an instance of Agora engine.
+        // The engine instance is destroyed once the event handler class receives the `OnLastmileProbeResult` callback.     
+        SetupAgoraEngine();
+
+        // Get the list of audio recording devices connected to the user's app.
+        GetAudioRecordingDevice();
+
+        // Get the list of video devices connected to the user's app.
+        GetVideoDeviceManager();
+
+        // Start the probe test.
+        StartProbeTest();
     }
     ```
 
-1. **Test the audio/video devices**
-
-    The test checks the selected audio and video devices using `IVideoDeviceManager` and `IAudioDeviceManager`.
+1. **Use a probe test to check network health**
 
     ``` csharp
-    public void testAudioAndVideoDevice()
+    // Probe test to check network quality.
+    public void StartProbeTest()
     {
-        GameObject go = GameObject.Find("testDevicesBtn");
-        if(!isTestRunning)
+        // Configure a LastmileProbeConfig instance.
+        LastmileProbeConfig config = new LastmileProbeConfig();
+
+        // Probe theuplink network quality.
+        config.probeUplink = true;
+
+        // Probe the downlink network quality.
+        config.probeDownlink = true;
+
+        // The expected uplink bitrate (bps). The value range is [100000,5000000].
+        config.expectedUplinkBitrate = 100000;
+
+        // The expected downlink bitrate (bps). The value range is [100000,5000000].
+        config.expectedDownlinkBitrate = 100000;
+
+        agoraEngine.StartLastmileProbeTest(config);
+        Debug.Log("Running the last mile probe test ...");
+    }
+    ```
+    For more details, see the following:
+
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_startlastmileprobetest">StartLastmileProbeTest</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_lastmileprobeconfig.html">LastmileProbeConfig</Link>
+
+1. **Get the list of available audio/video devices**
+    
+    ```csharp
+    // Get the list of available audio devices.
+    private void GetAudioRecordingDevice()
+    {
+        _audioDeviceManager = agoraEngine.GetAudioDeviceManager();
+        _audioRecordingDeviceInfos = _audioDeviceManager.EnumerateRecordingDevices();
+        audioDevices = new List<string>();
+
+        for (var i = 0; i < _audioRecordingDeviceInfos.Length; i++)
         {
-            string selectedAudioDevice = audioDevicesDropdown.options[audioDevicesDropdown.value].text;
-            string selectedVideoDevice = videoDevicesDropdown.options[videoDevicesDropdown.value].text;
-            foreach (var device in _audioRecordingDeviceInfos)
+            Debug.Log(string.Format("AudioRecordingDevice device index: {0}, name: {1}, id: {2}", i,
+                _audioRecordingDeviceInfos[i].deviceName, _audioRecordingDeviceInfos[i].deviceId));
+            audioDevices.Add(_audioRecordingDeviceInfos[i].deviceName);
+        }
+    }
+
+    // Get the list of available video devices.
+    private void GetVideoDeviceManager()
+    {
+        _videoDeviceManager = agoraEngine.GetVideoDeviceManager();
+        _videoDeviceInfos = _videoDeviceManager.EnumerateVideoDevices();
+
+        videoDevices = new List<string>();
+        for (var i = 0; i < _videoDeviceInfos.Length; i++)
+        {
+            Debug.Log(string.Format("VideoDeviceManager device index: {0}, name: {1}, id: {2}", i,
+                _videoDeviceInfos[i].deviceName, _videoDeviceInfos[i].deviceId));
+            videoDevices.Add(_videoDeviceInfos[i].deviceName);
+        }
+    }
+    ```
+    For more details, see the following:
+    
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_getaudiodevicemanager">GetAudioDeviceManager</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_getvideodevicemanager">GetVideoDeviceManager</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_ivideodevicemanager.html#class_ivideodevicemanager">IVideoDeviceManager</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_ivideodevicemanager.html#api_ivideodevicemanager_enumeratevideodevices">EnumerateVideoDevices</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_iaudiodevicemanager.html#class_iaudiodevicemanager">IAudioDeviceManager</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_iaudiodevicemanager.html#api_iaudiodevicemanager_enumeraterecordingdevices">EnumerateRecordingDevices</Link>
+
+
+1. **Test the audio/video devices**
+
+    The test checks the selected audio and video devices using `IVideoDeviceManager` and `IAudioDeviceManager`:
+
+    ``` csharp
+    // Device test to check if the audio and video device is working properly. Only valid before joining the channel.
+    public void StartAudioVideoDeviceTest(string selectedAudioDevice, string selectedVideoDevice)
+    {
+        Debug.Log("Please conduct the device test before joining the channel.");
+        SetupAgoraEngine();
+        foreach (var device in _audioRecordingDeviceInfos)
+        {
+            if(selectedAudioDevice == device.deviceName)
             {
-                if(selectedAudioDevice == device.deviceName)
-                {
-                    _audioDeviceManager.SetRecordingDevice(device.deviceId);
-                }
+                _audioDeviceManager.SetRecordingDevice(device.deviceId);
             }
-            _audioDeviceManager.StartAudioDeviceLoopbackTest(500);
-            foreach (var device in _videoDeviceInfos)
+        }
+        _audioDeviceManager.StartAudioDeviceLoopbackTest(500);
+        foreach (var device in _videoDeviceInfos)
+        {
+            if(selectedVideoDevice == device.deviceName)
             {
-                if(selectedVideoDevice == device.deviceName)
-                {
-                    _videoDeviceManager.SetDevice(device.deviceId);
-                }
+                _videoDeviceManager.SetDevice(device.deviceId);
             }
-            hWnd = CreateWindowEx(
+        }
+        hWnd = CreateWindowEx(
                 0,
                 "Static",
                 "My Window",
@@ -131,66 +299,65 @@
                 IntPtr.Zero,
                 Marshal.GetHINSTANCE(typeof(EnsureCallQuality).Module),
                 IntPtr.Zero);
-                ShowWindow(hWnd, SW_SHOW);
-                _videoDeviceManager.StartDeviceTest(hWnd);
-                isTestRunning = true;
-                go.GetComponentInChildren<TextMeshProUGUI>(true).text = "Stop test";
+            ShowWindow(hWnd, SW_SHOW);
+            _videoDeviceManager.StartDeviceTest(hWnd);
+    }
+    public void StopAudioVideoDeviceTest()
+    {
+        DestroyWindow(hWnd);
+        _audioDeviceManager.StopAudioDeviceLoopbackTest();
+        _videoDeviceManager.StopDeviceTest();
+        DestroyEngine();
+    }
+    ```
+    For more details, see the following:
+
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_iaudiodevicemanager.html#api_iaudiodevicemanager_setrecordingdevice">SetRecordingDevice</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_iaudiodevicemanager.html#api_iaudiodevicemanager_startaudiodeviceloopbacktest">StartAudioDeviceLoopbackTest</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_ivideodevicemanager.html#api_ivideodevicemanager_setdevice">SetDevice</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_iaudiodevicemanager.html#api_iaudiodevicemanager_stopaudiodeviceloopbacktest">StopAudioDeviceLoopbackTest</Link>
+
+1. **Switch stream quality**
+
+    Take advantage of dual-stream mode and switch remote video quality to high or low.
+
+    ``` csharp
+    // Switch between high and low remote user video quality.
+    public void SetLowStreamQuality()
+    {
+        if(remoteUid > 1)
+        {
+            agoraEngine.SetRemoteVideoStreamType(remoteUid, VIDEO_STREAM_TYPE.VIDEO_STREAM_LOW);
+            Debug.Log("Switching to low-quality video");
         }
         else
         {
-            DestroyWindow(hWnd);
-            isTestRunning = false;
-            go.GetComponentInChildren<TextMeshProUGUI>(true).text = "Start device testing";
-            _audioDeviceManager.StopAudioDeviceLoopbackTest();
-            _videoDeviceManager.StopDeviceTest();
+            Debug.Log("No remote user in the channel");
         }
     }
-    private void GetAudioRecordingDevice()
+    public void SetHighStreamQuality()
     {
-        _audioDeviceManager = RtcEngine.GetAudioDeviceManager();
-        _audioRecordingDeviceInfos = _audioDeviceManager.EnumerateRecordingDevices();
-
-        audioDevicesDropdown = GameObject.Find("audioDevicesDropdown").GetComponent<TMP_Dropdown>();
-        List<string> options = new List<string>();
-
-        for (var i = 0; i < _audioRecordingDeviceInfos.Length; i++)
+        if (remoteUid > 1)
         {
-            Debug.Log(string.Format("AudioRecordingDevice device index: {0}, name: {1}, id: {2}", i,
-                _audioRecordingDeviceInfos[i].deviceName, _audioRecordingDeviceInfos[i].deviceId));
-            options.Add(_audioRecordingDeviceInfos[i].deviceName);
+            agoraEngine.SetRemoteVideoStreamType(remoteUid, VIDEO_STREAM_TYPE.VIDEO_STREAM_HIGH);
+            Debug.Log("Switching to high-quality video");
         }
-
-        audioDevicesDropdown.ClearOptions();
-        audioDevicesDropdown.AddOptions(options);
-    }
-    private void GetVideoDeviceManager()
-    {
-        _videoDeviceManager = RtcEngine.GetVideoDeviceManager();
-        _videoDeviceInfos = _videoDeviceManager.EnumerateVideoDevices();
-
-        videoDevicesDropdown = GameObject.Find("videoDevicesDropdown").GetComponent<TMP_Dropdown>();
-        videoDevicesDropdown.transform.localPosition = new Vector2(-23, -172);
-
-        Debug.Log(string.Format("VideoDeviceManager count: {0}", _videoDeviceInfos.Length));
-        List<string> options = new List<string>();
-
-        for (var i = 0; i < _videoDeviceInfos.Length; i++)
+        else
         {
-            Debug.Log(string.Format("VideoDeviceManager device index: {0}, name: {1}, id: {2}", i,
-                _videoDeviceInfos[i].deviceName, _videoDeviceInfos[i].deviceId));
-            options.Add(_videoDeviceInfos[i].deviceName);
+            Debug.Log("No remote user in the channel");
         }
-
-        videoDevicesDropdown.ClearOptions();
-        videoDevicesDropdown.AddOptions(options);
     }
     ```
+    For more details, see the following:
+
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengine.html#api_irtcengine_setremotevideostreamtype">SetRemoteVideoStreamType</Link>
 
 1. **Listen to <Vg k="ENGINE" /> events to receive state change notifications and quality statistics**
 
     Use the following `IRtcEngineEventHandler` callbacks to monitor and ensure channel quality:
 
     ``` csharp
+    // Event handler class to handle the events raised by Agora's RtcEngine instance
     internal class CallQualityEventHandler : UserEventHandler
     {
         private CallQualityManager callQuality;
@@ -210,81 +377,53 @@
         }
         public override void OnLastmileProbeResult(LastmileProbeResult result) 
         {
-            _videoSample.RtcEngine.StopLastmileProbeTest();
-        Debug.Log("Probe test finished");
-        // The result object contains the detailed test results that help you
-        // manage call quality, for example, the downlink jitter.
-        Debug.Log("Downlink jitter: " + result.downlinkReport.jitter);
-    }
-    public override void OnNetworkQuality(RtcConnection connection, uint remoteUid, int txQuality, int rxQuality) 
-    {
-        // Use downlink network quality to update the network status
-        callQuality.updateNetworkStatus(rxQuality);
-    }
-    public override void OnRtcStats(RtcConnection connection, RtcStats rtcStats) 
-    {
-        string msg = "";
-        msg = rtcStats.userCount + " user(s)";
-        msg = "Packet loss rate: " + rtcStats.rxPacketLossRate;
-        Debug.Log(msg);
-    }
-    public override void OnRemoteVideoStateChanged(RtcConnection connection, uint remoteUid, REMOTE_VIDEO_STATE state, REMOTE_VIDEO_STATE_REASON reason, int elapsed) 
-    {
-        string msg = "Remote video state changed: \n Uid =" + remoteUid
+            callQuality.agoraEngine.StopLastmileProbeTest();
+            Debug.Log("Probe test finished");
+            // The result object contains the detailed test results that help you
+            // manage call quality, for example, the downlink jitter.
+            Debug.Log("Downlink jitter: " + result.downlinkReport.jitter);
+            //Destroy the engine
+            callQuality.DestroyEngine();
+        }
+        public override void OnNetworkQuality(RtcConnection connection, uint remoteUid, int txQuality, int rxQuality) 
+        {
+            // Use downlink network quality to update the network status
+            callQuality.updateNetworkStatus(rxQuality);
+        }
+        public override void OnRtcStats(RtcConnection connection, RtcStats rtcStats) 
+        {
+            string msg = "";
+            msg = rtcStats.userCount + " user(s)";
+            msg = "Packet loss rate: " + rtcStats.rxPacketLossRate;
+            Debug.Log(msg);
+        }
+        public override void OnRemoteVideoStateChanged(RtcConnection connection, uint remoteUid, REMOTE_VIDEO_STATE state, REMOTE_VIDEO_STATE_REASON reason, int elapsed) 
+        {
+            string msg = "Remote video state changed: \n Uid =" + remoteUid
              + " \n NewState =" + state
              + " \n reason =" + reason
              + " \n elapsed =" + elapsed;
-        Debug.Log(msg);
-    }
-    public override void OnRemoteVideoStats(RtcConnection connection, RemoteVideoStats stats) 
-    {
-        string msg = "Remote Video Stats: "
+            Debug.Log(msg);
+        }
+        public override void OnRemoteVideoStats(RtcConnection connection, RemoteVideoStats stats) 
+        {
+            string msg = "Remote Video Stats: "
              + "\n User id =" + stats.uid
              + "\n Received bitrate =" + stats.receivedBitrate
              + "\n Total frozen time =" + stats.totalFrozenTime;
-        Debug.Log(msg);
-    }
-    }
-    ```
-
-1. **Switch stream quality**
-
-    Take advantage of dual-stream mode and switch remote video quality to high or low.
-
-    ``` csharp
-    public void setStreamQuality()
-    {
-        GameObject videoQualityBtn = GameObject.Find("videoQualityBtn");
-        TMP_Text videoQualityBtnText = videoQualityBtn.GetComponentInChildren<TextMeshProUGUI>(true); // For changing the button text programmatically.
-        if(remoteUid == 0)
-        {
-            Debug.Log("No remote user in the channel");
-            return;
-        }
-        highQuality = !highQuality;
-        if (highQuality) 
-        {
-            RtcEngine.SetRemoteVideoStreamType(remoteUid, VIDEO_STREAM_TYPE.VIDEO_STREAM_HIGH);
-            videoQualityBtnText.text = "Low Video Quality";
-            Debug.Log("Switching to high-quality video");
-        } 
-        else 
-        {
-            RtcEngine.SetRemoteVideoStreamType(remoteUid, VIDEO_STREAM_TYPE.VIDEO_STREAM_LOW);
-            Debug.Log("Switching to low-quality video");
+            Debug.Log(msg);
         }
     }
     ```
 
-<ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
-7. **Set the latency level**
+    For more details, see the following:
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengineeventhandler.html#callback_irtcengineeventhandler_onconnectionstatechanged">OnConnectionStateChanged</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengineeventhandler.html#callback_irtcengineeventhandler_onlastmilequality">OnLastmileQuality</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengineeventhandler.html#callback_irtcengineeventhandler_onlastmileproberesult">OnLastmileProbeResult</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengineeventhandler.html#callback_irtcengineeventhandler_onnetworkquality">OnNetworkQuality</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengineeventhandler.html#callback_irtcengineeventhandler_onrtcstats">OnRtcStats</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengineeventhandler.html#callback_irtcengineeventhandler_onremotevideostatechanged">OnRemoteVideoStateChanged</Link>
+    - <Link to="{{global.API_REF_UNITY_ROOT}}/class_irtcengineeventhandler.html#callback_irtcengineeventhandler_onremotevideostats">OnRemoteVideoStats</Link>
 
-    For ultra low-latency applications, set the appropriate `audienceLatencyLevel` when joining a channel. Ultra-low latency is a feature of <Vg k="ILS" /> and its use is subject to special [pricing](../reference/pricing#unit-pricing).
-
-    ``` csharp
-    // Set the latency level
-    options.audienceLatencyLevel= Constants.AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY;
-    ```
-</ProductWrapper>
 
 </PlatformWrapper>

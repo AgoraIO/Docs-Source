@@ -3,7 +3,7 @@
 
 Documentation is a crucial part of Agora's offering to customers. This document describes how the EN doc team
 plans and carries out documentation activities to make sure that everything on Agora's
-[documentation website](docs.agora.io) is up to standard and released in a timely manner. 
+[documentation website](docs.agora.io) is up to standard and released in a timely manner.
 
 ## EN doc team structure
 

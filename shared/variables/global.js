@@ -1,7 +1,7 @@
 
 export const COMPANY = 'Agora';
 export const URL_ROOT = 'docs.agora.io/en';
-export const AGORA_BACKEND = `${COMPANY} SD-RTN™`;
+  export const AGORA_BACKEND = `${COMPANY} SD-RTN™`;
 export const CLIENT = platform => (platform === 'unity' ? 'game' : 'app');
 export const VSDK_RELEASE_API = '4.x'
 export const VSDK_PREVIOUS_RELEASE_API = '3.x'
@@ -69,16 +69,20 @@ export const API_REF_WINDOWS_ROOT_CPP_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/cpp
 export const API_REF_SIG_ANDROID = '../reference/api';
 export const API_REF_SIG_WEB = '../reference/api';
 export const API_REF_SIG_APPLE = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
+export const API_REF_SIG_UNITY = '../reference/api';
+export const API_REF_SIG_LNX_CPP = '../reference/api';
+
 
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
 
 export const ENGINE = `${COMPANY} Engine`;
+
 export const RTE = 'Real-Time Engagement';
 export const RTEC = `${RTE} Core`;
 export const RTES = `${RTE} SDK`;
 export const APP_ID_LINK = `http://agora.io`;
-export const AGORA_CONSOLE_URL = `https://console.agora.io`;
+export const AGORA_CONSOLE_URL = `https://console.agora.io/v2`;
 export const AGORA_WEBDEMO_URL = `https://webdemo.agora.io`;
 export const API_REF_ANDROID = `http://api.agora.io/android`;
 
@@ -91,6 +95,7 @@ export const ILS = 'Interactive Live Streaming';
 export const ILSS = 'Interactive Live Streaming Standard';
 export const ILSP = 'Interactive Live Streaming Premium';
 export const VSDK = 'Video SDK';
+
 export const GET_STARTED = 'SDK quickstart';
 export const VSDK_RELEASE = '4.x';
 // A variable to update the version of SDK in release notes.
@@ -113,7 +118,7 @@ export const EASEMOB_SDK = `Easemob IM SDK`;
 export const NCS = `NCS`;
 export const NCS_LONG = `Notifications`;
 export const SIG = `${MESS}`;
-export const SIG_RELEASE_API = `1.x`;
+export const SIG_RELEASE_API = `2.x`;
 export const SIG_SDK_API_REF_ROOT = `${API_ROOT}/signaling-sdk`;
 export const SIG_SDK_API_ANDROID = `${SIG_SDK_API_REF_ROOT}/android/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_WIN_CPP = `${SIG_SDK_API_REF_ROOT}/windows-cpp/${SIG_RELEASE_API}`;
@@ -122,11 +127,12 @@ export const SIG_SDK_API_LNX_JAVA = `${SIG_SDK_API_REF_ROOT}/linux-java/${SIG_RE
 export const SIG_SDK_API_CSHARP = `${SIG_SDK_API_REF_ROOT}/unity/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_IOS = `${SIG_SDK_API_REF_ROOT}/ios/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_MACOS = `${SIG_SDK_API_REF_ROOT}/macos/${SIG_RELEASE_API}`;
-export const SIG_SDK_API_WEB = `${SIG_SDK_API_REF_ROOT}/web/${SIG_RELEASE_API}`;
-export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/reference/user-channel-events`;
+// export const SIG2_SDK_API_IOS = `${SIG_SDK_API_REF_ROOT}/ios/${SIG_RELEASE_API}/documentation/agorartm`;
+// export const SIG2_SDK_API_MACOS = `${SIG_SDK_API_REF_ROOT}/macos/${SIG_RELEASE_API}/documentation/agorartm`;
 export const SIG2_SDK_API_IOS = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
 export const SIG2_SDK_API_MACOS = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
-
+export const SIG_SDK_API_WEB = `${SIG_SDK_API_REF_ROOT}/web/${SIG_RELEASE_API}`;
+export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/reference/user-channel-events`;
 
 export const SPATIAL = '3D Spatial Audio';
 
@@ -167,8 +173,8 @@ export const RTEE_FU = 'FaceUnity';
 export const RTEE_AF = 'ActiveFence';
 export const RTEE_AF_D = `ActiveOS`;
 export const RTEE_HT3D = `HTEffect 3D Avatar`
+export const RTEE_LDCI = `LiveData Conversation Intelligence`
 export const RTEE_DUB = `Dubbing AI Voice Changer`
-export const RTEE_CLARITY = `Super Clarity`;
 export const AA = `${COMPANY} Analytics`;
 export const AA_DI = `Data Insights`;
 export const AA_DIP = `Data Insights Plus`;
@@ -252,7 +258,10 @@ export const DEMO_BASIC_VIDEO_CALL_URL =
   'https://webdemo.agora.io/basicVideoCall/index.html';
 
 export const DEMO_PAGE_LINK = `<Link to="{{Global.DEMO_BASIC_VIDEO_CALL_URL}}"><Vg k="COMPANY" /> web demo</Link>`;
-export const DEMO_TOKEN_BUILDER_URL = 'https://webdemo.agora.io/token-builder';
+
+export const DEMO_TOKEN_BUILDER_URL =
+  'https://webdemo.agora.io/token-builder';
+
 
 export const AGORA_DYNAMIC_KEY_CODE_BASE_URL =
   'https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey';
@@ -294,3 +303,13 @@ export const AGORA_API_EXAMPLES_IOS_BLOB = `${AGORA_API_EXAMPLES_BASE_URL}/blob/
 export const AGORA_API_EXAMPLES_IOS_COMMON = `${AGORA_API_EXAMPLES_BASE_URL}/blob/main/iOS/APIExample/APIExample/Common`
 export const AGORA_API_EXAMPLES_MACOS_BLOB = `${AGORA_API_EXAMPLES_BASE_URL}/blob/main/macOS/APIExample/Examples`
 export const AGORA_API_EXAMPLES_MACOS_TREE = `${MACOS_API_EXAMPLES_ROOT}/APIExample/Examples`
+export const AGORA_VIDEO_DOC_APP_IOS = 'https://github.com/AgoraIO/video-sdk-samples-ios'
+export const AGORA_VIDEO_DOC_APP_MACOS = 'https://github.com/AgoraIO/video-sdk-samples-macos'
+export const AGORA_VIDEO_DOC_APP_ANDROID = 'https://github.com/AgoraIO/video-sdk-samples-android'
+export const AGORA_VIDEO_DOC_APP_JS = 'https://github.com/AgoraIO/video-sdk-samples-js'
+export const AGORA_VIDEO_DOC_APP_REACTJS = 'https://github.com/AgoraIO/video-sdk-samples-reactjs'
+export const AGORA_VIDEO_DOC_APP_FLUTTER = 'https://github.com/AgoraIO/video-sdk-samples-flutter'
+export const AGORA_VIDEO_DOC_APP_UNITY = 'https://github.com/AgoraIO/video-sdk-samples-unity'
+export const AGORA_VIDEO_DOC_APP_REACTNATIVE = 'https://github.com/AgoraIO/video-sdk-samples-reactnative'
+export const AGORA_VIDEO_DOC_APP_ELECTRON = 'https://github.com/AgoraIO/video-sdk-samples-electron'
+export const AGORA_VIDEO_DOC_APP_WINDOWS = 'https://github.com/AgoraIO/video-sdk-samples-windows'

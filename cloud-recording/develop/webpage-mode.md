@@ -302,7 +302,7 @@ A web page recording session generates one M3U8 file and multiple TS files. Depe
 
 ## Pricing
 
-Web page recording mode is free to use by November 1, 2021. See [Pricing for Web Page Recording](../reference/pricing-webpage-recording) for details.
+Web page recording mode is free to use by November 1, 2021. See [Pricing for Web Page Recording](../overview/pricing-webpage-recording) for details.
 
 ## Considerations
 

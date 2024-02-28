@@ -25,6 +25,6 @@ If you are using the On-Premise Recording SDK earlier than v3.0.0, upgrade as so
 The latest versions of the On-Premise Recording SDK have made significant improvements to user experience, service reliability, and security. To avoid service disruptions, upgrade the On-Premise Recording SDK that you are using as soon as possible by referring to the following information:
 
 - [SDK download links](https://docs.agora.io/en/Recording/downloads)
-- [Release notes](../reference/release-notes)
+- [Release notes](../overview/release-notes)
 
 If you encounter any problems, contact Agora for support.

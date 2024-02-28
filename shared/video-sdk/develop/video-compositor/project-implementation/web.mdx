@@ -1,0 +1,130 @@
+<PlatformWrapper platform="web">
+1.  **Import the required modules**
+
+    Use any of the following methods to import the Video Compositor extension.
+
+      - Add the following code to the `main.js` file:
+
+          ```javascript
+          import VideoCompositingExtension from "agora-extension-video-compositor";
+          ```
+
+      - Import via Script tag in the `index.html` file:
+
+          ```html
+          <script src="./agora-extension-video-compositor.js"></script>
+          ```
+
+1.  **Create and register the extensions**
+
+    Create the `VideoCompositingExtension` object and call `AgoraRTC.registerExtensionsregister` to register the extension. Then, create a `VideoTrackCompositor` object.
+
+    ``` javascript
+    // Create VideoCompositingExtension and VirtualBackgroundExtension object
+    const extension = new VideoCompositingExtension();
+    const vbExtension = new VirtualBackgroundExtension();
+    // Register extensions
+    AgoraRTC.registerExtensions([extension, vbExtension]);
+    // Create VideoTrackCompositor object
+    let compositor = extension.createProcessor();
+    let vbProcessor = null;
+    ```
+
+1.  **Create the tracks**
+
+    Call the `createScreenVideoTrack`, `createCameraVideoTrack`, and `createCustomVideoTrack` methods respectively to create three video tracks:
+
+    ``` javascript
+    // Create a screen sharing video track
+    screenShareTrack = await AgoraRTC.createScreenVideoTrack({encoderConfig: {frameRate: 15}});
+
+    // Create a source video track using video captured by a camera
+    sourceVideoTrack1 = await AgoraRTC.createCameraVideoTrack({cameraId: videoSelect.value, encoderConfig: '720p_1'})
+
+    // Create a source video track using a local video file
+    const width = 1280, height = 720;
+    const videoElement = await createVideoElement(width, height, './assets/loop-video.mp4');
+    const mediaStream = videoElement.captureStream();
+    const msTrack = mediaStream.getVideoTracks()[0];
+    sourceVideoTrack2 = AgoraRTC.createCustomVideoTrack({ mediaStreamTrack: msTrack });
+    ```
+
+1.  **Create the input layers**
+
+    Create the input layers for the image and video tracks in order from bottom to top, with layers created later covering the top. In the code below, the screen share image is at the bottom and the image from source video track 2 is at the top:
+
+    ``` javascript
+    // Create the input layer for the screen share video track
+    const screenShareEndpoint = processor.createInputEndpoint({x: 0, y: 0, width: 1280, height: 720, fit: 'cover'});
+    // Create an input layer for images
+    compositor.addImage('./assets/city.jpg', {x: 960, y: 0, width: 320, height: 180, fit: 'cover'})
+    compositor.addImage('./assets/space.jpg', {x: 0, y: 540, width: 320, height: 180, fit: 'cover'})
+    // Create input layers for source video tracks 1 and 2
+    const endpoint1 = compositor.createInputEndpoint({x: 0, y: 0, width: 320, height: 180, fit: 'cover'});
+    const endpoint2 = compositor.createInputEndpoint({x: 960, y: 540, width: 320, height: 180, fit: 'cover'});
+    // Set the virtual background for source video track 1
+    if (!vbProcessor) {
+        vbProcessor = vbExtension.createProcessor();
+        await vbProcessor.init("./assets/wasms");
+        vbProcessor.enable();
+        vbProcessor.setOptions({type: 'none'});
+      }
+    // Connect the pipeline between the video input layer and the video track
+    screenShareTrack.pipe(screenShareEndpoint).pipe(screenShareTrack.processorDestination);
+    sourceVideoTrack1.pipe(vbProcessor).pipe(endpoint1).pipe(sourceVideoTrack1.processorDestination);
+    sourceVideoTrack2.pipe(endpoint2).pipe(sourceVideoTrack2.processorDestination);
+    ```
+
+1.  **Merge all the layers**
+
+    Merge all input layers and inject the merged video into the local video track:
+    
+    ``` javascript
+    const canvas = document.createElement('canvas');
+    canvas.getContext('2d');
+    // Create a local video track
+    localTracks.videoTrack = AgoraRTC.createCustomVideoTrack({ mediaStreamTrack: canvas.captureStream().getVideoTracks()[0]});
+
+    // Set up image options
+    compositor.setOutputOptions(1280, 720, 15);
+    // Start merging
+    await compositor.start();
+    // Inject the merged video into the local video track
+    localTracks.videoTrack.pipe(compositor).pipe(localTracks.videoTrack.processorDestination);
+    ```
+
+1.  **Publish the merged video**:
+
+    To play and publish a local video track:
+    
+    ```javascript
+    // Play local video track
+    localTracks.videoTrack.play("local-player");
+
+    // Publish local audio and video tracks
+    localTracks.audioTrack = localTracks.audioTrack  || await AgoraRTC.createMicrophoneAudioTrack();
+    await client.publish(Object.values(localTracks));
+    ```
+
+1.  **Clean up upon leaving the channel**
+
+    When you need to leave the channel, call `unpipe` to disconnect the pipeline of the compositor and all video tracks, and stop all audio and video tracks, otherwise an error may occur when you join the channel again:
+
+    ```javascript
+    async function leave() {
+      await client.leave();
+      localTracks.audioTrack?.close();
+      localTracks.videoTrack?.unpipe();
+      localTracks.videoTrack?.close();
+      compositor?.unpipe();
+      vbProcessor?.unpipe();
+      sourceVideoTrack1?.unpipe();
+      sourceVideoTrack1?.close();
+      sourceVideoTrack2?.unpipe();
+      sourceVideoTrack2?.close();
+      screenShareTrack?.unpipe();
+      screenShareTrack.close();
+    }
+    ```
+
+</PlatformWrapper>

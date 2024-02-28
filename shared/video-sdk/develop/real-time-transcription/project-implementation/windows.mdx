@@ -1,0 +1,493 @@
+<PlatformWrapper platform="windows">
+
+### Implement the user interface
+
+To create a simple test interface, add buttons to start and query real-time transcription. To implement
+  this UI, do the following:
+
+1. Click **View** > **ToolBox**.
+
+    The **Toolbox** opens.
+
+1. From **ToolBox**, drag **Button** to the surface of the **Dialog Editor**.
+
+1. In **Properties**, update the **Caption** field to `Start real-time transcription`.
+
+1. Repeat the same procedure and add another button where **Caption** is `Query real-time transcription`.
+
+You see errors in your IDE. This is because the layout refers to methods that you create later.
+
+### Handle the system logic
+
+To integrate HTTP and JSON capabilities into your <Vpl k="CLIENT" /> and connect to real-time transcription endpoints:
+
+1. **Add cJSON library in your project**
+
+    In **Solution Explorer**, right-click **AgoraImplementation**, and then click **Manage NuGet Packages**. The
+  **NuGet: AgoraImplementation** window opens. Go to the **Browse** tab and type `CppRequests`, then install the
+  package in your project.
+
+1. **Import the required classes**
+
+    To use the `CHttpFile` and `cJSON` classes in your project, add the following statements after the last `include` statement in `CAgoraImplementationDlg.cpp`:
+
+    ```cpp
+    #include <afxinet.h>
+    #include <requests.h>
+    ```
+
+1. **Define variables to manage a real-time transcription task**
+
+    In `AgoraImplementationDlg.h`, add the following declarations to the `CAgoraImplementationDlg` class:
+
+    ```cpp
+    CString baseUrl = L"api.agora.io";
+	std::string apiKey = "<Your Customer ID from Agora console>";
+	std::string apiSecret = "<Your Customer secret from Agora console>";
+	CString instanceID = L"Test-1";
+	CString authorizationHeader, builderToken;
+	CString realTimeTranscriptionTaskId; // Returned by the start method
+	BOOL isRealTimeTranscriptionRunning = false;
+	std::string Uid = "1";
+    CButton* realTimeTranscription;
+	CButton* queryRealTimeTranscription;
+    ```
+
+1. **Access the buttons programmatically**
+
+    In `AgoraImplementationDlg.cpp`, add the following code at the end of `OnInitDialog`:
+
+    ```cpp
+    realTimeTranscription = (CButton*)GetDlgItem(IDC_BUTTON3);
+	realTimeTranscription->MoveWindow(380, 739, 400, 60, TRUE);
+	queryRealTimeTranscription = (CButton*)GetDlgItem(IDC_BUTTON4);
+	queryRealTimeTranscription->MoveWindow(380, 666, 400, 60, TRUE);
+    ```
+
+### Manage a real-time transcription task
+
+Take the following steps to start, stop, and query a real-time transcription task in your <Vpl k="CLIENT" />.
+
+1. **Get a `builderToken`**
+
+    To acquire a `builderToken`, you:
+
+    1. Generate a Base64-encoded credential from the API key and secret associated with your <Vg k="COMPANY" /> project.
+    1. Add this credential to the request header as a parameter named `Authorization`.
+    1. In the request body, pass the `instanceID` that you use to identify the instance.
+
+    To acquire a `builderToken`, do the following:
+
+    1. Convert the secret key and API key to Base64 format: 
+    
+        1. In `AgoraImplementationDlg.h`, add the following declaration to `CAgoraImplementationDlg`:
+
+            ```cpp
+            std::string Encode(const std::string data);
+            ```
+
+        1. In `AgoraImplementationDlg.cpp`, add the following before `setupVideoSDKEngine`:
+
+            ```cpp
+            std::string CAgoraImplementationDlg::Encode(const std::string data) 
+            {
+                static constexpr char sEncodingTable[] = 
+                {
+                    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+                    'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+                    'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+                    'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+                    'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
+                    'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+                    'w', 'x', 'y', 'z', '0', '1', '2', '3',
+                    '4', '5', '6', '7', '8', '9', '+', '/'
+                };
+                size_t in_len = data.size();
+                size_t out_len = 4 * ((in_len + 2) / 3);
+                std::string ret(out_len, '\0');
+                size_t i = 0;
+                char* p = const_cast<char*>(ret.c_str());
+                if (in_len >= 2) 
+                {
+                    for (i = 0; i < in_len - 2; i += 3) 
+                    {
+                        *p++ = sEncodingTable[(data[i] >> 2) & 0x3F];
+                        *p++ = sEncodingTable[((data[i] & 0x3) << 4) | ((int)(data[i + 1] & 0xF0) >> 4)];
+                        *p++ = sEncodingTable[((data[i + 1] & 0xF) << 2) | ((int)(data[i + 2] & 0xC0) >> 6)];
+                        *p++ = sEncodingTable[data[i + 2] & 0x3F];
+                    }
+                }
+                if (i < in_len) 
+                {
+                    *p++ = sEncodingTable[(data[i] >> 2) & 0x3F];
+                    if (i == (in_len - 1)) 
+                    {
+                        *p++ = sEncodingTable[((data[i] & 0x3) << 4)];
+                        *p++ = '=';
+                    }
+                    else 
+                    {
+                        *p++ = sEncodingTable[((data[i] & 0x3) << 4) | ((int)(data[i + 1] & 0xF0) >> 4)];
+                        *p++ = sEncodingTable[((data[i + 1] & 0xF) << 2)];
+                    }
+                    *p++ = '=';
+                }
+                return ret;
+            }
+            ```
+    
+    1. Retrieve a token from the server:
+    
+        1. In `AgoraImplementationDlg.h`, add the following method to `CAgoraImplementationDlg`:
+
+            ```cpp
+            void fetchBuilderToken();
+            ```
+        
+        1. In `AgoraImplementationDlg.cpp`, add the following before `setupVideoSDKEngine`:
+
+            ```cpp
+            void CAgoraImplementationDlg::fetchBuilderToken()
+            {
+                CInternetSession session;
+                std::string temp = "/v1/projects/" + appId + "/rtsc/speech-to-text/builderTokens";
+                CString path(temp.c_str());
+                CString Url = baseUrl + path;
+                // Concatenate the key and secret and use base64 encoding
+                std::string plainCredentials = apiKey + ":" + apiSecret;
+                std::string base64 = Encode(plainCredentials);
+                CString CBase64(base64.c_str());
+                CHttpConnection* pConnection = NULL;
+                try
+                {
+                    pConnection = (CHttpConnection*)session.GetHttpConnection(baseUrl, (INTERNET_PORT)INTERNET_DEFAULT_HTTP_PORT);
+                    if (pConnection)
+                    {
+                        CHttpFile* pHTTPFile = NULL;
+                        CString strHeaders = _T("Content-Type: application/json\r\n");
+                        authorizationHeader = L"Authorization : Basic ";
+                        authorizationHeader += CBase64;
+                        authorizationHeader += L"\r\n";
+                        pHTTPFile = pConnection->OpenRequest(CHttpConnection::HTTP_VERB_POST, path);
+                        cJSON* root = cJSON_CreateObject();
+                        cJSON_AddItemToObject(root, "instanceId", cJSON_CreateString((char*)LPCTSTR(instanceID)));
+                        char* data = NULL;
+                        data = cJSON_Print(root);
+                        strHeaders += authorizationHeader;
+                        if (pHTTPFile)
+                        {
+                            pHTTPFile->AddRequestHeaders(strHeaders);
+                            pHTTPFile->SendRequestEx(strlen(data));
+                            pHTTPFile->WriteString((LPCTSTR)data);
+                            pHTTPFile->EndRequest();
+                            DWORD dwRet;
+                            CString strHtml;
+                            char result[1024];
+                            pHTTPFile->QueryInfoStatusCode(dwRet);
+                            if (dwRet == HTTP_STATUS_OK)
+                            {
+                                pHTTPFile->Read((void*)result, 1024);
+                                cJSON* root = cJSON_Parse(result);
+                                cJSON* success = cJSON_GetObjectItem(root, "tokenName");
+                                builderToken = success->valuestring;
+                                TRACE(builderToken);
+                            }
+                            else
+                            {
+                                CString errorCode;
+                                pHTTPFile->QueryInfo(HTTP_QUERY_STATUS_TEXT, errorCode);	// Status String - eg OK, Not Found
+                                AfxMessageBox(errorCode);
+                            }
+                            pHTTPFile->Close();
+                            delete pHTTPFile;
+                        }
+                        pConnection->Close();
+                        delete pConnection;
+                    }
+                }
+                catch (CInternetException* e)
+                {
+                    char strErrorBuf[255];
+                    e->GetErrorMessage((LPTSTR)strErrorBuf, 255, NULL);
+                    AfxMessageBox((LPCTSTR)strErrorBuf, MB_ICONINFORMATION);
+                }
+                session.Close();
+            }
+            ```
+            To execute this function at startup, in `AgoraImplementationDlg.cpp`, add the following at the end of `setupVideoSDKEngine`:
+            
+            ```cpp
+            fetchBuilderToken();
+            ```
+            A `builderToken` is usable for 5 minutes. After the time has expired, you must generate a new token.
+
+1. **Start a real-time transcription task**
+
+    To start a real-time transcription task, you:
+     1. Create a JSON configuration and pass it in the body of a `POST` request.
+     1. Add the `builderToken` as a query parameter to the URL.
+     1. Make a `POST` call to  <Vg k="AGORA_BACKEND" />.
+    On success, the method returns a `taskId` that you use to query or stop the task.
+
+    To start a task, in **Dialog Editor**, double-click **Start real-time transcription**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener you just created:
+
+    ```cpp
+    if (isRealTimeTranscriptionRunning)
+	{
+		stopRealTimeTranscription();
+		return;
+	}
+    std::string temp = "/v1/projects/" + appId +"/rtsc/speech-to-text/tasks?" + "builderToken=";
+	CString path(temp.c_str());
+	path += builderToken;
+	CString Url = baseUrl + path;
+	// Setup a JSON string to specify a real-time transcription configuration.
+	cJSON* root = cJSON_CreateObject();
+	cJSON* audio = cJSON_CreateObject();
+	cJSON* agoraRtcConfig = cJSON_CreateObject();
+	cJSON_AddItemToObject(audio, "agoraRtcConfig", agoraRtcConfig);
+	cJSON_AddItemToObject(audio, "subscribeSource", cJSON_CreateString("AGORARTC"));
+	cJSON_AddStringToObject(agoraRtcConfig, "channelName", channelName.c_str());
+	cJSON_AddStringToObject(agoraRtcConfig, "uid", Uid.c_str());
+	cJSON_AddStringToObject(agoraRtcConfig, "token", token.c_str());
+	cJSON_AddStringToObject(agoraRtcConfig, "channelType", "LIVE_TYPE");
+	cJSON* subscribeConfig = cJSON_CreateObject();
+	cJSON_AddStringToObject(subscribeConfig, "subscribeMode", "CHANNEL_MODE");
+	cJSON_AddItemToObject(agoraRtcConfig, "subscribeConfig", subscribeConfig);
+	cJSON_AddItemToObject(agoraRtcConfig, "maxIdleTime", cJSON_CreateInt(60,0));
+	cJSON_AddItemToObject(root, "audio", audio);
+	cJSON* config = cJSON_CreateObject();
+	cJSON* features = cJSON_CreateArray();
+	cJSON_AddItemToArray(features, cJSON_CreateString("RECOGNIZE"));
+	cJSON_AddItemToObject(config, "features", features);
+	cJSON* recognizeConfig = cJSON_CreateObject();
+	cJSON_AddStringToObject(recognizeConfig, "language", "ENG");
+	cJSON_AddStringToObject(recognizeConfig, "model", "Model");
+	cJSON* output = cJSON_CreateObject();
+	cJSON* destinations = cJSON_CreateArray();
+	cJSON_AddItemToArray(destinations, cJSON_CreateString("AgoraRTCDataStream"));
+	cJSON_AddItemToArray(destinations, cJSON_CreateString("Storage"));
+	cJSON_AddItemToObject(output, "destinations", destinations);
+	cJSON* agoraRTCDataStream = cJSON_CreateObject();
+	cJSON_AddStringToObject(agoraRTCDataStream, "channelName", channelName.c_str());
+	cJSON_AddStringToObject(agoraRTCDataStream, "uid", Uid.c_str());
+	cJSON_AddStringToObject(agoraRTCDataStream, "token", token.c_str());
+	cJSON_AddItemToObject(output, "agoraRTCDataStream", agoraRTCDataStream);
+	cJSON* cloudStorage = cJSON_CreateArray();
+	cJSON* unknwon = cJSON_CreateObject();
+	cJSON_AddStringToObject(unknwon, "format", "HLS");
+	cJSON* storageConfig = cJSON_CreateObject();
+	cJSON_AddItemToObject(storageConfig, "vendor", cJSON_CreateInt(0, 0));
+	cJSON_AddItemToObject(storageConfig, "region", cJSON_CreateInt(0, 0));
+	cJSON_AddStringToObject(storageConfig, "bucket", "YourBucket");
+	cJSON_AddStringToObject(storageConfig, "accessKey", "< YourOssAccessKey >");
+	cJSON_AddStringToObject(storageConfig, "secretKey", "< YourOssSecretKey >");
+	cJSON_AddItemToObject(unknwon, "storageConfig", storageConfig);
+	cJSON* fileNamePrefix = cJSON_CreateArray();
+	cJSON_AddItemToArray(fileNamePrefix, cJSON_CreateString("directory1"));
+	cJSON_AddItemToArray(fileNamePrefix, cJSON_CreateString("directory2"));
+	cJSON_AddItemToObject(unknwon, "fileNamePrefix", fileNamePrefix);
+	cJSON_AddItemToObject(cloudStorage, "", unknwon);
+	cJSON_AddItemToObject(output, "cloudStorage", cloudStorage);
+	cJSON_AddItemToObject(recognizeConfig, "output", output);
+	cJSON_AddItemToObject(config, "recognizeConfig", recognizeConfig);
+	cJSON_AddItemToObject(root, "config", config);
+	char* postData = NULL;
+	postData = cJSON_Print(root);
+	CInternetSession session;
+	CHttpConnection* pConnection = NULL;
+	try
+	{
+		pConnection = (CHttpConnection*)session.GetHttpConnection(baseUrl, (INTERNET_PORT)INTERNET_DEFAULT_HTTP_PORT);
+		if (pConnection)
+		{
+			CHttpFile* pHTTPFile = NULL;
+			pHTTPFile = pConnection->OpenRequest(CHttpConnection::HTTP_VERB_POST, path);
+			CString strHeaders = _T("Content-Type: application/json\r\n");
+			strHeaders += authorizationHeader;
+			if (pHTTPFile)
+			{
+				pHTTPFile->AddRequestHeaders(strHeaders);
+				pHTTPFile->SendRequestEx(strlen(postData));
+				pHTTPFile->WriteString((LPCTSTR)postData);
+				pHTTPFile->EndRequest();
+				DWORD dwRet;
+				char result[1024];
+				pHTTPFile->QueryInfoStatusCode(dwRet);
+				if (dwRet == HTTP_STATUS_OK)
+				{
+					pHTTPFile->Read((void*)result, 1024);
+					cJSON* root = cJSON_Parse(result);
+					cJSON* success = cJSON_GetObjectItem(root, "taskId");
+					realTimeTranscriptionTaskId = success->valuestring;
+                    isRealTimeTranscriptionRunning = true;
+                    realTimeTranscription->SetWindowText(L"Stop real-time transcription");
+                    AfxMessageBox(L"Real-time transcription service has been started successfully");
+				}
+				else
+				{
+					CString errorCode;
+					pHTTPFile->QueryInfo(HTTP_QUERY_STATUS_TEXT, errorCode);	// Status String - eg OK, Not Found
+					AfxMessageBox(errorCode);
+				}
+				pHTTPFile->Close();
+				delete pHTTPFile;
+			}
+			pConnection->Close();
+			delete pConnection;
+		}
+	}
+	catch (CInternetException* e)
+	{
+		char strErrorBuf[255];
+		e->GetErrorMessage((LPTSTR)strErrorBuf, 255, NULL);
+		AfxMessageBox((LPCTSTR)strErrorBuf, MB_ICONINFORMATION);
+	}
+	session.Close();
+    ```
+
+1. **Query task status**
+
+    To notify the user of any change to the real-time transcription task, you query the task status using a `GET` request containing the `taskId` and `builderToken`. To implement this workflow, in **Dialog Editor**, double-click **Query real-time transcription**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener you just created:
+
+    ```cpp
+    std::string temp = "/v1/projects/" + appId + +"/rtsc/speech-to-text/tasks/";
+	CString path(temp.c_str());
+	path += realTimeTranscriptionTaskId + "?builderToken=" + builderToken;
+	CInternetSession session;
+	CHttpConnection* pConnection = NULL;
+	try
+	{
+		pConnection = (CHttpConnection*)session.GetHttpConnection(baseUrl, (INTERNET_PORT)INTERNET_DEFAULT_HTTP_PORT);
+		if (pConnection)
+		{
+			CHttpFile* pHTTPFile = NULL;
+			pHTTPFile = pConnection->OpenRequest(CHttpConnection::HTTP_VERB_GET, path);
+			CString strHeaders = _T("Content-Type: application/json\r\n");
+			strHeaders += authorizationHeader;
+			if (pHTTPFile)
+			{
+				pHTTPFile->AddRequestHeaders(strHeaders);
+				pHTTPFile->SendRequest();
+				DWORD dwRet;
+				char result[1024];
+				pHTTPFile->QueryInfoStatusCode(dwRet);
+				if (dwRet == HTTP_STATUS_OK)
+				{
+					pHTTPFile->Read((void*)result, 1024);
+					cJSON* root = cJSON_Parse(result);
+					cJSON* status = cJSON_GetObjectItem(root, "status");
+					TRACE(status->valuestring);
+					CString CStatus = L"Current status: ";
+					CStatus += status->valuestring;
+					AfxMessageBox(CStatus);
+				}
+				else
+				{
+					CString errorCode;
+					pHTTPFile->QueryInfo(HTTP_QUERY_STATUS_TEXT, errorCode);	// Status String - eg OK, Not Found
+					AfxMessageBox(errorCode);
+				}
+				pHTTPFile->Close();
+				delete pHTTPFile;
+			}
+			pConnection->Close();
+			delete pConnection;
+		}
+	}
+	catch (CInternetException* e)
+	{
+		char strErrorBuf[255];
+		e->GetErrorMessage((LPTSTR)strErrorBuf, 255, NULL);
+		AfxMessageBox((LPCTSTR)strErrorBuf, MB_ICONINFORMATION);
+	}
+	session.Close();
+    ```
+
+1. **Stop the task**
+
+    To stop real-time transcription, you send a `DELETE` request with the `appId`, `taskId`, and `builderToken` in the URL. To implement this logic, do the following:
+
+    1. In `AgoraImplementationDlg.h`, add the following to `CAgoraImplementationDlg`:
+      
+        ```cpp
+        void stopRealTimeTranscription();
+        ```
+
+    2. In `AgoraImplementationDlg.cpp`, add the following method before `setupVideoSDKEngine`:
+      
+        ```cpp
+        void CAgoraImplementationDlg::stopRealTimeTranscription()
+        {
+            std::string temp = "/v1/projects/" + appId + +"/rtsc/speech-to-text/tasks/";
+            CString path(temp.c_str());
+            path += realTimeTranscriptionTaskId + "?builderToken=" + builderToken;
+            CInternetSession session;
+            CHttpConnection* pConnection = NULL;
+            try
+            {
+                pConnection = (CHttpConnection*)session.GetHttpConnection(baseUrl, (INTERNET_PORT)INTERNET_DEFAULT_HTTP_PORT);
+                if (pConnection)
+                {
+                    CHttpFile* pHTTPFile = NULL;
+                    pHTTPFile = pConnection->OpenRequest(CHttpConnection::HTTP_VERB_DELETE, path);
+                    CString strHeaders = _T("Content-Type: application/json\r\n");
+                    strHeaders += authorizationHeader;
+                    if (pHTTPFile)
+                    {
+                        pHTTPFile->AddRequestHeaders(strHeaders);
+                        pHTTPFile->SendRequest();
+                        DWORD dwRet;
+                        char result[1024];
+                        pHTTPFile->QueryInfoStatusCode(dwRet);
+                        if (dwRet == HTTP_STATUS_OK)
+                        {
+                            AfxMessageBox(L"Real-time transcription task stopped");
+                            isRealTimeTranscriptionRunning = false;
+                            realTimeTranscriptionTaskId = "";
+                            realTimeTranscription->SetWindowText(L"Start real-time transcription");
+                        }
+                        else
+                        {
+                            CString errorCode;
+                            pHTTPFile->QueryInfo(HTTP_QUERY_STATUS_TEXT, errorCode);	// Status String - eg OK, Not Found
+                            AfxMessageBox(errorCode);
+                        }
+                        pHTTPFile->Close();
+                        delete pHTTPFile;
+                    }
+                    pConnection->Close();
+                    delete pConnection;
+                }
+            }
+            catch (CInternetException* e)
+            {
+                char strErrorBuf[255];
+                e->GetErrorMessage((LPTSTR)strErrorBuf, 255, NULL);
+                AfxMessageBox((LPCTSTR)strErrorBuf, MB_ICONINFORMATION);
+            }
+            session.Close();
+        }
+        ```
+
+1. **Receive and display the text stream**
+
+    When you set one of the `destinations` in the starting configuration as `AgoraRTCDataStream`, the real-time transcription conversion output stream is pushed to your channel.
+
+    To receive this stream and display the text in your <Vpl k="CLIENT" />, do the following:
+
+    1. Add the `onStreamMessage` callback to `AgoraEventHandler`. In `AgoraImplementationDlg.h`, add the following to `AgoraEventHandler`:
+
+        ```cpp
+        virtual void onStreamMessage(uid_t userId, int streamId, const char* data, size_t length, uint64_t sentTs);
+        ```
+
+    2. Display the text stream in the debugger **Output** window. In `AgoraImplementationDlg.cpp`, add the following before `setupVideoSDKEngine`:
+
+        ```cpp
+        void AgoraEventHandler::onStreamMessage(uid_t userId, int streamId, const char* data, size_t length, uint64_t sentTs)
+        {
+            TRACE(data);
+        }
+        ```
+</PlatformWrapper>

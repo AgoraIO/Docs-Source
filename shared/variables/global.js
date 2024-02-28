@@ -171,6 +171,7 @@ export const RTEE_NS = 'AI Noise Suppression';
 export const RTEE_VB = 'Virtual Background';
 export const RTEE_FU = 'FaceUnity';
 export const RTEE_AF = 'ActiveFence';
+export const RTEE_CLARITY = `Super Clarity`;
 export const RTEE_AF_D = `ActiveOS`;
 export const RTEE_HT3D = `HTEffect 3D Avatar`
 export const RTEE_LDCI = `LiveData Conversation Intelligence`

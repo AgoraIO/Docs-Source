@@ -1,0 +1,399 @@
+<PlatformWrapper platform="android">
+
+### Implement the user interface
+
+To create a simple interface to test this feature, add buttons to start and query real-time transcription.
+Open `/app/res/layout/activity_main.xml` and add the following lines before `</RelativeLayout>`:
+
+```xml
+<Button
+    android:id="@+id/RealTimeTranscriptionButton"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_below="@id/LeaveButton"
+    android:layout_alignStart="@id/remote_video_view_container"
+    android:layout_alignEnd="@id/remote_video_view_container"
+    android:onClick="realTimeTranscription"
+    android:text="Start real-time transcription" />
+
+<Button
+    android:id="@+id/QueryRealTimeTranscriptionButton"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_below="@id/RealTimeTranscriptionButton"
+    android:layout_alignStart="@id/remote_video_view_container"
+    android:layout_alignEnd="@id/remote_video_view_container"
+    android:onClick="query"
+    android:text="Query real-time transcription" />
+```
+
+You see errors in your IDE. This is because the layout refers to methods that you create later.
+
+### Handle the system logic
+
+To integrate HTTP and JSON capabilities into your app for real-time transcription:
+
+1. **Integrate an `HTTP` client library into your project**
+
+    To call `HTTP` methods that start, stop, and query a real-time transcription task, you add an `HTTP` client library to your project. Open `/Gradle Scripts/build.gradle (Module: <project name>.app)` and add the following line under `dependencies {`:
+
+    ```groovy
+    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
+    ```
+
+1. **Import the required classes**
+
+    To use the relevant `okhttp` classes in your project, add the following statements after the last `import` statement in `/app/java/com.example.<projectname>/MainActivity`:
+
+    ```java
+    import okhttp3.Call;
+    import okhttp3.Callback;
+    import okhttp3.MediaType;
+    import okhttp3.OkHttpClient;
+    import okhttp3.Request;
+    import okhttp3.RequestBody;
+    import okhttp3.Response;
+
+    import java.io.IOException;
+    import java.util.Base64;
+    import android.widget.Button;
+
+    import org.json.JSONArray;
+    import org.json.JSONException;
+    import org.json.JSONObject;
+    ```
+
+1. **Define variables to manage a real-time transcription task**
+
+    In `/app/java/com.example.<projectname>/MainActivity`, add the following declarations to the `MainActivity` class:
+
+    ```java
+    private String baseUrl = "https://api.agora.io";
+    private String apiKey = "<your Customer ID from Agora console>";
+    private String apiSecret = "<your Customer secret from Agora console>";
+    private String instanceID = "Test-1";
+    private String authorizationHeader, builderToken;
+    private String realTimeTranscriptionTaskId = ""; // Returned by the start method
+    private boolean isRealTimeTranscriptionRunning = false;
+    private Button btnRealTimeTranscription;
+    ```
+
+### Manage a real-time transcription task
+
+Take the following steps to start, stop, and query a real-time transcription task in your <Vpl k="CLIENT" />.
+
+1. **Get a `builderToken`**
+
+    To acquire a `builderToken`, you:
+
+     1. Generate a Base64-encoded credential from the API key and secret associated with your <Vg k="COMPANY" /> project.
+     1. Add this credential to the request header as a parameter named `Authorization`.
+     1. In the request body, pass the `instanceID` that you use to identify the instance.
+
+    To acquire a `builderToken`, add the following method to the `MainActivity` class:
+
+    ```java
+    public void getBuilderToken() throws IOException {
+        String url = baseUrl + "/v1/projects/" + appId + "/rtsc/speech-to-text/builderTokens";
+        // Concatenate the key and secret and use base64 encoding
+        String plainCredentials = apiKey + ":" + apiSecret;
+        String base64Credentials = new String(Base64.getEncoder()
+            .encode(plainCredentials.getBytes())); // Requires minSdk 26 or higher
+
+        // Create authorization header
+        authorizationHeader = "Basic " + base64Credentials;
+        OkHttpClient httpClient = new OkHttpClient().newBuilder().build();
+        MediaType mediaType = MediaType.parse("application/json");
+
+        RequestBody body = RequestBody.create("{\n \"instanceId\" : \""
+            + instanceID + "\" \n}", mediaType);
+        Request request = new Request.Builder()
+            .addHeader("Authorization", authorizationHeader)
+            .url(url)
+            .method("POST", body)
+            .build();
+
+        httpClient.newCall(request)
+            .enqueue(new Callback() {
+                @Override
+                public void onFailure(final Call call, IOException e) {
+                    showMessage(e.toString());
+                }
+
+                @Override
+                public void onResponse(Call call, final Response response) throws IOException {
+                    String result = response.body().string();
+                    String message = "";
+                    try {
+                        JSONObject jsonObject = new JSONObject(result);
+                        if (response.isSuccessful()) {
+                            builderToken = jsonObject.getString("tokenName");
+                            showMessage("builderToken received" );
+                            startRealTimeTranscription();
+                        } else {
+                            message = jsonObject.getString("message");
+                            showMessage("builderToken not received: " + message);
+                        }
+                    } catch (Exception e) {
+                        showMessage("Exception fetching builderToken: " + e.toString());
+                    }
+                }
+            });
+    }
+    ```
+
+    A `builderToken` is usable for 5 minutes. After the time has expired, you must generate a new token.
+
+1. **Start a real-time transcription task**
+
+    To start a real-time transcription task, you:
+     1. Create a JSON configuration and pass it in the body of a `POST` request.
+     1. Add the `builderToken` as a query parameter to the URL.
+     1. Make a `POST` call to  <Vg k="AGORA_BACKEND" />.
+    On success, the method returns a `taskId` that you use to query or stop the task.
+
+    To start a task, add the following method to the `MainActivity` class:
+
+    ```java
+    public void startRealTimeTranscription() throws JSONException {
+        String url = baseUrl + "/v1/projects/" + appId
+                + "/rtsc/speech-to-text/tasks?" + "builderToken=" + builderToken;
+        // Build Request body JSON
+        JSONObject startConfig = new JSONObject()
+            .put("audio", new JSONObject()
+                .put("subscribeSource", "AGORARTC")
+                .put("agoraRtcConfig", new JSONObject()
+                        .put("channelName", channelName)
+                        .put("uid", String.valueOf(uid))
+                        .put("token", token)
+                        .put("channelType", "LIVE_TYPE")
+                        .put("subscribeConfig", new JSONObject()
+                                .put("subscribeMode", "CHANNEL_MODE"))
+                        .put("maxIdleTime", 60)))
+            .put("config", new JSONObject()
+                .put("features", new JSONArray()
+                        .put("RECOGNIZE"))
+                .put("recognizeConfig", new JSONObject()
+                    .put("language", "ENG")
+                    .put("model", "Model")
+                    .put("output", new JSONObject()
+                            .put("destinations", new JSONArray()
+                                .put("AgoraRTCDataStream")
+                                .put("Storage"))
+                            .put("agoraRTCDataStream", new JSONObject()
+                                .put("channelName", channelName)
+                                .put("uid", String.valueOf(uid))
+                                .put("token", token))
+                            .put("cloudStorage", new JSONArray()
+                                .put(new JSONObject()
+                                    .put("format", "HLS")
+                                    .put("storageConfig", new JSONObject()
+                                        .put("accessKey", "<YourOssAccessKey>")
+                                        .put("secretKey", "<YourOssSecretKey>")
+                                        .put("bucket", "<YourOssBucketName>")
+                                        .put("vendor", 0) // Your Oss Vendor id
+                                        .put("region", 0) // Your Oss Region id
+                                        .put("fileNamePrefix", new JSONArray()
+                                            .put("directory1")
+                                            .put("directory2")
+                                        )
+                                    )
+                                )
+                            )
+                    )
+                )
+            );
+
+        OkHttpClient httpClient = new OkHttpClient().newBuilder().build();
+        MediaType mediaType = MediaType.parse("application/json");
+        RequestBody body = RequestBody.create(startConfig.toString(), mediaType);
+        Request request = new Request.Builder()
+            .addHeader("Authorization", authorizationHeader)
+            .url(url)
+            .method("POST", body)
+            .build();
+
+        httpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(final Call call, IOException e) {
+                showMessage(e.toString());
+            }
+
+            @Override
+            public void onResponse(Call call, final Response response) throws IOException {
+                String result = response.body().string();
+                if (response.isSuccessful()) {
+                    try {
+                        JSONObject jsonObject = new JSONObject(result);
+                        String status = jsonObject.getString("status");
+                        realTimeTranscriptionTaskId = jsonObject.getString("taskId");
+                        if (status.equals("STARTED") || status.equals("IN_PROGRESS")) {
+                            isRealTimeTranscriptionRunning = true;
+                            runOnUiThread(() -> btnRealTimeTranscription.setText("Stop real-time transcription"));
+                            showMessage("Real-time transcription task started");
+                        } else {
+                            isRealTimeTranscriptionRunning = false;
+                            showMessage("Real-time transcription status: " + status);
+                        }
+                    } catch (Exception e) {
+                        showMessage("Error parsing query call response: " + result);
+                    }
+                } else {
+                    showMessage("Exception starting real-time transcription task: " + result);
+                }
+            }
+        }
+        );
+    }
+    ```
+
+1. **Query task status**
+
+    To notify the user of any change to the real-time transcription task, you query the task status using a `GET` request containing the `taskId` and `builderToken`.
+
+    To do this, add the following method to the `MainActivity`class:
+
+    ```java
+    public void queryRealTimeTranscription() {
+        String url = baseUrl + "/v1/projects/" + appId
+                + "/rtsc/speech-to-text/tasks/" + realTimeTranscriptionTaskId
+                + "?builderToken=" + builderToken;
+
+        OkHttpClient httpClient = new OkHttpClient().newBuilder().build();
+        Request request = new Request.Builder()
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Authorization", authorizationHeader)
+                .url(url)
+                .get()
+                .build();
+
+        httpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(final Call call, IOException e) {
+                showMessage(e.toString());
+            }
+
+            @Override
+            public void onResponse(Call call, final Response response) throws IOException {
+                String result = response.body().string();
+                try {
+                    JSONObject jsonObject = new JSONObject(result);
+                    if (response.isSuccessful()) {
+                        String status = jsonObject.getString("status");
+                        realTimeTranscriptionTaskId = jsonObject.getString("taskId");
+                        if (status.equals("IN_PROGRESS")) {
+                            isRealTimeTranscriptionRunning = true;
+                            runOnUiThread(() -> btnRealTimeTranscription.setText("Stop real-time transcription"));
+                            showMessage("Real-time transcription is running");
+                        } else {
+                            isRealTimeTranscriptionRunning = false;
+                            realTimeTranscriptionTaskId = "";
+                            showMessage("Real-time transcription status: " + status + "");
+                            runOnUiThread(() -> btnRealTimeTranscription.setText("Start real-time transcription"));
+                        }
+                    } else {
+                        String message = jsonObject.getString("message");
+                        showMessage("Exception querying real-time transcription task: " + message);
+                    }
+
+                } catch (Exception e) {
+                    showMessage("Error parsing query call response: " + result);
+                }
+            }
+        }
+        );
+    }
+    ```
+
+1. **Stop the task**
+
+    To stop real-time transcription, you send a `DELETE` request with the `appId`, `taskId`, and `builderToken` in the URL. In the `MainActivity` class, add the following method:
+
+    ```java
+    public void stopRealTimeTranscription() {
+        String url = baseUrl + "/v1/projects/" + appId
+                + "/rtsc/speech-to-text/tasks/" + realTimeTranscriptionTaskId
+                + "?builderToken=" + builderToken;
+
+        OkHttpClient httpClient = new OkHttpClient().newBuilder().build();
+        MediaType mediaType = MediaType.parse("application/json");
+        Request request = new Request.Builder()
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Authorization", authorizationHeader)
+                .url(url)
+                .delete()
+                .build();
+
+        httpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(final Call call, IOException e) {
+                showMessage(e.toString());
+            }
+
+            @Override
+            public void onResponse(Call call, final Response response) throws IOException {
+                String result = response.body().string();
+                if (response.isSuccessful()) {
+                    showMessage("Real-time transcription task stopped");
+                    realTimeTranscriptionTaskId = "";
+                    isRealTimeTranscriptionRunning = false;
+                    runOnUiThread(() -> btnRealTimeTranscription.setText("Start real-time transcription"));
+                } else {
+                    showMessage("Exception stopping real-time transcription task: " + result);
+                }
+            }
+        }
+        );
+    }
+    ```
+
+1. **Receive and display the text stream**
+
+    When you set one of the `destinations` in the starting configuration as `AgoraRTCDataStream`, the real-time transcription conversion output stream is pushed to your channel.
+
+    To receive this stream and display the text in your <Vpl k="CLIENT" />, add the following code after `private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {` in the `MainActivity` class:
+
+      ```java
+      @Override
+      public void onStreamMessage(int uid, int streamId, byte[] data) {
+          showMessage(data.toString());
+      }
+      ```
+
+1. **Enable a user to start, query, and stop a task**
+
+    In this example, you use the following buttons to manage a real-time transcription task.
+
+        1. When a user presses the first button, the <Vpl k="CLIENT" /> requests a `builderToken`. If the request is successful, the <Vpl k="CLIENT" /> starts a real-time transcription task. If a task is already running, you stop the task. To implement this functionality, add the following method to the `MainActivity` class:
+
+            ```java
+            public void realTimeTranscription(View view) {
+                if (!isRealTimeTranscriptionRunning) {
+                    try {
+                        getBuilderToken();
+                    } catch (Exception e) {
+                        showMessage(e.toString());
+                    }
+                } else {
+                    stopRealTimeTranscription();
+                }
+            }
+            ```
+
+        1. When a user presses the query status button, you call the query method to inform the user of the current task status and update the user interface. To implement this functionality, add the following method to the `MainActivity` class:
+
+            ```java
+            public void query(View view) {
+                if (isRealTimeTranscriptionRunning)
+                    queryRealTimeTranscription();
+                else
+                    showMessage("Real-time transcription task is not running");
+            }
+            ```
+
+        1. To access the button from code, add the following line to the `onCreate` method after `setupVideoSDKEngine();`:
+
+            ```java
+            btnRealTimeTranscription = findViewById(R.id.RealTimeTranscriptionButton);
+            ```
+</PlatformWrapper>

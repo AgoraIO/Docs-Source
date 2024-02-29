@@ -6,76 +6,78 @@ To add built-in media stream encryption to your <Vpl k="CLIENT" />, refer to the
 
 <KeyAndSalt />
 
-2. Implement client-side logic:
+2. Implement client-side logic
 
-    1. Obtain the String key and Base64-encoded salt from the server.
+    1. Get the String key and Base64-encoded salt from the server.
 
-    1. Convert salt from Base64 to uint8_t.
+    1. Convert salt from Base64 to `uint8_t`.
 
-    1. Before joining the channel, call [enableEncryption](https://api-ref.agora.io/en/video-sdk/cpp/4.x/API/class_irtcengine.html#api_irtcengine_enableencryption) to set the `AES_128_GCM2` or `AES_256_GCM2` encryption mode, and pass the key and salt into the SDK.
+    1. Before joining the channel, call `enableEncryption` to set the `AES_128_GCM2` or `AES_256_GCM2` encryption mode, and pass the key and salt to the SDK.
 
-<Admonition type="caution" title="note" style="background-color:pink">
-- All users within the same channel must use the same encryption mode, key, and salt. Otherwise, undefined behaviors such as black screens or audio loss may occur.
-- To ensure security, <Vg k="COMPANY" /> recommends using a new key and salt each time you enable media stream encryption.
-</Admonition>
+   <Admonition type="caution" title="note" style="background-color:pink">
+   - All users in a channel must use the same encryption mode, key, and salt. Discrepancies may lead to unexpected behavior, such as black screens or audio loss.
+   - To ensure security, best practice is to use a new key and salt each time you enable media stream encryption.
+   </Admonition>
 
-The following sample code shows how this logic is implemented:
-```cpp
-#include <boost/algorithm/string/trim.hpp>
-#include <boost/archive/iterators/base64_from_binary.hpp>
-#include <boost/archive/iterators/binary_from_base64.hpp>
-#include <boost/archive/iterators/transform_width.hpp>
-#include <boost/range/algorithm/copy.hpp>
+   To implement this logic, refer to the following code:
 
+   ```cpp
+   #include <boost/algorithm/string/trim.hpp>
+   #include <boost/archive/iterators/base64_from_binary.hpp>
+   #include <boost/archive/iterators/binary_from_base64.hpp>
+   #include <boost/archive/iterators/transform_width.hpp>
+   #include <boost/range/algorithm/copy.hpp>
 
-namespace detail
-{
-   using Base64FromBinary = boost::archive::iterators::base64_from_binary<
-      boost::archive::iterators::transform_width<const char*, 6, 8>>;
+   namespace detail
+   {
+      using Base64FromBinary = boost::archive::iterators::base64_from_binary<
+         boost::archive::iterators::transform_width<const char*, 6, 8>>;
 
-   using BinaryFromBase64 = boost::archive::iterators::transform_width<
-      boost::archive::iterators::binary_from_base64<std::string::const_iterator>,
-      8, 6>;
-}
-
-
-void decodeBase64(const std::string& encoded, std::vector<uint8_t>& out)
-{
-   auto unpadded = encoded;
-
-   const auto num_padded = std::count(begin(encoded), end(encoded), '=');
-   std::replace(begin(unpadded), end(unpadded), '=', 'A'); // A_64 == \0
-
-   std::string decoded{detail::BinaryFromBase64{begin(unpadded)},
-      detail::BinaryFromBase64{begin(unpadded) + unpadded.length()}};
-
-   decoded.erase(end(decoded) - num_padded, end(decoded));
-   std::copy(begin(decoded), end(decoded), out.begin());
-}
-// initialize the rtcEngine before calling this method
-int enableEncryption() {
-   std::string secret;
-   std::string kdfSaltBase64;
-   std::vector<uint8_t> kdfSalt;
-   for (int i = 0; i < 32; ++i) {
-      kdfSalt.push_back(0);
+      using BinaryFromBase64 = boost::archive::iterators::transform_width<
+         boost::archive::iterators::binary_from_base64<std::string::const_iterator>,
+         8, 6>;
    }
-   if(!getSecretAndSaltFromSever(secret, kdfSaltBase64))
+
+   void decodeBase64(const std::string& encoded, std::vector<uint8_t>& out)
+   {
+      auto unpadded = encoded;
+
+      const auto num_padded = std::count(begin(encoded), end(encoded), '=');
+      std::replace(begin(unpadded), end(unpadded), '=', 'A'); // A_64 == \0
+
+      std::string decoded{detail::BinaryFromBase64{begin(unpadded)},
+         detail::BinaryFromBase64{begin(unpadded) + unpadded.length()}};
+
+      decoded.erase(end(decoded) - num_padded, end(decoded));
+      std::copy(begin(decoded), end(decoded), out.begin());
+   }
+
+   // Initialize the rtcEngine before calling this method
+   int enableEncryption() {
+      std::string secret;
+      std::string kdfSaltBase64;
+      std::vector<uint8_t> kdfSalt;
+      for (int i = 0; i < 32; ++i) {
+         kdfSalt.push_back(0);
+      }
+      if(!getSecretAndSaltFromSever(secret, kdfSaltBase64))
+         return -1;
+      if(rtcEngine && decodeBase64(kdfSaltBase64, kdfSalt)) {
+         // Create an instance of EncryptionConfig
+         agora::rtc::EncryptionConfig config;
+         // Set the encryption mode to AES_128_GCM2
+         config.encryptionMode = AES_128_GCM2;
+         // Set the encryption key
+         config.encryptionKey = secret.c_str();
+         // Set the sault
+         memcpy(config.encryptionKdfSalt, kdfSalt.data(), sizeof(config.encryptionKdfSalt));
+         // Turn on built-in encryption
+         return rtcEngine->enableEncryption(true, config);
+      }
       return -1;
-   if(rtcEngine && decodeBase64(kdfSaltBase64, kdfSalt)) {
-      // Create an instance of EncryptionConfig
-      agora::rtc::EncryptionConfig config;
-      // Set the encryption mode to AES_128_GCM2
-      config.encryptionMode = AES_128_GCM2;
-      // Set up a key
-      config.encryptionKey = secret.c_str();
-      // Set the sault
-      memcpy(config.encryptionKdfSalt, kdfSalt.data(), sizeof(config.encryptionKdfSalt));
-      // Turn on built-in encryption
-      return rtcEngine->enableEncryption(true, config);
    }
-   return -1;
-}
-```
-The above sample code uses a third-party library, Boost, which you can download from the [boostorg](https://boostorg.jfrog.io/artifactory/main/release/) website.
+   ```
+
+   The sample code utilizes Boost, a third-party library, which you can download [here](https://boostorg.jfrog.io/artifactory/main/release/).
+
 </PlatformWrapper>

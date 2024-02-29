@@ -78,8 +78,14 @@ const data = {
     NAME: 'Unreal Engine',
     PATH: 'unreal',
     CLIENT: 'game'
+  },
+
+  'blueprint': {
+    NAME: 'Blueprint',
+    PATH: 'blueprint',
+    CLIENT: 'game'
   }
-  
+
 };
 
 export default data;

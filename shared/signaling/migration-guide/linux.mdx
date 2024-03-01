@@ -1,4 +1,615 @@
-<PlatformWrapper platform="linux">
-        
-This migration is not necessary for this platform.
+<PlatformWrapper platform="linux-cpp">
+
+Since June 2023, Agora has released the RTM `2.x` series (referred to as `2.x`) to meet market and industry demands. This series brings innovative improvements in functionality, performance, and user experience:
+
+- **Extended Functionality**: Introducing modules like `Channel`, `Message`, `Topic`, `Presence`, `Storage`, and `Lock`, `2.x` covers a wider range of business scenarios, allowing you to focus more on your business innovation.
+
+- **Performance Enhancement**: The backend architecture has been refactored in the new version, optimizing network connections to provide long-term low-latency, high-reliability, high-concurrency, and easily scalable real-time network access capabilities, eliminating concerns about business quality.
+
+- **User Experience Optimization**: API interfaces have been redesigned and simplified; documentation, including user guides and API references, has been optimized with more comprehensive sample programs. This supports developers in learning and using the SDK with minimal cost, enabling quick integration and improving development efficiency.
+
+This document outlines the main differences between RTM `1.x` and `2.x`, providing relevant sample code to help users smoothly migrate from `1.x` to `2.x`.
+
+## Activate Signaling
+
+To activate Signaling `2.x`, take the following steps:
+
+1. Log in to [<Vg k="CONSOLE"/>](https://console.agora.io/v2)
+1. Create a new <Vg k="COMPANY"/> project or choose an existing project from the project list.
+1. Select the project on the [Project Management](https://console.agora.io/v2/project-management) page and click the pencil icon to configure it.
+1. Go to **All features > Signaling > Basic information** and select a data center in the dropdown.
+1. Go to **Subscriptions > Signaling** and subscribe to a plan.
+1. Copy the  App ID for your project for use in your code.
+
+## Integrate the SDK
+
+The SDK package names and integration methods for `2.x` and `1.x` remain the same. See [Project Setup](../develop/get-started-sdk#project-setup) for details.
+
+## Initialize RTM Client instance
+
+Compared to `1.x`, `2.x` has made significant adjustments to initialization parameters, introducing many new features such as edge-side encryption and cloud proxy. Refer to [API Reference](../reference/api) for more details. Additionally, `2.x` enriches error information for interface calls. You can use the `RTM_ERROR_CODE` data type to retrieve error codes for faster troubleshooting. Combining this with the [Error Codes](../reference/api#troubleshooting) documentation, you can quickly find solutions.
+
+- Sample code for `1.x`:
+
+    ```cpp
+    class RtmEventHandler : public agora::rtm::IRtmServiceEventHandler {
+      // ...
+    };
+
+    // Create an RTM instance
+    agora::rtm::IRtmService* p_rs = agora::rtm::createRtmService();
+    rtmService.reset(p_rs, [](agora::rtm::IRtmService* p) {
+        p->release();
+    });
+
+    // Initialize the RTM instance
+    if (rtmService->initialize("your_appId", new RtmEventHandler()) {
+        // Handle initialization errors
+    }
+    ```
+
+- Sample code for `2.x`:
+
+    ```cpp
+    class RtmEventHandler : public IRtmEventHandler {
+        // ...
+    };
+
+    // Create an RTM instance
+    IRtmClient* rtmClient = createAgoraRtmClient();
+
+    RtmConfig config;
+    config.appId = "your_appid";
+    config.userId = "your_name";
+    config.eventHandler = new RtmEventHandler();
+    // Initialize the RTM instance
+    int ret = rtmClient->initialize(config);
+    if (ret != RTM_ERROR_OK) {
+        // Handle initialization errors
+    }
+    ```
+
+## Log in to Signaling
+
+The method for logging in to the `2.x` service is different from `1.x`, as shown below:
+
+- Sample code for `1.x`:
+
+    ```cpp
+    // Method call
+    if (rtmService->login("your_token", "your_userId")) {
+        // Handle login errors
+    }
+
+    // Asynchronous callback
+    class RtmEventHandler : public agora::rtm::IRtmServiceEventHandler {
+        virtual void onLoginSuccess() override {
+            // Login successful
+        }
+
+        virtual void onLoginFailure(agora::rtm::LOGIN_ERR_CODE errorCode) override {
+            // Login failed
+        }
+
+        // ...
+    };
+    ```
+
+- Sample code for `2.x`:
+
+    ```cpp
+    // Method call
+    ret = rtmClient->login("your_token");
+    if (ret != RTM_ERROR_OK) {
+        // Handle login errors
+    }
+
+    // Asynchronous callback
+    class RtmEventHandler : public IRtmEventHandler {
+        void onLoginResult(RTM_ERROR_CODE errorCode) {
+            if (errorCode != RTM_ERROR_OK) {
+                // Login failed
+            } else {
+                // Login successful
+            }
+        }
+
+        // ...
+    };
+    ```
+
+## Event Notifications
+
+Compared to `1.x`, `2.x` has redesigned the system event notification mechanism and API interface, providing more detailed classification and aggregation of event notification types and optimizing the payload data structure.
+
+There are 7 event notification types in `2.x`:
+
+| Event Type                        | Description                                                                                    |
+|:----------------------------:| ---------------------------------------------------------------------------------------------- |
+| `onMessageEvent`             | Message Event Notification: Receives notifications for all message events in Message Channels and Topics subscribed by the user.                                                     |
+| `onPresenceEvent`            | User Presence and Custom Status Change Event Notification (Presence Event Notification): Receives notifications for all Presence events in Message Channels and Stream Channels subscribed by the user, including joining users.                                  |
+| `onTopicEvent`               | Topic Change Event Notification: Receives notifications for all Topic change events in Stream Channels joined by the user.                                                  |
+| `onStorageEvent`             | Channel and User Property Event Notification: Receives notifications for all Channel Metadata events in Message Channels and Stream Channels subscribed by the user, as well as User Metadata events for subscribed users.  |
+| `onLockEvent`               | Lock Change Event Notification: Receives notifications for all Lock events in Message Channels and Stream Channels subscribed by the user.                                      |
+| `onConnection`              | Network Connection State Change Event Notification: Receives notifications for changes in the client's network connection state.                                     |
+| `onTokenWillExpire`         | Receives notifications when the client's token is about to expire.                                 |
+
+For more information about event notifications and payload data structures, see [Event Listeners](../reference/api#event-listeners).
+
+Taking the example of listening for the `onMessageEvent` event notification, the sample code is as follows:
+
+- For `1.x`:
+
+    ```cpp
+    class ChannelEventHandler: public agora::rtm::IChannelEventHandler {
+        public:
+        ChannelEventHandler(string channel) {
+            channel_ = channel;
+        }
+        ~ChannelEventHandler() {}
+
+        virtual void onMessageReceived(const char* userId,
+                            const agora::rtm::IMessage *msg) override {
+            // Handle received messages
+        }
+
+        // ...
+    };
+
+    std::string channelName = "channelName";
+    agora::rtm::IChannel * channel = rtmService->createChannel(channelName, new ChannelEventHandler(channelName));
+    ```
+
+- For `2.x`:
+
+    ```cpp
+    class RtmEventHandler: public IRtmEventHandler {
+        void onMessageEvent(const MessageEvent &event) {
+            // Handle received messages
+        }
+
+        // ...
+    };
+
+    RtmConfig config;
+    config.eventHandler = new RtmEventHandler();
+    ```
+
+The significant differences between the sample code above are as follows:
+
+- In `1.x`, message event notifications are bound to specific `channel` instances, and users need to call the `createChannel()` method to create a `channel` instance, then register the `onMessageReceived` callback to handle events. The SDK notifies the handler through this callback when messages are received. This process needs to be repeated for multiple channels. In `2.x`, message event notifications are bound to the client instance globally, requiring only one binding. This allows listening to all subscribed channels or topics with a single binding.
+
+- The payload data structure for message event notifications in `1.x` contains relatively less information, while the payload data structure for `2.x` includes more information, aiding in better business implementation.
+
+## Channel messages
+
+In version 1.x, the steps for sending channel messages are as follows:
+
+1. Create a channel instance.
+2. Join the channel.
+3. Send the channel message.
+
+This design has a drawback: you cannot send a message without receiving a message because message sending and receiving are not decoupled. `2.x` adopts a new design based on Pub/Sub, decoupling the sending and receiving of channel messages. You can send messages to a specific channel without joining it, and you only need to subscribe to a specific channel to receive messages. These two operations do not affect each other.
+
+- Sample code for `1.x`:
+
+    ```cpp
+    // Create a channel
+    std::string channelName = "channelName";
+    agora::rtm::IChannel * channel = rtmService->createChannel(channelName, new ChannelEventHandler(channelName));
+
+    // Join the channel
+    channel->join();
+
+    // Send a channel message
+    std::string message = "Hello World!";
+    agora::rtm::IMessage* rtmMessage = rtmService->createMessage();
+    rtmMessage->setText(message.c_str());
+    channel->sendMessage(rtmMessage);
+    rtmMessage->release();
+    ```
+
+- Sample code for `2.x`:
+
+    ```cpp
+    // Send a channel message
+    std::string message = "hello world";
+    PublishOptions options;
+    options.type = RTM_MESSAGE_TYPE_STRING;
+    options.customType = "PlainText";
+
+    uint64_t requestId;
+    int ret = rtmClient->publish("channelName", message.c_str(), message.size(), options, requestId);
+    if (ret != RTM_ERROR_OK) {
+        // Failed to send channel message
+    }
+
+    // Asynchronous callback for sending channel message
+    class RtmEventHandler : public IRtmEventHandler {
+        void onPublishResult(const uint64_t requestId, RTM_ERROR_CODE errorCode) override {
+            if (errorCode != RTM_ERROR_OK) {
+                // Failed to send message
+            } else {
+                // Message sent successfully
+            }
+        }
+
+        // ...
+    };
+
+    // Subscribe to the channel
+    SubscribeOptions options;
+    options.withMessage = true;
+
+    uint64_t requestId;
+    int ret = rtmClient->subscribe("channelName", options, requestId);
+    if (ret != RTM_ERROR_OK) {
+        // Failed to subscribe to the channel
+    }
+
+    // Asynchronous callback for subscribing to the channel
+    class RtmEventHandler : public IRtmEventHandler {
+        void onSubscribeResult(const uint64_t requestId, const char *channelName, RTM_ERROR_CODE errorCode) {
+            if (errorCode != RTM_ERROR_OK) {
+                // Failed to subscribe to the channel
+            } else {
+                // Subscribed to the channel successfully
+            }
+        }
+
+        // ...
+    };
+    ```
+
+## Peer-to-Peer messaging
+
+The point-to-point message API in `1.x` is used to send messages to a specific user. For example, to send a message to a user with the ID `Tony`, you can implement it as follows:
+
+    ```cpp
+    // 1.x
+    std::string message = "Hello World!";
+    agora::rtm::IMessage* rtmMessage = rtmService->createMessage();
+    rtmMessage->setText(message.c_str());
+    int ret = rtmService->sendMessageToPeer("Tony", rtmMessage);
+    rtmMessage->release();
+    if (ret) {
+        // Failed to send message
+    }
+    ```
+
+The reason `1.x` designed this interface is to meet the requirements of a scenario where end-to-end message transmission is needed. In other words, User A only wants to send a message to specific User B, and User B only wants to receive this message without caring about other events. The channel mechanism in `1.x` is designed based on a Room mode structure, and this design cannot achieve the decoupling of sending and receiving messages. Therefore, it cannot meet the needs of the mentioned scenario.
+
+`2.x` has redesigned the message distribution mode for channel messages, adopting the Pub/Sub mode and decoupling the sending and receiving of messages. On this basis, point-to-point messages can be implemented using channel messages. The implementation is as follows:
+
+- Each user subscribes to a private channel with the name `inbox_` + `UserID` after initialization. This channel is referred to as the inbox. This channel can only be subscribed to by the user and cannot be subscribed to by others.
+
+- When you need to send a point-to-point message to a specific user, you only need to send the message to the inbox of that user.
+
+Sample code:
+    ```cpp
+    // 2.x
+    // 1. Subscribe to your own inbox
+    std::string channelName = "inbox_Tony";
+    SubscribeOptions options;
+    options.setWithMessage(true);
+    
+    uint64_t requestId;
+    int ret = rtmClient->subscribe(channelName, options, requestId);
+    if (ret != RTM_ERROR_OK) {
+        // Failed to subscribe to the inbox
+    }
+    
+    // 2. Send a private message to the user ID Lily; only Lily can receive this message
+    std::string channelName = "inbox_Lily";
+    std::string message = "This is a message";
+    PublishOptions options;
+    
+    uint64_t requestId;
+    int ret = rtmClient->publish(channelName, message.c_str(), message.size(), options, requestId);
+    if (ret != RTM_ERROR_OK) {
+        // Failed to send message
+    }
+    ```
+    <Admonition type="info" title="Information">
+    To receive messages, you also need to implement the `onMessageEvent` callback.
+    </Admonition>
+
+## Picture and file messages
+
+Starting from version 1.5.0, RTM no longer directly supports the transmission of image and file messages, and the related API has been deprecated. You can combine RTM with third-party object storage services (such as Amazon S3 or Alibaba Cloud OSS) to build image and file message functionality. This approach provides an excellent real-time message transmission experience while allowing for more flexible technical construction solutions, such as implementing CDN static resource acceleration and image text review.
+
+The following example code shows how to use `2.x` and the Amazon S3 object storage service to build and send image and file messages:
+
+    ```cpp
+    // 1. Upload the file to Amazon S3
+    // 2. Notify RTM
+    nlohmann::json jsonObject;
+    // File type; the receiving party can parse the message packet structure based on this field
+    jsonObject.put("type", "file");
+    // Your bucket name on Amazon S3; the receiving party needs this field to download the file
+    jsonObject.put("bucket", "uploadParams.Bucket");
+    // The key under which the file is stored on Amazon S3; the receiving party needs this field to download the file
+    jsonObject.put("key", "uploadParams.Key");
+    // Content type of the file
+    jsonObject.put("contentType", "uploadParams.ContentType");
+    // File URL
+    jsonObject.put("url", "data.Location");
+    
+    PublishOptions options;
+    uint64_t requestId;
+    int ret = rtmClient->publish("receiver", jsonObject.dump().c_str(), jsonObject.dump().size(), options, requestId);
+    if (ret != RTM_ERROR_OK) {
+        // Failed to send message
+    }
+    ```
+    <Admonition type="info" title="Information">
+    When using Amazon S3 for static file storage, you need to go to the Amazon S3 console and set the correct user permissions and access policies. Refer to [Access Control Best Practices](https://docs.aws.amazon.com/zh_en/AmazonS3/latest/userguide/access-control-best-practices.html) for more information.
+    </Admonition>
+
+## User presence and custom status
+
+In `1.x`, you could subscribe or query the online status of multiple users, check channel occupancy, or retrieve a list of online members in a channel. `2.x` not only retains these capabilities but also upgrades and expands them based on `1.x`, introducing a new Presence module. The Presence module offers the ability to monitor user online and offline events, as well as temporary user state changes. You can obtain real-time information about:
+
+- Users joining or leaving specified channels
+- Custom temporary user states and their changes
+- Channels that a specified user has joined or subscribed to
+- Users who joined a specific channel along with their temporary user state data
+
+You can call the `whoNow` method to instantly retrieve information such as the number of online users, the list of online users, and the temporary status of online users in a specified channel.
+
+    ```cpp
+    // 2.x
+    // Method invocation
+    PresenceOptions options;
+    options.includeState = true;
+    options.includeUserId = true;
+    options.page = "yourBookmark";
+    
+    uint64_t requestId;
+    int ret = rtmClient->getPresence()->whoNow("channelName", RTM_CHANNEL_TYPE_STREAM, options, requestId);
+    if (ret != RTM_ERROR_OK) {
+        // Failed to query online users
+    }
+    
+    // Asynchronous callback
+    class RtmEventHandler : public IRtmEventHandler {
+        void onWhoNowResult(const uint64_t requestId, const UserState *userStateList, const size_t count, const char *nextPage, RTM_ERROR_CODE errorCode) override {
+            if (errorCode != RTM_ERROR_OK) {
+                // Failed to query online Users
+            } else {
+                // Handle whoNow results
+            }
+        }
+        // ...
+    };
+    ```
+You can also call the `wherenow` method to instantly retrieve the list of channels a specified user is in.
+    
+    ```cpp
+    // 2.x
+    // Method invocation
+    uint64_t requestId;
+    int ret = rtmClient->getPresence()->whereNow("tony", requestId);
+    if (ret != RTM_ERROR_OK) {
+        // Failed to query user's channels
+    }
+    
+    // Asynchronous callback
+    class RtmEventHandler : public IRtmEventHandler {
+        void onWhereNowResult(const uint64_t requestId, const ChannelInfo *channels, const size_t count, RTM_ERROR_CODE errorCode) override {
+            if errorCode != RTM_ERROR_OK {
+                // Failed to query user's channels
+            } else {
+                // Handle whereNow results
+            }
+        }
+        // ...
+    };
+    ```
+To meet business requirements for setting user states, `2.x` provides the capability to set temporary user states. You can use the `setState` method to define custom temporary user states. Users can add scores, game states, locations, moods, co-hosting states, and other custom states.
+    ```cpp
+    // 2.x
+    // Method invocation
+    std::vector<StateItem> stateItems;
+    StateItem item;
+    item.key = "mood";
+    item.value = "pumped";
+    stateItems.push_back(item);
+    
+    uint64_t requestId;
+    int ret = rtmClient->getPresence()->setState("channelName", RTM_CHANNEL_TYPE_STREAM, stateItems.data(), stateItems.size(), requestId);
+    if (ret != RTM_ERROR_OK) {
+        // Failed to set state
+    }
+    
+    // Asynchronous callback
+    class RtmEventHandler : public IRtmEventHandler {
+        void onPresenceSetStateResult(const uint64_t requestId, RTM_ERROR_CODE errorCode) override {
+            if (errorCode != RTM_ERROR_OK) {
+                // Failed to set state
+            } else {
+                // State set successfully
+            }
+        }
+        // ...
+    };
+    ```
+You can also use the `getState` method to retrieve a user's online status or the `removeState` method to delete a user's state. After a user's temporary state changes, the RTM server triggers the `RTM_PRESENCE_EVENT_TYPE_REMOTE_STATE_CHANGED` type of `onPresenceEvent` event notification. For specific usage, refer to Temporary User State.
+
+In `2.x`, real-time monitoring of user join, leave, timeout, or temporary state change notifications in a channel is more convenient. You just need to follow these steps:
+
+1. Implement the Presence event listener.
+1. When joining a channel, enable the `withPresence` switch.
+
+    ```cpp
+    // 2.x
+    // 1. Implement the Presence event listener
+    class RtmEventHandler : public IRtmEventHandler {
+        void onPresenceEvent(const PresenceEvent& event) override {
+            // Handle Presence events
+        }
+        // ...
+    };
+    RtmConfig config;
+    config.eventHandler = new RtmEventHandler();
+    
+    // 2. When subscribing to a channel, enable the withPresence switch
+    SubscribeOptions options;
+    options.withPresence = true;
+    
+    uint64_t requestId;
+    int ret = rtmClient->subscribe("channelName", options, requestId);
+    if (ret != RTM_ERROR_OK) {
+        // Failed to subscribe to the channel
+    }
+    ```
+
+`2.x` introduces a new design for real-time notifications, employing two modes to notify subscribed users of Presence events: **Real-Time Notification Mode (Announce)** and **Interval Notification Mode**. You can determine the conditions for switching between these modes with **the Announce Max** size in the project settings on the console. The Interval Notification Mode helps prevent event noise in channels with a large number of online users. Refer to [Event Notification Modes](../reference/api#enumvpresencetypepropsag_platform) for more details.
+
+## User metadata and channel metadata
+
+Building on the user and channel property features in `1.x`, `2.x` adds capabilities such as version control and lock control, optimizing the API interface for simpler usage. In `2.x`, user and channel properties are placed under the Storage module. Taking setting channel properties as an example, the sample code is as follows:
+
+    ```cpp
+    // 2.x
+    // Method invocation
+    // Create Metadata
+    IMetadata* metadata = rtm_client->getStorage()->createMetadata();
+    // Set Major Revision
+    metadata->setMajorRevision(174298270);
+    // Set Metadata Item
+    MetadataItem item0;
+    item0.key = "Apple";
+    item0.value = "100";
+    item0.revision = 174298200;
+    
+    MetadataItem item1;
+    item1.key = "Banana";
+    item1.value = "200";
+    item1.revision = 174298100;
+    
+    metadata->setMetadataItem(item0);
+    metadata->setMetadataItem(item1);
+    
+    // Record timestamps and user IDs when setting Metadata Items
+    MetadataOptions options;
+    options.recordTs = true;
+    options.recordUserId = true;
+    
+    uint64_t requestId;
+    int ret = rtmClient->getStorage()->setChannelMetadata("channelName", RTM_CHANNEL_TYPE_STREAM, metadata, options, "lockName", requestId);
+    if (ret != RTM_ERROR_OK) {
+        // Failed to set channel properties
+    }
+    
+    // Asynchronous callback
+    class RtmEventHandler : public IRtmEventHandler {
+        void onSetChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, RTM_ERROR_CODE errorCode) override {
+            if (errorCode != RTM_ERROR_OK) {
+                // Failed to set channel properties
+            } else {
+                // Channel properties set successfully
+            }
+            // ...
+        }
+    };
+    ```
+
+For details on how to get, update, delete channel and user properties, and how to use CAS control, lock control, etc., see [Channel Properties](../develop/storage).
+
+`2.x` dispatches channel and user properties to users through events of type `onStorageEvent`. Follow these steps to listen to `onStorageEvent` event notifications:
+
+1. Implement the Storage event listener.
+1. When joining a channel, enable the `withMetadata` switch.
+
+    ```cpp
+    // 2.x
+    // 1. Implement the Storage event listener
+    class RtmEventHandler : public IRtmEventHandler {
+        void onStorageEvent(const StorageEvent& event) override {
+            // Handle Storage events
+        }
+        // ...
+    };
+    RtmConfig config;
+    config.eventHandler = new RtmEventHandler();
+    
+    //  2. When joining a channel, enable the withMetadata switch
+    SubscribeOptions options;
+    options.withMetadata = true;
+    
+    uint64_t requestId;
+    int ret = rtmClient->subscribe("channelName", options, requestId);
+    if (ret != RTM_ERROR_OK) {
+        // Failed to subscribe to the channel
+    }
+    ```
+
+## Restrict access area
+
+RTM supports the feature of limiting access to specific areas to comply with different country or region regulations. The code to implement access area restrictions in `2.x` differs from that in `1.x`.
+
+- Example code for `1.x`:
+    
+    ```cpp
+    // 1.x
+    agora::rtm::RtmServiceContext context;
+    context.areaCode = agora::rtm::AREA_CODE_GLOB;
+    setRtmServiceContext(context);
+    ```
+
+- Example code for `2.x`:
+
+    ```cpp
+    // 2.x
+    RtmConfig config;
+    config.areaCode = RTM_AREA_CODE_GLOB;
+    ```
+
+## Other New Features
+
+In addition to the enhancements presented in this document, Signaling `2.x` introduces an array of additional features. Choose and implement features that fit the needs of your project. The following table outlines key new features of Signaling `2.x`:
+
+| Module | Function | RTM `2.x` API Interface |
+|:-------:|:---------|:----------------------------|
+| **Setup** | Create Instance | `new RTM()` |
+| | Token login | `token` parameter in `RTMConfig` |
+| | End-side encryption | `encryptionMode`, `encryptionKey`, `encryptionSalt` parameters in `RTMConfig` |
+| | Presence timeout setting | `presenceTimeout` parameter in `RTMConfig` |
+| | Log level setting | `level` parameter in `RtmLogConfig` |
+| | Proxy setting | `proxyType`, `server`, `port`, `account`, `password` parameters in `RtmProxyConfig` |
+| | EventListener | `IRtmEventHandler` |
+| | Login service | `login(const char* token)` |
+| | Logout service | `logout()` |
+| | Unsubscribe channel | `unsubscribe(const char* channelName)` |
+| | Create stream channel | `createStreamChannel(const char* channelName)` |
+| | Join stream channel | `join(const JoinChannelOptions& options, uint64_t& requestId)` |
+| | Leave stream channel | `leave(uint64_t& requestId)` |
+| **Topic** | Join topic | `joinTopic(const char* topic, const JoinTopicOptions& options, uint64_t& requestId)` |
+| | Leave topic | `leaveTopic(const char* topic, uint64_t& requestId)` |
+| | Subscribe topic | `subscribeTopic(const char* topic, const TopicOptions& options, uint64_t& requestId)` |
+| | Unsubscribe topic | `unsubscribeTopic(const char* topic, const TopicOptions& options)` |
+| **Message** | Send message | `publish(const char* channelName, const char* message, const size_t length, const PublishOptions& option, uint64_t& requestId)` |
+| **Presence** | Query channel's online users | `whoNow(const char* channelName, RTM_CHANNEL_TYPE channelType, const PresenceOptions& options, uint64_t& requestId)` |
+| | Query user's channel | `whereNow(const char* userId, uint64_t& requestId)` |
+| | Set user's temporary state | `setState(const char* channelName, RTM_CHANNEL_TYPE channelType, const StateItem* items, size_t count, uint64_t& requestId)` |
+| | Query user temporary state | `getState(const char* channelName, RTM_CHANNEL_TYPE channelType, const char* userId, uint64_t& requestId)` |
+| | Remove user temporary state | `removeState(const char* channelName, RTM_CHANNEL_TYPE channelType, const char** keys, size_t count, uint64_t& requestId)` |
+| **Storage** | Set Channel Metadata | `setChannelMetadata(const char* channelName, RTM_CHANNEL_TYPE channelType, const IMetadata* data, const MetadataOptions& options, const char* lockName, uint64_t& requestId)` |
+| | Get channel metadata | `getChannelMetadata(const char* channelName, RTM_CHANNEL_TYPE channelType, uint64_t& requestId)` |
+| | Remove channel metadata | `removeChannelMetadata(const char* channelName, RTM_CHANNEL_TYPE channelType, const IMetadata* data, const MetadataOptions& options, const char* lockName, uint64_t& requestId)` |
+| | Update channel metadata | `updateChannelMetadata(const char* channelName, RTM_CHANNEL_TYPE channelType, const IMetadata* data, const MetadataOptions& options, const char* lockName, uint64_t& requestId)` |
+| | Set user attributes | `setUserMetadata(const char* userId, const IMetadata* data, const MetadataOptions& options, uint64_t& requestId)` |
+| | Get user attributes | `getUserMetadata(const char* userId, uint64_t& requestId)` |
+| | Remove user attributes | `removeUserMetadata(const char* userId, const IMetadata* data, const MetadataOptions& options, uint64_t& requestId)` |
+| | Update user attributes | `updateUserMetadata(const char* userId, const IMetadata* data, const MetadataOptions& options, uint64_t& requestId)` |
+| | Subscribe user attributes | `subscribeUserMetadata(const char* userId, uint64_t& requestId)` |
+| | Unsubscribe user attributes | `unsubscribeUserMetadata(const char* userId)` |
+| **Lock** | Set lock | `setLock(const char* channelName, RTM_CHANNEL_TYPE channelType, const char* lockName, uint32_t ttl, uint64_t& requestId)` |
+| | Acquire lock | `acquireLock(const char* channelName, RTM_CHANNEL_TYPE channelType, const char* lockName, bool retry, uint64_t& requestId)` |
+| | Release lock | `releaseLock(const char* channelName, RTM_CHANNEL_TYPE channelType, const char* lockName, uint64_t& requestId)` |
+| | Revoke lock | `revokeLock(const char* channelName, RTM_CHANNEL_TYPE channelType, const char* lockName, const char* owner, uint64_t& requestId)` |
+| | Query lock | `getLocks(const char* channelName, RTM_CHANNEL_TYPE channelType, uint64_t& requestId)` |
+| | Remove lock | `removeLock(const char* channelName, RTM_CHANNEL_TYPE channelType, const char* lockName, uint64_t& requestId)` |
+
 </PlatformWrapper>

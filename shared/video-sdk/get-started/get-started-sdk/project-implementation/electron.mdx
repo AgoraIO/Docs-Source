@@ -1,4 +1,166 @@
 <PlatformWrapper platform = "electron">
+The following figure illustrates the essential steps:
+
+![](/images/video-sdk/quick-start-sequence.svg)
+
+### Complete sample code
+
+The complete code to implement basic real-time audio and video interaction is presented below for reference. Replace the entire contents of the `main.js` and `renderer.js` files with the following code samples: 
+
+<details>
+<summary>`main.js`</summary>
+
+```js
+const { app, BrowserWindow } = require("electron");
+const path = require("path");
+
+// If using Electron 9.x or higher, set allowRendererProcessReuse to false
+app.allowRendererProcessReuse = false;
+
+function createWindow() {
+    // Create a browser window
+    const mainWindow = new BrowserWindow({
+        width: 800,
+        height: 600,
+        webPreferences: {
+            // preload: path.join(__dirname, "renderer.js"),
+            nodeIntegration: true,
+            contextIsolation: false,
+        },
+    });
+
+    // Load the contents of the index.html file
+    mainWindow.loadFile("./index.html");
+    // Open developer tools
+    mainWindow.webContents.openDevTools();
+}
+
+// Manage the browser window 
+app.whenReady().then(() => {
+    createWindow();
+    // If no window is currently open, create a new window (for macOS)
+    app.on("activate", function () {
+        if (BrowserWindow.getAllWindows().length === 0) {
+            createWindow();
+        }
+    });
+});
+
+// Exit the Electron app if all windows have been closed (for Windows)
+app.on("window-all-closed", function () {
+    if (process.platform !== "darwin") app.quit();
+});
+```
+</details>
+
+<details>
+<summary>`renderer.js`</summary>
+
+```js
+const {
+    createAgoraRtcEngine,
+    VideoMirrorModeType,
+    VideoSourceType,
+    RenderModeType,
+    ChannelProfileType,
+    ClientRoleType,
+    AudienceLatencyLevelType,
+    } = require("agora-electron-sdk");
+
+let rtcEngine;
+let localVideoContainer;
+let remoteVideoContainer;
+let isJoined = false;
+// Fill in your app ID
+const APPID = "<-- Insert app Id -->";
+// Fill in your temporary token
+let token = "<-- Insert token -->";
+// Fill in the channel name you used when generating the token
+const channel = "<-- Insert channel name -->";
+// User ID. Ensure that it's unique within the channel
+let uid = 123;
+
+const EventHandles = {
+    // Listen to local user joining channel events
+    onJoinChannelSuccess: ({ channelId, localUid }, elapsed) => {
+        console.log('Successfully joined the channel: ' + channelId);
+        isJoined = true;
+        // After a local user join the channel, set the local video window
+        rtcEngine.setupLocalVideo({
+            sourceType: VideoSourceType.VideoSourceCameraPrimary,
+            view: localVideoContainer,
+            mirrorMode: VideoMirrorModeType.VideoMirrorModeDisabled,
+            renderMode: RenderModeType.RenderModeFit,
+        });
+    },
+
+    // Listen to the event that a remote user left the channel
+    onLeaveChannel: ({ channelId, localUid }, stats) => {
+        console.log('Successfully exited the channel: ' + channelId);
+        isJoined = false;
+    },
+
+    // Listen to remote user joined event
+    onUserJoined: ({ channelId, localUid }, remoteUid, elapsed) => {
+        console.log('Remote user ' + remoteUid + ' joined');
+        // After a remote user joins the channel, set the remote video window
+        rtcEngine.setupRemoteVideoEx(
+            {
+                sourceType: VideoSourceType.VideoSourceRemote,
+                uid: remoteUid,
+                view: remoteVideoContainer,
+                mirrorMode: VideoMirrorModeType.VideoMirrorModeDisabled,
+                renderMode: RenderModeType.RenderModeFit,
+            },
+            { channelId },
+        );
+    },
+};
+
+
+window.onload = () => {
+    const os = require("os");
+    const path = require("path");
+    localVideoContainer = document.getElementById("join-channel-local-video");
+    remoteVideoContainer = document.getElementById("join-channel-remote-video");
+    const sdkLogPath = path.resolve(os.homedir(), "./test.log");
+
+    // Create RtcEngine instance
+    rtcEngine = createAgoraRtcEngine();
+
+    // Initialize an RtcEngine instance
+    rtcEngine.initialize({
+        appId: APPID,
+        logConfig: { filePath: sdkLogPath }
+    });
+
+    // Register event handler
+    rtcEngine.registerEventHandler(EventHandles);
+
+    // Set the channel profile
+    rtcEngine.setChannelProfile(ChannelProfileType.ChannelProfileLiveBroadcasting);
+
+    // Set the user role, for host use ClientRoleBroadcaster, for audience use ClientRoleAudience
+    rtcEngine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+
+    // Video is disabled by default, you need to call enableVideo to enable video streaming
+    rtcEngine.enableVideo();
+
+    // Enable camera preview
+    rtcEngine.startPreview();
+
+    // Use temporary token to join the channel
+    rtcEngine.joinChannel(token, channel, uid, {
+      audienceLatencyLevelType: AudienceLatencyLevelType.AudienceLatencyLevelUltraLowLatency
+    });
+};
+```
+
+</details>
+
+Refer to the steps in the [Test the sample code](#test-the-sample-code) section to run the project. 
+
+Review the following implementation steps to understand the core API calls.
 
 ### Create the main process
 
@@ -100,16 +262,16 @@ const {
 
 ### Define the basic parameters
 
-Pass in the App ID, and temporary Token obtained from <Vg k="CONSOLE"/>, and the channel name you used to generate the temporary token. You use these parameters to initialize the engine and join a channel.
+Pass in the app ID and the temporary token obtained from <Vg k="CONSOLE"/>, and the channel name you used to generate the temporary token. You use these parameters to initialize the engine and join a channel.
 
 ```js
-// Fill in your App ID
-const APPID = "<-- Insert App Id -->";
-// Fill in your temporary Token
-let token = "<-- Insert Token -->";
-// Fill in the channel name you used to generate the Token
-const channel = "<-- Insert Channel Name -->";
-// Numeric User ID, ensure that the ID is unique within the channel
+// Fill in your app ID
+const APPID = "<-- Insert app ID -->";
+// Fill in your temporary token
+let token = "<-- Insert token -->";
+// Fill in the channel name you used to generate the token
+const channel = "<-- Insert channel name -->";
+// Numeric user ID, ensure that the ID is unique within the channel
 let uid = 123;
 ```
 
@@ -134,7 +296,7 @@ rtcEngine.initialize({
 ```
 
 ### Enable video module
-Video is disabled by default. To enable the video module call `enableVideo`. 
+Video is disabled by default. To enable the video module, call `enableVideo`.
 To enable local video preview, call `startPreview`.
 
 ```js
@@ -166,7 +328,7 @@ const EventHandles = {
         });
     },
 
-    //User exits channel 
+    // User exits the channel 
     onLeaveChannel: ({ channelId, localUid }, stats) => {
         console.log('Successfully exited the channel: ' + channelId);
         isJoined = false;

@@ -85,7 +85,7 @@ const data = {
     PATH: 'blueprint',
     CLIENT: 'game'
   }
-  
+
 };
 
 export default data;

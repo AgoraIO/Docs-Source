@@ -1,4 +1,639 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import Intro from './intro.mdx'
+
 <PlatformWrapper platform="android">
+
+<Intro /> 
+
+## Integrate the SDK
+
+You can integrate the Signaling `2.x` SDK into your app either using a CDN or through Maven Central. The integration methods are as follows:
+
+- For `1.x`:
+    ```java
+    dependencies {
+        // Replace x.y.z with the specific SDK version, e.g., 1.5.1
+        implementation 'io.agora.rtm:rtm-sdk:x.y.z'
+    }
+    ```
+
+- For `2.x`:
+    ```java
+    dependencies {
+        // Replace x.y.z with the specific SDK version, e.g., 2.1.9
+        implementation 'io.agora:agora-rtm:x.y.z'
+    }
+    ```
+
+    <Admonition type="info" title="Info">
+    Note that the SDK package names for `2.x` and `1.x` are different. The `2.x` package name is `agora-rtm`, while the `1.x` package name is `rtm-sdk`.
+    </Admonition>
+
+## Initialize an RTM Client instance
+
+Signaling `2.x` makes adjustments to initialization parameters. It introduces new features such as end-to-end encryption, and cloud proxy. Refer to the [API Reference](../reference/api) for details. Additionally, `2.x` provides richer error information when invoking interfaces, allowing you to quickly identify issues. Look up [Error Codes](../reference/api#troubleshooting) for efficient troubleshooting.
+
+- Sample code for `1.x`:
+    ```java
+    try {
+        rtmClient = RtmClient.createInstance(getBaseContext(), "your_appId", new RtmClientListener() {
+            @Override
+            public void onConnectionStateChanged(int state, int reason) {
+            }
+            
+            @Override
+            public void onMessageReceived(RtmMessage rtmMessage, String peerId) {
+            }
+            
+            @Override
+            public void onTokenExpired() {
+            }
+            
+            @Override
+            public void onTokenPrivilegeWillExpire() {
+            }
+            
+            @Override
+            public void onPeersOnlineStatusChanged(Map<String, Integer> status) {
+            }
+        });
+    } catch (Exception e) {
+        throw new RuntimeException("RTM initialization failed!");
+    }
+    ```
+
+- Sample code for `2.x`:
+    
+    ```java
+    RtmConfig rtmConfig = new RtmConfig.Builder("your_appId", "your_userId")
+        .eventListener(eventListener)
+        .build();
+    try {
+        rtmClient = RtmClient.create(rtmConfig);
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+    ```
+
+## Log in to Signaling
+
+The login method for `2.x` differs from `1.x`:
+
+- Sample code for `1.x`:
+    
+    ```java
+    rtmClient.login("your_token", "your_userId", new ResultCallback<Void>() {
+        @Override
+        public void onSuccess(Void responseInfo) {
+            // Handle login result
+        }
+        @Override
+        public void onFailure(ErrorInfo errorInfo) {
+            // Handle errors
+        }
+    });
+    ```
+
+- Sample code for `2.x`:
+
+    ```java
+    rtmClient.login("your_token", new ResultCallback<Void>() {
+        @Override
+        public void onSuccess(Void responseInfo) {
+            // Handle login success
+        }
         
-This migration is not necessary for this platform.
+        @Override
+        public void onFailure(ErrorInfo errorInfo) {
+            // Handle errors
+        }
+    });
+    ```
+
+## Event notifications
+
+Signaling `2.x` has redesigned the system event notification mechanism and API interfaces. It provides more detailed classification and aggregation of event notification types, and optimizes the payload data structure.
+
+`2.x` introduces the following types of event notifications:
+
+| Event Type  | Description |
+|--------------|----------------------------|
+| `onMessageEvent`| Message event notification: Receives notifications for all message events in subscribed Message channels and topics.     |
+| `onPresenceEvent` | User presence and custom state change event notification (Presence event notification): Receives notifications for Presence events in subscribed Message Channels and joined Stream Channels, including user online/offline status, and custom temporary state changes.  |
+| `onTopicEvent`  | Topic change event notification: Receives notifications for Topic changes in joined Stream Channels.    |
+| `onStorageEvent`| Channel and user metadata event notification: Receives notifications for channel Metadata events in subscribed Message channels and joined Stream channels, as well as user metadata events for subscribed users.|
+| `onLockEvent`   | Lock change event notification: Receives notifications for Lock events in subscribed Message channels and joined Stream channels. |
+| `onConnection` | Network connection state change event notification: Receives notifications for changes in client network connection status. |
+| `onTokenWillExpire`| Receives notifications when the client's token is about to expire.  |
+
+For more information on event notifications and payload data structures, see [Event listeners](../reference/api#event-listeners).
+
+Consider the example of listening to channel message events:
+
+- For `1.x`:
+
+    ```java
+    rtmChannel = rtmClient.createChannel("channelName", new RtmChannelListener() {
+        @Override
+        public void onMessageReceived(final RtmMessage message, final RtmChannelMember fromMember) {
+            // Handle message event
+        }
+    // Add other event notifications
+    });
+    ```
+
+- For `2.x`:
+    ```java
+    RtmEventListener eventListener = new RtmEventListener() {
+        @Override
+        public void onMessageEvent(MessageEvent event) {
+            // Handle message event
+        }
+    // Add other event notifications
+    };
+    
+    // Option 1: Add event listener when initializing RTM Client instance with create method
+    RtmConfig rtmConfig = new RtmConfig.Builder("your_appId", "your_userId")
+        .eventListener(eventListener)
+        .build();
+    try {
+        rtmClient = RtmClient.create(rtmConfig);
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+    
+    // Option 2: Add event listener at any time during the app's lifecycle
+    rtmClient.addEventListener(eventListener);
+    ```
+The comparison demonstrates significant differences:
+
+- In `1.x`, channel message event notifications are bound to specific channel instances. Users need to call the `createChannel()` method to create a `channel` instance, then register the `onMessageReceived` callback to handle events. The SDK notifies the handler through this callback when a message is received. If multiple channels are involved, this process needs to be repeated for each channel. In `2.x`, message event notifications are bound to the client instance globally. You call the `addEventListener()` method to register the callback code once, and it applies to all subscribed channels or topics. This simplifies the implementation for handling message events across multiple channels or topics.
+
+- The payload data structure for message event notifications in `2.x` contains more information, which simplifies implementation of custom business logic.
+
+## Channel messages
+
+In version `1.x`, to send a channel message, you needed to:
+
+- Create a Channel instance
+- Join the channel
+- Send and receive channel messages
+
+The disadvantage to this design is that you cannot independently send messages. You must also receive messages because sending and receiving is coupled. Signaling `2.x` adopts a new Pub/Sub-based model designed to decouple sending and receiving messages. When sending messages, you only need to publish to the specified channel without joining the channel. To receive channel messages, you only need to subscribe to the specified channel. The two operations are independent.
+
+- Sample code for `1.x`:
+
+    ```java
+    // Create channel
+    rtmChannel = rtmClient.createChannel("channelName", new RtmChannelListener() {
+        @Override
+        public void onMessageReceived(final RtmMessage message, final RtmChannelMember fromMember) {
+            // Handle message event
+        }
+        // Add other event notifications
+    });
+    
+    // Join channel
+    rtmChannel.join(new ResultCallback<Void>() {
+        @Override
+        public void onSuccess(Void responseInfo) {
+            // Handle join channel result
+        }
+        
+        @Override
+        public void onFailure(ErrorInfo errorInfo) {
+            // Handle errors
+        }
+    });
+    
+    // Send message
+    RtmMessage message = rtmClient.createMessage();
+    message.setText("Hello World!");
+    rtmChannel.sendMessage(message, new ResultCallback<Void>() {
+        @Override
+        public void onSuccess(Void aVoid) {
+            // Handle message send result
+        }
+        
+        @Override
+        public void onFailure(ErrorInfo errorInfo) {
+            // Handle errors
+        }
+    });
+    ```
+
+- Sample code for `2.x`:
+
+    ```java
+    // Send message in Message Channel
+    String message = "Hello world";
+    PublishOptions options = new PublishOptions();
+    options.customType = 'PlainText';
+    rtmClient.publish("channelName", message, options, new ResultCallback<Void>() {
+        @Override
+        public void onSuccess(Void responseInfo) {
+            // Handle message send result
+        }
+        @Override
+        public void onFailure(ErrorInfo errorInfo) {
+            // Handle errors
+        }
+    });
+    
+    // Subscribe to Message Channel
+    SubscribeOptions options = new SubscribeOptions();
+    options.setWithMessage(true);
+    rtmClient.subscribe("channelName", options, new ResultCallback<Void>() {
+        @Override
+        public void onSuccess(Void responseInfo) {
+            // Handle subscribe result
+        }
+        @Override
+        public void onFailure(ErrorInfo errorInfo) {
+            // Handle errors
+        }
+    });
+    
+    // Handle received messages
+    rtmClient.addEventListener(new RtmEventListener() {
+        @Override
+        public void onMessageEvent(MessageEvent event) {
+            String channelName = event.getChannelId();
+            String content = event.getMessage();
+            // Handle received message
+        }
+        // Add other event notifications
+    });
+    ```
+
+## Peer-to-peer messaging
+In version `1.x`, peer-to-peer messaging API is used to send messages to specified users. For example, if you want to send a message to the user whose UserId is "Tony", you can do it as follows:
+
+    ```java
+    // v1
+    // Create an instance of RtmMessage
+    RtmMessage message = rtmClient.createMessage();
+    // Set the text of the message to "Hello World!"
+    message.setText("Hello World!");
+    
+    // Create options for sending the message
+    SendMessageOptions options = new SendMessageOptions();
+    
+    // Send the message to the peer named "Tony" using the RtmClient
+    rtmClient.sendMessageToPeer("Tony", message, options, new ResultCallback<Void>() {
+        @Override
+        public void onSuccess(Void aVoid) {
+            // Handle the success of message sending
+        }
+        
+        @Override
+        public void onFailure(ErrorInfo errorInfo) {
+            // Handle the failure and provide error information
+        }
+    });
+    ```
+
+The design of this interface in version `1.x` is tailored to fulfill the requirements of an end-to-end message transmission scenario. In this context, User A seeks to send a message exclusively to User B, and User B only desires to receive this specific message without subscribing to other events. The channel mechanism in version `1.x` is structured based on the Room model. However, this design lacks the capability to decouple message sending and receiving.
+
+In version `2.x`, <Vg k="COMPANY"/> redesigned the distribution of channel messages using the Pub/Sub model to decouple sending and receiving of messages. You can still implement point-to-point messages using channels. Use the following scheme to implement peer-to-peer messaging with Signaling `2.x`. 
+
+- Each user subscribes to a private channel named `inbox_ + UserID` after initialization, which you call *Inbox*. Only the user with the specific `UserID` can subscribe to this channel.
+
+- To send a peer-to-peer message to a user, just send the message to the user's *Inbox*.
+
+- Sample code for `2.x`:
+    ```java
+    // `2.x`
+    // 1. Subscribe to your own inbox
+    String channelName = "inbox_Tony";
+    SubscribeOptions options = new SubscribeOptions();
+    options.setWithMessage(true);
+    rtmClient.subscribe(channelName, options, new ResultCallback<Void>() {
+        @Override
+        public void onSuccess(Void responseInfo) {
+            // Handle subscription result
+        }
+        
+        @Override
+        public void onFailure(ErrorInfo errorInfo) {
+            // Handle errors
+        }
+    });
+    
+    // 2. Send a message to Lily
+    String channelName = "inbox_Lily";
+    String message = "This is a message";
+    PublishOptions options = new PublishOptions();
+    rtmClient.publish(channelName, message, options, new ResultCallback<Void>() {
+        @Override
+        public void onSuccess(Void responseInfo) {
+            // Handle message send result
+        }
+        
+        @Override
+        public void onFailure(ErrorInfo errorInfo) {
+            // Handle errors
+        }
+    });
+    ```
+    
+    <Admonition type="info" title="Note"> To receive messages, you need to implement the `message` event listening function. </Admonition>
+
+## Picture and file messages
+
+For reasons of user data privacy/protection, compliance and cost optimization, Signaling `2.x` no longer directly supports image and file message types. After version `1.5.0`, the related interfaces have been removed. However, this does not mean that you cannot use Signaling to transmit and distribute image and file messages. You can build image and file message functions with the help of Signaling `2.x` and third-party object storage services, such as Amazon S3 or Alibaba Cloud OSS. Not only can you get the best factual message transmission experience, you can also implement more flexible technical solutions. For example, CDN static resource acceleration or image and text moderation. The following code sample shows you how to use Signaling `2.x` and Amazon S3 object storage service to build and send image and file messages.
+
+```java
+// 1. Upload the file to Amazon S3
+
+// 2. Notify RTM
+JSONObject jsonObject = new JSONObject();
+// File type, the receiving party can parse the message packet structure based on this field
+jsonObject.put("type", "file");
+// Your bucket name on Amazon S3, the receiving party needs this field to download the file
+jsonObject.put("bucket", "uploadParams.Bucket");
+// The Key under which the file is stored on Amazon S3, the receiving party needs this field to download the file
+jsonObject.put("key", "uploadParams.Key");
+// File content type
+jsonObject.put("contentType", "uploadParams.ContentType");
+// File URL address
+jsonObject.put("url", "data.Location");
+
+PublishOptions options = new PublishOptions();
+rtmClient.publish("receiver", jsonObject.toString(), options, new ResultCallback<Void>() {
+    @Override
+    public void onSuccess(Void responseInfo) {
+        // Handle message send result
+    }
+
+    @Override
+    public void onFailure(ErrorInfo errorInfo) {
+        // Handle errors
+    }
+});
+```
+
+<Admonition type="info" title="Information">
+When using Amazon S3 for static file storage, go to the Amazon S3 console and set the correct user permissions and access policies. Refer to [Access Control Best Practices](https://docs.aws.amazon.com/us_en/AmazonS3/latest/userguide/access-control-best-practices.html) for more information.
+</Admonition>
+
+
+## User presence and custom status
+
+## User presence and custom status
+
+In Signaling `1.x`, you can subscribe to or query the online status of multiple users, query the number of users in a channel, or obtain the list of online members in a channel. Signaling `2.x` not only retains these features, but also implements upgrades and extends them. In Signaling `2.x`, these capabilities are redefined and implemented in the Presence module. Presence provides the ability to monitor user online, user offline and user status change notifications. Through the Presence module, you can obtain the following information in real time:
+
+- A user joins or leaves the specified channel
+- Customize temporary user status and its changes
+- Query which channels a specified user has joined or is subscribed to
+- Query which users have joined the specified channel and their temporary status data
+
+Call the `getOnlineUsers` method to query the number of online users in the specified channel, the list of online users, and the temporary status of online users in real-time.
+
+```java
+// `2.x`
+PresenceOptions options = new PresenceOptions();
+options.setIncludeUserId(true);
+options.setIncludeState(true);
+options.setPage("yourBookMark");
+
+rtmClient.getPresence().getOnlineUsers("channelName", RtmChannelType.MESSAGE, options, new ResultCallback<GetOnlineUsersResult>() {
+    @Override
+    public void onSuccess(GetOnlineUsersResult result) {
+        // Handle the getOnlineUsers call result
+    }
+
+    @Override
+    public void onFailure(ErrorInfo errorInfo) {
+        // Handle errors
+    }
+});
+```
+
+Call the `getUserChannels` method to get a list of channels where the specified user is present, in real-time.
+
+```java
+// `2.x`
+rtmClient.getPresence().getUserChannels("Tony", new ResultCallback<ArrayList<ChannelInfo>>() {
+    @Override
+    public void onSuccess(ArrayList<ChannelInfo> channels) {
+        // Handle the getUserChannels call result
+    }
+
+    @Override
+    public void onFailure(ErrorInfo errorInfo) {
+        // Handle errors
+    }
+});
+```
+
+To meet the user status requirements of business scenarios, Signaling `2.x` provides temporary user status capabilities. Customize temporary user status through the `setState` method. Users can add their scores, game status, location, mood, and other customized statuses.
+
+```java
+// `2.x`
+ArrayList<StateItem> stateItems = new ArrayList<>();
+stateItems.add(new StateItem("mood", "pumped"));
+
+rtmClient.getPresence().setState("channelName", RtmChannelType.MESSAGE, stateItems, new ResultCallback<Void>() {
+    @Override
+    public void onSuccess(Void responseInfo) {
+        // Handle the setState call result
+    }
+
+    @Override
+    can someone please explain this to me
+
+    public void onFailure(ErrorInfo errorInfo) {
+        // Handle errors
+    }
+});
+```
+
+You can retrieve a user's online state at any time by using the `getState` method, or remove your own state by using the `removeState` method. Signaling triggers a `presence` event notification of type `REMOTE_STATE_CHANGED` when a user's temporary state is changed. See the [Presence](../develop/presence) guide for details on how to use this feature.
+
+Signaling `2.x` makes it very simple to listen to the real-time notification of users entry, exit, timeout and temporary status changes in a channel. To do this, implement the following steps:
+
+- Implement a Presence event listener
+- Enable the `withPresence` switch when you join the channel
+
+You can add a Presence event listener as follows:
+
+```java
+// `2.x`
+// 1. Implement the Presence event listener
+RtmEventListener eventListener = new RtmEventListener() {
+        @Override
+        public void onPresenceEvent(PresenceEvent event) {
+            // Handle Precense event notifications
+        }
+    };
+rtmClient.addEventListener(eventListener);
+
+// 2. When subscribing to a channel, turn on the withPresence switch
+SubscribeOptions options = new SubscribeOptions();
+options.setWithPresence(true);
+rtmClient.subscribe("channelName", options, new ResultCallback<Void>() {
+    @Override
+    public void onSuccess(Void responseInfo) {
+        // Handle message subscription result
+    }
+
+    @Override
+    public void onFailure(ErrorInfo errorInfo) {
+        // Handle errors
+    }
+});
+```
+
+In Signaling `2.x` real-time notifications have been redesigned. The presence event notification mode refers to how subscribed users of presence events in the channel are notified. There are two available modes: 
+
+1. Real-time notification mode (Announce)
+1. Scheduled notification mode (Interval)
+
+You can determine the conditions for switching between the two modes through the **Announce Max** parameter in the project settings of the <Vg k="CONSOLE"/>. The interval notification mode can prevent noisy events caused by too many online users in the channel. For details, see [Event Listeners](../reference/api#event-listeners).
+
+## User metadata and channel metadata
+
+Signaling `2.x` retains the full functionality of user metadata and channel metadata, with new capabilities such as versioning and locking. It adds optimized interfaces to make these features easier to use.
+
+In `2.x`, user attributes and channel attributes are mounted under the `Storage` module. To set channel attributes, refer to the following code:
+
+```java
+// `2.x`
+// Create a Metadata instance
+Metadata metadata = rtmClient.getStorage().createMetadata();
+// Set Major Revision
+metadata.setMajorRevision(174298270);
+// Add a Metadata Item
+metadata.setMetadataItem(new MetadataItem("Apple", "100", 174298200));
+// Add another Metadata Item
+metadata.setMetadataItem(new MetadataItem("Banana", "200", 174298100));
+// Record the timestamp and user ID when setting Metadata Items
+MetadataOptions options = new MetadataOptions();
+options.setRecordTs(true);
+options.setRecordUserId(true);
+
+rtmClient.getStorage().setChannelMetadata("channelName", RtmChannelType.MESSAGE, metadata, options, "lockName", new ResultCallback<Void>() {
+    @Override
+    public void onSuccess(Void responseInfo) {
+        // Handle setChannelMetadata result
+    }
+
+    @Override
+    public void onFailure(ErrorInfo errorInfo) {
+        // Handle errors
+    }
+});
+```
+
+To learn more about how to get, update, and delete channel attributes, how to use version control and lock control, refer to the [Storage](../develop/storage) guide. The use of user attributes is similar to that of channel attributes. 
+
+Events for channel attributes and user attributes are distributed to users through `onStorageEvent` type event notifications. To listen to these events:
+
+1. Implement the Storage event listener.
+1. When subscribing to a channel, turn on the `withMetadata` switch.
+
+```java
+// `2.x`
+// 1. Implement the Storage event listener
+RtmEventListener eventListener = new RtmEventListener() {
+        @Override
+        public void onStorageEvent(StorageEvent event) {
+            // Handle Storage event notifications
+        }
+
+        // Add other event notifications
+    };
+rtmClient.addEventListener(eventListener);
+
+// 2. When subscribing to a channel, turn on the withMetadata switch
+SubscribeOptions options = new SubscribeOptions();
+options.setWithMetadata(true);
+rtmClient.subscribe("channelName", options, new ResultCallback<Void>() {
+    @Override
+    public void onSuccess(Void responseInfo) {
+        // Handle message subscription result
+    }
+
+    @Override
+    public void onFailure(ErrorInfo errorInfo) {
+        // Handle errors
+    }
+});
+```
+
+## Restrict access area
+
+Signaling supports the restricted access area feature to comply with the laws and regulations of different countries or regions. After turning on the restricted access area feature, no matter which area the user uses your app from, the SDK will only access the <Vg k="COMPANY"/> server in the geographical specified area. Signaling `1.x` implements access area limitation as follows.
+
+- Sample code for `1.x`:
+    ```java
+    // `1.x`
+    RtmServiceContext context = new RtmServiceContext();
+    context.areaCode = RtmAreaCode.AREA_CODE_GLOB;
+    setRtmServiceContext(context);
+    ```
+
+- Sample code for `2.x`:
+    ```java
+    // `2.x`
+    RtmConfig rtmConfig = new RtmConfig.Builder(appId, userId)
+                    .areaCode(EnumSet.of(RtmAreaCode.AS))
+                    .eventListener(eventListener)
+                    .build();
+    ```
+
+## Other new features
+
+In addition to the enhancements presented in this document, Signaling `2.x` introduces an array of additional features. Choose and implement features that fit the needs of your project. The following table outlines key new features of Signaling `2.x`:
+
+| Module | Function | Signaling `2.x` API Interface |
+|:-------|:---------|:----------------------------|
+| **Setup**| Create Instance| `RtmClient create(RtmConfig config)`|
+|| Destroy Instance| `RtmClient.release()`|
+|| Token Configuration| `login` interface with `token` parameter|
+|| End-to-End Encryption| `RtmEncryptionConfig` with `encryptionMode`, `encryptionKey`, `encryptionSalt` parameters|
+|| Presence Timeout Setting| `RtmConfig` with `presenceTimeout` parameter|
+|| Log Level Setting| `RtmLogConfig` with `level` parameter|
+|| Proxy Configuration| `RtmProxyConfig` with `proxyType`, `server`, `port`, `account`, `password` parameters|
+|| Event Listener| `void addEventListener(RtmEventListener listener)`<br/> `void removeEventListener(RtmEventListener listener)`|
+|| Login Service| `void login(String token, ResultCallback<Void> resultCallback)`|
+|| Logout Service| `void logout(ResultCallback<Void> resultCallback)`|
+| **Channel**| Unsubscribe Channel| `void unsubscribe(String... channelIds)`|
+|| Subscribe Channel| `void subscribe(String channelName, SubscribeOptions options, ResultCallback<Void> resultCallback)`|
+|| Unsubscribe Channel| `void unsubscribe(String channelName, ResultCallback<Void> resultCallback)`|
+|| Create Stream Channel| `StreamChannel createStreamChannel(String channelName)`|
+|| Join Stream Channel| `void join(JoinChannelOptions options, ResultCallback<Void> resultCallback)`|
+|| Leave Stream Channel| `void leave(ResultCallback<Void> resultCallback)`|
+|| Destroy Stream Channel| `streamChannel.release()`|
+| **Topic**| Join Topic| `void joinTopic(String topicName, JoinTopicOptions options, ResultCallback<Void> resultCallback)`|
+|| Publish Topic Message| `void publishTopicMessage(String topicName, String message, TopicMessageOptions options, ResultCallback<Void> resultCallback)`|
+|| Leave Topic| `void leaveTopic(String topicName, ResultCallback<Void> resultCallback)`|
+|| Subscribe Topic| `void subscribeTopic(String topicName, TopicOptions options, ResultCallback<SubscribeTopicResult> resultCallback)`|
+|| Unsubscribe Topic| `void unsubscribeTopic(String topicName, TopicOptions options, ResultCallback<Void> resultCallback)`|
+| **Message**| Send Message| `void publish(String channelName, String message, PublishOptions options, ResultCallback<Void> resultCallback)`|
+| **Presence**| Query Channel's Online Users| `void getOnlineUsers(String channelName, RtmChannelType channelType, ResultCallback<GetOnlineUsersResponse> resultCallback)`|
+|| Query User's Channel| `void getUserChannels(String userId, ResultCallback<GetUserChannelsResponse> resultCallback)`|
+|| Set User's Temporary State| `void setState(String channelName, RtmChannelType channelType, ArrayList<StateItem> items, ResultCallback<Void> resultCallback)`|
+|| Query User Temporary State| `void getState(String channelName, RtmChannelType channelType, String userId, ResultCallback<UserState> resultCallback)`|
+|| Remove User Temporary State| `void removeState(String channelName, RtmChannelType channelType, ArrayList<String> keys, ResultCallback<Void> resultCallback)`|
+| **Storage**| Set Channel Metadata| `void setChannelMetadata(String channelName, RtmChannelType channelType, Metadata data, MetadataOptions options, String lockName, ResultCallback<Void> resultCallback)`|
+|| Get Channel Metadata| `void getChannelMetadata(String channelName, RtmChannelType channelType, ResultCallback<Metadata> resultCallback)`|
+|| Remove Channel Metadata| `void removeChannelMetadata(String channelName, RtmChannelType channelType, Metadata data, MetadataOptions options, String lockName, ResultCallback<Void> resultCallback)`|
+|| Update Channel Metadata| `void updateChannelMetadata(String channelName, RtmChannelType channelType, Metadata data, MetadataOptions options, String lockName, ResultCallback<Void> resultCallback)`|
+|| Set User Attributes| `void setUserMetadata(String userId, Metadata data, MetadataOptions options, ResultCallback<Void> resultCallback)`|
+|| Get User Attributes| `void getUserMetadata(String userId, ResultCallback<Metadata> resultCallback)`|
+|| Remove User Attributes| `void removeUserMetadata(String userId, Metadata data, MetadataOptions options, ResultCallback<Void> resultCallback)`|
+|| Update User Attributes| `void updateUserMetadata(String userId, Metadata data, MetadataOptions options, ResultCallback<Void> resultCallback)`|
+|| Subscribe User Attributes| `void subscribeUserMetadata(String userId, ResultCallback<Void> resultCallback)`|
+|| Unsubscribe User Attributes| `void unsubscribeUserMetadata(String userId, ResultCallback<Void> resultCallback)`|
+| **Lock**| Set Lock| `void setLock(String channelName, RtmChannelType channelType, String lockName, long ttl, ResultCallback<Void> resultCallback)`|
+|| Acquire Lock| `void acquireLock(String channelName, RtmChannelType channelType, String lockName, boolean retry, ResultCallback<Void> resultCallback)`|
+|| Release Lock| `void releaseLock(String channelName, RtmChannelType channelType, String lockName, ResultCallback<Void> resultCallback)`|
+|| Revoke Lock| `void revokeLock(String channelName, RtmChannelType channelType, String lockName, String owner, ResultCallback<Void> resultCallback)`|
+|| Query Lock| `void getLocks(String channelName, RtmChannelType channelType, ResultCallback<ArrayList<LockDetail>> resultCallback)`|
+|| Remove Lock| `void removeLock(String channelName, RtmChannelType channelType, String lockName, ResultCallback<Void> resultCallback)`|
+
 </PlatformWrapper>

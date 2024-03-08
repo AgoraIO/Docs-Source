@@ -1,0 +1,103 @@
+
+1. After initializing an instance of `AgoraRtcEngineKit`, create a `mediaPlayerKit` object.
+
+    ```swift
+    // Initialize AgoraRtcEngineKit and create a mediaPlayerKit object.
+    agoraKit = AgoraRtcEngineKit.sharedEngine(with: config, delegate: self)
+    // Create mediaPlayerKit object
+    mediaPlayerKit = agoraKit.createMediaPlayer(with: self)
+    ```
+
+1. Implement media player callbacks. Observe the status of the player through callbacks and obtain the playback progress of the current media file.
+
+    ```swift
+    extension MediaPlayerMain: AgoraRtcMediaPlayerDelegate {
+        // Observe the state of the player
+        func agoraRtcMediaPlayer(_ playerKit: AgoraRtcMediaPlayerProtocol, didChangedTo state: AgoraMediaPlayerState, error: AgoraMediaPlayerError) {
+            LogUtils.log(message: "Player RTC channel publish helper state changed to: \(state.rawValue), error: \(error.rawValue)", level: .info)
+            DispatchQueue.main.async { [weak self] in
+                guard let weakself = self else { return }
+                switch state {
+                case .failed:
+                    weakself.showAlert(message: "Media player error: \(error.rawValue)")
+                    break
+                case .openCompleted:
+                    let duration = weakself.mediaPlayerKit.getDuration()
+                    weakself.playerControlStack.isHidden = false
+                    weakself.playerDurationLabel.text = "\(String(format: "%02d", duration / 60)) : \(String(format: "%02d", duration % 60))"
+                    weakself.playerProgressSlider.setValue(0, animated: true)
+                    break
+                case .stopped:
+                    weakself.playerControlStack.isHidden = true
+                    weakself.playerProgressSlider.setValue(0, animated: true)
+                    weakself.playerDurationLabel.text = "00 : 00"
+                    break
+                default: break
+                }
+            }
+        }
+        // Observe the current playback progress
+        func agoraRtcMediaPlayer(_ playerKit: AgoraRtcMediaPlayerProtocol, didChangedToPosition position: Int) {
+            let duration = Float(mediaPlayerKit.getDuration() * 1000)
+            var progress: Float = 0
+            var left: Int = 0
+            if duration > 0 {
+                progress = Float(mediaPlayerKit.getPosition()) / duration
+                left = Int((mediaPlayerKit.getDuration() * 1000 - mediaPlayerKit.getPosition()) / 1000)
+            }
+            DispatchQueue.main.async { [weak self] in
+                guard let weakself = self else { return }
+                weakself.playerDurationLabel.text = "\(String(format: "%02d", left / 60)) : \(String(format: "%02d", left % 60))"
+                if !weakself.playerProgressSlider.isTouchInside {
+                    weakself.playerProgressSlider.setValue(progress, animated: true)
+                }
+            }
+        }
+    }
+    ```
+
+1. Call the `setupLocalVideo` method to render the local media player view.
+
+    ```swift
+    mediaPlayerKit.setView(localVideo.videoView)
+    let videoCanvas = AgoraRtcVideoCanvas()
+    videoCanvas.view = localVideo.videoView
+    videoCanvas.renderMode = .hidden
+    videoCanvas.sourceType = .mediaPlayer
+    videoCanvas.sourceId = mediaPlayerKit.getMediaPlayerId()
+    agoraKit.setupLocalVideo(videoCanvas)
+    ```
+
+1. When joining a channel using `joinChannelByToken`, set the media player ID, publish media player's audio and video, and share media resources with remote users in the channel through the `mediaOptions` parameter.
+
+    ```swift
+    let option1 = AgoraRtcChannelMediaOptions()
+    
+    // ...
+    
+    option1.publishMediaPlayerId = .of((Int32)(mediaPlayerKit.getMediaPlayerId()))
+
+    ```
+
+1. Use the `open` method to open a local or online media file.
+
+    ```swift
+    mediaPlayerKit.open(url, startPos: 0)
+    ```
+
+1. Call the `play` method to play the media file.
+
+    ```swift
+    mediaPlayerKit.play()
+    ```
+    
+    <Admonition type="caution" title="Caution">
+    Call the `play` method to play the media file only after receiving the `didChangedToState` callback reporting the player state as `AgoraMediaPlayerStateOpenCompleted`.   
+    </Admonition>
+
+1. When a user leaves the channel, call `stop` to stop playback, and `destroyMediaPlayer` to release resources.
+
+    ```swift
+    mediaPlayerKit.stop()
+    agoraKit.destroyMediaPlayer(mediaPlayerKit)
+    ```

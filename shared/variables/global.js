@@ -162,6 +162,8 @@ export const ACC = 'Acceleration';
 export const ACCM = 'Media Accelerator';
 export const ACCG = 'Global Accelerator';
 
+export const RTT = 'Real-Time Transcription';
+
 export const TEMPL = 'Templates';
 
 export const RTEE = 'Extensions';

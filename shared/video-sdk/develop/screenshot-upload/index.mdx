@@ -1,20 +1,166 @@
 import * as data from '@site/data/variables';
 import ProjectImplement from '@docs/shared/video-sdk/develop/screenshot-upload/project-implementation/index.mdx';
 import Reference from '@docs/shared/video-sdk/develop/screenshot-upload/reference/index.mdx';
+import NotAvailable from '@docs/shared/common/not-available.mdx'
 
-To meet the needs of video content supervision, Agora <Vg k="VSDK" /> enables you to take screenshots of the
-video stream in a channel and then upload these images to third-party cloud storage.
+To meet the needs of video content supervision, Agora <Vg k="VSDK" /> enables you to take screenshots of the video stream in a channel and then upload these images to third-party cloud storage.
+
+<PlatformWrapper platform="android, ios, macos, web, windows">
+
+This page shows you how to enable screenshot uploads on your <Vpl k="CLIENT" /> and handle screenshot upload callbacks.
+
+<Admonition type="info" title="Information">
+Local screenshot upload is a paid service. For billing details, refer to [Pricing](../overview/pricing).
+</Admonition>
 
 ## Understand the tech
 
-When you enable screenshot upload, you set the interval between screenshots. After each interval <Vg k="VSDK" />
-takes a screenshot of the video stream sent by local users, and uploads the image to <Vg k="AGORA_BACKEND" />. <Vg
-k="AGORA_BACKEND" /> uploads each screenshot to your third-party cloud storage and sends a callback notification to
-your server in the form of an `HTTPS` request.
+When you enable screenshot upload, you set the interval between screenshots. After each interval, <Vg k="VSDK" /> takes a screenshot of the video stream sent by local users, and uploads the image to <Vg k="AGORA_BACKEND" />. <Vg k="AGORA_BACKEND" /> uploads each screenshot to your third-party cloud storage and sends a callback notification to your server in the form of an `HTTPS` request.
 
 ![](/images/screenshot-upload/screenshot-upload.png)
 
-<PlatformWrapper notAllowed="ios, macos, android, windows, web">
-**This feature is not yet available for <Vpl k="NAME" />**
+## Prerequisites
+
+Before implementing the <Vg k="COMPANY"/> video screenshot upload feature, take the following steps:
+
+1. **Activate video screenshot upload service**
+
+   Log in to [Agora Console](https://console.agora.io), select the project for which you want to activate the video screenshot upload service, and then click **Configure**. Scroll down to the features section to find **Video Screenshot Upload** and click **Config**.
+
+      ![Enable screenshot upload](/images/video-sdk/enable-screen-shoot-upload.png)
+
+2. **Configure third-party cloud storage**
+
+    In the **Video Screenshot Upload Configuration**, update the screenshot upload settings:
+
+    ![Screenshot upload config](/images/video-sdk/screenshot-upload-configuration.png)
+
+    Fill in the following information:
+
+    - **Snapshot Callback Address**: The server address to receive callback notifications of video screenshot upload results.
+    - **Storage**: Third-party cloud storage provider. Select AWS.
+   
+        <Admonition type="info" title="Information">
+        Currently, the Agora video screenshot upload service supports Amazon S3 as third-party cloud storage provider. If you want to use other provider, [contact](mailto:support@agora.io) technical support.
+        </Admonition>
+
+    - **Region**: The data center region setting for third-party cloud storage. See [AWS Official   Documentation](https://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region) for details.
+    - **Access Key**: String type, the access key of the third-party cloud storage. Best practice is to provide a write-only access key.
+    - **Secret Key**: String type, the secret key of the third-party cloud storage.
+    - **Bucket Name**: String type, the bucket name of the third-party cloud storage. The bucket name must comply with the naming rules of the corresponding third-party cloud storage service.
+    - **Endpoint**: Specify the access domain (Endpoint) of the bucket. See [AWS Official Documentation](https://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region) for details.
+    - **Filename Prefix**: (Optional) JSON Array, an array composed of multiple strings, indicating the storage location of screenshots in the third-party cloud storage. For example, if `fileNamePrefix` = `["directory1","directory2"]`, the prefix `directory1/directory2/` will be added to the screenshot filename, that is, `directory1/directory2/xxx.jpg`. The prefix length, including slashes, must not exceed 128 characters. The string should not contain symbols such as slashes, underscores, parentheses, and so on. The supported character set is as follows:
+        - 26 lowercase English letters a-z
+        - 26 uppercase English letters A-Z
+        - 10 digits 0-9
+<p/>
+    <details title = "Example">
+    <summary>Sample configuration</summary>
+    - Snapshot Callback Address: `https://webhook.site/2e75da2d-xxxx-xxxx-xxx-a0ef44a5259d`
+    - Storage: AWS
+    - Region: `cn-north-1`
+    - Access Key: `12345678`
+    - Secret Key: `abcd123`
+    - Bucket Name: `test-artifacts`
+    - Endpoint: `s3.cn-north-1.amazonaws.com.cn`
+    - Filename Prefix: `test`
+    </details>
+
+3. **Integrate SDK**
+
+   Integrate the <Vpd k="SDK" /> (including the video screenshot upload dynamic library) into your project, join a channel, and publish a video stream. See [SDK quickstart](../../video-calling/get-started/get-started-sdk) for details.
+
+## Implement video screenshot upload
+
+You enable screenshot upload in your <Vpd k="NAME" /> client and handle the notification callback from Agora on your callback server.
+
+### Enable screenshot upload
+
+Call the `enableContentInspect` method to enable the video screenshot upload feature. After successfully enabling the feature, the SDK will capture screenshots at the specified frequency and upload them to the Agora cloud server. To implement this logic, refer to the following code:
+
+<ProjectImplement/>
+
+
+###  HTTP notification callback
+
+After a screenshot is successfully uploaded to the <Vg k="AGORA_BACKEND" />, Agora sends a message notification callback to your application server in the form of an `HTTPS` `POST` request. The data format is `JSON`, and the character encoding is `UTF-8`.
+
+Upon receiving the message notification, your application server must respond with status code `200`. The expected response body format is `JSON`. In any of the following cases, the notification is considered to have failed:
+
+* No response is received from your server within 5 seconds after sending the message notification.
+* The `HTTP` status code of the response is not `200`, or the response body format is not `JSON`.
+
+The Agora service immediately retries after the first notification failure, and sends the message three times in total.
+
+#### Request header
+
+| Field Name      | Value                            |
+| :-------------- | :------------------------------- |
+| `Content-Type` | `application/json;charset=utf-8` |
+
+#### Request body
+
+The request body is a JSON Object, containing the following fields:
+
+| Field            | Type        | Description                                                 |
+| :-------------- | :---------- | :----------------------------------------------------------- |
+| `requestId`     | String      | Callback notification ID, identifying an event notification from the Agora business server.       |
+| `callbackParam` | JSON Object | Custom fields passed in the callback, currently includes the `cname` field, representing the channel name. |
+| `callbackData`  | String      | String data passed through by the SDK video screenshot upload module.                       |
+| `checksum`      | String      | MD5 value calculated from the parameters `callbackAddr`, `code`, `object`, and `requestId`. Used to verify whether this callback notification comes from the video screenshot upload service. |
+| `object`        | String      | Name of the screenshot file. The naming convention for this file is: `<OSS prefix>/<year month day>/<sid>_<cname>__uid_s_<uid>__uid_e_<type>_utc.jpg`. The meanings of the fields in the filename are as follows: <ul><li>`<sid>`: Screenshot ID, a unique identifier for a screenshot.</li><li>`<cname>`: Channel name to which the user being screenshotted belongs.</li><li>`<uid>`: The user ID set when joining the channel.</li><li>`<type>`: File type, supports only `video`.</li><li>`<utc>`: Unix timestamp of this screenshot. UTC time, consists of year, month, day, hour, minute, second, and millisecond. For example, if `utc` is equal to `20190611073246073`, it represents the start time of this slice file as UTC June 11, 2019, 7:32:46.073 AM.</li></ul> |
+| `code`          | Number      | Status code of this screenshot. `200` indicates that the screenshot is completed.                       |
+| `msg`           | String      | Status of this screenshot. `"Supervise complete"` indicates that the screenshot is completed.    |
+| `channelName`   | String      | Channel name to which the user being screenshotted belongs. Consistent with `object.cname`.         |
+| `userId`        | String      | User ID of the user being screenshotted. Consistent with `object.uid`.             |
+| `timestamp`     | Int         | Unix timestamp (milliseconds) of this screenshot. UTC time, consistent with `object.utc`. |
+
+<details title = "Example">
+<summary>Request Example</summary>
+```json
+{
+    "requestId": "38f8e3cfdcXXXXXXXXX1ceba380d7e1a_1652693284_b5813fe2ae4fa5cdfe5abd8fef82526f",
+    "callbackParam": {
+        "cname": "httpClient463224"
+    },
+    "callbackData": "",
+    "checksum": "75ee988XXXXXXc2ad4ec2aef58f178fd8",
+    "object": "test/20201216/38f8e3cfdc474cd56fc1ceba380d7e1a_httpClient463224__uid_s_91__uid_e_video_20200413081128672.jpg",
+    "code": 200,
+    "msg": "Supervise complete",
+    "channelName": "httpClient463224",
+    "userId": "91",
+    "timestamp": 20190611073246070
+}
+```
+</details>
+
+## Reference
+This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
+
+<Reference/>
+
+### Video screenshot upload dynamic library
+
+You can find details about the name of the video screenshot upload dynamic library and the increase in app size after integration in [App size optimization](../best-practices/downloads).
+
+### HTTP status codes
+
+The HTTP status codes for the application server responses are as follows:
+
+| Status Code | Description                                                 |
+| :---------- | :---------------------------------------------------------- |
+| `200`       | Successful request.                                        |
+| `201`       | Successful request and creation of a new resource.          |
+| `206`       | No user streamed during the entire screenshot process, or some screenshot files were not uploaded to the third-party cloud storage. |
+| `400`       | Syntax error in the request (For example, parameter error), and the server cannot understand it. |
+| `401`       | Unauthorized (App ID or Customer Certificate mismatch).        |
+| `404`       | The server cannot find the requested resource (webpage).    |
+| `500`       | Internal server error, unable to complete the request.      |
+| `504`       | Internal server error. The server acting as a gateway or proxy did not receive a timely response from the upstream server. |
+
 </PlatformWrapper>
 
+<PlatformWrapper notAllowed="android, ios, macos, web, windows">
+<NotAvailable />
+</PlatformWrapper>

@@ -1,5 +1,133 @@
 <PlatformWrapper platform="react-native">
 
+This section introduces how to implement <Vg k="SCR_SHR" /> in your project.
 
+### Android implementation
+
+When enabling <Vg k="SCR_SHR" /> on Android, you only need to call the `startScreenCapture` method. Refer to the [screen sharing sample project](https://github.com/AgoraIO-Extensions/react-native-agora/blob/main/example/src/examples/advanced/ScreenShare/ScreenShare.tsx) to implement screen sharing.
+
+### iOS implementation
+
+Since Apple does not support capturing the screen in the main process of the app, you create a separate extension for the <Vg k="SCR_SHR" /> stream. You use the iOS native `ReplayKit` framework in the extension to record the screen, and then send the <Vg k="SCR_SHR" /> stream to the main process.
+
+    ![Screen Sharing React Native Tech](/images/video-sdk/screen-sharing-flutter-unity-rn-blueprint.svg)
+
+Take the following steps to set up your <Vg k="SCR_SHR" /> project:
+
+1. Go to your project folder and open the `ios/.xcodeproj` file with Xcode.
+
+1. Create a **Broadcast Upload Extension** to enable the process of <Vg k="SCR_SHR" />:
+    1. Navigate to **File > New > Target...**, select **Broadcast Upload Extension** in the popup window, and then click **Next**:
+
+        ![Select Broadcast Upload Extension](/images/video-sdk/screen-sharing-ios-select-broadcast-upload-extension.png)
+
+    1. Fill in the **Product Name** and other information in the popup window, uncheck **Include UI Extension**, and click **Finish**. Xcode automatically creates a folder for the extension that contains the `SampleHandler.h` files.
+    1. Under **Target**, select the newly created extension. Click **General** and set the iOS version to 12.0 or later under **Deployment Info**.
+    1. Modify project settings to implement the <Vg k="SCR_SHR" /> code logic, and choose one of the following methods according to your business needs:
+
+        - To use the functionality in the `AgoraReplayKitExtension.xcframework` dynamic library provided by <Vg k="COMPANY" />, select **Target** as the extension you just created, and change the **Value** in **Info** corresponding to **NSExtension > NSExtensionPrincipalClass** from **$(PRODUCT_MODULE_NAME}.SampleHandler** to **AgoraReplayKitHandler**:
+
+            ![Use AgoraReplayKitHandler](/images/video-sdk/screen-sharing-ios-use-agorareplaykithandler.png)
+
+        - To implement additional business logic, refer to the following code to modify the `SampleHandler.h` file:
+
+            ``` objective-c
+            #import "SampleHandler.h"
+            #import "AgoraReplayKitExt.h"
+            #import <sys/time.h>
+
+            @interface SampleHandler ()<AgoraReplayKitExtDelegate>
+
+            @end
+
+            @implementation SampleHandler
+
+            - (void)broadcastStartedWithSetupInfo:(NSDictionary<NSString *,NSObject *> *)setupInfo {
+              // User request to start broadcasting
+              [[AgoraReplayKitExt shareInstance] start:self];
+
+            }
+
+            - (void)broadcastPaused {
+              // User requests to pause the broadcast, screen sharing is paused
+              NSLog(@"broadcastPaused");
+              [[AgoraReplayKitExt shareInstance] pause];
+            }
+
+            - (void)broadcastResumed {
+              // User requests to resume broadcasting, screen sharing is resumed
+              NSLog(@"broadcastResumed");
+              [[AgoraReplayKitExt shareInstance] resume];
+
+            }
+
+            - (void)broadcastFinished {
+              // User requests to stop broadcasting
+              NSLog(@"broadcastFinished");
+              [[AgoraReplayKitExt shareInstance] stop];
+
+            }
+
+            - (void)processSampleBuffer:(CMSampleBufferRef)sampleBuffer withType:(RPSampleBufferType)sampleBufferType {
+              [[AgoraReplayKitExt shareInstance] pushSampleBuffer:sampleBuffer withType:sampleBufferType];
+            }
+
+            #pragma mark - AgoraReplayKitExtDelegate
+
+            - (void)broadcastFinished:(AgoraReplayKitExt *_Nonnull)broadcast reason:(AgoraReplayKitExtReason)reason {
+              switch (reason) {
+                  case AgoraReplayKitExtReasonInitiativeStop:
+                      {
+                          NSLog(@"AgoraReplayKitExtReasonInitiativeStop");
+                      }
+                      break;
+                  case AgoraReplayKitExtReasonConnectFail:
+                      {
+                          NSLog(@"AgoraReplayKitExReasonConnectFail");
+                      }
+                      break;
+
+                  case AgoraReplayKitExtReasonDisconnect:
+                      {
+                          NSLog(@"AgoraReplayKitExReasonDisconnect");
+                      }
+                      break;
+                  default:
+                      break;
+              }
+            }
+
+            @end
+            ```
+
+1. Combine the call to `startScreenCapture` with the user's action to enable <Vg k="SCR_SHR" /> in your <Vpl k="CLIENT" />. To do this, use one of the following methods:
+
+    - Use Apple's new [RPSystemBroadcastPickerView](https://developer.apple.com/documentation/replaykit/rpsystembroadcastpickerview) in iOS 12.0 to make the **Enable Screen Sharing** button pop up on the <Vpl k="CLIENT" /> interface, prompting the user to click the button to start recording.
+    
+        <Admonition style="info" title="information">This is the default method for React Native SDK, but `RPSystemBroadcastPickerView` has some usage restrictions and may not work in later versions of iOS. If it fails, use the following method instead.</Admonition>
+    
+    - Prompt the user to long click the **screen recording** button in the **Control Center** on iOS and choose to use the extension you created to start recording.
+
+#### Development notes
+
+* If you use **Cocoapods**, add the following content to the `Podfile` file to add a dependency for your <Vg k="SCR_SHR" /> extension. Replace `ScreenSharing` with the target name of your <Vg k="SCR_SHR" /> extension:
+
+    ``` shell
+    target 'ScreenSharing' do
+        # Change the version to match the SDK dependency in the node_modules/react-native-agora/react-native-agora.podspec file
+        pod 'AgoraRtcEngine_iOS', 'version'
+    end
+    ```
+
+* The memory usage of **Broadcast Upload Extension** is limited to 50 MB. Make sure that the memory usage of **Screen Sharing Extension** does not exceed 50 MB.
+### Limitations
+
+Be aware of the following limitations:
+
+#### iOS platform
+
+- Due to system limitations, <Vg k="SCR_SHR" /> is only supported on iOS 12.0 and above.
+- This feature requires a high level of device performance. <Vg k="COMPANY" /> recommends that you use an iPhone X or above.
+- The video unit price for a screen-sharing stream is based on the **video resolution** you set in `ScreenCaptureParameters`. If you do not pass dimensions in `ScreenCaptureParameters`, <Vg k="COMPANY" /> bills you at the default resolution of 1920 x 1080 (2,073,600). See [Pricing](../overview/pricing) for details.
 
 </PlatformWrapper>

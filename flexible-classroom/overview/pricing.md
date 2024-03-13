@@ -11,7 +11,7 @@ This page explains how <Vg k="COMPANY" /> calculates your monthly bill for <Vg k
 
 If you have already signed a contract with <Vg k="COMPANY" />, the billing terms and conditions within that contract take precedence.
 
-The pricing on this page applies to one-to-one, small, large, and cloud classrooms only. For online proctoring pricing, contact sales@agora.io. 
+The pricing on this page applies to one-to-one, small, large, and cloud classrooms only. For online proctoring pricing, contact support@agora.io. 
 
 ## <Vg k="FC" /> pricing
 

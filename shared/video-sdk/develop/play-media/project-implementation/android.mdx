@@ -1,199 +1,98 @@
+
 <PlatformWrapper platform="android">
-        
-1.  **Import the required Agora libraries**
 
-    ```kotlin
-    import io.agora.rtc2.ChannelMediaOptions
-    import io.agora.rtc2.Constants
-    import io.agora.rtc2.video.VideoCanvas
-    import io.agora.mediaplayer.Constants.*
-    import io.agora.mediaplayer.IMediaPlayer
-    import io.agora.mediaplayer.IMediaPlayerObserver
-    import io.agora.mediaplayer.data.PlayerUpdatedInfo
-    import io.agora.mediaplayer.data.SrcInfo
-    ```
+1. After initializing an `RtcEngine` instance, create an `IMediaPlayer` object and register a player observer by calling the `registerPlayerObserver` method.
 
-1.  **Declare the variables you need**
+   ```java
+   engine = RtcEngine.create(config);
 
-    ```kotlin
-    private var mediaPlayer: IMediaPlayer? = null // Instance of the media player
-    private var mediaDuration: Long = 0 // Duration of the opened media file
-    private lateinit var mediaPlayerListener: MediaPlayerListener
+   // Create a media player object
+   mediaPlayer = engine.createMediaPlayer();
+   // Register a player observer
+   mediaPlayer.registerPlayerObserver(this);
+   ```
 
-    // Interface to forward media player events to the UI
-    interface MediaPlayerListener {
-        fun onPlayerStateChanged(state: MediaPlayerState, error: MediaPlayerError)
-        fun onProgress(percent: Int)
+1. Implement the callbacks for the media player observer. Observe the player's state through the `onPlayerStateChanged` callback, get the current media file's playback progress through `onPositionChanged`, and handle player events through the `onPlayerEvent` callback.
+
+   ```java
+    @Override
+    // Observe the player's state
+    public void onPlayerStateChanged(io.agora.mediaplayer.Constants.MediaPlayerState mediaPlayerState, io.agora.mediaplayer.Constants.MediaPlayerError mediaPlayerError) {
+        Log.e(TAG, "onPlayerStateChanged mediaPlayerState " + mediaPlayerState);
+        Log.e(TAG, "onPlayerStateChanged mediaPlayerError " + mediaPlayerError);
+        if (mediaPlayerState.equals(PLAYER_STATE_OPEN_COMPLETED)) {
+            setMediaPlayerViewEnable(true);
+        } else if (mediaPlayerState.equals(PLAYER_STATE_IDLE) || mediaPlayerState.equals(PLAYER_STATE_PLAYBACK_COMPLETED)) {
+            setMediaPlayerViewEnable(false);
+        }
+    }
+
+    @Override
+    // Observe the current playback progress
+    public void onPositionChanged(long position) {
+        Log.e(TAG, "onPositionChanged position " + position);
+        if (playerDuration > 0) {
+            final int result = (int) ((float) position / (float) playerDuration * 100);
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    progressBar.setProgress(Long.valueOf(result).intValue());
+                }
+            });
+        }
+    }
+
+    @Override
+    // Observe player events
+    public void onPlayerEvent(io.agora.mediaplayer.Constants.MediaPlayerEvent mediaPlayerEvent) {
+        Log.e(TAG, " onPlayerEvent mediaPlayerEvent " + mediaPlayerEvent);
     }
     ```
 
-1. **Set up a media player instance**
+1. Call `setupLocalVideo` to render the local media player view.
 
-    ```kotlin
-    fun setupMediaPlayer(listener: MediaPlayerListener){
-        if (mediaPlayer == null) {
-            // Create an instance of the media player
-            mediaPlayer = agoraEngine?.createMediaPlayer()
-            // Set the mediaPlayerObserver to receive callbacks
-            mediaPlayer?.registerPlayerObserver(mediaPlayerObserver)
-            // A listener to notify the UI
-            mediaPlayerListener = listener
-        }
-    }
+    ```java
+    VideoCanvas videoCanvas = new VideoCanvas(surfaceView, Constants.RENDER_MODE_HIDDEN, Constants.VIDEO_MIRROR_MODE_AUTO,
+    Constants.VIDEO_SOURCE_MEDIA_PLAYER, mediaPlayer.getMediaPlayerId(), 0);
+    engine.setupLocalVideo(videoCanvas);
     ```
 
-1.  **Open, play, pause, and resume media files**
+1. When joining a channel, use `ChannelMediaOptions` to set the media player ID, publish media player audio and video, and share media resources with remote users in the channel.
 
-    ```kotlin
-    fun openMediaFile(mediaLocation: String) {
-        // Opens the media file at mediaLocation url
-        // Supports URI files starting with 'content://'
-        if (mediaPlayer != null) {
-            // Open the media file
-            mediaPlayer?.open(mediaLocation, 0)
-        }
-    }
+    ```java
+    private ChannelMediaOptions options = new ChannelMediaOptions();
 
-    fun playMedia() {
-        // Start publishing the media player video
-        updateChannelPublishOptions(true)
-        mediaPlayer?.play()
-    }
+    // Set up options
+    options.publishMediaPlayerId = mediaPlayer.getMediaPlayerId();
+    options.publishMediaPlayerAudioTrack = true;
+    options.publishMediaPlayerVideoTrack = true;
 
-    fun pauseMedia() {
-        mediaPlayer?.pause()
-    }
-
-    fun resumeMedia() {
-        mediaPlayer?.resume()
-    }
+    // Join the channel
+    int res = engine.joinChannel(accessToken, channelId, 0, options);
     ```
 
-1.  **Manage media player callbacks**
+1. Use the `open` method to open a local or online media file.
 
-    The `IMediaPlayerObserver` implements media player callbacks. You create an instance of `IMediaPlayerObserver` and register it with the media player instance. 
-
-    ```kotlin
-    private val mediaPlayerObserver: IMediaPlayerObserver = object : IMediaPlayerObserver {
-        override fun onPlayerStateChanged(state: MediaPlayerState, error: MediaPlayerError) {
-            // Reports changes in playback state
-            if (state == MediaPlayerState.PLAYER_STATE_OPEN_COMPLETED) {
-                // Read media duration for updating play progress
-                mediaDuration = mediaPlayer?.duration ?: 0
-            }
-
-            // Notify the UI
-            mediaPlayerListener.onPlayerStateChanged(state, error)
-        }
-
-        override fun onPositionChanged(position: Long) {
-            if (mediaDuration > 0) {
-                // Calculate the progress percentage
-                val result = (position.toFloat() / mediaDuration.toFloat() * 100).toInt()
-                // Notify the UI of the progress
-                mediaPlayerListener.onProgress(result)
-            }
-        }
-
-        override fun onPlayerEvent(eventCode: MediaPlayerEvent, elapsedTime: Long, message: String) {
-            // Required to implement IMediaPlayerObserver
-        }
-
-        override fun onMetaData(type: MediaPlayerMetadataType, data: ByteArray) {
-            // Occurs when the media metadata is received
-        }
-
-        override fun onPlayBufferUpdated(playCachedBuffer: Long) {
-            // Reports the playback duration that the buffered data can support
-        }
-
-        override fun onPreloadEvent(src: String, event: MediaPlayerPreloadEvent) {
-            // Reports the events of preloaded media resources
-        }
-
-        override fun onPlayerSrcInfoChanged(from: SrcInfo, to: SrcInfo) {
-            // Occurs when the video bitrate of the media resource changes
-        }
-
-        override fun onPlayerInfoUpdated(info: PlayerUpdatedInfo) {
-            // Occurs when information related to the media player changes
-        }
-
-        override fun onAudioVolumeIndication(volume: Int) {
-            // Reports the volume of the media player
-        }
-
-        override fun onAgoraCDNTokenWillExpire() {
-            // Required to implement IMediaPlayerObserver
-        }
-    }    
+    ```java
+    mediaPlayer.open(url, 0);
     ```
 
-1.  **Configure <Vg k="ENGINE" /> to publish the media player stream**
+1. Call the `play` method to play the media file.
 
-    You use `ChannelMediaOptions` and the `updateChannelMediaOptions` method to specify the tracks to publish. By setting appropriate parameters, you can publish the media player output, the user's local microphone and camera tracks, or both.
-
-    ```kotlin
-    fun updateChannelPublishOptions(publishMediaPlayer: Boolean) {
-        val channelOptions = ChannelMediaOptions()
-        // Start or stop publishing the media player tracks
-        channelOptions.publishMediaPlayerAudioTrack = publishMediaPlayer
-        channelOptions.publishMediaPlayerVideoTrack = publishMediaPlayer
-        // Stop or start publishing the microphone and camera tracks
-        channelOptions.publishMicrophoneTrack = !publishMediaPlayer
-        channelOptions.publishCameraTrack = !publishMediaPlayer
-        // Specify the media player Id for publishing
-        if (publishMediaPlayer) channelOptions.publishMediaPlayerId = mediaPlayer?.mediaPlayerId
-        // Implement the settings
-        agoraEngine?.updateChannelMediaOptions(channelOptions)
-    }
+    ```java
+    mediaPlayer.play();
     ```
 
-1.  **Display media player output locally**
+    <Admonition type="caution" title="Caution">
+    Call the `play` method to play the media file only after receiving the `onPlayerStateChanged` callback reporting the player state as `PLAYER_STATE_OPEN_COMPLETED`.   
+    </Admonition>
 
-    To display the media player output locally, you create a `SurfaceView`, set it up using a `VideoCanvas` and call the `setupLocalVideo` method of the <Vg k="ENGINE" />. 
+1. When a user leaves the channel, call `stop` to stop playback, `destroy` to destroy the media player, `unRegisterPlayerObserver` to unregister the player observer, and release allocated resources.
 
-    ```kotlin
-    fun mediaPlayerSurfaceView(): SurfaceView {
-        // Sets up and returns a SurfaceView to display the media player output
-        // Instantiate a SurfaceView
-        val videoSurfaceView = SurfaceView(mContext)
-        // Create a VideoCanvas using the SurfaceView
-        val videoCanvas =  VideoCanvas(
-            videoSurfaceView,
-            Constants.RENDER_MODE_HIDDEN,
-            0
-        )
-        // Set the source type and media player Id
-        videoCanvas.sourceType = Constants.VIDEO_SOURCE_MEDIA_PLAYER
-        videoCanvas.mediaPlayerId = mediaPlayer?.mediaPlayerId ?: 0
-        // Setup the SurfaceView
-        agoraEngine?.setupLocalVideo(videoCanvas)
-        // Return the SurfaceView to the UI where you add it to a FrameLayout
-        return videoSurfaceView
-    }
+    ```java
+    mediaPlayer.stop();
+    mediaPlayer.destroy();
+    mediaPlayer.unRegisterPlayerObserver(this);
     ```
 
-1. **Query the media player state**
-
-    ```kotlin
-    fun mediaPlayerState(): MediaPlayerState? {
-        // Returns the current state of the media player
-        return mediaPlayer?.state
-    }
-    ```
-
-1.  **Clean up when you close the <Vpl k="CLIENT" />**
-
-    ```kotlin
-    fun destroyMediaPlayer(){
-        // Destroy the media player instance and clean up
-        if (mediaPlayer != null) {
-            mediaPlayer?.stop()
-            mediaPlayer?.unRegisterPlayerObserver(mediaPlayerObserver)
-            mediaPlayer?.destroy()
-            mediaPlayer = null
-        }
-    }
-    ```
 </PlatformWrapper>

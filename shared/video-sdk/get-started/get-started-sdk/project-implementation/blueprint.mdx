@@ -1,208 +1,160 @@
-<PlatformWrapper platform="unreal">
+<PlatformWrapper platform = "blueprint">
 
-To integrate real-time video into your <Vpl k="CLIENT" />:
+### Create a level
+1. In the **Content** folder of the **Content Browser**, right-click and select **Level** to create a **Level Blueprint** and name it **BasicVideoCallScene**.
 
-### Create the user interface
+1. Double-click **BasicVideoCallScene** and click **Blueprints > Open Level Blueprint** above the editor to open the level blueprint.
 
-To integrate real-time audio and video interaction in your <Vpl k="CLIENT"/>, add the following controls to the application scenario:
+    ![](/images/video-sdk/quickstart-implementation-blueprint-1.png)
 
--   Local and remote video windows
--   Buttons to join and leave the channel
+### Implement basic processes​
+In the **My Blueprint** panel, double-click **Graphs > EventGraph** to open the event graph. You see two event nodes: **Event BeginPlay** (game starts) and **Event End Play** (game ends). Create event nodes with the corresponding functions and variables, and connect them as shown in the following figure to implement the <Vpd k="NAME" /> logic:
 
-![Create UMG](/images/video-sdk/unreal-create-umg.png)
+![](/images/video-sdk/quickstart-implementation-blueprint-2.png)
 
-To create the UI interface shown above:
+The following table lists the main nodes:
 
-1. Create **Widget Blueprint**.
+| # | Node | Type | Description |
+|:--|:-----|:-----|:------------|
+| 1 | **Set Show Mouse Cursor** | Native* | (Optional) Set whether to display the mouse cursor. Check to display it. <Admonition type="info" title="Information"><ul><li>This node is available on Windows and macOS only.</li><li>If the node is not retrieved at creation time, uncheck **Context Sensitive**.</li></ul> ![](/images/video-sdk/quickstart-implementation-blueprint-3.png) </Admonition> |
+| 2 | **Load Agora Config** | Custom** | Loads Agora configuration. Used to verify user identity when creating and joining channels. |
+| 3 | **Create BP Video Widget** | Native | Create user interface: <ol><li>Add **Create Widget** node.</li><li>Select the node's **Class** as **BP_VideoWidget** and associate the node with the already created user interface.</li></ol> |
+| 4 | **Set Basic Video Call Widget** | Custom | Set up the user interface:<ol><li>Create the **BasicVideoCallWidget** variable and select the **Variable Type** of the variable as **BP_VideoWidget**, which is the user interface created to store a reference to the user interface in the blueprint.</li><li>After dragging the created variables to **EventGraph**, two options, **Set BasicVideoCallWidget** and **Get BasicVideoCallWidget**, appear. Select **Set BasicVideoCallWidget** to create a node for accessing and setting the user interface.</li></ol> |
+| 5 | **BindUIEvent** | Custom | Use Bind UI events to handle event logic after clicking the **Join Channel** and **Leave Channel** buttons. |
+| 6 | **Add to Viewport** | Native | Add user interface to the viewport. |
+| 7 | **Check Permission** | Custom | (Optional) Check whether you have obtained the system permissions required for real-time audio and video interaction, such as access to the camera and microphone. <Admonition type="caution" title="Note">If your target platform is Android, create this node to check system permissions. </Admonition> |
+| 8 | **Init Rtc Engine** | Custom | Create and initialize the RTC engine. |
+| 9 | **Un Init Rtc Engine** | Custom | Leave the channel and release resources. |
 
-    1. In the **Content Browser** of the **Content** folder, right-click and select **User Interface > Widget Blueprint** to create a **Widget Blueprint** and name it `BP_VideoWidget`.
-    1. Double-click to open `BP_VideoWidget`. You see `BP_VideoWidget > Canvas Panel` in the hierarchy.
+\* Native nodes are nodes that come with the blueprint and can be added and called directly.
+\*\* Custom nodes are not included in the blueprint. You create a custom function before you can add the corresponding node.
 
-1. Create local and remote video windows in the **Widget Blueprint**.
+### Add channel-related variables​
+Add variables to create an engine instance and join a channel.
 
-    1. To create a view background, select **Common > Image** in the **Palette** panel, drag it to the **Canvas** Panel and name it `background`. Adjust the size of the canvas by dragging it, and adjust the background color in the details panel.
-    1. Create a local view window. In the **Palette** panel, select **Common > Image** and drag it to the **Canvas** Panel. Name it `Img_LocalVideoView`. Adjust the position and size of the canvas the details panel as follows:
+1. Create three variables: 
 
-        - **Position X**：-500
-        - **Position Y**：-100
-        - **Size X**：640
-        - **Size Y**：360
+    **Token**, **ChannelId**, and **AppId**. Select the **Variable Type** as **String**.
 
-    1. Repeat the above steps to create a remote view window, name it `Img_RemoteVideoView`, and adjust its position and size as follows:
+1. In the **Load Agora Config** function, add the **Sequence** node, and then connect **Set Token**, **Set Channel Id**, and **Set App Id** respectively. Fill in the token, channel name, and app ID values obtained from <Vg k="CONSOLE" />.
 
-        - **Position X**：500
-        - **Position Y**：-100
-        - **Size X**：640
-        - **Size Y**：360
+    ![](/images/video-sdk/quickstart-implementation-blueprint-4.png)
 
-1. Create buttons to join and leave the channel in the **Widget Blueprint**.
+### Initialize RTC engine​
 
-    1. Create a join channel button. Select **Common > Button**, drag it to the **Canvas Panel**, rename it `Btn_JoinChannel`, and adjust its position and size in the canvas:
+1. If your target platform is Android, check whether system permissions have been granted before initializing the RTC engine. Refer to the following figure to create nodes for adding permissions to access the microphone and camera in the **CheckPermission** function.
 
-        - **Position X**：-500
-        - **Position Y**：200
-        - **Size X**：100
-        - **Size Y**：130
+    ![](/images/video-sdk/quickstart-implementation-blueprint-5.png)
 
-    1. Select **Common > Text**, drag it to `Btn_JoinChannel`, and in the details panel, modify the content of **Text** to `JoinChannel`.
-    1. Repeat the above steps to create a **Leave Channel** button, name it `Btn_LeaveChannel`, and change the **Text** content to `LeaveChannel`. Adjust the button's position and size in the canvas:
+    <Admonition type="info" title="Information">If your target platform is macOS or iOS, please refer to [How to add the permissions required for real-time interaction to an Unreal Engine project?](../../help/integration-issues/)</Admonition>
 
-        - **Position X**：500
-        - **Position Y**：200
-        - **Size X**：130
-        - **Size Y**：130
+1. To initialize the RTC engine, in the **InitRtcEngine** function, create and connect nodes as shown in the following figure:
 
-1. Save your changes.
+    ![](/images/video-sdk/quickstart-implementation-blueprint-6.png)
 
-### Blueprint implementation
+  1. Create `IRtcEngine` and `IRtcEngineEventHandler`.
 
-This section shows you how to use <Vg k="VSDK" /> to implement real-time audio and video interaction functionality in your project.
+        1. To store references to the engine and event-handler interface classes, create `RtcEngine` and `EventHandler` variables, and set the **Variable Type** to **Agora Rtc Engine** and **IRtc Engine Event Handler**, respectively.
 
-1. **Create a level Blueprint**
+        1. Add two **Construct Object From Class nodes**, set **Class** to **Agora Rtc Engine** and **IRtc Engine Event Handler** respectively. Connect to **Set Rtc Engine** and **Set Event Handler**, respectively.
 
-    1. In the **Content Browser** of the **Content** folder , right-click and select **Level** to create a **Level Blueprint** and name it `BasicVideoCallScene`.
+    1.  Bind `IRtcEngineEventHandler` class-related callback functions.
 
-    1. Double-click `BasicVideoCallScene` above the editor and click **Blueprints > Open Level Blueprint**:
+        1. Create `onJoinChannelSuccess`, `onLeaveChannel`, `onUserJoined`, and `onUserOffline` callback functions. Refer to the following table to configure the input parameters of the callbacks:
 
-        ![Open Level Blueprint](/images/video-sdk/unreal-open-level-blueprint.png)
+            | Callback | Description | Input parameters |
+            |:--------|:------------------|:------------|
+            | `FOnJoinChannelSuccess` | The local user successfully joined a channel. | <ul><li>`channel`: (String) Channel name.</li><li>`uid`: (Integer64) The ID of the user joining the channel.</li><li>`elapsed`: (Integer) The time (in milliseconds) that elapsed from the local call to `JoinChannel` till the occurrence of this event.</li></ul> |
+            | `FOnLeaveChannel` | The local user left the channel. | <ul><li>`stats`: Call statistics.</li></ul> |
+            | `FOnUserJoined` | A remote user joined the current channel. | <ul><li>`uid`: (Integer64) The user ID of the remote user joining the channel.</li><li>`elapsed`: (Integer) The time (in milliseconds) that elapsed from the local call to `JoinChannel` till the occurrence of this event.</li></ul> |
+            | `FOnUserOffline` | A remote user left the current channel. | <ul><li>`uid`: (Integer64) The ID of the user going offline.</li><li>`reason`: Offline reason. For details, see  `EUSER_OFFLINE_REASON_TYPE`.</li></ul> |
 
-1. **Implement basic processes**
+        1. Create a **Bind Event** function. In this function, add a **Sequence** node, and then bind the `onJoinChannelSuccess`, `onLeaveChannel`, `onUserJoined`, and `onUserOffline` callback events.
 
-    In the **My Blueprint** panel, double-click **Graphs > EventGraph** to open the event graph, which already has two event nodes: **Event Begin Play** (game start) and **Event End Play** (game end). Next, create event nodes and corresponding functions and variables related to real-time audio and video interactions. Connect them to realize the logic of real-time audio and video interaction:
+            ![](/images/video-sdk/quickstart-implementation-blueprint-7.png)
 
-    ![Implement Basic Processes](/images/video-sdk/unreal-impl-basic-processes.png)
+    1. `IRtcEngine` initialization
 
-    The main nodes are as follows:
+        1. Call **Initialize** to initialize the RTC engine.
+        
+        1. Connect to the **RtcEngineContext** configuration `IRtcEngine` instance and select **Channel Profile** as `CHANNEL_PROFILE_LIVE_BROADCASTING`.
 
-    | Node| Type | Description|
-    |:----|:-----|:-----------|
-    | Set Show Mouse Cursor | Native* | <p>(Optional) Set whether to display the mouse cursor. Check to display.</p><ul><li>This node is only available on Windows and macOS.</li><li>If the node cannot be retrieved at creation time, you can uncheck Context Sensitive</li></ul>  |
-    | Load Agora Config | Custom** | Load Agora configuration. Used to later verify user identity when creating and joining channels |
-    | Create BP Video Widget Widget | Native | <p>Create user interface:</p><ol><li>Create **Create Widget** node.</li><li>Select the node's Class as **BP_VideoWidget** and associate the node with the already created user interface.</li></ol> |
-    | Set Basic Video Call Widget | Custom | <p>Set up the user interface:</p><ol><li>Create the `BasicVideoCallWidget` variable and select the **Variable Type** of the variable as `BP_VideoWidget`, which is the user interface that has been created and is used to store a reference to the user interface in the blueprint.</li><li>After dragging the created variables to EventGraph two options, **Set BasicVideoCallWidget** and **Get BasicVideoCallWidget**, will appear. Select **Set BasicVideoCallWidget** to create a node for accessing and setting the user interface.</li></ol> |
-    | BindUIEvent | Custom | Bind UI events to handle event logic after clicking the **JoinChannel** and **LeaveChannel** buttons. |
-    | Add to Viewport | Native | 	Add user interface to the viewport. |
-    | Check Permission | Custom | (Optional) Check whether you have obtained the system permissions required for real-time audio and video interaction, such as access to the camera and microphone. If your target platform is Android, you need to create this node to check system permissions. |
-    | Init Rtc Engine | Custom | 	Create and initialize the RTC engine. |
-    | Un Init Rtc Engine | Custom | 	Leave the channel and release resources. |
+### Bind UI events​
 
-    \* Native nodes come with the blueprint and can be added and called directly.<br/>
-    ** Custom nodes are not included in the blueprint. You need to create a custom function before you can add the corresponding node.
+To bind UI events:
 
-1.  **Add the variables to join a channel**
+1. Create and implement the `OnJoinChannelClicked` event callback.
 
-    1. Create three variables `Token`, `ChannelId`, `AppId` and select **Variable Type** as **String**.
-    1. In the `Load Agora Config` function, add the `Sequence` node, and then connect **Set Token**, **Set Channel Id**, and **Set App Id** respectively. Fill in the **Token**, **channel name** and **App ID** obtained from the <Vg k="CONSOLE" /> for verification of user identity before creating and joining a channel.
+    ![Join Channel Clicked](/images/video-sdk/quickstart-implementation-blueprint-8.png)
 
-        ![Add Channel Related Variables](/images/video-sdk/unreal-add-channel-related-variables.png)
+    1. Call **Enable Video** and **Enable Audio** to enable the video and audio modules.
+    2. Call **Join Channel** to join the channel.
+    3. Set the following parameters in **Make ChannelMediaOptions**:
+        - Set **Publish Camera Track** to `AGORA TRUE VALUE` to publish the video stream recorded by the camera.
+        - Set **Publish Microphone Track** to `AGORA TRUE VALUE` to publish the audio stream recorded by the microphone.
+        - Set **Auto Subscribe Video** to `AGORA TRUE VALUE` to automatically subscribe to all video streams.
+        - Set **Auto Subscribe Audio** to `AGORA TRUE VALUE` to automatically subscribe to all audio streams.
+        - Check **Client Role Type Set Value** and set **Client Role Type** to `CLIENT_ROLE_BROADCASTER` or `CLIENT_ROLE_AUDIENCE`, to set the user role to host or audience.
+        - Check **Channel Profile Set Value** and set **Channel Profile** to `CHANNEL_PROFILE_LIVE_BROADCASTING`.
 
-1. **Initialize <Vg k="ENGINE" />**
+1. Create and implement the `OnLeaveChannelClicked` event callback. When the event is triggered, call **Leave Channel** to leave the channel.
 
-    1. If your target platform is Android, check whether you have obtained Android system permissions before initializing the <Vg k="ENGINE" />. In the `CheckPermission` function, refer to the figure below to create nodes to add permissions such as access to the microphone and camera in the Android system:
+    ![Leave Channel Clicked](/images/video-sdk/quickstart-implementation-blueprint-9.png)
 
-        ![Check Android Permissions](/images/video-sdk/unreal-check-android-permissions.png)
+1. In the **Bind UIEvent** function, refer to the figure below to bind the `OnJoinChannelClicked` and `OnLeaveChannelClicked` callback functions to the **Join Channel** and **Leave Channel** buttons respectively. When the button is clicked, the corresponding event callback is triggered.
 
-    1. In the `InitRtcEngine` function, refer to the figure below to create and connect nodes to initialize the <Vg k="ENGINE" />:
+    ![Bind Join Leave Callbacks](/images/video-sdk/quickstart-implementation-blueprint-10.png)
 
-        ![Initialize Agora Engine](/images/video-sdk/unreal-init-agora-engine.png)
+<Admonition type="info" title="Information">You can also bind UI events in Unreal Motion Graphics (UMG). This document only shows binding using the **Bind UIEvent Function**.</Admonition>
 
-    The main steps are as follows:
-        1. Create `IRtcEngine` and `IRtcEngineEventHandler`.
-            1. Create `RtcEngine` and `EventHandler` variables, and set the **Variable Type** to **Agora Rtc Engine** and **IRtc Engine Event Handler** respectively, which are the basic function classes and event callback classes of <Vg k="COMPANY" /> SDK, used to store references to these two interface classes in the blueprint.
-            1. Add two **Construct Object From Class** nodes, set **Class** to **Agora Rtc Engine** and **IRtc Engine Event Handler** respectively, and connect Set Rtc Engine and Set Event Handler respectively.
+### Set up local and remote views​
 
-        2. Binding `IRtcEngineEventHandler` class-related callback functions.
-            1. Create `onJoinChannelSuccess`, `onLeaveChannel`, `onUserJoined` and `onUserOffline` callback functions.
+1. Create and implement the **MakeVideoView** function to load the view when local or remote users join the channel:
 
-                | Callback | Description | Input parameters |
-                |:--------|:------------------|:------------|
-                | `FOnJoinChannelSuccess` | Successfully added channel callback. | <ul><li>`channel`: (String) Channel name.</li><li>`uid`: (Integer64) The user ID that joined the channel.</li><li>`elapsed`: (Integer) The time (in milliseconds) that has elapsed from the local call to `JoinChannel` till the occurrence of this event.</li></ul> |
-                | `FOnLeaveChannel` | Leave channel callback. | <ul><li>`stats`: Call statistics. See details FRtcStats.</li></ul> |
-                | `FOnUserJoined` | Callback when remote viewers or anchors join the current channel. | <ul><li>`uid`: (Integer64) The user ID of the remote viewer or anchor joining the channel.</li><li>`elapsed`: (Integer) The time (in milliseconds) that has elapsed from the local call to `JoinChannel` till the occurrence of this event.</li></ul> |
-                | `FOnUserOffline` | Callback when a remote viewer or host leaves the current channel. | <ul><li>`uid`: (Integer64) The user ID of the offline viewer or host.</li><li>`reason`: Offline reason. See details `EUSER_OFFLINE_REASON_TYPE`.</li></ul> |
+    ![Implement Make Video View](/images/video-sdk/quickstart-implementation-blueprint-11.png)
 
-            1. Create the **Bind Event** function. In this function, add the **Sequence** node, and then bind the `onJoinChannelSuccess`, `onLeaveChannel`, `onUserJoined` and `onUserOffline` callback events respectively.
+    1. In this function, create `SavedUID`, `SavedSourceType`, `SavedChannelID` local variables, set the **Variable Type** to `Integer64`, `VIDEO_SOURCE_TYPE`, and `String`, respectively. Save the variables for use when loading the view later.
+    1. Create a local view. In the local view, if the UID is 0, a value is randomly assigned by the SDK, and the video source type is `VIDEO_SOURCE_CAMERA_PRIMARY` (the first camera).
+    1. Create a remote view. In the remote view, the `uid` is the uid sent from the remote end, and the video source type is `VIDEO_SOURCE_REMOTE` (remote video obtained from the network).
 
-            ![Create Bind Event](/images/video-sdk/unreal-create-bind-event.png)
+2. Create and implement the **ReleaseVideoView** function to release the view when a local or remote user leaves the channel.
 
-        3. Initialize `IRtcEngine`:
-            1. Call `initialize` to initialize the <Vg k="ENGINE" />.
-            1. Connect `RtcEngineContext` configuration `IRtcEngine` Example, select **Channel Profile** as `CHANNEL_PROFILE_LIVE_BROADCASTING` (live broadcast scenario).
+    ![Implement Release Video View](/images/video-sdk/quickstart-implementation-blueprint-12.png)
 
-1. **Bind UI events**
+    1. In this function, create `SavedUID`, `SavedSourceType`, and `SavedChannelID` local variables, set the **Variable Type** to `Integer64`, `VIDEO_SOURCE_TYPE`, and `String`, respectively. Save the variables for use when releasing the view later.
+    1. Release the local view.
+    1. Release the remote view.
 
-    1. Create and implement the `OnJoinChannelClicked` event callback.
+### Implement callback function​
 
-        ![Join Channel Clicked](/images/video-sdk/unreal-join-channel-clicked-event.png)
+Configure the previously created `onJoinChannelSuccess`, `onLeaveChannel`, `onUserJoined`, and `onUserOffline` callback functions as follows:
 
-    The main steps are as follows:
-        1. Call **Enable Video** and **Enable Audio** to enable the video and audio modules.
-        2. Call **Join Channel** to join the channel.
-        3. Create `ChannelMediaOptions` with the following parameters:
-            - Set **Publish Camera Track** to `AGORA TRUE VALUE` to publish the video stream collected by the camera.
-            - Set **Publish Microphone Track** to `AGORA TRUE VALUE` to publish the audio stream collected by the microphone.
-            - Set **Auto Subscribe Video** to `AGORA TRUE VALUE` to automatically subscribe to all video streams.
-            - Set **Auto Subscribe Audio** to `AGORA TRUE VALUE` to automatically subscribe to all audio streams.
-            - Check **Client Role Type Set Value** and set **Client Role Type** to `CLIENT_ROLE_BROADCASTER` or `CLIENT_ROLE_AUDIENCE`, and set the user role to host or audience.
-            - Check **Channel Profile Set Value** and set **Channel Profile** to `CHANNEL_PROFILE_LIVE_BROADCASTING`, and the **channel scene** to **live broadcast scene**.
+1. After the local user successfully joins the channel, the `onJoinChannelSuccess` callback is triggered and the local view is created. The `uid` is set to `0` by default, but it is assigned a random value by the SDK. The video source type is `VIDEO_SOURCE_CAMERA_PRIMARY` (first camera):
 
-    2. Create and implement the `OnLeaveChannelClicked` event callback. When the event is triggered, call **Leave Channel** to leave the channel.
+    ![Join Channel Success Callback](/images/video-sdk/quickstart-implementation-blueprint-13.png)
 
-        ![Leave Channel Clicked](/images/video-sdk/unreal-leave-channel-clicked-event.png)
+2. After the local user leaves the channel, the `onLeaveChannel` callback is triggered which releases the local view:
 
-    3. In the **Bind UIEvent** function, refer to the figure below to bind the `OnJoinChannelClicked` and `OnLeaveChannelClicked` buttons respectively callback functions to the `JoinChannel` and `LeaveChannel`. When the button is clicked, the corresponding event callback will be triggered.
+    ![Leave Channel Callback](/images/video-sdk/quickstart-implementation-blueprint-14.png)
 
-        ![Bind Join Leave Callbacks](/images/video-sdk/unreal-bind-join-leave-callbacks.png)
+3. When a remote user joins the channel, the `onUserJoined` callback is triggeredd to create a remote view. `uid` is the uid sent from the remote end, and the video source type is `VIDEO_SOURCE_REMOTE` (remote video obtained from the network):
 
-1. **Set up local and remote views**
+    ![Remote User Join Channel Callback](/images/video-sdk/quickstart-implementation-blueprint-15.png)
 
-    1. Create and implement the `MakeVideoView` function to load the view when local or remote viewers or hosts join the channel:
+4. When a remote user leaves the channel, the `onUserOffline` callback is triggered to release the remote view:
 
-        ![Implement Make Video View](/images/video-sdk/unreal-impl-make-video-view.png)
+    ![Remote User Leave Channel Callback](/images/video-sdk/quickstart-implementation-blueprint-16.png)
 
-        The main steps are as follows:
-            1. In this function, create `SavedUID`, `SavedSourceType`, `SavedChannelID` local variables, set the **Variable Type** to `Integer64`, `VIDEO_SOURCE_TYPE`, `String` respectively, and save the variables for use when loading the view later.
-            1. Create a local view. In the local view, the uid is 0, randomly assigned by the SDK, and the video source type is `VIDEO_SOURCE_CAMERA_PRIMARY` (the first camera).
-            1. Create a remote view. In the remote view, uid is the uid sent from the remote end, and the video source type is `VIDEO_SOURCE_REMOTE` (remote video obtained from the network).
+### Leave the channel and release resources​
 
-    2. Create and implement the `ReleaseVideoView` function to release the view when a local or remote viewer or host leaves the channel.
+To leave the channel, implement the following steps:
 
-        ![Implement Release Video View](/images/video-sdk/unreal-impl-release-video-view.png)
+1. Leave the channel.
+1. Unregister <Vg k="AGORA_BACKEND" /> event callback.
+1. Destroy `IRtcEngineObject` to release all resources used by <Vg k="COMPANY" /> SDK.
 
-    The main steps are as follows:
-        1. In this function, create `SavedUID`, `SavedSourceType`, `SavedChannelID` local variables, set the **Variable Type** to `Integer64`, `VIDEO_SOURCE_TYPE`, `String` respectively, and save the variables for use when releasing the view later.
-        1. Release the local view.
-        1. Release the remote view.
+Refer to the figure below to implement the `UnInitRtcEngine` function:
 
-1. **Implement callback function**
-
-    Configure the previously created `onJoinChannelSuccess`, `onLeaveChannel`, `onUserJoined`, and `onUserOffline` callback functions according to the following implementation steps:
-
-        1. After the local user successfully joins the channel, `onJoinChannelSuccess` callback is triggered and the local view is created. The `uid` is set to 0 but by default it is randomly assigned by SDK. The video source type is `VIDEO_SOURCE_CAMERA_PRIMARY` (first camera):
-
-        ![Join Channel Success Callback](/images/video-sdk/unreal-join-channel-success-callback.png)
-
-        2. After the local user leaves the channel, `onLeaveChannel` callback is triggered which releases the local view:
-
-        ![Leave Channel Callback](/images/video-sdk/unreal-leave-channel-callback.png)
-
-        3. When a remote user joins the channel, `onUserJoined` callback triggers to create a remote view, `uid` is the `uid` sent from the remote end, and the video source type is `VIDEO_SOURCE_REMOTE` (remote video obtained from the network):
-
-        ![Remote User Join Channel Callback](/images/video-sdk/unreal-remote-user-join-channel-callback.png)
-
-        4. When the remote user leaves the channel, callback `onUserOffline` is triggered to release the remote view:
-
-        ![Remote User Leave Channel Callback](/images/video-sdk/unreal-remote-user-leave-channel-callback.png)
-
-1. **Leave the channel and release resources**
-
-    Refer to the figure below to implement the `UnInitRtcEngine` function:
-
-    ![Leave Channel and Release Resources](/images/video-sdk/unreal-leave-channel-and-release-resources.png)
-
-    The main steps are as follows:
-        1. Leave the channel.
-        1. Unregister <Vg k="AGORA_BACKEND" /> event callback.
-        1. Destroy `IRtcEngineObject` to release all resources used by <Vg k="COMPANY" /> SDK.
+![Leave Channel and Release Resources](/images/video-sdk/quickstart-implementation-blueprint-17.png)
 
 </PlatformWrapper>

@@ -240,8 +240,6 @@ export const ELE = 'Electron';
 export const UNI = 'Unity';
 export const FLU = 'Flutter';
 export const REA = 'React Native';
-export const COC = 'Cocos Creator';
-export const CO2_AN = 'Cocos2d-x-Android';
 export const SS = 'Server side';
 
 export const ATW = 'Technical Writer';

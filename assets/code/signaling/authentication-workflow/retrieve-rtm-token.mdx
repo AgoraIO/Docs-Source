@@ -136,3 +136,129 @@
       }
     ```  
 </PlatformWrapper>
+<PlatformWrapper platform='unity'>
+    ```csharp
+    // Asynchronously fetches an RTM token from the server
+    public async Task FetchRtmToken(string userName)
+    {
+        // Check if required parameters are provided in the configuration
+        if (string.IsNullOrEmpty(configData.uid) || string.IsNullOrEmpty(configData.serverUrl) || configData.tokenExpiryTime == null)
+        {
+            LogInfo("Please specify all required parameters in the config.json file to fetch a token from the server");
+            return;
+        }
+
+        // Use user name as UID
+        if (userName != "")
+        {
+            configData.uid = userName;
+        }
+
+        // Construct the URL to request the RTM token
+        string url = $"{configData.serverUrl}/rtm/{configData.uid}/?expiry={configData.tokenExpiryTime}";
+
+        // Use UnityWebRequest to send a GET request to the server
+        UnityWebRequest request = UnityWebRequest.Get(url);
+
+        // Asynchronously send the request
+        var operation = request.SendWebRequest();
+
+        // Wait until the operation is done
+        while (!operation.isDone)
+        {
+            await Task.Yield();
+        }
+         
+        // Check for network or HTTP errors
+        if (request.isNetworkError || request.isHttpError)
+        {
+            LogError($"Failed to fetch token. Error: {request.error}");
+            return;
+        }
+
+        // Deserialize the response JSON into TokenStruct
+        RtmTokenStruct tokenInfo = JsonUtility.FromJson<RtmTokenStruct>(request.downloadHandler.text);
+
+        // Log the retrieved token
+        LogInfo($"Retrieved rtm token: {tokenInfo.rtmToken}");
+
+        // Update the configuration with the fetched token`1
+        configData.token = tokenInfo.rtmToken;
+    }
+    ```
+</PlatformWrapper>
+<PlatformWrapper platform='linux-cpp'>
+
+    ```cpp
+    std::string SignalingManagerAuthentication::fetchRTMToken(std::string userId)
+    {
+        // Build the URL with the userId
+        std::string url = serverUrl + "/rtm/" + userId + "/?expiry=" + std::to_string(tokenExpiryTime);
+        return fetchToken(url);
+    }
+
+    std::string SignalingManagerAuthentication::fetchToken(std::string url)
+    {
+        // Initialize cURL
+        CURL *curl = curl_easy_init();
+
+        if (curl)
+        {
+            // Set the URL for the GET request
+            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+
+            // Response data will be stored in this string
+            std::string responseData;
+
+            // Set the callback function to handle the received data
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseData);
+
+            // Perform the GET request
+            CURLcode res = curl_easy_perform(curl);
+
+            // Check for errors
+            if (res != CURLE_OK)
+            {
+                std::cerr << "Failed to fetch token: " << curl_easy_strerror(res) << std::endl;
+            }
+            else
+            {
+                // Parse the JSON response
+                try
+                {
+                    json responseJson = json::parse(responseData);
+
+                    // Extract the token value
+                    std::string token;
+                    if (url.find("rtm") != std::string::npos)
+                    {
+                        token = responseJson["rtmToken"];
+                    }
+                    else
+                    {
+                        token = responseJson["rtcToken"];
+                    }
+
+                    // Cleanup and return the token
+                    curl_easy_cleanup(curl);
+                    return token;
+                }
+                catch (const std::exception &e)
+                {
+                    std::cerr << "JSON parsing error: " << e.what() << std::endl;
+                }
+            }
+
+            // Cleanup in case of error
+            curl_easy_cleanup(curl);
+        }
+        else
+        {
+            std::cerr << "cURL initialization failed." << std::endl;
+        }
+
+        return ""; // Return an empty string in case of error
+    }
+    ```
+</PlatformWrapper>

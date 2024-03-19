@@ -231,7 +231,7 @@ Agora supports only taking screenshots in a recording process or recording and t
     - `23`：US_GOV_EAST_1
     - `24`: AP_SOUTHEAST_3
     - `25`: EU_SOUTH_1
-    
+    - `28`: IL_CENTRAL_1
   - Third-party cloud storage is Alibaba Cloud (`vendor` = 2):
     - `0`: CN_Hangzhou 
     - `1`: CN_Shanghai 

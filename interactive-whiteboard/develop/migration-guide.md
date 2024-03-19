@@ -48,7 +48,7 @@ Agora automatically migrates all your projects from Netless to <Vg k="CONSOLE" /
 
 ### A Netless account and an Agora account that use different email addresses
 
-To migrate to the existing Agora account, contact sales at sales@agora.io.
+To migrate to the existing Agora account, contact sales at support@agora.io.
 
 To create a new Agora account and migrate Netless projects to that account, follow the steps in <a href="#netlessaccount">A Netless account only</a>.
 

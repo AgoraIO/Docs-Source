@@ -1,321 +1,215 @@
+
 <PlatformWrapper platform="windows">
-        
-### Implement the user interface
 
-In a real-word application, you provide several buttons to enable a user to open, play, pause and stop playing files in the media player. In this simple example, you use a single `Button` to demonstrate the basic media player functions. You also add a `ProgressBar` to display the play progress to the user.
-
-To add the UI elements, take the following steps:
-
-1. **Add a slider control to show media progress**
-
-   To add a slider control to the UI, take the following steps:
-
-    1. Go to menu **View** > **Other Windows** > **Resource View**.
-        
-       If the **Resource View** window isn't the top-most window, select the **Resource View** tab to bring it to the top.
-
-    2. To view the dialog resources, in **Resource View**, go to **AgoraImplementation.rc** > **Dialog** and double-click `IDD_AGORAIMPLEMENTATION_DIALOG`.
-
-        The resource opens inside the **Dialog Editor**. 
-    
-    3. To open **Toolbox**, go to menu **View** > **ToolBox**.
-
-    4. From **ToolBox**, drag **Slider Control** and drop it onto the surface of the **Dialog Editor**.
-
-        You see a slider in your **Dialog Editor**.
-
-2. **Add a Button to the UI**
-
-    1. From **ToolBox**, drag **Button** and drop it onto the surface of the **Dialog Editor**
-
-    2. To change the button label, in **Properties**, update the **Caption** field with `Open Media File`.
-
-### Handle the system logic
-
-To setup your project to use the media player APIs and access the UI elements, take the following steps:
-
-1.  **Add the required libraries**
-
-    To import the required <Vg k="COMPANY" /> libraries, in `AgoraImplementationDlg.h`, add the following header files at the start:
+1. After initializing an instance of `IRtcEngine`, create an `IMediaPlayer` object.
 
     ```cpp
-    #include <IAgoraMediaPlayer.h>
-    #include <IAgoraMediaPlayerSource.h>
-    using namespace agora::base;
-    using namespace agora::media::base;
+    void CAgoraMediaPlayer::InitMediaPlayerKit()
+    {
+        // Create Agora media player
+        m_mediaPlayer = m_rtcEngine->createMediaPlayer().get();
+        m_lstInfo.InsertString(m_lstInfo.GetCount(), _T("createAgoraMediaPlayer"));
+        m_lstInfo.InsertString(m_lstInfo.GetCount(), _T("Media player initialization"));
+
+        // Set the player rendering view
+        RECT rc = { 0 };
+        m_localVideoWnd.GetWindowRect(&rc);
+        int ret = m_mediaPlayer->setView((agora::media::base::view_t)m_localVideoWnd.GetSafeHwnd());
+
+        // Set the window to receive player events
+        m_mediaPlayerEvent.SetMsgReceiver(m_hWnd);
+    }
     ```
 
-2.  **Declare the variables you need**
-
-    To create and manage an instance of the media player and access the UI elements, in `AgoraImplementationDlg.h`, add the following to `CAgoraImplementationDlg`:
+1. To register the playback observer, call `registerPlayerSourceObserverthe` before you join the channel. To unregister the playback observer, call `unregisterPlayerSourceObserver` before you leave the channel.
 
     ```cpp
-    IMediaPlayer *mediaPlayer; // Instance of the media player
-    BOOL isMediaPlaying = false;
-    long mediaDuration = 0;
-    // In a real world app, you declare the media location variable with an empty string
-    // and update it when a user chooses a media file from a local or remote source.
-    std::string mediaLocation =
-        "https://www.appsloveworld.com/wp-content/uploads/2018/10/640.mp4";
-    MediaPlayerSourceObserver mediaPlayerEventHandler;
-    CButton *mediaButton;
-	CSliderCtrl *mediaProgressBar;
+    void CAgoraMediaPlayer::OnBnClickedButtonJoinchannel()
+    {
+	    ...
+	    // Register the player observer
+	    ret = m_mediaPlayer->registerPlayerSourceObserver(&m_mediaPlayerEvent);
+	    m_lstInfo.InsertString(m_lstInfo.GetCount(), _T("registerPlayerSourceObserver"));
+
+	    if (0 == m_rtcEngine->joinChannel(APP_TOKEN, szChannelId.c_str(), 0, options)) {
+		    strInfo.Format(_T("Join channel %s, use ChannelMediaOptions"), getCurrentTime());
+	    }
+	    else {
+		    // Unregister the player observer
+		    ret = m_mediaPlayer->unregisterPlayerSourceObserver(&m_mediaPlayerEvent);
+		    m_lstInfo.InsertString(m_lstInfo.GetCount(), _T("unregisterPlayerSourceObserver"));
+		
+		    // Leave the channel in the engine.
+		    if (0 == m_rtcEngine->leaveChannel()) {
+			    strInfo.Format(_T("Leave channel %s"), getCurrentTime());
+		    }
+	    }
+
+	    m_lstInfo.InsertString(m_lstInfo.GetCount(), strInfo);
+    }
     ```
 
-3.  **Reference the UI elements**
+1. Implement callbacks for the observer.
+    
+    ```cpp
+    // Observe player state changes
+    LRESULT CAgoraMediaPlayer::OnmediaPlayerStateChanged(WPARAM wParam, LPARAM lParam)
+    {
+	    CString strState;
+	    CString strError;
+	    switch ((agora::media::base::MEDIA_PLAYER_STATE)wParam)
+	    {
+	        case  agora::media::base::PLAYER_STATE_OPEN_COMPLETED:
+		        strState = _T("PLAYER_STATE_OPEN_COMPLETED");
+		        m_mediaPlayerState = mediaPLAYER_OPEN;
+		        int64_t duration;
+		        m_mediaPlayer->getDuration(duration);
+		        m_sldVideo.SetRangeMax((int)duration);
 
-    In `AgoraImplementationDlg.h`, add the following at the end of `OnInitDialog`:
+		    break;
+	        // Additional cases for other player states...
+        }
+
+	    switch ((agora::media::base::MEDIA_PLAYER_ERROR)lParam)
+	    {
+	        case agora::media::base::PLAYER_ERROR_URL_NOT_FOUND:
+		        strError = _T("PLAYER_ERROR_URL_NOT_FOUND");
+	            // Additional cases for other player errors...
+		    break;
+	    }
+	    CString strInfo;
+	    strInfo.Format(_T("State:%s,\nError:%s"), strState, strError);
+	    m_lstInfo.InsertString(m_lstInfo.GetCount(), strInfo);
+	    return TRUE;
+    }
+
+    // Observe current playback progress
+    LRESULT CAgoraMediaPlayer::OnmediaPlayerPositionChanged(WPARAM wParam, LPARAM lParam)
+    {
+	    int64_t * p = (int64_t*)wParam;
+	    m_sldVideo.SetPos((int)*p);
+	    delete p;
+	    return TRUE;
+    }
+    ```
+
+1. When joining a channel use `ChannelMediaOptions` to set the media player ID, publish media player's audio and video, and share media resources with remote users in the channel.
 
     ```cpp
-    mediaButton = (CButton*)GetDlgItem(IDC_BUTTON3);
-	mediaProgressBar = (CSliderCtrl*)GetDlgItem(IDC_SLIDER1);
+    void CAgoraMediaPlayer::OnBnClickedButtonPublishVideo()
+    {
+	    if (m_publishMeidaplayer) {
+		    ChannelMediaOptions op;
+		    op.clientRoleType = CLIENT_ROLE_BROADCASTER;
+		    op.publishMediaPlayerVideoTrack = false;
+		    op.publishMediaPlayerAudioTrack = false;
+		    op.publishMediaPlayerId = m_mediaPlayer->getMediaPlayerId();
+		    int ret = m_rtcEngine->updateChannelMediaOptions(op);
+		    ChannelMediaOptions op2;
+		    op2.clientRoleType = CLIENT_ROLE_BROADCASTER;
+		    op2.publishCameraTrack = true;
+		    ret = m_rtcEngine->updateChannelMediaOptions(op2);
+		    m_publishMeidaplayer = false;
+	    }
+	    else {
+		    ChannelMediaOptions options;
+		    options.clientRoleType = CLIENT_ROLE_BROADCASTER;
+		    options.publishMediaPlayerVideoTrack = true;
+		    options.publishMediaPlayerAudioTrack = true;
+		    options.publishMediaPlayerId = m_mediaPlayer->getMediaPlayerId();
+		    options.publishCameraTrack = false;
+		    options.publishAudioTrack = false;
+		    options.autoSubscribeAudio = false;
+		    options.autoSubscribeVideo = false;
+		    m_rtcEngine->updateChannelMediaOptions(options);
+		    m_publishMeidaplayer = true;
+	    }
+    }
     ```
 
-### Implement media player functions
+1. Use the `open` method to open a local or online media file.
 
-To implement playing and publishing media files in your <Vpl k="CLIENT" />, take the following steps:
+    ```swift
+    void CAgoraMediaPlayer::OnBnClickedButtonOpen()
+    {
+	    CString strUrl;
+	    CString strInfo;
+	    m_edtVideoSource.GetWindowText(strUrl);
+	    std::string tmp = cs2utf8(strUrl);
+	    switch (m_mediaPlayerState)
+	    {
+	        case mediaPLAYER_READY:
+	        case mediaPLAYER_STOP:
+                if (tmp.empty())
+                {
+                    AfxMessageBox(_T("you can fill video source."));
+                    return;
+                }
+                m_mediaPlayer->open(tmp.c_str(), 0);
+                break;
+            default:
+                m_lstInfo.InsertString(m_lstInfo.GetCount(), _T("can not open player."));
+		        break;
+        }
+    }
+    ```
 
-1.  **Open, play and pause media files**
-
-    When a user presses the button for the first time, you create an instance of the media player, set its `mediaPlayerObserver` to receive the callbacks, and open the media file. When the user presses the button again, you play the media file. On subsequent button presses, you pause or resume playing the media file alternately. To implement this workflow, in **Dialog Editor**, double-click **Open Media File**. **Dialog Editor** automatically creates and opens an event listener for you. Add the following code to the event listener you just created:
+1. Call the `play` method to play the media file.
 
     ```cpp
-    // Initialize the mediaPlayer and open a media file
-	if (mediaPlayer == NULL) {
-		// Create an instance of the media player
-		mediaPlayer = agoraEngine->createMediaPlayer().get();
-		// Set the mediaPlayerObserver to receive callbacks
-		mediaPlayer->registerPlayerSourceObserver(&mediaPlayerEventHandler);
-		// Open the media file
-		mediaPlayer->open(mediaLocation.c_str(), 0);
-        // Update the UI.
-		mediaButton->SetWindowText(L"Opening File...");
-		return;
-	}
-	// Set up the local video container to handle the media player output
-	// or the camera stream, alternately.
-	isMediaPlaying = ~isMediaPlaying;
-	// Set the stream publishing options.
-	updateChannelPublishOptions(isMediaPlaying);
-	// Display the stream locally.
-	setupLocalVideo(isMediaPlaying);
+    void CAgoraMediaPlayer::OnBnClickedButtonPlay()
+    {
+        int ret;
+        switch (m_mediaPlayerState)
+        {
+        case mediaPLAYER_PAUSE:
+        case mediaPLAYER_OPEN:
+            // Play media file
+            ret = m_mediaPlayer->play();
+            if (ret == 0)
+            {
+                m_mediaPlayerState = mediaPLAYER_PLAYING;
+            }
+            break;
+        case mediaPLAYER_PLAYING:
+            // Pause playback
+            ret = m_mediaPlayer->pause();
+            if (ret == 0)
+            {
+                m_mediaPlayerState = mediaPLAYER_PAUSE;
+            }
+            break;
+        default:
+            break;
+        }
+    }
+    ```
+    
+    <Admonition type="caution" title="Caution">
+    Call the `play` method to play the media file only after receiving the `onPlayerSourceStateChanged` callback reporting the player state as `PLAYER_STATE_OPEN_COMPLETED`.   
+    </Admonition>
 
-	if (isMediaPlaying) { // Start or resume playing media
-		if (mediaPlayer->getState() == PLAYER_STATE_OPEN_COMPLETED) {
-			mediaPlayer->play();
-		}
-		else if (mediaPlayer->getState() == PLAYER_STATE_PAUSED) {
-			mediaPlayer->resume();
-		}
-		mediaButton->SetWindowText(L"Pause");
-	}
-	else {
-		if (mediaPlayer->getState() == PLAYER_STATE_PLAYING) {
-			// Pause media file
-			mediaPlayer->pause();
-			mediaButton->SetWindowText(L"Resume");
-		}
-	}
+1. When a user stops playback or leaves the channel, call `stop` to stop playback, and `destroyMediaPlayer` to release resources.
+
+    ```cpp
+    void CAgoraMediaPlayer::OnBnClickedButtonStop()
+    {
+        if (m_mediaPlayerState == mediaPLAYER_OPEN ||
+            m_mediaPlayerState == mediaPLAYER_PLAYING ||
+            m_mediaPlayerState == mediaPLAYER_PAUSE)
+        {
+            // Stop playback
+            m_mediaPlayer->stop();
+            m_mediaPlayerState = mediaPLAYER_STOP;
+        }
+    }
+
+    void CAgoraMediaPlayer::OnDestroy()
+    {
+        // Destroy the media player
+        CDialogEx::OnDestroy();
+        m_mediaPlayer->destroy();    
+    }
     ```
 
-    To open a media file and configure the playback scenario, call <Link to="{{Global.API_REF_CPP_ROOT}}/class_imediaplayer.html#api_imediaplayer_openwithmediasource">openWithMediaSource</Link>. Use <Link to="{{Global.API_REF_CPP_ROOT}}/class_irtcengine.html#api_Imediaplayer_selectmultiaudiotrack">selectMultiAudioTrack</Link> to select the audio tracks that you want to play on your local device and publish to the channel respectively.
-
-2.  **Manage media player callbacks**
-
-    The `IMediaPlayerObserver` implements media player callbacks. You create an instance of `IMediaPlayerObserver` and register it with the media player instance. When the player state changes, you take appropriate actions to update the UI in `onPlayerStateChanged`. You use the `onPositionChanged` callback to update the progress bar. To setup an event handler, take the following steps:
-    
-    1. In `AgoraImplementationDlg.h`, add the following class before `AgoraEventHandler`:
-    
-        ```cpp
-        class MediaPlayerSourceObserver : public IMediaPlayerSourceObserver 
-        {
-            public:
-            //set the message notify window handler
-            void SetMsgReceiver(HWND hWnd) { m_hMsgHanlder = hWnd; }
-            virtual void onPlayerSourceStateChanged(MEDIA_PLAYER_STATE state, MEDIA_PLAYER_ERROR ec)
-            {
-                // Call OnEIDMediaPlayerStateChanged when the state of the player changes.
-                ::PostMessage(m_hMsgHanlder, WM_MSGID(PLAYER_STATE_CHANGED), (WPARAM)state, (LPARAM)ec);
-            }
-            virtual void onPositionChanged(int64_t position) 
-            {
-                // Call OnEIDMediaPlayerPositionChanged to display the media file position on the progress bar.
-                ::PostMessage(m_hMsgHanlder, WM_MSGID(PLAYER_POSITION_CHANGED), (LPARAM)position, NULL);
-            }
-            virtual void onPlayerEvent(MEDIA_PLAYER_EVENT event, int64_t elapsedTime, const char* message) override
-            {
-                // Required to implement IMediaPlayerObserver.
-            }
-            virtual void onMetaData(const void* data, int length) 
-            {
-                // Required to implement IMediaPlayerObserver
-            }
-            virtual void onPlayBufferUpdated(int64_t playCachedBuffer) 
-            {
-                // Required to implement IMediaPlayerObserver
-            }
-            virtual void onPreloadEvent(const char* src, PLAYER_PRELOAD_EVENT event)  
-            {
-                // Required to implement IMediaPlayerObserver
-            }
-            virtual void onAgoraCDNTokenWillExpire()  
-            {
-                // Required to implement IMediaPlayerObserver
-            }
-            virtual void onPlayerSrcInfoChanged(const SrcInfo& from, const SrcInfo& to) override 
-            {
-                // Required to implement IMediaPlayerSourceObserver
-            }
-            virtual void onPlayerInfoUpdated(const PlayerUpdatedInfo& info) override 
-            {
-                // Required to implement IMediaPlayerObserver
-            }
-            virtual void onAudioVolumeIndication(int volume) override
-            {
-                // Required to implement IMediaPlayerObserver
-            }
-            virtual void onCompleted()
-            {
-                // Occurs when the media player finishes playing a media file.
-            }
-            private:
-            HWND m_hMsgHanlder;
-        };
-        ```
-
-    1. In `AgoraImplementationDlg.h`, add the following to `CAgoraImplementationDlg`:
-
-        ```cpp
-        afx_msg LRESULT OnEIDMediaPlayerStateChanged(WPARAM wParam, LPARAM lParam);
-        afx_msg LRESULT OnEIDMediaPlayerPositionChanged(WPARAM wParam, LPARAM lParam);
-        ```
-
-    1. In `AgoraImplementationDlg.cpp`, add the following after the list of header files:
-       
-       ```cpp
-       #define PLAYER_POSITION_CHANGED         0x00000005
-       #define PLAYER_MEDIA_COMPLETED          0x00000006
-       ```
-
-    1. In `AgoraImplementationDlg.cpp`, add the following code:
-
-        ```cpp
-        ON_MESSAGE(WM_MSGID(PLAYER_POSITION_CHANGED), &CAgoraImplementationDlg::OnEIDMediaPlayerPositionChanged)
-        ON_MESSAGE(WM_MSGID(PLAYER_STATE_CHANGED), &CAgoraImplementationDlg::OnEIDMediaPlayerStateChanged)
-        ```
-
-    1. In `AgoraImplementationDlg.cpp`, add the following methods before `OnInitDialog`:
-
-        ```cpp
-        LRESULT CAgoraImplementationDlg::OnEIDMediaPlayerStateChanged(WPARAM wParam, LPARAM lParam)
-        {
-            if (wParam == PLAYER_STATE_OPEN_COMPLETED)
-            {
-                // Media file opened successfully
-                int64_t mediaDuration;
-                // Get the file duration.
-                mediaPlayer->getDuration(mediaDuration);
-                // Update the UI
-                mediaButton->SetWindowText(L"Play Media File");
-                // Set the maximum value of the control slider to mediaDuration.
-                mediaProgressBar->SetRange(0, (int)mediaDuration, TRUE);
-            }
-            else if (wParam == PLAYER_STATE_PLAYBACK_ALL_LOOPS_COMPLETED)
-            {
-                isMediaPlaying = false;
-                // Media file finished playing.
-                mediaButton->SetWindowText(L"Load Media File");
-                // Reset the progress bar.
-                mediaProgressBar->SetPos(0);
-                // Restore the local video view.
-                setupLocalVideo(false);
-                // Re-publish the local audio and video in the channel.
-                updateChannelPublishOptions(false);
-                // Clean up
-                mediaPlayer->Release();
-                mediaPlayer = NULL;
-            }
-            // Notify the parent window.
-            ::PostMessage(GetParent()->GetSafeHwnd(), WM_MSGID(PLAYER_STATE_CHANGED), TRUE, 0);
-            return 0;
-        }
-        LRESULT CAgoraImplementationDlg::OnEIDMediaPlayerPositionChanged(WPARAM wParam, LPARAM lParam)
-        {
-            // Change the progress bar tick position.
-            mediaProgressBar->SetPos(wParam);
-            // Notify the parent window.
-            ::PostMessage(GetParent()->GetSafeHwnd(), WM_MSGID(PLAYER_POSITION_CHANGED), TRUE, 0);
-            return 0;
-        }
-        ```
-
-3.  **Configure <Vg k="ENGINE" /> to publish the media player stream**
-
-    You use `ChannelMediaOptions` and the `updateChannelMediaOptions` method to specify the type of stream to publish. To switch between publishing media player and camera and microphone streams, take the following steps:
-
-    1. In `AgoraImplementationDlg.h`, add the following to method `CAgoraImplementationDlg` before `afx_msg void OnClose();`
-
-       ```cpp
-       // Declare a method to publish and publish the local and media file streams.
-       void updateChannelPublishOptions(BOOL value);
-       ```
-    
-    2. In `AgoraImplementationDlg.cpp`, add the method after `OnInitDialog`:
-
-        ```cpp
-        void CAgoraImplementationDlg::updateChannelPublishOptions(BOOL publishMediaPlayer)
-        {
-            // You use ChannelMediaOptions to change channel media options.
-            ChannelMediaOptions channelOptions;
-            channelOptions.publishMediaPlayerAudioTrack = publishMediaPlayer;
-            channelOptions.publishMediaPlayerVideoTrack = publishMediaPlayer;
-            channelOptions.publishMicrophoneTrack = !publishMediaPlayer;
-            channelOptions.publishCameraTrack = !publishMediaPlayer;
-            if (publishMediaPlayer) channelOptions.publishMediaPlayerId = mediaPlayer->getMediaPlayerId();
-            agoraEngine->updateChannelMediaOptions(channelOptions);
-        }
-        ```
-
-4.  **Display media player output locally**
-
-    To display the media file, you call `stopPreview` to stop the local video preview and call `setView` and pass the local view window handle. To switch between displaying media player output and the camera stream, take the following steps:
-
-    1. In `AgoraImplementationDlg.h`, add the following to method `CAgoraImplementationDlg` before `afx_msg void OnClose();`
-        
-        ```cpp
-        // Declare a method to switch between the local video and media file output.
-        void setupLocalVideo(BOOL value);
-        ```
-
-    2. In `AgoraImplementationDlg.cpp`, add the method after `OnInitDialog`:
-        
-        ```cpp
-        void CAgoraImplementationDlg::setupLocalVideo(BOOL forMediaPlayer) 
-        {
-            // Pass the window handle to the engine so that it renders the local video.
-            if (forMediaPlayer) 
-            {
-                // Stop previewing the local video.
-                agoraEngine->stopPreview();
-                // To display the media file output, pass the local view window handle to the setView method of the IMediaPlayer class.
-                mediaPlayer->setView(localView.GetSafeHwnd());
-            }
-            else 
-            {
-                // Start the local video preview.
-                agoraEngine->startPreview();
-            }
-        }
-        ```
-
-6.  **Clean up when you close the <Vpl k="CLIENT" />**
-
-    To free up resources when you exit the <Vpl k="CLIENT" />, add the following lines to the `onDestroy` method after `super.onDestroy();`:
-
-    ```java
-    // Destroy the media player
-    mediaPlayer.stop();
-    mediaPlayer.unRegisterPlayerObserver(mediaPlayerObserver);
-    mediaPlayer.destroy();
-    ```
 </PlatformWrapper>

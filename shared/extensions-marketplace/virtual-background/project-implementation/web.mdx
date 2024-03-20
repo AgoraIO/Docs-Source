@@ -1,92 +1,110 @@
-<PlatformWrapper platform='web'>
+<PlatformWrapper platform="web">
 
-Integrate the virtual background extension, and implement the virtual background feature, as follows:
+This section explains how to add a virtual background to the local video.
 
-1. Register the virtual background extension: After calling `AgoraRTC.createClient`to create a client object, new a `VirtualBackgroundExtension` object and pass in the `VirtualBackgroundExtension` object when calling `AgoraRTC.registerExtensions`.
+### Check device compatibility
 
-   ```typescript
-    // Create a client object
-    var client = AgoraRTC.createClient({mode: "rtc", codec: "vp9"});
-    // Create a VirtualBackgroundExtension instance
-    const extension = new VirtualBackgroundExtension();
-    // Check browser compatibility virtual background extension
-    if (!extension.checkCompatibility()) {
-      console.error("Does not support Virtual Background!");
+To avoid performance degradation or unavailable features when enabling <Vg k= "RTEE_VB"/> on low-end devices, check whether the device supports the feature.
+
+   ```js
+   // Create a VirtualBackgroundExtension instance
+   const extension = new VirtualBackgroundExtension();
+      // Check browser compatibility virtual background extension
+   if (!extension.checkCompatibility()) {
+    console.error("Does not support Virtual Background!");
     // Handle exit code
+   }
+   ```
+
+### Inject a processor in the local video track
+
+Initializes and injects the virtual background processor into the local video processing pipeline.
+
+```js
+// Initialization
+async function getProcessorInstance() {
+    if (!processor && localTracks.videoTrack) {
+        // Create a VirtualBackgroundProcessor instance
+        processor = extension.createProcessor();
+
+        try {
+            // Initialize the extension
+            await processor.init();
+            } catch(e) {
+            console.log("Fail to load WASM resource!");return null;
+        }
+        // Inject the extension into the video processing pipeline in the SDK
+        localTracks.videoTrack.pipe(processor).pipe(localTracks.videoTrack.processorDestination);
     }
-    // Register the extension
-    AgoraRTC.registerExtensions([extension]);
-   ```
+    return processor;
+}
+```
 
-1. Initialize the virtual background extension:
+### Set a blurred background
 
-   1. Call `extension.createProcessor` to create a `VirtualBackgroundProcessor` instance.
+To blur the video background, use the following code:
 
-      ```typescript
-      processor = extension.createProcessor();
-      ```
+```js
+// Blur the user's actual background
+async function setBackgroundBlurring(channelParameters) {
+    if (channelParameters.localVideoTrack) {
+        let processor = await getProcessorInstance(channelParameters);
+        processor.setOptions({ type: "blur", blurDegree: 2 });
+        await processor.enable();
 
-   2. Call `processor.init` to initialize the extension. If resource loading or extension initialization fails, this method throws an exception. Catch this exception, and handle it accordingly.
+        isVirtualBackGroundEnabled = true;
+    }
+}
+```
 
-      ```typescript
-      await processor.init();
-      ```
+### Set a color background
 
-   3. After creating a local camera track, call `videoTrack.pipe` and `videoTrack.processorDestination` to inject the extension into the SDK's media processing pipeline.
+To apply a solid color as the virtual background, use a hexadecimal color code. 
 
-      ```typescript
-      localTracks.videoTrack.pipe(processor).pipe(localTracks.videoTrack.processorDestination);
-      ```
+```js
+// Set a solid color as the background
+async function setBackgroundColor(channelParameters) {
+    if (channelParameters.localVideoTrack) {
+        let processor = await getProcessorInstance(channelParameters);
+        processor.setOptions({ type: "color", color: "#00ff00" });
+        await processor.enable();
 
-1. Call `processor.setOptions` to choose the virtual background type and make settings. Agora supports the following settings:
+        isVirtualBackGroundEnabled = true;
+    }
+}
+```
+### Set an image background
 
-   - Set a solid color as the background: Set the `type` parameter as `"color"`, and set the `color` parameter.
+To set a custom image as the virtual background, specify the absolute path to the image file.
 
-      ```typescript
-      processor.setOptions({type: 'color', color: '#00ff00'});
-      ```
+```js
+// Set an image as the background
+async function setBackgroundImage(channelParameters) {
+    const imgElement = document.createElement("img");
 
-   - Set an image as the background: Set the `type` parameter as `"img"`, and set the `source` parameter to specify the image object.
+    imgElement.onload = async () => {
+    let processor = await getProcessorInstance(channelParameters);
+    processor.setOptions({ type: "img", source: imgElement });
+    await processor.enable();
 
-      ```typescript
-      processor.setOptions({type: 'img', source: HTMLImageElement});
-      ```
+    isVirtualBackGroundEnabled = true;
+    };
+    imgElement.src = "./background.jpg";
+}
+```
 
-   - Blur the user's original background: Set the `type` parameter as `"blur"` and set the `blurDegree` parameter to choose the blurring degree, low (`1`), medium (`2`), or high (`3`).
+### Reset the background
 
-      ```typescript
-      processor.setOptions({type: 'blur', blurDegree: 2});
-      ```
+To disable the virtual background and revert to the original video state, use the following code:
 
-   - Set a video as the background: Set the `type` parameter to "video", and then set the `source` parameter to specify the video object.
+```js
+// Disable background
+async function disableBackground(channelParameters) {
+  let processor = await getProcessorInstance(channelParameters);
+  processor.disable();
 
-      ```
-      processor.setOptions({type: 'video', source: HTMLVideoElement});
-      ```
-
-1. Call `processor.enable` to enable the virtual background feature.
-
-   ```typescript
-   await processor.enable();
-   ```
-
-   If you do not call `setOptions` before calling this method, the default behavior of the SDK is to blur users' actual background with the blurring degree set as 1. After enabling the virtual background feature, to switch the virtual background type, just call `setOptions`.
-
-1. Call `processor.disable()` to temporarily disable the virtual background when needed.
-
-   ```
-   await processor.disable()
-   ```
-
-1. When the virtual background is no longer used, call `videoTrack.unpipe` to remove the extension from the current video track.
-
-    ```typescript
-    localTracks.videoTrack.unpipe()();
-    ```
-
-1. If you need to open the virtual background again, reuse the existing `VirtualBackgroundProcessor` instance instead of recreating it. If
-   multiple instances are created, it is recommended to call the `processor.release` method to release the extension resources that are no longer needed.
-
-For the full implementation, see the [Sample code](#sample-code)
+  isVirtualBackGroundEnabled = false;
+}
+```
 
 </PlatformWrapper>

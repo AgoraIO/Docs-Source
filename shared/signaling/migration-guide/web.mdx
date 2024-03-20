@@ -1,4 +1,481 @@
+import Intro from './intro.mdx'
+
 <PlatformWrapper platform="web">
-        
-This migration is not necessary for this platform.
+
+<Intro /> 
+
+## Integrate the SDK
+
+You can integrate the Signaling `2.x` SDK into your <Vpl k="CLIENT"/> either through a CDN or by utilizing the NPM package manager. For direct download and package manager links, see [Download SDKs](../../sdks?platform=web)
+
+* **Package manager integration using NPM**
+
+    ```javascript
+    // Here's how to integrate Signaling `2.x` using npm
+    npm install agora-rtm-sdk
+    // import it in your app.js
+    import AgoraRTM from 'agora-rtm-sdk'; 
+    ```
+
+* **Local integration using CDN**
+    
+    Download the Signaling SDK and reference it locally. Replace `x.y.z` in the following example with the specific SDK version number. For example, `2.1.9`.
+
+    ```javascript
+    // Here's how to integrate `2.x` using the CDN method
+    <script src="your_path_to_sdk/agora-rtm-sdk.x.y.z.min.js"></script>
+    ```
+
+## Initialize an RTM Client instance
+
+Initializing a Client instance in version `2.x` differs significantly from version `1.x`. The initialization parameters have undergone substantial adjustments, accompanied by the introduction of numerous new features, including end-side encryption, cloudProxy, and more. For details, refer to the [API Reference](../reference/api). Additionally, `2.x` introduces the use of `try {...} catch{...}` programming mode, enabling you to conveniently capture any exceptions.
+
+Refer to the following code to see the differences between the `1.x` and `2.x` implementations.
+
+```javascript
+// Here's the `1.x` sample code for initializing the instance
+let options = {
+    uid: "", 
+    token: ""
+}
+// Fill in the AppID you got from the Console.
+const appID = "<Your app ID>"; // Fill in your App ID
+options.uid = "<Your uid>"; // Fill in your UID
+options.token = "<Your token>"; // Fill in your token
+// Initialize the client instance
+const rtm = AgoraRTM.createInstance(appID); // Initialize the client instance.
+
+// Here's the `2.x` sample code for initializing the instance
+const { RTM } = AgoraRTM; 
+// Fill in the information you've added from the Console
+const appId = "your_appId"; // Fill in your App ID 
+const userId = "your_userId"; // Fill in your User ID  
+// Initialize the client instance 
+try {
+    const rtm = new RTM(appId, userId); // Initialize the client instance
+} catch (status) {
+    console.log(status); 
+}
+```
+
+## Log in to Signaling
+
+Signaling `2.x` embraces the standard async/await mode to facilitate asynchronous programming. The approach to logging in to the service in `2.x` differs from that in `1.x`, as follows:
+
+```javascript
+// The following is sample code for the `1.x` login
+await rtm.login(options)
+
+// Here's the sample code for `2.x`
+try {
+    const result = await rtm.login();
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+## Event notifications
+
+Compared to version `1.x`, Signaling `2.x` overhauls the system event notification model and API interface. It categorizes and consolidates event notification types, to enhance the payload structure for optimal efficiency. Version `2.x` features the following event notification types:
+
+| Event type | Description |
+|:------------:|-----------------------------------------------------|
+| `message` | Message event notification:<br/>Receive all message events in the Message Channel and Topics subscribed by the user. |
+| `presence` | Notification of user presence and custom state change events:<br/>Receive all user presence and custom status change events in the Message Channel subscribed by the user and the Stream Channel joined by the user. |
+| `topic`| Receive all Topic change events in the Stream Channel joined by the user. |
+| `storage` | Channel Metadata and User Metadata event notifications:<br/>Receive all Channel Metadata events in the Message Channel subscribed by the user and the Stream Channel joined. Receive User Metadata events from subscribed users. |
+| `lock`| Receive all Lock events in the Message Channel subscribed by the user and the Stream Channel joined. |
+| `status` | Network Connection Status Change Event Notification:<br/>Receive events for client network connection status changes. |
+| `tokenPrivilegeWillExpire` | Receive event notifications when the client token is about to expire. |
+
+For more information about event notifications and payload structures, refer to the [Event Listeners](../reference/api?platform=web#event-listeners) section in the API Reference.
+
+Examine the following code to observe the differences between the `1.x` and `2.x` implementations.
+
+```javascript
+// `1.x` sample code for listening to channel event notifications
+let channel = rtm.createChannel("demoChannel");
+channel.on('ChannelMessage', function (message, memberId) {
+    console.log(memberId + ": " + message.text);
+})
+
+// `2.x` sample code for implementing message event notification listener
+rtm.addEventListener("message", event => {
+    const channelType = event.channelType; // The channel type, should be "STREAM" or "MESSAGE"
+    const channelName = event.channelName; // The channel this message came from
+    const topic = event.topicName; // The Topic this message came from, it is available only when the channelType is "STREAM"
+    const messageType = event.messageType; // "string" or "binary" 
+    const customType = event.customType; // User defined type
+    const publisher = event.publisher; // Message publisher
+    const message = event.message; // Message payload
+    const pubTime = event.publishTime; // Message publisher timestamp
+});
+```
+Observe the following differences in the sample code.
+
+- The message event notification for version `1.x` is bound to a specific `channel` instance. Users need to use the `createChannel()` method to create a `channel` instance first, and then call the `channel.on()` method to bind it with an event handler. Multiple channels must be bound multiple times. Message event notification in Signaling `2.x` is bound to the client instance and is global. Use the `addEventListener()` method to register the callback. You only need to bind it once and it will listen to all subscribed channels or topics.
+
+- The message event notification payload structure in Signaling `1.x` contains relatively little information, while the message event notification payload structure for `2.x` contains detailed information, which can help you better implement your business logic.
+
+## Channel messages
+
+In version `1.x`, to send a channel message, you needed to:
+
+- Create a Channel instance
+- Join the channel
+- Send and receive channel messages
+
+The disadvantage to this design is that you cannot independently send messages. You must also receive messages because sending and receiving is coupled. Signaling `2.x` adopts a new Pub/Sub-based model designed to decouple sending and receiving messages. When sending messages, you only need to publish to the specified channel without joining the channel. To receive channel messages, you only need to subscribe to the specified channel. The two operations are independent.
+
+```javascript
+// `1.x` Sample code for sending messages
+let channel = rtm.createChannel("demoChannel");
+await channel.join();
+let payload = "Hello World!";
+await channel.sendMessage({ text: payload }).then(() => {
+    console.log("Channel message: " + payload + " from " + channel.channelId);
+});
+
+// `2.x` Sample code for sending a message
+const payload = "Hello World!"
+try {
+    const result = await rtm.publish("demoChannel", payload);
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+
+// `2.x` Sample code for subscribing to channels
+try {
+    const result = await rtm.subscribe("chat_room");
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+## Peer-to-peer messaging
+
+In version `1.x`, peer-to-peer messaging API is used to send messages to specified users. For example, if you want to send a message to the user whose UserId is "Tony", you can do it as follows:
+
+```javascript
+rtm.sendMessageToPeer( 
+    { text: 'test peer message' }, // An instance of RtmMessage.
+    'PeerId', // The uid of the peer user.
+).then(sendResult => {
+  if (sendResult.hasPeerReceived) {
+    // Your code: the remote user has received the message event.
+  } else {
+    // Your code: the server has received the message, the peer has not.
+  }
+}).catch(error => {
+   // Your code: peer-to-peer message delivery failed.
+});
+```
+
+The design of this interface in version `1.x` is tailored to fulfill the requirements of an end-to-end message transmission scenario. In this context, User A seeks to send a message exclusively to User B, and User B only desires to receive this specific message without subscribing to other events. The channel mechanism in version `1.x` is structured based on the Room model. However, this design lacks the capability to decouple message sending and receiving.
+
+In version `2.x`, <Vg k="COMPANY"/> redesigned the distribution of channel messages using the Pub/Sub model to decouple sending and receiving of messages. You can still implement point-to-point messages using channels. Use the following scheme to implement peer-to-peer messaging with Signaling `2.x`. 
+
+- Each user subscribes to a private channel named `inbox_ + UserID` after initialization, which you call *Inbox*. Only the user with the specific `UserID` can subscribe to this channel.
+
+- To send a peer-to-peer message to a user, just send the message to the user's *Inbox*.
+
+```javascript
+// Subscribe to your own inbox
+const result = await rtm.subscribe("inbox_Tony");
+// The content of the message
+const payload = {
+    type: "PrivateMessage",
+    message: "This is a message",
+    sender: "Tony"
+};
+
+try {
+    // Send a private message to the user with the UserID "Lily" 
+    const result = await rtm.publish("inbox_Lily", payload); 
+    console.log(result);
+} catch (status) {
+    console.log(status); 
+}
+```
+
+<Admonition type="info" title="Note"> To receive messages, you need to implement the `message` event listening function. </Admonition>
+
+## Picture and file messages
+
+For reasons of user data privacy/protection compliance and cost optimization, Signaling `2.x` no longer directly supports image and file message types. After version `1.5.0`, the related interfaces have been removed. However, this does not mean that you cannot use Signaling to transmit and distribute image and file messages. You can build image and file message functions with the help of Signaling `2.x` and third-party object storage services, such as Amazon S3 or Alibaba Cloud OSS. Not only can you get the best factual message transmission experience, you can also implement more flexible technical solutions. For example, CDN static resource acceleration or image and text moderation. The following code sample shows you how to use Signaling `2.x` and Amazon S3 object storage service to build and send image and file messages.
+
+```javascript
+const sendFileMessageAsync = async () => {
+  try {
+    // Use the document-picker component to pick a file to be uploaded
+    const result = await DocumentPicker.getDocumentAsync({
+      type: '*/*', // You can select any type of document.
+    });
+
+    if (result.cancelled === false) {
+      const file = result.assets[0].file;
+
+      if (file) {
+        const uploadParams = {
+          Bucket: 'your-aws-bucket', // Fill in the name of your bucket on AWS S3
+          Key: file.name, // The key of the file on AWS S3
+          Body: file, // The file's content
+          ContentType: file.type,
+        };
+
+        // Upload the file to S3
+        s3.upload(uploadParams, (err, data) => {
+          if (err) {
+            console.error('Error uploading file:', err);
+          } else {
+            console.log('File uploaded successfully. S3 URL:', data.Location);
+
+            // Customize the RTM file message payload structure after the file has been uploaded successfully
+            const imageMessagePayload = {
+              type: 'File', // File type, the recipient can parse the message packet structure based on this field
+              bucket: uploadParams.Bucket, // The name of the bucket on your AWS-S3, the receiver needs this field to download the file
+              key: uploadParams.Key, // The KEY of the file as it is stored on AWS-S3, the recipient needs this field to download the file
+              contentType: uploadParams.ContentType, // The file type
+              url: data.Location, // File URL address
+              sender: userId, // Sender's User ID
+            };
+
+            // Use RTM to send a file message.
+            // Send the file message payload using RTM
+            rtm.publish(channelName, JSON.stringify(imageMessagePayload), { customType: 'File' });
+          }
+        });
+      }
+    } else {
+      console.log('Document pick cancelled');
+    }
+  } catch (err) {
+    console.error('Error picking document:', err);
+  }
+};
+```
+
+<Admonition type="info" title="Information">
+When using Amazon S3 for static file storage, go to the Amazon S3 console and set the correct user permissions and access policies. Refer to [Access Control Best Practices](https://docs.aws.amazon.com/us_en/AmazonS3/latest/userguide/access-control-best-practices.html) for more information.
+</Admonition>
+
+## User presence and custom status
+
+In Signaling `1.x`, you can subscribe to or query the online status of multiple users, query the number of users in a channel, or obtain the list of online members in a channel. Signaling `2.x` not only retains these features, but also implements upgrades and extends them. In Signaling `2.x`, these capabilities are redefined and implemented in the Presence module. Presence provides the ability to monitor user online, user offline and user status change notifications. Through the Presence module, you can obtain the following information in real time:
+
+- A user joins or leaves the specified channel
+- Customize temporary user status and its changes
+- Query which channels a specified user has joined or is subscribed to
+- Query which users have joined the specified channel and their temporary status data
+
+Call the `getOnlineUsers` method to query the number of online users in the specified channel, the list of online users, and the temporary status of online users in real-time.
+
+```javascript
+const options = {
+    includeUserId : true,
+    includeState : true,
+    page : "yourBookMark"
+}
+
+try {
+    const result = await rtm.presence.getOnlineUsers( "chat_room", 'MESSAGE', options );
+    console.log(result);
+} catch(status) {
+    console.log(status);
+}
+```
+
+Call the `getUserChannels` method to get a list of channels where the specified user is present, in real-time.
+
+```javascript
+try {
+    const result = await rtm.presence.getUserChannels( "Tony" ); 
+    console.log(result);
+} catch(status){
+    console.log(status); 
+}
+```
+
+To meet the user status requirements of business scenarios, Signaling `2.x` provides temporary user status capabilities. Customize temporary user status through the `setState` method. Users can add their scores, game status, location, mood, and other customized statuses.
+
+```javascript
+var newState = { "mood": "pumped", "isTyping": false };
+
+try {
+    const result = await rtm.Presence.setState("chat_room", "MESSAGE", newState);
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+You can retrieve a user's online state at any time by using the `getState` method, or remove your own state by using the `removeState` method. Signaling triggers a `presence` event notification of type `REMOTE_STATE_CHANGED` when a user's temporary state is changed. See the [Presence](../develop/presence) guide for details on how to use this feature.
+
+Signaling `2.x` makes it very simple to listen to the real-time notification of users entry, exit, timeout and temporary status changes in a channel. To do this, implement the following steps:
+
+- Implement a Presence event listener
+- Enable the `withPresence` switch when you join the channel
+
+You can add a Presence event listener as follows:
+
+```javascript
+// Implement the Presence event listener
+rtm.addEventListener("presence", event => {
+    const action = event.eventType; // Should be one of 'SNAPSHOT','INTERVAL','JOIN','LEAVE','TIMEOUT,'STATE_CHANGED','OUT_OF_SERVICE'.
+    const channelType = event.channelType; // Should be "STREAM" or "MESSAGE".
+    const channelName = event.channelName; // Which channel does this event come from?
+    const publisher = event.publisher; // Who triggered this event
+    const states = event.stateChanged; // User state payload
+    const interval = event.interval; // Interval payload
+    const snapshot = event.snapshot; // Snapshot payload
+    // Your code here
+});
+
+// Enable the withPresence switch when joining a channel.
+const options = { withPresence: true };
+
+try {
+    const result = await rtm.subscribe("chat_room", options);
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+In Signaling `2.x` real-time notifications have been redesigned. The presence event notification mode refers to how subscribed users of presence events in the channel are notified. There are two available modes: 
+
+1. Real-time notification mode (Announce)
+1. Scheduled notification mode (Interval)
+
+You can determine the conditions for switching between the two modes through the **Announce Max** parameter in the project settings of the <Vg k="CONSOLE"/>. The interval notification mode can prevent noisy events caused by too many online users in the channel. For details, see [Event Listeners](../reference/api#event-listeners).
+
+## User metadata and channel metadata
+
+Signaling `2.x` retains the full functionality of user metadata and channel metadata, with new capabilities such as versioning and locking. It adds optimized interfaces to make these features easier to use.
+
+In `2.x`, user attributes and channel attributes are mounted under the `Storage` module. To set channel attributes, refer to the following code:
+
+
+```javascript
+const properties = {
+    key: "Quantity",
+    value: "20"
+};
+
+const announcement = {
+    key: "Announcement",
+    value: "Welcome to our shop!"
+};
+
+const price = {
+    key: "T-shirt",
+    value: "100"
+};
+
+const options = {
+    addTimeStamp: true,
+    addUserId: true
+};
+
+const data = [properties, announcement, price];
+
+try {
+    const result = await rtm.storage.setChannelMetadata("channel1", "MESSAGE", data, options);
+    console.log(JSON.stringify(result));
+} catch (status) {
+    console.log(JSON.stringify(status));
+}
+```
+
+To learn more about how to get, update, and delete channel attributes, how to use version control and lock control, refer to the [Storage](../develop/storage) guide. The use of user attributes is similar to that of channel attributes. 
+
+Events for channel attributes and user attributes are distributed to users through `storage` type event notifications. To listen to these events, refer to the following code:
+
+```javascript
+// Handle storage event
+rtm.addEventListener("storage", event => {
+    const channelType = event.channelType; // Should be "STREAM" or "MESSAGE".
+    const channelName = event.channelName; // Which channel does this event come from?
+    const publisher = event.publisher; // Who triggered this event
+    const storageType = event.storageType; // Should be 'USER', 'CHANNEL'
+    const action = event.eventType; // Should be one of "SNAPSHOT", "SET", "REMOVE", "UPDATE" or "NONE"
+    const data = event.data; // 'USER_METADATA' or 'CHANNEL_METADATA' payload
+    // Your code
+});
+
+// Enable the withMetadata switch when joining a channel.
+const options = { withMetadata: true };
+
+try {
+    const result = await rtm.subscribe("chat_room", options);
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+## Restrict access area
+
+Signaling supports the restricted access area feature to comply with the laws and regulations of different countries or regions. After turning on the restricted access area feature, no matter which area the user uses your app from, the SDK will only access the <Vg k="COMPANY"/> server in the geographical specified area. Signaling `1.x` implements access area limitation as follows.
+
+
+```javascript
+rtm.setArea({ areaCodes: ["GLOBAL"], excludedArea: "CHINA" })
+```
+
+Signaling `2.x` also supports the above feature, and the usage is identical.
+
+## Other new features
+
+In addition to the enhancements presented in this document, Signaling `2.x` introduces an array of additional features. Choose and implement features that fit the needs of your project. The following table outlines key new features of Signaling `2.x`:
+
+| Module | Function | Signaling `2.x` API Interface |
+|:-------|:---------|:----------------------------|
+| **Setup** | Create Instance | `new RTM()` |
+| | Token login | `token` parameter in `RTMConfig` |
+| | End-side encryption | `encryptionMode`, `cipherKey`, `salt` parameters in `RTMConfig` |
+| | Presence timeout setting | `presenceTimeout` parameter in `RTMConfig` |
+| | Log upload | `logUpload` parameter in `RTMConfig` |
+| | Log level setting | `logLevel` parameter in `RTMConfig` |
+| | CloudProxy setting | `cloudProxy` parameter in `RTMConfig` |
+| | EventListener | `rtm.addEventListener("event", event => {});`<br/> `rtm.removeEventListener("event", statusHandler);` |
+| | Log in to service | `rtm.login(): Promise<LoginResponse>;` |
+| | Log out of service | `rtm.logout(): Promise<LogoutResponse>;` |
+| **Channel** | Subscribe to channel | `rtm.subscribe(...): Promise<SubscribeResponse>;` |
+| | Unsubscribe from channel | `rtm.unsubscribe(...): Promise<UnsubscribeResponse>;` |
+| | Create stream channel | `rtm.createStreamChannel(...): RTMStreamChannel;` |
+| | Join stream channel | `join(...): Promise<JoinChannelResponse>;` |
+| | Leave stream channel | `leave(...): Promise<LeaveChannelResponse>;` |
+| **Topic** | Join topic | `joinTopic(...): Promise<JoinTopicResponse>;` |
+| | Leave topic | `leaveTopic(...): Promise<LeaveTopicResponse>;` |
+| | Subscribe topic | `subscribeTopic(...): Promise<SubscribeTopicResponse>;` |
+| | Unsubscribe topic | `unsubscribeTopic(...): Promise<UnsubscribeTopicResponse>;` |
+| **Message** | Send message | `rtm.publish(...): Promise<PublishResponse>;` |
+| **Presence** | Query channel's online users | `rtm.presence.getOnlineUsers(...): Promise<GetOnlineUsersResponse>;` |
+| | Query user's channel | `rtm.presence.getUserChannels(...): Promise<GetUserChannelsResponse>;` |
+| | Set user's temporary state | `rtm.presence.setState(...): Promise<SetStateResponse>;` |
+| | Query user temporary state | `rtm.presence.getState(...): Promise<GetStateResponse>;` |
+| | Remove user temporary state | `rtm.presence.removeState(...): Promise<RemoveStateResponse>;` |
+| **Storage** | Set Channel Metadata | `rtm.storage.setChannelMetadata(...): Promise<SetChannelMetadataResponse>;` |
+| | Get channel metadata | `rtm.storage.getChannelMetadata(...): Promise<GetChannelMetadataResponse>;` |
+| | Remove channel metadata | `rtm.storage.removeChannelMetadata(...): Promise<RemoveChannelMetadataResponse>;` |
+| | Update channel metadata | `rtm.storage.updateChannelMetadata(...): Promise<UpdateChannelMetadataResponse>;` |
+| | Set user attributes | `rtm.storage.setUserMetadata(...): Promise<SetUserMetadataResponse>;` |
+| | Get user attributes | `rtm.storage.getUserMetadata(...): Promise<GetUserMetadataResponse>;` |
+| | Remove user attributes | `rtm.storage.removeUserMetadata(...): Promise<RemoveUserMetadataResponse>;` |
+| | Update user attributes | `rtm.storage.updateUserMetadata(...): Promise<UpdateUserMetadataResponse>;` |
+| | Subscribe user attributes | `subscribeUserMetadata(...): Promise<SubscribeUserMetadataResponse>;` |
+| | Unsubscribe user attributes | `rtm.storage.unsubscribeUserMetadata(...): Promise<UnsubscribeUserMetadataResponse>;` |
+| **Lock** | Set lock | `rtm.lock.setLock(...): Promise<SetLockResponse>;` |
+| | Acquire lock | `rtm.lock.acquireLock(...): Promise<AcquireLockResponse>;` |
+| | Release lock | `rtm.lock.releaseLock(...): Promise<ReleaseLockResponse>;` |
+| | Revoke lock | `rtm.lock.revokeLock(...): Promise<RevokeLockResponse>;` |
+| | Query lock | `rtm.lock.getLock(...): Promise<GetLockResponse>;` |
+| | Remove lock | `rtm.lock.removeLock(...): Promise<RemoveLockResponse>;` |
+
+For complete details, refer to the [API reference](../reference/api).
+
 </PlatformWrapper>

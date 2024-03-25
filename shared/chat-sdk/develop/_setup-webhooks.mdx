@@ -1,15 +1,12 @@
 import * as data from '@site/data/variables';
 
-Chat supports HTTP callbacks (webhooks). After you set up HTTP callbacks for your Chat app, the Chat server sends notifications in the form of HTTP POST requests to your app server when specified events occur.
-
-You can use the HTTP callbacks to synchronize messages on your own server, or moderate message content.
+Chat supports HTTP callbacks (webhooks) for synchronization of messages on your own server or moderation of message content. After you set up HTTP callbacks for your Chat app, the Chat server sends notifications in the form of HTTP POST requests to your app server when specified events occur. According to whether the message delivery is intervened, the callbacks are divided in two categories:
+- Pre-delivery callbacks: Mainly used for content moderation. When the Chat server receives a message from the client app, it sends a request to your app server and waits for a response that decides if the message delivery is passed or rejected. Pre-delivery callbacks only apply to messages sent from your client apps.
+- Post-delivery callbacks: Mainly used for data synchronization. When certain events occur, for example, a user sends out a message or gets offline, the Chat server sends a request to your app server and does not validate the response content. Post-delivery callbacks apply to messages and other events sent from you client and server apps.
 
 ## Understand the tech
 
-According to whether the message delivery is intervened, the callbacks are divided in two categories:
-
-- Pre-delivery callbacks: Mainly used for content moderation. When the Chat server receives a message from the client app, it sends a request to your app server and waits for a response that decides if the message delivery is passed or rejected. Pre-delivery callbacks only apply to messages sent from your client apps.
-- Post-delivery callbacks: Mainly used for data synchronization. When certain events occur, for example, a user sends out a message or gets offline, the Chat server sends a request to your app server and does not validate the response content. Post-delivery callbacks apply to messages and other events sent from you client and server apps.
+**Difference between pre-delivery and post-delivery callbacks**
 
 The following table summarizes the differences between the two categories of callbacks.
 
@@ -20,32 +17,24 @@ The following table summarizes the differences between the two categories of cal
 | Response required | Yes | No |
 | Typical use case | Content moderation | Chat history synchronization |
 
-### Pre-delivery callbacks
+**Callback security**
 
-The following figure shows how the pre-delivery callbacks work.
+For pre-delivery and post-delivery callbacks, the Chat server sends HTTP/HTTPS POST requests with JSON payloads to your app server. The requests are encoded in UTF-8 and the message in each request is signed with an MD5 signature. In each request header, the `Content-Type` field is `application/json`.
 
-![Pre-delivery Callbacks](/images/chat/pre-delivery-callbacks.png)
+For post-delivery callbacks, the message in requests is signed with an MD5 signature calculated with `org.apache.commons.codec.digest.DigestUtils#md5Hex`.
 
-As shown in the figure, the workflow of pre-delivery callbacks is as follows:
+You can verify the signature to check whether the callbacks are sent from the Chat server.
 
-1. The Chat server receives a message from Client A.
-2. The Chat server sends an HTTP request that contains the information of the message to your app server.
-3. Your app server processes the received data and gets a result of whether the message delivery is passed or rejected.
-4. Your app server sends the processing result in the form of HTTP response to the Chat server.
-5. The Chat server receives the HTTP response and decides if the message delivery is passed.
-6. If the message delivery is passed, the Chat server delivers the message to Client B.
+1. Retrieve the following information:
+    - The callback ID, which is the `callId` parameter in the request body of the callback.
+    - The secret assigned to the callback rule. You can find it on the callback rule list on the **Callback** page on the [Agora console](https://console.agora.io/).
 
-### Post-delivery callbacks
+		![](/images/chat/callback_secret.png)
 
-As shown in the figure, the workflow of post-delivery callbacks is as follows:
+	- The callback timestamp, which is the timestamp parameter in the request body of the callback.
 
-![Post-delivery Callbacks](/images/chat/post-delivery-callbacks.png)
-
-As shown in the figure, the workflow of post-delivery callbacks is as follows:
-
-1. The Chat server receives a message or other event from a client or server.
-2. The Chat server sends an HTTP request that contains the information of the message or event to your app server.
-3. Your app server sends an HTTP response to the Chat server to indicate that the callback is received.
+2. Calculate the [MD5](https://en.wikipedia.org/wiki/MD5) value of the concatenated string of the callback ID, the secret, and the callback timestamp.
+3. Check if the calculated value equals to the secret parameter in the request body. If yes, the callback is sent by Agora Chat.
 
 ## Prerequisites
 
@@ -60,7 +49,7 @@ To use the HTTP callbacks, you must meet the following requirements:
 
 To receive the HTTP callbacks, you need to configure rules for the pre- or post-delivery callbacks in Agora Console.
 
-1. Log in to Agora Console and find your project on the Project Management page, then click the edit button.
+1. Log in to Agora Console and find your project on the **Project Management** page, then click the edit button.
 2. Find **Chat** on the project editing page, and click **Configure**.
 3. Choose **Features** > **Callback** and click **Add Callback Address** on the **Callback** page.
    
@@ -71,8 +60,8 @@ To receive the HTTP callbacks, you need to configure rules for the pre- or post-
      - Rule Name: Enter a name for the rule. Under one project, each rule must have a unique name.
      - Chat Type: Select the types of chat this rule applies to.
      - Message Type: Select the types of messages this rule applies to.
-     - Timeout: (Optional) Specify the time (in ms) that the Agora Chat server should wait for the HTTP responses. The default value is 200 ms. If the response times out, the Agora Chat server continues with the fallback action.
-     - Fallback Action: (Optional) Select the action of the Agora Chat server when the HTTP response times out or an error is returned. The default value is **Passed**.
+     - Timeout: (Optional) Specify the time (in ms) that the Chat server should wait for the HTTP responses. The default value is 200 ms. If the response times out, the Chat server continues with the fallback action.
+     - Fallback Action: (Optional) Select the action of the Chat server when the HTTP response times out or an error is returned. The default value is **Passed**.
      - Report Error: (Optional) Set whether to notify the message sender when their message is rejected. The default value is **No**, indicating that the sender is not notified of the message delivery failure.
      - Status: Set whether to enable this rule. The default value is **Enabled**.
      - Callback Address: Enter the URL of your app server for receiving the pre-delivery callbacks. Both HTTP and HTTPS URLs are allowed.
@@ -91,62 +80,124 @@ The rules take effect immediately.
 
 Note the following for the rule configurations:
 
-- By default, you can add four rules for the pre- and post-delivery callbacks in total. To extend the limit, contact support@agora.io.
-- The rule configuration only supports message events. To receive notifications of other events, contact support@agora.io.
-- If you have set both pre- and post-delivery callbacks, and a message is rejected after the pre-delivery callback returns, the post-delivery callbacks are not triggered.
+- By default, you can add four rules for the pre- and post-delivery callbacks in total. To extend the limit, contact [support@agora.io](mailto:support@agora.io).
+- The rule configuration only supports message events. To receive notifications of other events, contact [support@agora.io](mailto:support@agora.io).
 
-## Next steps
+## Pre-delivery callbacks
 
-To enhance the security of the callbacks, Chat includes a signature in the request body of each callback. You can verify the signature to check whether the callbacks are sent from the Chat server.
+The following figure shows how the pre-delivery callbacks work.
 
-To verify the signature in a callback, do the following:
+![](/images/chat/pre_delivery_callback.png)
 
-1. Retrieve the following information:
-    - The callback ID, which is the callId parameter in the request body of the callback.
-    - The secret assigned to the callback rule. You can find this value on the Chat configuration page in Agora Console. 
-       
-		![1645523345319](/images/chat/callback_secret.png)
-		
-	- The callback timestamp, which is the timestamp parameter in the request body of the callback.
+As shown in the figure, the workflow of pre-delivery callbacks is as follows:
 
-2. Calculate the [MD5](https://en.wikipedia.org/wiki/MD5) value of the concated string of the callback ID, the secret, and the callback timestamp.
-3. Check if the calculated value equals to the secret parameter in the request body. If yes, the callback is sent by Chat.
+1. The Chat server receives a message from Client A.
+2. The Chat server sends an HTTP request that contains the information of the message to your app server.
+3. Your app server processes the received data and sends the processing result in the form of HTTP response to the Chat server.
+4. The Chat server receives the HTTP response and decides if the message delivery is passed.
+5. If the message delivery is passed, the Chat server delivers the message to Client B.
 
-## Reference
+The Chat server determines whether to send the message according to the HTTP response received from your app server. If the HTTP status code is 200 in the response, the Chat server handles the message as specified in the matching pre-delivery callback rule. If a response error occurs, including the required field `valid` being absent or fields being of an incorrect type, the Chat server handles the message as specified by **Fallback Action** in the matching pre-delivery callback rule and `custom internal error` is reported on the client (only when **Report Error** on the **Pre Send tab** page is set to **Yes** on the Agora Console).
 
-This sections provides the details of the HTTP requests and responses.
+<div class="alert note">For pre-delivery callbacks, if your app server does not return the HTTP code 200 and the valid status, the Chat server does not resend the callback and takes the fallback action specified by the applicable rule.</div>
 
-### HTTP request
+### HTTP request and response
 
-When certain events occur in your Chat app, the Chat server sends HTTP POST requests with JSON payloads. The character encoding is UTF-8. The Content-Type field in all HTTP request headers is `application/json`.
+#### Request header
 
-### HTTP response
+| Field        | Description     |
+| :------------- | :---------------------------------- |
+| `Content-Type` |  The parameter type. The value is `application/json`. |
 
-For the pre-delivery callbacks, the Chat server accepts HTTP responses that contain a JSON body as in the following example:
+#### Request body
 
-```json
+| Field   |  Type     | Description     |
+| :---------------- | :------------------------ |:------------------------ |
+| `callId`    | String  | The callback ID which is the unique identifier assigned to each callback. The callback ID is in the format of `{appKey}_{uuid}`, where the value of `uuid` is randomly generated.     |
+| `timestamp`  | Number  | The Unix timestamp when the Chat server receives the message, in milliseconds.         |
+| `chat_type` | String  | The chat type:<ul><li>`chat`: One-to-one chats.</li><li>`groupchat`: Chat groups and chat rooms.</li></ul>     |
+| `group_id`   | String      | The group or chat room where the message included in the request is to be sent. This parameter is valid only for group and room chats. |
+| `from`   | String | The user ID of the message sender.  |
+| `to`  | String | The user ID of the message recipient. This parameter is valid only for one-to-one chats. |
+| `msg_id`  | String | The ID of the message for which the callback request is sent. This ID is the same as the `msg_id` generated by the Chat server when the message is sent to the recipient. |
+| `payload`    | JSON     | The message content which matches the [content of the `payload` parameter in historical messages retrieved with the REST API](https://docs.agora.io/en/agora-chat/restful-api/message-management?platform=android#content-of-historical-messages). |
+| `securityVersion`| String | The security check version which is 1.0.0.     |
+| `security`     | String  | The signature used to identify whether the HTTP callback request is from the Chat server. The signature is an MD5 hash in the format of `{callId}+{secret}+{timestamp}`, where `secret` is generated by the Chat server to produce the signature and is displayed on the callback rule list on the **Callback** page on the <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>. |
+
+#### Response body
+
+The HTTP responses cannot exceed 1,000 characters; otherwise, the callbacks fail as the Chat server deems the responses as attack packets.
+
+| Field      | Type   | Required | Description      |
+| :-------- | :----- | :----------------- | :----------- |
+| `valid`   | Boolean   | Yes   | Controls whether the message is appropriate according to the rules specified on your app server：<ul><li>`true`: The message is valid and the Chat server should deliver the message;</li><li>`false`: The message is invalid and the Chat server should reject the message.</li></ul> |
+| `code`    | String | No   | Custom pre-delivery callback error description on the client. The value of the `code` field is displayed as the error on the client only when **Report Error** on the **Pre Send** tab page is set to **Yes** on the Agora Console. Callback errors are displayed as follows on the client: <ul><li>If `code` contains the content of the string type, the content is reported as the error; </li><li>If `code` is not included in the response, `custom logic denied` is displayed. </li><li> If `code` is returned as an empty string, `Message blocked by external logic` is displayed on a mobile client; </li><li> If no response is received within the specified period, the default error `custom internal error` is reported. </li><li>If a response error occurs, including the `valid` field being absent or fields being of an incorrect type, `custom internal error` is reported. </li></ul>  |
+| `payload` | Object | No   | The modified message content. <br/>Currently, only the text content is allowed. The modified content must be in the same format as the original message and cannot exceed 1 KB. If it is unnecessary to modify the message, ignore this field.  |
+
+#### Request example
+
+```shell
 {
-    "valid": true,
-    "code": "HX:10000"
+    "callId":"easemob-demo#test_XXXX-dp01-6c50-XXXX-cf3b48b20e7e",
+    "timestamp":1600060847294,
+    "chat_type":"groupchat",
+    "group_id":"16934809238921545",
+    "from":"user1",
+    "to":"user2",
+    "msg_id":"8924312242322",
+    "payload":{
+    // Message content
+    },
+    "securityVersion":"1.0.0",
+    "security":"2ca02c394bef9e7abc83958bcc3156d3"
 }
 ```
 
-- `valid`: Boolean. Whether the message is valid according to the processing result on your app server:
-   - true: The message is valid and the Chat server should deliver the message.
-   - false: The message is invalid and the Chat server should reject the message.
-- `code`: String. Custom information.
+#### Response example
 
-For the post-delivery callbacks, ensure that the response content does not exceed 1,000 characters.
+```json
+{
+  "valid": true,
+  "code": "HX:10000",
+  "payload": {
+    // Modified message content.
+    // Only text contents are allowed.
+  }
+}
+```
 
-### Retry logic
+## Post-delivery callbacks
 
-- For pre-delivery callbacks, if your app server does not return the HTTP code 200 and the valid status, the Chat server does not resend the callback and takes the fallback action specified by the applicable rule.
+The workflow of post-delivery callbacks is as follows:
 
-- For post-delivery callbacks, the Chat server records a notification failure and tries resending the callback once in one of the following situations:
+![](/images/chat/post_delivery_callback.png)
 
-   - Your server does not respond in 60 seconds.
-   - The HTTP status code received from your server is not 200.
+As shown in the figure, the workflow of post-delivery callbacks is as follows:
 
-If the second try fails, the Chat server stops trying.
+1. The Chat server receives a message or other event from a client or server.
+2. The Chat server sends an HTTP request that contains the information of the message or event to your app server.
+3. Your app server sends an HTTP response to the Chat server to indicate that the callback is received.
 
-If 90 notification failures occur in 30 seconds, the corresponding callback rule is automatically turned off for five minutes. (To query and resend the missed notifications, use the Callback APIs.)
+<Admonition type="caution" title="Note">If you have set both pre- and post-delivery callbacks, and a message is rejected after the pre-delivery callback returns, the post-delivery callbacks are not triggered.</Admonition>
+
+For post-delivery callback request examples, see [event callbacks](../reference/callbacks-events).
+
+The Chat server places full trust in callback responses received from your app server without verifying them. As long as the returned HTTP status code is 200, the Chat server regards that the callback succeeds.
+
+Responses to the requests cannot exceed 1,000 characters; otherwise, the callbacks fail as the Chat server deems the responses as attack packets.
+
+**Retry logic**
+
+For post-delivery callbacks, the Chat server records a notification failure and tries resending the callback once again. If the second attempt fails, the Chat server stops trying.
+
+If 90 notification failures occur in 30 seconds, the callback rules involving the app server will be temporarily disabled for 5 minutes.
+
+## Status codes
+
+For details, see [HTTP Status Codes](../reference/http-status-codes).
+
+## FAQ
+
+Q: Why is the message delivered to the intended recipient even though the value of the `valid` field is `false` in the pre-delivery callback response?
+
+A: Maybe your server fails to return the pre-delivery callback response within the period specified with the **Timeout** parameter in the pre-delivery callback rule on the **Pre Send** page on the <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>. In this case, the message is delivered if **Fallback Action** on the **Pre Send** page page is set to **Passed**. To avoid this issue, you are advised to increase the value of the **Timeout** parameter (200 milliseconds by default), for example, to 1000 milliseconds.

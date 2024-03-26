@@ -164,6 +164,8 @@ export const ACCG = 'Global Accelerator';
 
 export const RTT = 'Real-Time Transcription';
 
+export const MG = 'Media Gateway';
+
 export const TEMPL = 'Templates';
 
 export const RTEE = 'Extensions';

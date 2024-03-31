@@ -1,0 +1,84 @@
+<PlatformWrapper platform="android">
+Through the following steps, a custom composite layout on the receiver end is implemented:
+
+<Admonition type="info" title="information">This article's API and sample code are provided for the Android platform. If your target platform is iOS, please refer to the iOS API documentation.</Admonition>
+
+1. Call `joinChannel[2/2]` to join the channel where the composite stream is located.
+
+1. Through the SDK-triggered `onTranscodedStreamLayoutInfo` callback, obtain the following information about the composite video stream:
+    * The width and height of the composite video stream, and the user ID of the user who published this video stream.
+    * The user ID of the user who published the composite sub-video stream.
+    * The x and y coordinates of the composite sub-video stream on the composite canvas.
+    * The width and height of the composite sub-video stream.
+    * The status of the composite sub-video stream on the composite canvas: normal rendering, displayed as a placeholder, or displayed as a black image.
+
+1. The receiving end calls the `setupRemoteVideo` method to set the rendering mode of the remote video stream locally, with key parameters set as follows:
+    * `sourceType`: Set to `VIDEO_SOURCE_TRANSCODED`, indicating the video source is a transcoded composite video stream.
+    * `uid`: The user ID that forwards the composite video stream to the current channel, i.e., the `uid` obtained in the `onTranscodedStreamLayoutInfo` callback.
+    * `view`: The remote video view displayed locally. You can use this parameter to set the position of each sub-video stream in the local view.
+    * `subviewUid`: The user ID corresponding to a sub-video stream in the composite video stream.
+
+    <Admonition type="info" title="information">
+    - When the value of `subviewUid` is not 0, the default value of `setupMode` is `VIEW_SETUP_MODE_REPLACE` (adding a view).
+    - If `subviewUid` is set, the setting of `rect` will not take effect.
+    </Admonition>
+
+1. The following example code introduces the use of `setupRemoteVideoEx` in a multi-channel scenario, which is similar to calling `setupRemoteVideo` in a non-multi-channel scenario.
+    ```java
+    mRtcEngine.joinChannelEx(null, connection, mediaOptions, new IRtcEngineEventHandler() {
+        @Override
+        public void onTranscodedStreamLayoutInfo(final int uid, final VideoLayoutInfo info) {
+            super.onTranscodedStreamLayoutInfo(uid, info);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    int size = info.layoutNumber;
+                    viewGrids.setChildCount(info.layoutNumber);
+                    for (int i = 0; i < size; i++) {
+                        if(mUserViews.containsKey(info.layoutList[i].uid)) {
+                            continue;
+                        }
+                        // Dynamically add the view
+                        TextureView textureView = new TextureView(VideoChatViewActivity.this);
+                        textureView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                        users.add(info.layoutList[i].uid);
+                        views.add(textureView);
+                        mUserViews.put(info.layoutList[i].uid, textureView);
+                        viewGrids.addView(textureView);
+                        // Set up VideoCanvas, other parameters besides uid and subviewUid can be set according to actual needs
+                        VideoCanvas canvas = new VideoCanvas(textureView);
+                        // The user ID that forwards the composite video stream to the current channel
+                        canvas.uid = uid;
+                        // The user ID for a specific sub-video stream in the composite video
+                        canvas.subviewUid = info.layoutList[i].uid;
+                        canvas.renderMode = Constants.RENDER_MODE_FIT;
+                        mRtcEngine.setupRemoteVideoEx(canvas, connection);
+                        // To remove a specific sub-video stream, add the following code
+                        VideoCanvas canvasToRemove = new VideoCanvas(textureView); // Set textureView to the view you want to remove
+                        canvasToRemove.uid = uid;
+                        canvasToRemove.subviewUid = info.layoutList[i].uid;
+                        canvasToRemove.setupMode = VideoCanvas.VIEW_SETUP_MODE_REMOVE;
+                        mRtcEngine.setupRemoteVideoEx(canvasToRemove);
+                    }
+                }
+            });
+        }
+    });
+    ```
+1. When the layout information of the composite video stream changes, the `onTranscodedStreamLayoutInfo` callback will be triggered again. The receiving end can, based on the specific information reported by each callback, re-invoke `setupRemoteVideo` to adjust the local view rendering layout.
+
+    <Admonition type="info" title="information">
+    Changes in layout information may include the following situations:
+        * The coordinates of the sub-video in the composite canvas change.
+        * The width or height of the sub-video in the composite changes.
+        * The state of the sub-video stream changes. When the host publishing that sub-video stream exits the channel, the  videoState` parameter of that sub-video stream will change from `0` (normal) to `1` (the video stream has no video picture). You can set `subviewUid` to the user ID of that sub-video stream and set `setupMode` to `VIEW_SETUP_MODE_REMOVE` (remove the view) when calling `setupRemoteVideo`, to stop rendering the video picture of that host.
+    </Admonition>
+
+1. Listen to the `onUserOffline` callback; when the user forwarding the composite stream exits the channel, stop rendering the composite stream on the receiving end.
+
+<Admonition type="caution" title="Note">
+    - Currently, the custom composite layout function is only supported on mobile devices.
+    - When a watermark is added to the composite video stream, the watermark will be rendered along with its area, which may result in it being divided.
+</Admonition>
+
+</PlatformWrapper>

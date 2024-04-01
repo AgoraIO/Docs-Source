@@ -1,13 +1,355 @@
-import Csharp from './csharp.mdx'
-
 <PlatformWrapper platform="unity">
+import CodeBlock from '@theme/CodeBlock';
 
-1. **Import <Vpd k="SDK" /> classes and interfaces**
+### Use a token
 
-    ```csharp
-    using UnityEngine.Networking;
-    ```
+This section shows you how to integrate token authentication in your <Vpl k="CLIENT" />.
 
-<Csharp />
+1. Open the [SDK quickstart](../get-started/get-started-sdk) project you created earlier.
+
+1. In `joinChannelVideo.cs` replace the contents with the following:
+
+    <details>
+    <summary>Sample code for basic authentication</summary>
+    <CodeBlock language="cpp" showLineNumbers>
+    {` using UnityEngine;
+    using UnityEngine.UI;
+    using UnityEngine.Serialization;
+    using Agora.Rtc;
+    using Agora.Util;
+    using Logger = Agora.Util.Logger;
+
+    namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.JoinChannelVideoToken
+    {
+        public class JoinChannelVideoToken : MonoBehaviour
+        {
+            // Fill in your App ID and channel name
+            public string appID = "<Your App ID>";
+            public string channelName = "test";
+            public uint localUid = 0;
+            internal static string channelToken = "";
+            internal IRtcEngine RtcEngine = null;
+
+            internal CONNECTION_STATE_TYPE _state = CONNECTION_STATE_TYPE.CONNECTION_STATE_DISCONNECTED;
+
+            private void Start()
+            {
+
+                if (CheckAppId())
+                {
+                    InitEngine();
+                    JoinChannel();
+                }
+            }
+
+            internal void RenewOrJoinToken(TokenObject tokenObject)
+            {
+                if (tokenObject ==  null || tokenObject.code != 200) {
+                    Debug.Log("get token failed");
+                    return;
+                }
+
+
+                JoinChannelVideoToken.channelToken = tokenObject.token;
+                if (_state == CONNECTION_STATE_TYPE.CONNECTION_STATE_DISCONNECTED
+                    || _state == CONNECTION_STATE_TYPE.CONNECTION_STATE_DISCONNECTED
+                    || _state == CONNECTION_STATE_TYPE.CONNECTION_STATE_FAILED
+                )
+                {
+                    // Use the token to join the channel
+                    JoinChannel();
+                }
+                else
+                {
+                    // Update token in the channel
+                    UpdateToken();
+                }
+            }
+
+            private void Update()
+            {
+                PermissionHelper.RequestMicrophonePermission();
+                PermissionHelper.RequestCameraPermission();
+            }
+
+            private void UpdateToken()
+            {
+                RtcEngine.RenewToken(JoinChannelVideoToken.channelToken);
+                Debug.Log("renewToken: " + JoinChannelVideoToken.channelToken);
+            }
+
+            private bool CheckAppId()
+            {
+                if (appID.Length < 10) {
+                    Debug.Log("Please fill in your appId in Inspector");
+                    return false;
+                }
+                return true;
+            }
+
+
+            // Initialization
+            private void InitEngine()
+            {
+                RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
+                UserEventHandler handler = new UserEventHandler(this);
+                RtcEngineContext context = new RtcEngineContext(appID, 0,
+                    CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING, null,
+                    AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT);
+                RtcEngine.Initialize(context);
+                RtcEngine.InitEventHandler(handler);
+            }
+            // Join channel
+            private void JoinChannel()
+            {
+                RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+                RtcEngine.EnableAudio();
+                RtcEngine.EnableVideo();
+
+                if (channelToken.Length == 0)
+                {
+                    StartCoroutine(HelperClass.FetchToken(this.localUid, channelName,CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER, this.RenewOrJoinToken));
+                    return;
+                }
+
+                RtcEngine.JoinChannel(channelToken, channelName, "");
+                Debug.Log("joinChannel with token:" + channelToken);
+            }
+
+
+            internal void  StartUpdateTokenEveryTenSecond() {
+                InvokeRepeating("RequestToken", 10, 10);
+            }
+
+            private void RequestToken() {
+                StartCoroutine(HelperClass.FetchToken(this.localUid, channelName, CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER, this.RenewOrJoinToken));
+            }
+
+            private void OnDestroy()
+            {
+                Debug.Log("OnDestroy");
+                if (RtcEngine == null) return;
+                RtcEngine.InitEventHandler(null);
+                RtcEngine.LeaveChannel();
+                RtcEngine.Dispose();
+            }
+
+            internal string GetChannelName()
+            {
+                return channelName;
+            }
+
+            #region -- Video Render UI Logic ---
+
+            internal static void MakeVideoView(uint uid, string channelId = "")
+            {
+                GameObject go = GameObject.Find(uid.ToString());
+                if (!ReferenceEquals(go, null))
+                {
+                    return;
+                }
+
+                VideoSurface videoSurface = MakeImageSurface(uid.ToString());
+                if (!ReferenceEquals(videoSurface, null))
+                {
+
+                    if (uid == 0)
+                    {
+                        videoSurface.SetForUser(uid, channelId);
+                    }
+                    else
+                    {
+                        videoSurface.SetForUser(uid, channelId, VIDEO_SOURCE_TYPE.VIDEO_SOURCE_REMOTE);
+                    }
+
+                    videoSurface.OnTextureSizeModify += (int width, int height) =>
+                    {
+                        float scale = (float)height / (float)width;
+                        videoSurface.transform.localScale = new Vector3(-5, 5 * scale, 1);
+                        Debug.Log("OnTextureSizeModify: " + width + "  " + height);
+                    };
+
+                    videoSurface.SetEnable(true);
+                }
+            }
+
+            private static VideoSurface MakePlaneSurface(string goName)
+            {
+                GameObject go = GameObject.CreatePrimitive(PrimitiveType.Plane);
+
+                if (go == null)
+                {
+                    return null;
+                }
+
+                go.name = goName;
+
+                go.transform.Rotate(-90.0f, 0.0f, 0.0f);
+                go.transform.position = Vector3.zero;
+                go.transform.localScale = new Vector3(0.25f, 0.5f, .5f);
+
+                var videoSurface = go.AddComponent<VideoSurface>();
+                return videoSurface;
+            }
+
+            private static VideoSurface MakeImageSurface(string goName)
+            {
+                GameObject go = new GameObject();
+
+                if (go == null)
+                {
+                    return null;
+                }
+
+                go.name = goName;
+                go.AddComponent<RawImage>();
+                go.AddComponent<UIElementDrag>();
+                GameObject canvas = GameObject.Find("VideoCanvas");
+                if (canvas != null)
+                {
+                    go.transform.parent = canvas.transform;
+                    Debug.Log("add video view");
+                }
+                else
+                {
+                    Debug.Log("Canvas is null video view");
+                }
+
+                go.transform.Rotate(0f, 0.0f, 180.0f);
+                go.transform.localPosition = Vector3.zero;
+                go.transform.localScale = new Vector3(3f, 4f, 1f);
+
+                var videoSurface = go.AddComponent<VideoSurface>();
+                return videoSurface;
+            }
+
+            internal static void DestroyVideoView(uint uid)
+            {
+                GameObject go = GameObject.Find(uid.ToString());
+                if (!ReferenceEquals(go, null))
+                {
+                    Object.Destroy(go);
+                }
+            }
+
+            #endregion
+        }
+
+
+        internal class UserEventHandler : IRtcEngineEventHandler
+        {
+            private readonly JoinChannelVideoToken _helloVideoTokenAgora;
+
+            internal UserEventHandler(JoinChannelVideoToken helloVideoTokenAgora)
+            {
+                _helloVideoTokenAgora= helloVideoTokenAgora;
+            }
+
+            public override void OnError(int err, string msg)
+            {
+                Debug.Log(string.Format("OnError err: {0}, msg: {1}", err, msg));
+            }
+            // Joined the channel successfully
+            public override void OnJoinChannelSuccess(RtcConnection connection, int elapsed)
+            {
+                int build = 0;
+                Debug.Log(string.Format("sdk version: ${0}",
+                    _helloVideoTokenAgora.RtcEngine.GetVersion(ref build)));
+                Debug.Log(
+                    string.Format("OnJoinChannelSuccess channelName: {0}, uid: {1}, elapsed: {2}",
+                        connection.channelId, connection.localUid, elapsed));
+                Debug.Log(string.Format("New Token: {0}",
+                    JoinChannelVideoToken.channelToken));
+                JoinChannelVideoToken.MakeVideoView(0);
+
+                _helloVideoTokenAgora.localUid = connection.localUid;
+                _helloVideoTokenAgora.StartUpdateTokenEveryTenSecond();
+            }
+
+            public override void OnUserJoined(RtcConnection connection, uint uid, int elapsed)
+            {
+                Debug.Log(string.Format("OnUserJoined uid: ${0} elapsed: ${1}", uid,
+                    elapsed));
+                JoinChannelVideoToken.MakeVideoView(uid, _helloVideoTokenAgora.GetChannelName());
+            }
+
+            public override void OnUserOffline(RtcConnection connection, uint uid, USER_OFFLINE_REASON_TYPE reason)
+            {
+                Debug.Log(string.Format("OnUserOffLine uid: ${0}, reason: ${1}", uid,
+                    (int)reason));
+                JoinChannelVideoToken.DestroyVideoView(uid);
+            }
+            //The token is about to expire
+            public override void OnTokenPrivilegeWillExpire(RtcConnection connection, string token)
+            {
+                _helloVideoTokenAgora.StartCoroutine(HelperClass.FetchToken(_helloVideoTokenAgora.localUid,
+                    _helloVideoTokenAgora.GetChannelName(), CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER, _helloVideoTokenAgora.RenewOrJoinToken));
+            }
+
+            public override void OnConnectionStateChanged(RtcConnection connection, CONNECTION_STATE_TYPE state,
+                CONNECTION_CHANGED_REASON_TYPE reason)
+            {
+                _helloVideoTokenAgora._state = state;
+            }
+
+            public override void OnConnectionLost(RtcConnection connection)
+            {
+                Debug.Log(string.Format("OnConnectionLost "));
+            }
+        }
+
+        #endregion
+    }
+
+    namespace Agora.Util
+    {
+        public static class HelperClass
+        {
+            public static IEnumerator FetchToken(uint uid, string channelName, CLIENT_ROLE_TYPE role, Action<TokenObject> callback = null)
+            {
+
+                Dictionary<string, object> postParams = new Dictionary<string, object>();
+                postParams.Add("uid", uid);
+                postParams.Add("ChannelName", channelName);
+                postParams.Add("role", role);
+                string json = AgoraJson.ToJson<Dictionary<string, object>>(postParams);
+                var url = "http://127.0.0.1/fetch_rtc_token";
+
+                byte[] postBytes = System.Text.Encoding.Default.GetBytes(json);
+                UnityWebRequest request = new UnityWebRequest(url, "POST");
+
+                request.uploadHandler = (UploadHandler)new UploadHandlerRaw(postBytes);
+                request.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
+                request.SetRequestHeader("Content-Type", "application/json");
+                yield return request.SendWebRequest();
+
+                if (request.isNetworkError || request.isHttpError)
+                {
+                    Debug.Log(request.error);
+                    callback(null);
+                    yield break;
+                }
+                Debug.Log("text: " + request.downloadHandler.text);
+                TokenObject tokenInfo = JsonUtility.FromJson<TokenObject>(request.downloadHandler.text);
+                callback(tokenInfo);
+            }
+        }
+    }`}
+    </CodeBlock>
+    </details>
+
+    Replace `<Your App ID>` with your App ID, which must be consistent with the App ID you specified in the server configuration. Update `url` with the host URL and port of the local Golang server you have deployed. 
+
+The sample code implements the following logic:
+
+* Calls `JoinChannel` to join a channel using the user ID, the channel name, and a token you obtain from the server. The user ID and channel name you specify must be consistent with the values you used to generate the token.
+
+* The SDK triggers an `OnTokenPrivilegeWillExpire` callback 30 seconds before the token expires. After receiving the callback, you obtain a new token from the server and call `RenewToken` to pass the newly generated token to the SDK.
+
+Build and run the project on the local device, the <Vpl k="CLIENT" /> performs the following operations:
+
+* Obtains a token from your token server.
+* Joins the channel.
+* Automatically renews the token when it is about to expire. 
 
 </PlatformWrapper>

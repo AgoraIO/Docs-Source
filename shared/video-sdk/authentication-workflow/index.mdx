@@ -1,274 +1,935 @@
-import * as data from '@site/data/variables';
-import Prerequisites from '@docs/shared/common/prerequities.mdx';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+
 import ProjectImplement from '@docs/shared/video-sdk/authentication-workflow/project-implementation/index.mdx';
 import ProjectTest from '@docs/shared/video-sdk/authentication-workflow/project-test/index.mdx';
 import Reference from '@docs/shared/video-sdk/authentication-workflow/reference/index.mdx';
 import ProjectImplementUIKit from '@docs/shared/video-sdk/authentication-workflow/project-implementation-uikit/index.mdx';
 
-Authentication is the act of validating the identity of each user before they access a system. <Vg k="COMPANY" />
-uses digital tokens to authenticate users and their privileges before they access <Vg k="AGORA_BACKEND" /> to join a
-channel. Each token is valid for a limited period and works for specific and wildcard channel names. For example, you
-use a `Agora*` token to join `AgoraChannel` or `AgoraAwesome`. However, you cannot use it to join the `AppTest`
-channel.
-
-This page shows you how to quickly set up an authentication token server, retrieve a token from the server, and use it to connect securely to a  <Vpd k="NAME"/> channel. You use this server for development purposes. To see how to develop your own token generator and integrate it into your production IAM system, read [Token generators](/video-calling/develop/integrate-token-generation).
+Authentication is the act of validating the identity of each user before they access a system. <Vg k="COMPANY" /> uses digital tokens to authenticate users and their privileges. A token is a string used to verify user privileges when joining a channel. When a user connects to <Vg k="COMPANY" /> and passes in the token, the server verifies the user's identity and permissions based on the information in the token.
 
 ## Understand the tech
 
-An authentication token is a dynamic key that is valid for a maximum of 24 hours. On request, a token server returns
-an authentication token that is valid to join a specific channel or wildcard channels.
+<Vg k="COMPANY" /> enables you to implement permissions in two distinct ways: 
 
-When users attempt to connect to an <Vg k="COMPANY" /> channel, your <Vpl k="CLIENT" /> retrieves a token from the token server in your security infrastructure. Your <Vpl k="CLIENT" /> then sends this token to <Vg k="AGORA_BACKEND" /> for authentication. <Vg k="AGORA_BACKEND" /> validates the token and reads the user and project information stored in the token. A token contains the following information:
+- **Basic permissions** : Join the channel and stream concurrently, suitable for most scenarios.
 
+- **Advanced permissions** : Manage permissions to publish different types of streams, such as audio, video, and data. If you have higher requirements for business security, use these permissions to finely control the validity period of permissions to publish different streams.
 
--   The [App ID](../reference/manage-agora-account#get-the-app-id) of your <Vg k="COMPANY" /> project
+<Admonition type="info" title="Information">
+The information on this page only applies to `AccessToken2`. If you are using `AccessToken`, refer to the `AccessToken` Upgrade Guide to upgrade from `AccessToken` to `AccessToken2`.
+</Admonition>
 
--   The [App certificate](../reference/manage-agora-account#get-the-app-certificate) of your <Vg k="COMPANY" /> project
+An authentication token is a dynamic key that is valid for a maximum of 24 hours. On request, a token server returns an authentication token that is valid to join a specific channel or wildcard channels.
 
--   The name of an individual channel, or a wildcard string for multiple channels
+When users attempt to connect to an <Vg k="COMPANY" /> channel, your <Vpl k="CLIENT" /> retrieves a token from the token server in your security infrastructure. Your <Vpl k="CLIENT" /> then sends this token to <Vg k="AGORA_BACKEND" /> for authentication. <Vg k="AGORA_BACKEND" /> validates the token and reads the information stored in the token.
 
--   The user ID of the user to be authenticated (optional)
+The following figure shows the call flow you implement to create step-up-authentication with <Vg k="COMPANY" /> <Vpd k="NAME"/>:
 
--   The privilege of the user, either as a publisher or a subscriber
-
--   The Unix timestamp showing when the token will expire
-
-The following figure shows the call flow you need to implement to create step-up-authentication with <Vg k="COMPANY" /> <Vpd k="NAME"/>:
-
-![token authentication flow](/images/video-sdk/authentication-logic.png)
+![token authentication flow](/images/video-sdk/token-authentication.svg)
 
 <ProductWrapper notAllowed="cloud-recording,on-premise-recording">
 
 ## Prerequisites
 
-<Prerequisites />
--  Created a cloud platform account that is verified through your GitHub account. The following platforms are
-    currently supported:
-    - [Render](https://render.com/)
-    - [Railway](https://railway.app/)
-    - [Heroku](https://www.heroku.com/)
+Before starting, ensure that you have:
 
-    To integrate a token generator directly into your security infrastructure, see [Token generators](/video-calling/develop/integrate-token-generation).
+* Implemented the [SDK quickstart](../get-started/get-started-sdk) in your project.
+
+* The following information from [Agora Console](https://console.agora.io/v2):
+    * App ID: A unique string generated by Agora that identifies your project.
+    * App Certificate: A string generated by Agora Console to enable token authentication. To obtain the App Certificate for your project, enable primary certificate.
 
 </ProductWrapper>
 
-<PlatformWrapper platform="windows">
-## Project setup
+## Implement basic authentication
+This section shows you how to implement basic authentication by generating a token and joining a channel. To ensure the security of your business, <Vg k="COMPANY" /> recommends that you authenticate every client that joins a channel.
 
-To create the environment necessary to test **secure authentication with tokens** , implement same setup as you done for the [<Vpd  k="SDK" /> quickstart project setup](../get-started/get-started-sdk#project-setup) for <Vpd k="NAME"/>.
-</PlatformWrapper>
+### Generate a token
+<Vg k="COMPANY" /> provides an open source token generator code repository on [GitHub](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey). The repository provides code in the following languages ​​to generate basic tokens on your own server, based on the `HMAC-SHA256` algorithm:
 
-## Implement the authentication workflow
+| Language | Core Method         | Sample Code          |
+|:---------|:--------------------|:---------------------|
+| C++      | [buildTokenWithUid](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/cpp/src/RtcTokenBuilder2.h#L69)   | [RtcTokenBuilder2Sample.cpp](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey/cpp/sample/RtcTokenBuilder2Sample.cpp)            |
+| Golang   | [BuildTokenWithUid](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/go/src/rtctokenbuilder2/rtctokenbuilder.go#L32)   | [sample.go](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey/go/sample/rtctokenbuilder2/sample.go)                             |
+| Java     | [buildTokenWithUid](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/java/src/main/java/io/agora/media/RtcTokenBuilder2.java#L35)   | [RtcTokenBuilder2Sample.java](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey/java/src/main/java/io/agora/sample/RtcTokenBuilder2Sample.java)           |
+| Node.js  | [buildTokenWithUid](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/nodejs/src/RtcTokenBuilder2.js#L30)   | [RtcTokenBuilder2Sample.js](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey/nodejs/sample/RtcTokenBuilder2Sample.js)             |
+| PHP      | [buildTokenWithUid](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/php/src/RtcTokenBuilder2.php#L26)   | [RtcTokenBuilder2Sample.php](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey/php/sample/RtcTokenBuilder2Sample.php)            |
+| Python   | [build_token_with_uid](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python/src/RtcTokenBuilder2.py#L12C1-L12C1) | [RtcTokenBuilder2Sample.py](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey/python/sample/RtcTokenBuilder2Sample.py)             |
+| Python3  | [build_token_with_uid](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python3/src/RtcTokenBuilder2.py#L12) | [RtcTokenBuilder2Sample.py](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey/python3/sample/RtcTokenBuilder2Sample.py)             |
 
-In the <Vg k="GET_STARTED"/> sample project, the <Vpl k="CLIENT" /> uses an authentication token obtained manually from <Vg k="CONSOLE" /> to join a channel. In a production environment, your <Vpl k="CLIENT" /> retrieves this token from a token server. This page shows you how to:
+Refer to the following code samples to generate a token with basic permissions:
 
-1.  [Create and run a token server](#create-and-run-a-token-server)
+<Tabs>
+  <TabItem value="cpp" label="C++" default>
+    <CodeBlock language="cpp" showLineNumbers>
+    {`#include <cstdlib>
+#include <iostream>
 
-<ProductWrapper notAllowed="on-premise-recording">
-2.  [Authenticate using the SDK](#authenticate-using-the-sdk)
-</ProductWrapper>
+#include "../src/RtcTokenBuilder2.h"
 
-## Create and run a token server
+using namespace agora::tools;
 
-This section shows you how to deploy a token server on a cloud platform.
+int main(int argc, char const *argv[]) {
+    (void)argc;
+    (void)argv;
 
-1. **Start deploying the token server to your cloud platform**
+    // Get the value of the environment variable AGORA_APP_ID. Make sure you set this variable to the value you obtained from Agora console
+    const char *env_app_id = getenv("AGORA_APP_ID");
+    std::string app_id = env_app_id ? env_app_id : "";
+    // Get the value of the environment variable AGORA_APP_CERTIFICATE. Make sure you set this variable to the App certificate you obtained from Agora console
+    const char *env_app_certificate = getenv("AGORA_APP_CERTIFICATE");
+    std::string app_certificate = env_app_certificate ? env_app_certificate : "";
+    // Replace channelName with the name of the channel you want to join
+    std::string channel_name = "channelName";
+    // Fill in your actual user ID
+    uint32_t uid = 2882341273
+    // Token validity time in seconds
+    uint32_t token_expiration_in_seconds = 3600;
+    // The validity time of all permissions in seconds
+    uint32_t privilege_expiration_in_seconds = 3600;
+    std::string result;
 
-    Click your cloud platform below. The cloud platform retrieves the project code and necessary files from Github,
-then takes you to the **Deployment** page.
-    -   [Render](https://render.com/deploy?repo=https://github.com/AgoraIO-Community/agora-token-service)
-    -   [Railway](https://railway.app/new/template/NKYzQA?referralCode=waRWUT)
-    -   [Heroku](https://www.heroku.com/deploy/?template=https://github.com/AgoraIO-Community/agora-token-service)
+    std::cout << "App Id:" << app_id << std::endl;
+    std::cout << "App Certificate:" << app_certificate << std::endl;
+    if (app_id == "" || app_certificate == "") {
+        std::cout << "Need to set environment variable AGORA_APP_ID and "
+                    "AGORA_APP_CERTIFICATE"
+                << std::endl;
+        return -1;
+    }
+    // Generate Token
+    result = RtcTokenBuilder2::BuildTokenWithUid(
+        app_id, app_certificate, channel_name, uid, UserRole::kRolePublisher,
+        token_expiration_in_seconds, privilege_expiration_in_seconds);
+    std::cout << "Token With Int Uid:" << result << std::endl;
 
-1. **Fill in the information needed by your cloud platform**
+    return 0;
+}`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="golang" label="Golang">
+    <CodeBlock language="go" showLineNumbers>
+    {`package main
 
-    1.  `Blueprint name`: A unique name for your deployment.
+import (
+    "fmt"
+    "os"
 
-    1.  `Branch name`: The branch of the repo or fork you want to deploy, default is `main`.
+    rtctokenbuilder "github.com/AgoraIO/Tools/DynamicKey/AgoraDynamicKey/go/src/rtctokenbuilder2"
+)
 
-    1.  `APP_CERTIFICATE`: The App Certificate obtained from <Link target="_blank" to="{{global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>.
+func main() {
+    // Get the value of the environment variable AGORA_APP_ID. Make sure you set this variable to the App ID you obtained from Agora console.
+    appId := os.Getenv("AGORA_APP_ID")
+    // Get the value of the environment variable AGORA_APP_CERTIFICATE. Make sure you set this variable to the App certificate you obtained from Agora console
+    appCertificate := os.Getenv("AGORA_APP_CERTIFICATE")
+    // Replace channelName with the name of the channel you want to join
+    channelName := "channelName"
+    // Fill in your actual user ID
+    uid := uint32(2882341273)
+    // Token validity time in seconds
+    tokenExpirationInSeconds := uint32(3600)
+    // The validity time of all permissions in seconds
+    privilegeExpirationInSeconds := uint32(3600)
 
-    1.  `APP_ID`: The [App ID](../reference/manage-agora-account#get-the-app-id) obtained from <Link target="_blank" to="{{global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>.
+    fmt.Println("App Id:", appId)
+    fmt.Println("App Certificate:", appCertificate)
+    if appId == "" || appCertificate == "" {
+        fmt.Println("Need to set environment variable AGORA_APP_ID and AGORA_APP_CERTIFICATE")
+        return
+    }
+    // Generate Token
+        result, err := rtctokenbuilder.BuildTokenWithUid(appId, appCertificate, channelName, uid, rtctokenbuilder.RoleSubscriber, tokenExpirationInSeconds, privilegeExpirationInSeconds)
+    if err != nil {
+        fmt.Println(err)
+    } else {
+        fmt.Printf("Token with int uid: %s\\n", result)
+    }
+}`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <CodeBlock language="java" showLineNumbers>
+    {`package io.agora.sample;
 
-    1.  `Github account`: The GitHub account where the cloud platform should clone the token server repository.
+import io.agora.media.RtcTokenBuilder2;
+import io.agora.media.RtcTokenBuilder2.Role;
 
-    1.  `Repository name`: The name of the cloned repository, the default is `agora-token-service`.
+public class RtcTokenBuilder2Sample {
+    // Get the value of the environment variable AGORA_APP_ID. Make sure you set this variable to the App ID you obtained from Agora console.
+    static String appId = System.getenv("AGORA_APP_ID");
+    // Get the value of the environment variable AGORA_APP_CERTIFICATE. Make sure you set this variable to the App certificate you obtained from Agora console
+    static String appCertificate = System.getenv("AGORA_APP_CERTIFICATE");
+    // Replace channelName with the name of the channel you want to join
+    static String channelName = "channelName";
+    // Fill in your actual user ID
+    static int uid = 2082341273;
+    // Token validity time in seconds
+    static int tokenExpirationInSeconds = 3600;
+    // The validity time of all permissions in seconds
+    static int privilegeExpirationInSeconds = 3600;
 
-    1.  `Private repository`: Select this option to hide this repository.
-
-2.  **Create your token server**
-
-    Click **Deploy**. The platform configures and builds the token server.
-
-3.  **Test your server**
-
-    1. Click the **URL**.
-
-        You are notified of a URL where your server is deployed. Click the link and open the token server in your browser. Don’t worry if you see `404 page not found` in your browser. Follow the next steps and test your server.
-
-    1. Send a request to the token server using a URL based on the [Token server POST request structure](#token-server-post-request-structure):
-
-        ```sh
-        curl --location 'https://agora-token-service-example.up.railway.app/fetchToken' \
-        --header 'Content-Type: application/json' \
-        --data '{
-            "tokenType": "rtc",
-            "uid": "13119",
-            "role": "publisher",
-            "channel": "test"
-        }'
-        ```
-
-        Your token server returns a JSON object containing an encrypted token:
-
-        ```json
-        {
-            "token": "ThisIsAnExampleTokenThisIsAnExampleTokenThisIsAnExampleTokenThisIsAnExampleTokenThisIsAnExampleToken"
+    public static void main(String[] args) {
+        System.out.printf("App Id: %s\\n", appId);
+        System.out.printf("App Certificate: %s\\n", appCertificate);
+        if (appId == null || appId.isEmpty() || appCertificate == null || appCertificate.isEmpty()) {
+            System.out.printf("Need to set environment variable AGORA_APP_ID and AGORA_APP_CERTIFICATE\\n");
+            return;
         }
-        ```
+        // Generate Token
+        RtcTokenBuilder2 token = new RtcTokenBuilder2();
+        String result = token.buildTokenWithUid(appId, appCertificate, channelName, uid, Role.ROLE_SUBSCRIBER,
+                tokenExpirationInSeconds, privilegeExpirationInSeconds);
+        System.out.printf("Token with uid: %s\\n", result);
+    }
+}`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="node-js" label="Node.js">
+    <CodeBlock language="js" showLineNumbers>
+    {`const RtcTokenBuilder = require("../src/RtcTokenBuilder2").RtcTokenBuilder;
+const RtcRole = require("../src/RtcTokenBuilder2").Role;
 
-<ProductWrapper notAllowed="on-premise-recording">
-## Authenticate using the SDK
+// Get the value of the environment variable AGORA_APP_ID. Make sure you set this variable to the App ID you obtained from Agora console.
+const appId = process.env.AGORA_APP_ID;
+// Get the value of the environment variable AGORA_APP_CERTIFICATE. Make sure you set this variable to the App certificate you obtained from Agora console
+const appCertificate = process.env.AGORA_APP_CERTIFICATE;
+// Replace channelName with the name of the channel you want to join
+const channelName = "channelName";
+// Fill in your actual user ID
+const uid = 2882341273;
+// Set streaming permissions
+const role = RtcRole.PUBLISHER;
+// Token validity time in seconds
+const tokenExpirationInSecond = 3600;
+// The validity time of all permissions in seconds
+const privilegeExpirationInSecond = 3600;
 
-To retrieve tokens from the token server and use them to authenticate your <Vpl k="CLIENT" /> with <Vg k="AGORA_BACKEND" /> using  <Vpd k="SDK" />:
+console.log("App Id:", appId);
+console.log("App Certificate:", appCertificate);
+if (appId == undefined || appId == "" || appCertificate == undefined || appCertificate == "") {
+  console.log("Need to set environment variable AGORA_APP_ID and AGORA_APP_CERTIFICATE");
+  process.exit(1);
+}
+
+// Generate Token
+const tokenWithUid = RtcTokenBuilder.buildTokenWithUid(appId, appCertificate, channelName, uid, role, tokenExpirationInSecond, privilegeExpirationInSecond);
+console.log("Token with int uid:", tokenWithUid);`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="php" label="PHP">
+    <CodeBlock language="js" showLineNumbers>
+    {`<?php
+include("../src/RtcTokenBuilder2.php");
+
+// Get the value of the environment variable AGORA_APP_ID. Make sure you set this variable to the App ID you obtained from Agora console.
+$appId = getenv("AGORA_APP_ID");
+// Get the value of the environment variable AGORA_APP_CERTIFICATE. Make sure you set this variable to the App certificate you obtained from Agora console
+$appCertificate = getenv("AGORA_APP_CERTIFICATE");
+// Replace channelName with the name of the channel you want to join
+$channelName = "channelName";
+// Fill in your actual user ID
+$uid = 2882341273;
+// Token validity time in seconds
+$tokenExpirationInSeconds = 3600;
+// The validity time of all permissions in seconds
+$privilegeExpirationInSeconds = 3600;
+
+echo "App Id: " . $appId . PHP_EOL;
+echo "App Certificate: " . $appCertificate . PHP_EOL;
+if ($appId == "" || $appCertificate == "") {
+    echo "Need to set environment variable AGORA_APP_ID and AGORA_APP_CERTIFICATE" . PHP_EOL;
+    exit;
+}
+// Generate Token
+$token = RtcTokenBuilder2::buildTokenWithUid($appId, $appCertificate, $channelName, $uid, RtcTokenBuilder2::ROLE_PUBLISHER, $tokenExpirationInSeconds, $privilegeExpirationInSeconds);
+echo 'Token with int uid: ' . $token . PHP_EOL;`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="python" label="Python/Python3">
+    <CodeBlock language="python" showLineNumbers>
+    {`import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from src.RtcTokenBuilder2 import *
+
+def main():
+    # Get the value of the environment variable AGORA_APP_ID. Make sure you set this variable to the App ID you obtained from Agora console.
+    app_id = os.environ.get("AGORA_APP_ID")
+    # Get the value of the environment variable AGORA_APP_CERTIFICATE. Make sure you set this variable to the App certificate you obtained from Agora console
+    app_certificate = os.environ.get("AGORA_APP_CERTIFICATE")
+    # Replace channelName with the name of the channel you want to join
+    channel_name = "channel_name"
+    # Fill in your actual user ID
+    uid = 2882341273
+    # Token validity time in seconds
+    token_expiration_in_seconds = 3600
+    # The validity time of all permissions in seconds
+    privilege_expiration_in_seconds = 3600
+
+    print("App Id: %s" % app_id)
+    print("App Certificate: %s" % app_certificate)
+    if not app_id or not app_certificate:
+        print("Need to set environment variable AGORA_APP_ID and AGORA_APP_CERTIFICATE")
+        return
+
+    # Generate Token
+    token = RtcTokenBuilder.build_token_with_uid(app_id, app_certificate, channel_name, uid, Role_Subscriber,
+                                                 token_expiration_in_seconds, privilege_expiration_in_seconds)
+    print("Token with int uid: {}".format(token))
+
+if __name__ == "__main__":
+    main()`}
+    </CodeBlock>
+  </TabItem>
+</Tabs>
+
+
+<Admonition type="info" style="Information">
+The code samples presented on this page use an integer user ID to generate a token. To use a string user ID, refer to the [Token Generator code repository](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey) to view the corresponding code sample in the desired language.
+</Admonition>
 
 <ProjectImplement />
 
-## Test the implementation
+<Admonition type="caution" title="Note">
+The user ID and channel name used to join a channel must be consistent with the values used to generate the token.
+</Admonition>
 
-To test the **Secure authentication with tokens** example:
+## Advanced authentication features
+This section presents advanced functions related to token authentication.
 
-<ProjectTest />
+### Implement advanced authentication
+In addition to basic authentication, <Vg k="COMPANY" /> also provides fine-grained control over the permissions of users in a channel to publish different types of streams. Advanced authentication ensures that all streaming users in a channel are authorized, thus preventing hackers from stealing tokens or exploiting vulnerabilities to blow up the channel.
 
-</ProductWrapper>
-<ProductWrapper notAllowed="iot,windows">
+<Admonition type="caution" title="Note">
+To send a stream to a channel, ensure that you call the `setClientRole` method to set the user's role as host before joining the channel, or specify the host role in options when joining the channel. 
+</Admonition>
 
-<ProjectImplementUIKit />
+<Vg k="COMPANY" /> provides `BuildTokenWithUidAndPrivilege` methods to set the expiration time of the following privileges:
 
-</ProductWrapper>
+- Join a channel
+- Publish audio stream in a channel
+- Publish video stream in a channel
+- Publish data stream in a channel
+
+See the [API reference](#api-reference) for detailed parameter descriptions.
+
+#### Generate a token with advanced permissions
+Agora provides an open source token generator code repository on [Github](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey). The repository supports the use of the following languages ​​to generate basic tokens on your own server, based on the `HMAC-SHA256` algorithm:
+
+| Language | Core Method         | Sample Code          |
+|:---------|:--------------------|:---------------------|
+| C++      | [buildTokenWithUid](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/cpp/src/RtcTokenBuilder2.h#L155)   | [RtcTokenBuilder2Sample.cpp](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey/cpp/sample/RtcTokenBuilder2Sample.cpp)            |
+| Golang   | [BuildTokenWithUidAndPrivilege](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/go/src/rtctokenbuilder2/rtctokenbuilder.go#L117)   | [sample.go](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey/go/sample/rtctokenbuilder2/sample.go)                             |
+| Java     | [buildTokenWithUid](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/java/src/main/java/io/agora/media/RtcTokenBuilder2.java#L127)   | [RtcTokenBuilder2Sample.java](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey/java/src/main/java/io/agora/sample/RtcTokenBuilder2Sample.java)           |
+| Node.js  | [BuildTokenWithUidAndPrivilege](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/nodejs/src/RtcTokenBuilder2.js#L120)   | [RtcTokenBuilder2Sample.js](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey/nodejs/sample/RtcTokenBuilder2Sample.js)             |
+| PHP      | [BuildTokenWithUidAndPrivilege](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/php/src/RtcTokenBuilder2.php#L115C56-L115C56)   | [RtcTokenBuilder2Sample.php](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey/php/sample/RtcTokenBuilder2Sample.php)            |
+| Python   | [build_token_with_uid_and_privilege](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python/src/RtcTokenBuilder2.py#L67) | [RtcTokenBuilder2Sample.py](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey/python/sample/RtcTokenBuilder2Sample.py)             |
+| Python3  | [build_token_with_uid_and_privilege](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python3/src/RtcTokenBuilder2.py#L67) | [RtcTokenBuilder2Sample.py](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey/python3/sample/RtcTokenBuilder2Sample.py)             |
+
+Refer to the following code samples to generate a token with advanced permissions:
+
+<Tabs>
+  <TabItem value="cpp" label="C++" default>
+    <CodeBlock language="cpp" showLineNumbers>
+    {`#include <cstdlib>
+#include <iostream>
+
+#include "../src/RtcTokenBuilder2.h"
+
+using namespace agora::tools;
+
+int main(int argc, char const *argv[]) {
+  (void)argc;
+  (void)argv;
+
+  // Get the value of the environment variable AGORA_APP_ID. Make sure you set this variable to the value you obtained from Agora console
+  const char *env_app_id = getenv("AGORA_APP_ID");
+  std::string app_id = env_app_id ? env_app_id : "";
+  // Get the value of the environment variable AGORA_APP_CERTIFICATE. Make sure you set this variable to the App certificate you obtained from Agora console
+  const char *env_app_certificate = getenv("AGORA_APP_CERTIFICATE");
+  std::string app_certificate = env_app_certificate ? env_app_certificate : "";
+
+  // Replace channelName with the name of the channel you want to join
+  std::string channel_name = "channelName";
+  // Fill in your actual user ID
+  uint32_t uid = 2882341273;
+  // Token validity period (seconds)
+  uint32_t token_expiration_in_seconds = 3600;
+  // Validity time of permission to join channel (seconds)
+  uint32_t join_channel_privilege_expiration_in_seconds = 3600;
+  // The validity period of the permission to publish audio streams in the channel (seconds)
+  uint32_t pub_audio_privilege_expiration_in_seconds = 3600;
+  // The validity period of the permission to publish video streams in the channel (seconds)
+  uint32_t pub_video_privilege_expiration_in_seconds = 3600;
+  // The validity period of the permission to publish data streams in the channel (seconds)
+  uint32_t pub_data_stream_privilege_expiration_in_seconds = 3600;
+  std::string result;
+
+  std::cout << "App Id:" << app_id << std::endl;
+  std::cout << "App Certificate:" << app_certificate << std::endl;
+  if (app_id == "" || app_certificate == "") {
+    std::cout << "Need to set environment variable AGORA_APP_ID and "
+                 "AGORA_APP_CERTIFICATE"
+              << std::endl;
+    return -1;
+  }
+
+  // Generate Token
+  result = RtcTokenBuilder2::BuildTokenWithUid(
+      app_id, app_certificate, channel_name, uid, token_expiration_in_seconds,
+      join_channel_privilege_expiration_in_seconds,
+      pub_audio_privilege_expiration_in_seconds,
+      pub_video_privilege_expiration_in_seconds,
+      pub_data_stream_privilege_expiration_in_seconds);
+  std::cout << "Token With Int Uid:" << result << std::endl;
+
+
+  return 0;
+}`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="golang" label="Golang">
+    <CodeBlock language="go" showLineNumbers>
+    {`package main
+
+import (
+    "fmt"
+    "os"
+    rtctokenbuilder "github.com/AgoraIO/Tools/DynamicKey/AgoraDynamicKey/go/src/rtctokenbuilder2"
+)
+
+func main() {
+    // Get the value of the environment variable AGORA_APP_ID. Make sure you set this variable to the value you obtained from Agora console
+    appId := os.Getenv("AGORA_APP_ID")
+    // Get the value of the environment variable AGORA_APP_CERTIFICATE. Make sure you set this variable to the App certificate you obtained from Agora console
+    appCertificate := os.Getenv("AGORA_APP_CERTIFICATE")
+    // Replace channelName with the name of the channel you want to join
+    channelName := "channelName"
+    // Fill in your actual user ID
+    uid := uint32(2882341273)
+    // Token validity time in seconds
+    tokenExpirationInSeconds := uint32(3600)
+    // Validity time for permission to join a channel (seconds)
+    joinChannelPrivilegeExpireInSeconds := uint32(3600)
+    // Validity in seconds for the permission to publish audio streams in the channel
+    pubAudioPrivilegeExpireInSeconds := uint32(3600)
+    // Validity in seconds for the permission to publish video streams in the channel
+    pubVideoPrivilegeExpireInSeconds := uint32(3600)
+    // Validity in seconds for the permission to publish data streams in the channel
+    pubDataStreamPrivilegeExpireInSeconds := uint32(3600)
+
+    fmt.Println("App Id:", appId)
+    fmt.Println("App Certificate:", appCertificate)
+
+    if appId == "" || appCertificate == "" {
+        fmt.Println("Need to set environment variable AGORA_APP_ID and AGORA_APP_CERTIFICATE")
+        return
+    }
+
+    // Generate Token
+    result, err := rtctokenbuilder.BuildTokenWithUidAndPrivilege(
+        appId,
+        appCertificate,
+        channelName,
+        uid,
+        tokenExpirationInSeconds,
+        joinChannelPrivilegeExpireInSeconds,
+        pubAudioPrivilegeExpireInSeconds,
+        pubVideoPrivilegeExpireInSeconds,
+        pubDataStreamPrivilegeExpireInSeconds,
+    )
+
+    if err != nil {
+        fmt.Println(err)
+    } else {
+        fmt.Printf("Token with int uid and privilege: %s\\n", result)
+    }
+}`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <CodeBlock language="java" showLineNumbers>
+    {`package io.agora.sample;
+
+import io.agora.media.RtcTokenBuilder2;
+
+public class RtcTokenBuilder2Sample {
+    // Get the value of the environment variable AGORA_APP_ID. Make sure you set this variable to the value you obtained from Agora console
+    static String appId = System.getenv("AGORA_APP_ID");
+    // Get the value of the environment variable AGORA_APP_CERTIFICATE. Make sure you set this variable to the App certificate you obtained from Agora console
+    static String appCertificate = System.getenv("AGORA_APP_CERTIFICATE");
+
+    // Replace channelName with the name of the channel you want to join
+    static String channelName = "channelName";
+    // Fill in your actual user ID
+    static int uid = 2082341273;
+    // Token validity time in seconds
+    static int tokenExpirationInSeconds = 3600;
+    // Validity time for permission to join a channel (seconds)
+    static int joinChannelPrivilegeExpireInSeconds = 3600;
+    // Validity in seconds for the permission to publish audio streams in the channel
+    static int pubAudioPrivilegeExpireInSeconds = 3600;
+    // Validity in seconds for the permission to publish video streams in the channel
+    static int pubVideoPrivilegeExpireInSeconds = 3600;
+    // Validity in seconds for the permission to publish data streams in the channel
+    static int pubDataStreamPrivilegeExpireInSeconds = 3600;
+
+    public static void main(String[] args) {
+        System.out.printf("App Id: %s\\n", appId);
+        System.out.printf("App Certificate: %s\\n", appCertificate);
+        if (appId == null || appId.isEmpty() || appCertificate == null || appCertificate.isEmpty()) {
+            System.out.printf("Need to set environment variable AGORA_APP_ID and AGORA_APP_CERTIFICATE\\n");
+            return;
+        }
+
+        // Generate Token
+        result = token.buildTokenWithUid(appId, appCertificate, channelName, uid, tokenExpirationInSeconds,
+                joinChannelPrivilegeExpireInSeconds, pubAudioPrivilegeExpireInSeconds,
+                pubVideoPrivilegeExpireInSeconds,
+                pubDataStreamPrivilegeExpireInSeconds);
+        System.out.printf("Token with uid and privilege: %s\\n", result);
+    }
+}`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="node-js" label="Node.js">
+    <CodeBlock language="js" showLineNumbers>
+    {`const RtcTokenBuilder = require("../src/RtcTokenBuilder2").RtcTokenBuilder;
+
+// Get the value of the environment variable AGORA_APP_ID. Make sure you set this variable to the value you obtained from Agora console
+const appId = process.env.AGORA_APP_ID;
+// Get the value of the environment variable AGORA_APP_CERTIFICATE. Make sure you set this variable to the App certificate you obtained from Agora console
+const appCertificate = process.env.AGORA_APP_CERTIFICATE;
+
+// Replace channelName with the name of the channel you want to join
+const channelName = "channelName";
+// Fill in your actual user ID
+const uid = 2082341273;
+// Token validity time in seconds
+const tokenExpirationInSecond = 3600;
+// Validity time for permission to join a channel (seconds)
+const joinChannelPrivilegeExpireInSeconds = 3600;
+// Validity in seconds for the permission to publish audio streams in the channel
+const pubAudioPrivilegeExpireInSeconds = 3600;
+// Validity in seconds for the permission to publish video streams in the channel
+const pubVideoPrivilegeExpireInSeconds = 3600;
+// Validity in seconds for the permission to publish data streams in the channel
+const pubDataStreamPrivilegeExpireInSeconds = 3600;
+
+console.log("App Id:", appId);
+console.log("App Certificate:", appCertificate);
+if (appId == undefined || appId == "" || appCertificate == undefined || appCertificate == "") {
+    console.log("Need to set environment variable AGORA_APP_ID and AGORA_APP_CERTIFICATE");
+    process.exit(1);
+}
+
+// Generate Token
+const tokenWithUidAndPrivilege = RtcTokenBuilder.buildTokenWithUidAndPrivilege(
+    appId,
+    appCertificate,
+    channelName,
+    uid,
+    tokenExpirationInSecond,
+    joinChannelPrivilegeExpireInSeconds,
+    pubAudioPrivilegeExpireInSeconds,
+    pubVideoPrivilegeExpireInSeconds,
+    pubDataStreamPrivilegeExpireInSeconds
+);
+console.log("Token with int uid and privilege:", tokenWithUidAndPrivilege);`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="php" label="PHP">
+    <CodeBlock language="js" showLineNumbers>
+    {`<?php
+include("../src/RtcTokenBuilder2.php");
+
+// Get the value of the environment variable AGORA_APP_ID. Make sure you set this variable to the value you obtained from Agora console
+$appId = getenv("AGORA_APP_ID");
+// Get the value of the environment variable AGORA_APP_CERTIFICATE. Make sure you set this variable to the App certificate you obtained from Agora console
+$appCertificate = getenv("AGORA_APP_CERTIFICATE");
+
+// Replace channelName with the name of the channel you want to join
+$channelName = "channelName";
+// Fill in your actual user ID
+$uid = 2882341273;
+// Token validity time in seconds
+$tokenExpirationInSeconds = 3600;
+// Validity time for permission to join a channel (seconds)
+$joinChannelPrivilegeExpireInSeconds = 3600;
+// Validity in seconds for the permission to publish audio streams in the channel
+$pubAudioPrivilegeExpireInSeconds = 3600;
+// Validity in seconds for the permission to publish video streams in the channel
+$pubVideoPrivilegeExpireInSeconds = 3600;
+// Validity in seconds for the permission to publish data streams in the channel
+$pubDataStreamPrivilegeExpireInSeconds = 3600;
+
+echo "App Id: " . $appId . PHP_EOL;
+echo "App Certificate: " . $appCertificate . PHP_EOL;
+if ($appId == "" || $appCertificate == "") {
+    echo "Need to set environment variable AGORA_APP_ID and AGORA_APP_CERTIFICATE" . PHP_EOL;
+    exit;
+}
+
+// Generate Token
+$token = RtcTokenBuilder2::buildTokenWithUidAndPrivilege($appId, $appCertificate, $channelName, $uid, $tokenExpirationInSeconds, $joinChannelPrivilegeExpireInSeconds, $pubAudioPrivilegeExpireInSeconds, $pubVideoPrivilegeExpireInSeconds, $pubDataStreamPrivilegeExpireInSeconds);
+echo 'Token with int uid and privilege: ' . $token . PHP_EOL;`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="python" label="Python/Python3">
+    <CodeBlock language="python" showLineNumbers>
+    {`import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from src.RtcTokenBuilder2 import *
+
+
+def main():
+    # Get the value of the environment variable AGORA_APP_ID. Make sure you set this variable to the value you obtained from Agora console
+    app_id = os.environ.get("AGORA_APP_ID")
+    # Get the value of the environment variable AGORA_APP_CERTIFICATE. Make sure you set this variable to the App certificate you obtained from Agora console
+    app_certificate = os.environ.get("AGORA_APP_CERTIFICATE")
+
+    # 将 channel_name 替换为需要加入的频道名
+    channel_name = "channel_name"
+    # Fill in your actual user ID
+    uid = 2882341273
+    # Token validity time in seconds
+    token_expiration_in_seconds = 3600
+    # Validity time for permission to join a channel (seconds)
+    join_channel_privilege_expiration_in_seconds = 3600
+    # Validity in seconds for the permission to publish audio streams in the channel
+    pub_audio_privilege_expiration_in_seconds = 3600
+    # Validity in seconds for the permission to publish video streams in the channel
+    pub_video_privilege_expiration_in_seconds = 3600
+    # Validity in seconds for the permission to publish data streams in the channel
+    pub_data_stream_privilege_expiration_in_seconds = 3600
+
+    print("App Id: %s" % app_id)
+    print("App Certificate: %s" % app_certificate)
+    if not app_id or not app_certificate:
+        print("Need to set environment variable AGORA_APP_ID and AGORA_APP_CERTIFICATE")
+        return
+
+    # Generate Token
+    token = RtcTokenBuilder.build_token_with_uid_and_privilege(
+        app_id, app_certificate, channel_name, uid, token_expiration_in_seconds,
+        join_channel_privilege_expiration_in_seconds, pub_audio_privilege_expiration_in_seconds, pub_video_privilege_expiration_in_seconds, pub_data_stream_privilege_expiration_in_seconds)
+    print("Token with int uid and privilege: {}".format(token))
+
+if __name__ == "__main__":
+    main()`}
+    </CodeBlock>
+  </TabItem>
+</Tabs>
+
+### Generate wildcard token​s
+In scenarios where users need to join multiple channels, or frequently switch between channels, they need to request a new token from the token server, each time they join a channel. To solve the problem of frequently requesting tokens when switching channels, <Vg k="COMPANY" /> enables you to generate wildcard tokens that set the user ID or channel name as a wildcard. Users reuse the same wildcard token to join different channels, which speeds up switching and joining channels. It also helps reduce the pressure on your token server. 
+
+<Admonition type="info" title="Information">
+To generate wildcard tokens you need to have deployed an `AccessToken2` server. If you are using `AccessToken`, please refer to the `AccessToken` Upgrade Guide to upgrade to `AccessToken2`.
+</Admonition>
+
+The `AccessToken2` code provides two `BuildTokenWithUid` methods. Choose the method according to your needs. When generating a wildcard token, fill in the following parameters according to your requirements:
+
+| Token type | `uid` | `channelName`  |
+|:----------|:--------------|:---------------|
+| Token for wildcard user ID | Set the user ID to `0` or a wildcard `*` to match any length of characters for user IDs of int and string types. <Vg k="COMPANY" /> also supports extended matching, that is, matching multiple combinations of `*` and strings. For example, `1*a*2` means match user IDs starting with *1*, containing the letter *a*, and ending with *2*, such as *1abc2*. | A string of up to 64 bytes. |
+| Token for wildcard channel name | The user ID of the user to be authenticated. User IDs of type int and string are supported. | Set the channel name as a wildcard `*` or leave it blank. To employ expanded matching, use multiple combinations of `*` and strings. For example, `1*a*2` matches channel names starting with *1*, containing the letter *a*, and ending with *2*, such as *1abc2*. |
+
+#### Precautions
+
+* If you have generated a token for `uid=0`, consider the following when you use the token:
+
+    * If you only need to join a single channel, set the `uid` to `0` when calling `joinChannel`.
+
+    * If you need to join multiple channels, set `uid` to a specific user ID instead of `0` when calling `joinChannelEx`.
+
+* In order to prevent unauthorized users from disrupting the order of the channel if the token is leaked, best practice is that users who use wildcard tokens set their role as audience and their user permissions `role` to receive streams `kRoleSubscriber`.
+
+If viewers using wildcard tokens need to connect to the microphone, <Vg k="COMPANY" /> recommends the following steps to update the token. 
+The following API uses C++ as an example:
+
+1. Call `setClientRole` to set the user role as host (`BROADCASTER`).
+
+2. When generating a token using `BuildTokenWithUid`, specify the channel name and user ID in the method, and set the user permission (`role`) to send streams (`kRolePublisher`), thereby generating a token with the permission to send streams.
+
+3. Call `renewToken` to update the token.
+
+A wildcard token is valid for 24 hours. If the token is about to expire, regenerate a new wildcard token on the server and then call `renewToken` to pass in the new wildcard token.
+
+## Deployment and debugging​
+
+This section shows you how to quickly deploy a token generator locally. After successful deployment, you can use the generated tokens to test and debug your project.
+
+### Deploy a token generator through Docker​
+
+Refer to the following steps to deploy a Docker-based token generator locally:
+
+1. Install [Docker](https://www.docker.com/).
+
+1. Open a terminal and run the following command to start the token generator. Replace `[YOUR_APP_ID]` and `[YOUR_APP_CERTIFICATE]` with the App ID and App certificate you obtained from <Vg k="CONSOLE" />.
+
+    ```shell
+    docker run -d -it -p 8080:8080 -e APP_ID=[YOUR_APP_ID] -e APP_CERTIFICATE=[YOUR_APP_CERTIFICATE] --name agora-token-service agoracn/token:0.1.2023053011
+    ```
+
+1. Run the following command to request a token from the token generator you just deployed:
+
+    ```shell
+    curl --location 'http://localhost:8080/token/generate' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "channelName": "channel_name_test",
+        "uid": "12345678",
+        "tokenExpireTs": 3600,
+        "privilegeExpireTs": 3600,
+        "serviceRtc": {
+            "enable": true,
+            "role": 1
+        }
+    }'
+    ```
+
+    After the request is successful, your terminal displays the generated token.
+
+### Manually deploy a token generator locally​
+
+This guide uses the Golang language as an example. Before starting, ensure that you 
+have [Golang](https://golang.org/dl/) version 1.14 or above.
+
+Refer to the following steps to build and run a token generator locally to generate tokens:
+
+1. Create a new `token-server` folder. Create a `server.go` file inside the folder and paste the following Golang sample code into the file. Replace the values for `appID` and `appCertificate` with your App ID and App certificate.
+
+    <details>
+    <summary>Sample code for a token server</summary>
+    <CodeBlock language="go" showLineNumbers>
+    {`package main
+
+    import (
+        rtctokenbuilder "github.com/AgoraIO/Tools/DynamicKey/AgoraDynamicKey/go/src/rtctokenbuilder2"
+        "fmt"
+        "log"
+        "net/http"
+        "encoding/json"
+        "errors"
+        "strconv"
+    )
+
+    type rtc_int_token_struct struct{
+        Uid_rtc_int uint32 \`json:"uid"\`
+        Channel_name string \`json:"ChannelName"\`
+        Role uint32 \`json:"role"\`
+    }
+
+    var rtc_token string
+    var int_uid uint32
+    var channel_name string
+
+    var role_num uint32
+    var role rtctokenbuilder.Role
+
+    // Use RtcTokenBuilder to generate RTC Token
+    func generateRtcToken(int_uid uint32, channelName string, role rtctokenbuilder.Role){
+        appID := "<Your App ID>"
+        appCertificate := "<Your App Certificate>"
+        // Ensure that the expiration time of the token is later than the permission expiration time. Permission expiration time, unit is seconds
+        tokenExpireTimeInSeconds := uint32(40)
+        // The token-privilege-will-expire callback is triggered 30 seconds before the permission expires.
+        // For demonstration purposes, set the expiration time to 40 seconds. You can see the process of the client automatically updating the Token
+        privilegeExpireTimeInSeconds := uint32(40)
+
+        result, err := rtctokenbuilder.BuildTokenWithUid(appID, appCertificate, channelName, int_uid, role, tokenExpireTimeInSeconds, privilegeExpireTimeInSeconds)
+        if err != nil {
+            fmt.Println(err)
+        } else {
+            fmt.Printf("Token with uid: %s\\n", result)
+            fmt.Printf("uid is %d\\n", int_uid )
+            fmt.Printf("ChannelName is %s\\n", channelName)
+            fmt.Printf("Role is %d\\n", role)
+        }
+        rtc_token = result
+    }
+
+
+    func rtcTokenHandler(w http.ResponseWriter, r *http.Request){
+        w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS");
+        w.Header().Set("Access-Control-Allow-Headers", "*");
+
+        if r.Method == "OPTIONS" {
+            w.WriteHeader(http.StatusOK)
+            return
+        }
+
+        if r.Method != "POST" && r.Method != "OPTIONS" {
+            http.Error(w, "Unsupported method. Please check.", http.StatusNotFound)
+            return
+        }
+
+        var t_int rtc_int_token_struct
+        var unmarshalErr *json.UnmarshalTypeError
+        int_decoder := json.NewDecoder(r.Body)
+        int_err := int_decoder.Decode(&t_int)
+        if (int_err == nil) {
+
+                    int_uid = t_int.Uid_rtc_int
+                    channel_name = t_int.Channel_name
+                    role_num = t_int.Role
+                    switch role_num {
+                        case 1:
+                            role = rtctokenbuilder.RolePublisher
+                        case 2:
+                            role = rtctokenbuilder.RoleSubscriber
+                    }
+        }
+        if (int_err != nil) {
+
+            if errors.As(int_err, &unmarshalErr){
+                    errorResponse(w, "Bad request. Wrong type provided for field " + unmarshalErr.Value  + unmarshalErr.Field + unmarshalErr.Struct, http.StatusBadRequest)
+                    } else {
+                    errorResponse(w, "Bad request.", http.StatusBadRequest)
+                }
+            return
+        }
+
+        generateRtcToken(int_uid, channel_name, role)
+        errorResponse(w, rtc_token, http.StatusOK)
+        log.Println(w, r)
+    }
+
+    func errorResponse(w http.ResponseWriter, message string, httpStatusCode int){
+        w.Header().Set("Content-Type", "application/json")
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.WriteHeader(httpStatusCode)
+        resp := make(map[string]string)
+        resp["token"] = message
+        resp["code"] = strconv.Itoa(httpStatusCode)
+        jsonResp, _ := json.Marshal(resp)
+        w.Write(jsonResp)
+    }
+
+    func main(){
+        // Use int type uid to generate RTC Token
+        http.HandleFunc("/fetch_rtc_token", rtcTokenHandler)
+        fmt.Printf("Starting server at port 8082\n")
+
+        if err := http.ListenAndServe(":8082", nil); err != nil {
+            log.Fatal(err)
+        }
+    }`}
+    </CodeBlock> 
+    </details>
+
+1. Open the terminal, go to the `token-server` folder path, and run the following command line to create a `go.mod` file for your token generator. This file defines the import path and dependencies:
+
+    ```go
+    $ go mod init sampleServer
+    ```
+
+1. Run the following command to install dependencies. 
+ 
+    ```go
+    $ go get 
+    ```
+
+1. Run the following command to start the token generator:
+
+    ```go
+    $ go run server.go
+    ```
+
+After the token generator is deployed successfully, your terminal returns the token generated based on the App ID and App certificate you filled in.
+
 ## Reference
 
 This section contains information that completes the information in this page, or points you to documentation that explains other aspects to this product.
 
-### Source code for a token server
+### Compatibility
 
-The token server RESTful web service used in this page is written in Golang using the Gin framework. Want to use the code in your authentication service? [Download](https://github.com/AgoraIO-Community/agora-token-service/releases/latest) the token server source code and binaries for various platforms from Github.
+`AccessToken2` is supported on the following versions of <Vg k="COMPANY" /> SDK (excluding client side bypass push function):
 
-To see how to create a token generator inside your IAM system, see [Integrate a token generator](../develop/integrate-token-generation).
+For RTC 4.x SDK: 
+* Android, iOS, macOS, Windows, Electron, Unity, React Native, or Unreal SDK version must be greater than or equal to v4.0.0 
+* Flutter SDK version must be greater than or equal to v6.0.0 
+* Web SDK version must be greater than or equal to v4.8.0 
 
-### Token server POST request structure
+<Admonition type="info" title="Information">
+SDKs using `AccessToken2` can interoperate with SDKs using `AccessToken`. The SDK versions that supports `AccessToken2` also supports `AccessToken`.
+</Admonition>
 
-A token server POST request has the following structure:
+### API Reference​
 
-Endpoint:
+This section documents the core methods you use to generate tokens, using the Golang language as an example.
 
-```
-/fetchToken
-```
+- `BuildTokenWithUid`: Generate a token for basic authentication, and set the expiration time for the token and all permissions.
 
-Body:
+- `BuildTokenWithUidAndPrivilege`: Generate a token with fine control over streaming permissions. Set the validity period of the token and the expiration time of permissions to join channels, publish audio, video, and data streams.
 
-```json
-{
-    "tokenType": "rtc", // choose rtc for audio/video SDK tokens
-    "uid": "0", // change to your user id, for example "333" or "account-name"
-    "role": "publisher",  // "publisher" or "subscriber"
-    "channel": "example", // channel name, wildcard "*" is available.
-    "expire": 3600 // optional: expiration time in seconds (default: 3600)
-}
-```
+To generate a token and set the expiration time for all permissions, use:
 
-URL example: `https://agora-token-service-example.up.railway.app/fetchToken`
-
-Your token server returns a JSON object containing an encrypted token:
-
-```json
-{
-  "token": "ThisIsAnExampleTokenThisIsAnExampleTokenThisIsAnExampleTokenThisIsAnExampleTokenThisIsAnExampleToken"
-}
+```go
+func BuildTokenWithUid(
+    appId string, appCertificate string,
+    channelName string, uid uint32,
+    role Role, 
+    tokenExpire uint32, privilegeExpire uint32,
+)
 ```
 
-<PlatformWrapper notAllowed={["ios","macos"]}>
-### Token server GET request structure
+**Parameters**
 
-A token server GET request has the following structure:
+* `appId`: The App ID generated when you create a project in <Vg k="CONSOLE" />.
+* `appCertificate`: The App certificate of your project.
+* `channelName`: Channel name, length should be less than 64 bytes.
+* `uid`: The user ID of the user to be authenticated, a 32-bit unsigned integer, ranging from 1 to (2³² - 1). The `uid` must be unique.
+* `role`: User permissions, which determine whether the user can send streams in the channel.
+    * `kRolePublisher` (1): (Default) The user has the permission to send streams in the channel.
+    * `kRoleSubscriber` (2): The user has receiving permission only. The user can receive streams in the channel, but cannot send streams. This parameter only takes effect after MIC authentication is turned on.
+* `tokenExpire`: The token validity period (seconds). The maximum validity period is 24 hours.
+* `privilegeExpire`: Validity time of all permissions (seconds). If set to 0 (default value), it means that the permission will never expire.
 
-    ```html
-    /rtc/:channelName/:role/:tokentype/:uid/?expiry=expireTime
-    ```
+<Admonition title="Note" type="caution">
+If the token expires but the permissions have not expired, the user remains in the channel and can continue to send streams. Any callbacks related to the token in the SDK are not triggered. Once disconnected from the channel, the user is not able to use the expired token to join the same channel. Best practice is to use consistent settings for the token expiration time and the permission expiration time.
+</Admonition>
 
--   `:channelName` is the name of the <Vg k="COMPANY" /> channel, or a wildcard for multiple channels that the local
-user may join. For example, you use a `Agora*` token to join `AgoraChannel` or `AgoraAwesome`. However, you cannot
-use it to join the `AppTest`channel.
+To generate a token and set expiration time for different permissions, use:
 
-    A channel name may contain numbers with both upper and lower case letters. The name length must be less than 64
-    characters. Wildcard channels work for tokens that start with `007` and later.
+```go
+func BuildTokenWithUidAndPrivilege(
+    appId string, appCertificate string, 
+    channelName string, uid uint32,
+	tokenExpire uint32, joinChannelPrivilegeExpire uint32, 
+    pubAudioPrivilegeExpire uint32, pubVideoPrivilegeExpire uint32, pubDataStreamPrivilegeExpire uint32
+)
+```
 
--   `:role` is the user role
+**Parameters**
 
-    Use `publisher` for publisher, `subscriber` for subscriber.
+* `appId`: The App ID generated when you create a project in <Vg k="CONSOLE" />.
+* `appCertificate`: The App certificate of your project.
+* `channelName`: Channel name, length should be less than 64 bytes.
+* `uid`: The user ID of the user to be authenticated, a 32-bit unsigned integer, ranging from 1 to (2³² - 1). The `uid` must be unique.
+* `tokenExpire`: The token validity period (seconds). The maximum validity period is 24 hours.
+* `joinChannelPrivilegeExpire`: Validity in seconds for the permission to join the channel (seconds).
+* `pubAudioPrivilegeExpire`: Validity in seconds for the permission to publish audio streams in the channel.
+* `pubVideoPrivilegeExpire`: Validity in seconds for the permission to publish video streams in the channel.
+* `pubDataStreamPrivilegeExpire`: Validity in seconds for the permission to publish data streams in the channel.
 
--   `:tokentype` is the type of token
+<Admonition title="Note" type="caution">
+* The expiration time of the different permissions is calculated from the time the token is generated.
+* <Vg k="COMPANY" /> recommends that the token expiration time be consistent with the expiration time of other permissions.
+* The permission to publish audio, video and data streams in the channel only takes effect after the Lianmai authentication service is turned on. If the permission to join the channel expires earlier than the permission to publish an audio stream, the user is kicked out of the channel after the permission to join the channel expires.
+</Admonition>
 
-    <Vg k="AGORA_BACKEND" /> supports both integer user IDs and string user accounts for token generation. To ensure smooth communication, all the users in a channel must use the same type of ID, that is, either the integer `uid`, or a string `userAccount`. Best practice is to use the `uid`.
+### Frequently asked questions
 
--   `:uid` is the user ID
-
-    User Id can be any 32-bit unsigned integer. It can be set to 0, if you do not need to authenticate the user based on the user ID.
-
--   `expireTime` (optional) is the number of seconds after which the token will expire
-
-    By default, a token expires after 24 hours unless a shorter life span is explicitly specified in the token request.
-</PlatformWrapper>
-
-### Wildcard tokens
-
-When a user joins an audio or video call, or a live broadcast, <Vg k="AGORA_BACKEND" /> uses a token to authenticate the user. If users need to join multiple channels, or frequently switch between channels, they need to acquire a token from the authentication server each time they join a new channel. In order to avoid frequent retrieval of tokens when switching channels, <Vg k="AGORA_BACKEND" /> enables use of tokens based on channel wildcards. By using wildcard tokens, users can reuse the same token to join different channels. This approach not only speeds up the process of authentication, but also reduces the workload on your token server.
-
-#### Prerequisites
-
-Before generating wildcard tokens, make sure you have deployed the `AccessToken2` server.
-
-<PlatformWrapper platform="web">
-To enable use of wildcard tokens in your web client, call `setParameter` to set `USE_NEW_TOKEN` to `true`:
-
-    ```java
-    AgoraRTC.setParameter("USE_NEW_TOKEN", true);
-    ```
-</PlatformWrapper>
-
-#### Generate wildcard token
-
-The generation code of `AccessToken2` provides two `BuildTokenWithUid` methods. You can use `BuildTokenWithUid[1/2]` or `BuildTokenWithUid[2/2]` according to the `BuildTokenWithUid` API reference, and fill in the corresponding parameter information.
-
-When generating a wildcard token, you need to note that the following parameters are different compared to those used to generate a general token:
-
-| Parameter | General Token | Wildcard Token |
-|:----------|:--------------|:---------------|
-| `uid` | User ID of the user to be authenticated. If there is no need to authenticate the user ID, that is, if clients can join the channel with any uid, set `uid` to `0`. | The user ID of the user to be authenticated. Supports `int` and `string` types for the user ID, but it must not be set to `0`. |
-| `channelName` | Channel name, the length should be less than 64 bytes. | Channel name is set as wildcard `*` indicating any channel name. |
-
-After acquiring a wildcard token, users can join any channel with the same user ID and token.
-
-#### Precautions
-
-1. Currently, <Vg k="AGORA_BACKEND" /> supports only the following combinations of channel name and user ID when joining a channel:
-
-    - `uid` set to 0, `channelName` is specified
-    - `uid` is specified, `channelName` set to `*`
-    
-    <Vg k="AGORA_BACKEND" /> does not support setting the `uid` to `0` and `channelName` to `*` at the same time.
-
-1. To prevent unauthorized users from disrupting the order of a channel using leaked wildcard tokens, <Vg k="COMPANY" /> recommends that users who use wildcard tokens set their permissions as a **viewer** and the role as `kRoleSubscriber`.
-
-   If a user using a wildcard token needs to connect to the microphone, best practice is to take the following steps to update the token:
-
-    1. Call `setClientRole` to set the user's role as a host or broadcaster.
-
-    1. When generating a fresh token, specify the channel name and user ID in the `BuildTokenWithUid` method. Set the user permission role to `kRolePublisher`, thereby generating a token with the permission to send streams.
-
-    1. Call `renewToken` to update the token.
-
-1. If the wildcard token expires, you regenerate a new wildcard token on the server and then call `renewToken` to pass in the new token.
-
-<Reference />
+[How to deal with token-related error codes?](/help/integration-issues/token_related_issues)

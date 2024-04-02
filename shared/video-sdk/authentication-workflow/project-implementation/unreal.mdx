@@ -1,195 +1,57 @@
-<PlatformWrapper platform="unreal">
+<PlatformWrapper platform="unreal, blueprint">
 
-1.  **Add the necessary dependencies**
+### Use a token
 
-    In order to make HTTPS calls to a token server and interpret the JSON return parameters, integrate the `HTTP` module into your Unreal project. In `AgoraImplementation.Build.cs`, update `PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore"});` with the following line:
+The client requests a token from your authentication server corresponding to the user Id and the channel name. You use the received token to join a channel.
 
-        ``` cpp
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "Json", "AgoraPlugin", "HTTP" });
-        ```
+```java
+// Channel name
+const char* channelId;
+// User Id
+int uid = 0
+// Request a token from the server corresponding to channelId and uid
+const char* token = getToken();
+// Set channel media options
+ChannelMediaOptions options;
+// Set the user role as host
+options.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
+// Join the channel
+m_rtcEngine->joinChannel(token, channelId, uid, options);
+```
 
-3.  **Enable the user to specify a channel name**
+### Token expiration 
 
-    To get the channel name from the user, you need a text box in the UI. To add a text box, take the following steps:
+After you join a channel using a token, the SDK triggers an `onTokenPrivilegeWillExpire` callback, 30 seconds before the token is set to expire.
 
-    1. In `MyUserWidget.h`, add the following property specifiers after `UButton* LeaveBtn = nullptr;`:
+When the token expires, the SDK triggers an `onRequestToken` callback. After receiving the callback, you regenerate a new token on the server side, and then update the token in one of the following ways:
 
-        ``` cpp
-        UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
-		UEditableTextBox* channelTextBox = nullptr;
-        ```
+#### Single channel scenario
 
-    2. In Unreal Editor, go to **Content Browser** and open `NewBlueprint`, then do the following:
+* Call `renewToken` to pass in the newly generated Token. (Recommended)
 
-        1. Drag **Text Box** from the **Input** section of the **Palette** to the canvas panel. You see a text box appears on the canvas.
+* Call `updateChannelMediaOptions` to update the token.
 
-        1. In **Details**, rename **EditableTextBox_0** to `channelTxtBox`, then change the following properties:
+* Call `leaveChannel` [2/2] to leave the current channel, and then pass in a new token when calling `joinChannel` [2/2] to rejoin the channel.
 
-            * **Position X** - 799
-            * **Position Y** - 192
-            * **Size X** - 257
-            * **Size Y** - 43
+#### Multi-channel scenario
 
-        Click **Compile** to save and compile the newly added widget.
+If you call `joinChannelEx` to join multiple channels, call the `updateChannelMediaOptionsEx` method to update the token.
 
-4.  **Add the required header files**
+The following sample code shows calling `renewToken` to update the token when receiving an `onTokenPrivilegeWillExpire` callback notification.
 
-    In `MyUserWidget.h`, add the following before `#include "MyUserWidget.generated.h"`:
-
-    ``` cpp
-    #include "Components/EditableTextBox.h"
-    #include "Http.h"
-    #include <string>
-    using namespace std;
-    ```
-
-5.  **Add variables for your connection to the token server**
-
-    Declare the variables you need to specify the local user uid, token server URL, and the token expire time. In `MyUserWidget.h`, add the following declarations to the `UMyUserWidget` class:
-
-    ``` cpp
-    std::string serverUrl = "<Token Server URL>"; // The base URL to your token server, for example, "https://agora-token-service-production-92ff.up.railway.app".
-    int tokenExpireTime = 40; // Expire time in Seconds.
-    int localUid = 1;
-    ```
-
-    Make sure you specify the token server URL in exactly the same format as shown in the example.
-
-7.  **Retrieve a token from the server**
-
-    Use a GET request to retrieve an authentication token for a specific channel from the token server, then decode the return parameters. to implement this workflow, do the following:
-
-
-    1. Setup a method to fetch token. In `MyUserWidget.h`, add the following method declaration to `UMyUserWidget`:
-
-        ```cpp
-       	void fetchToken();
-        ```
-
-    2. Add the logic of fetching a token from the server to the `fetchToken` method. In `MyUserWidget.cpp`, add the following before `setupVideoSDKEngine`:
-
-        <ProductWrapper product = "video-calling">
-        ```cpp
-        void UMyUserWidget::fetchToken()
-        {
-            // Setup a Http get request to fetch a token from the token server.
-            FHttpRequestRef Request = FHttpModule::Get().CreateRequest();
-            Request->OnProcessRequestComplete().BindUObject(this, &UMyUserWidget::OnResponseReceived);
-            std::string serverUrlString = serverUrl + "/rtc/";
-            serverUrlString += channelName;
-            // Concatenate token type, uid, and expire time with the server URL string.
-            serverUrlString += "/1/uid/";
-            serverUrlString += to_string(localUid) + "/?expiry=";
-            serverUrlString += to_string(tokenExpireTime);
-            // Convert the sever URL string to a FString.
-            FString Furl(serverUrlString.c_str());
-            UE_LOG(LogTemp, Warning, TEXT("%s"), *Furl);
-            // Set the request URL.
-            Request->SetURL(Furl);
-            // Set the request type.
-            Request->SetVerb("GET");
-            // Process the request to retrieve a token.
-            Request->ProcessRequest();
-        }
-        ```
-        </ProductWrapper>
-        <ProductWrapper product = "interactive-live-streaming">
-        ```cpp
-        void UMyUserWidget::fetchToken()
-        {
-            // Setup a Http get request to fetch a token from the token server.
-            FHttpRequestRef Request = FHttpModule::Get().CreateRequest();
-            Request->OnProcessRequestComplete().BindUObject(this, &UMyUserWidget::OnResponseReceived);
-            std::string serverUrlString = serverUrl + "/rtc/";
-            serverUrlString += channelName;
-            // Concatenate token type, uid, and expire time with the server URL string.
-            if (userRole == "Host")
-            {
-                serverUrlString += "/1/uid/";
-            }
-            else
-            {
-                serverUrlString += "/2/uid/";
-            }
-            serverUrlString += to_string(localUid) + "/?expiry=";
-            serverUrlString += to_string(tokenExpireTime);
-            // Convert the sever URL string to a FString.
-            FString Furl(serverUrlString.c_str());
-            UE_LOG(LogTemp, Warning, TEXT("%s"), *Furl);
-            // Set the request URL.
-            Request->SetURL(Furl);
-            // Set the request type.
-            Request->SetVerb("GET");
-            // Process the request to retrieve a token.
-            Request->ProcessRequest();
-        }
-        ```
-        </ProductWrapper>
-8.  **Update the `joinChannel` method to fetch a token**
-
-    To retrieve a fresh token from the token server, call `fetchToken` before you join a channel. In `MyUserWidget.cpp`, locate `OnJoinButtonClick` and add the following line after `agoraEngine->setupLocalVideo(videoCanvas);`:
-
-     ``` cpp
-    FString channelname = channelTextBox->GetText().ToString();
-    if(channelName == "" || serverUrl == "")
-    {
-        UE_LOG(LogTemp, Warning, TEXT("Please!, make sure you passed a valid server url and channel name"));
+```java
+class CJoinChannelVideoByTokenRtcEngineEventHandler
+    : public IRtcEngineEventHandler
+{
+public:
+    // Triggered when a token is about to expire
+    virtual void onTokenPrivilegeWillExpire(const char* token) {
+    // Request to generate a fresh token
+    const char* token = getToken();
+    // Renew Token
+    m_rtcEngine->renewToken(token);
     }
-    else
-    {
-        channelName = std::string(TCHAR_TO_UTF8(*channelname));
-        fetchToken();
-    }
-    ```
-    When your <Vpl k = "CLIENT"/> receives a response from the server, it calls `OnResponseReceived`. You use this function to parse the token and join the channel. To implement this, do the following:
-    1. Setup `OnResponseReceived` in your <Vpl k = "CLIENT"/>. In `MyUserWidget.cpp`, add the following to `UMyUserWidget`:
-        ```cpp
-        void OnResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bConnectedSuccessfully);
-        ```
-    2. Parse the token from the request response. In `MyUserWidget.cpp`, add the following before `setupVideoSDKEngine`:
-        ```cpp
-        void UMyUserWidget::OnResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bConnectedSuccessfully)
-        {
-            // Parse the response to retrieve the token.
-            TSharedPtr<FJsonObject> ResponseObj;
-            TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Response->GetContentAsString());
-            FJsonSerializer::Deserialize(Reader, ResponseObj);
-            UE_LOG(LogTemp, Display, TEXT("Response %s"), *Response->GetContentAsString());
-            UE_LOG(LogTemp, Display, TEXT("rtcToken: %s"), *ResponseObj->GetStringField("rtcToken"));
-        }
-        ```
-    3. Shift the `joinChannel` API call to `OnResponseReceived` method. In `MyUserWidget.cpp`, locate `OnJoinButtonClick` and remove the following lines:
-        ```cpp
-        agoraEngine->joinChannel(token.c_str(), channelName.c_str(), "", 0);
-        isJoin = true;
-        ```
-    3. In `MyUserWidget.cpp`, locate `OnResponseReceived` and add the following after `FJsonSerializer::Deserialize(Reader, ResponseObj);`:
-        ```cpp
-        token = std::string(TCHAR_TO_UTF8(*ResponseObj->GetStringField("rtcToken")));
-        if (isJoin == true)
-        {
-            agoraEngine->renewToken(token.c_str());
-        }
-        else
-        {
-            agoraEngine->joinChannel(token.c_str(), channelName.c_str(), "", localUid);
-            isJoin = true;
-        }
-        ```
-9.  **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
-    A token expires after the `expireTime` specified in the call to the token server or expires after 24 hours, if the time is not specified. The `onTokenPrivilegeWillExpire` event receives a callback when the current token is about to expire so that a fresh token may be retrieved and used. To implement `onTokenPrivilegeWillExpire` in your <Vpl k = "CLIENT"/>, take the following steps:
-    1. Set up the `onTokenPrivilegeWillExpire` callback. In `MyUserWidget.h`, add the following method to `UMyUserWidget`:
-
-       ```cpp
-       void onTokenPrivilegeWillExpire(const char* expiredToken);
-       ```
-    2. Call `fetchToken` when the <Vg k = "VSDK"/> triggers `onTokenPrivilegeWillExpire`. In `MyUserWidget.cpp`, add the following before `OnJoinButtonClick`:
-        ```cpp
-        void UMyUserWidget::onTokenPrivilegeWillExpire(const char* expiredToken)
-        {
-            UE_LOG(LogTemp, Display, TEXT("Token expired: Retrieving a token from the server...."));
-            fetchToken();
-        }
-       ```
+}
+```
 
 </PlatformWrapper>

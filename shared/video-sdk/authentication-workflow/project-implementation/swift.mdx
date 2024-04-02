@@ -1,73 +1,50 @@
-import AddVariables from '@docs/assets/code/video-sdk/authentication-workflow/add-variables.mdx';
-import SpecifyChannel from '@docs/assets/code/video-sdk/authentication-workflow/specify-channel.mdx';
-import FetchToken from '@docs/assets/code/video-sdk/authentication-workflow/fetch-token.mdx';
+### Use a token
 
-1.  **Add the required import statements**
+The client requests a token from your authentication server corresponding to the user Id and the channel name. You use the received token to join a channel.
 
-    ```swift
-    import SwiftUI
-    import AgoraRtcKit
-    ```
+```swift
+// Channel name
+let channelId: String = "xxxx"
+// User ID
+let uid: UInt = 0
+// Request the server to generate a token corresponding to channelId and uid
+let token = getToken()
+// Set channel media options
+let mediaOption = AgoraRtcChannelMediaOptions()
+// Set the user role as host
+mediaOption.clientRoleType = .broadcaster
+// Use the token to join a channel
+agoraKit.joinChannel(byToken: token, channelId: channelId, uid: uid, mediaOptions: mediaOption)
+```
 
-2.  **Retrieve a token from the server**
+### Token expiration 
 
-    Use a GET request to retrieve an authentication token for a specific channel from the token server, then decode the return parameters to obtain the token.
+After you join a channel using a token, the SDK triggers an `onTokenPrivilegeWillExpire` callback, 30 seconds before the token is set to expire.
 
-    In `AgoraManager` extension, add the following `fetchToken` method:
+When the token expires, the SDK triggers an `onRequestToken` callback. After receiving the callback, you regenerate a new token on the server side, and then update the token in one of the following ways:
 
-    <FetchToken />
+#### Single channel scenario
 
-3.  **Fetch a token and join a channel using that token**
+* Call `renewToken` to pass in the newly generated Token. (Recommended)
 
-    Retrieve a token from the token server and use it to join the channel.
+* Call `updateChannelWithMediaOptions` to update the token.
 
-    <PlatformWrapper platform="ios">
-        ```swift
-        fileprivate func fetchTokenThenJoin(tokenUrl: String, channel: String) async -> Bool {
-            if let token = try? await self.fetchToken(
-                from: tokenUrl, channel: channel,
-                role: role, userId: 0
-            ) {
-                return await self.joinChannel(
-                    channel, token: token, uid: 0
-                ) == 0
-            } else { return false }
-        }
-        ```
-    </PlatformWrapper>
-    <PlatformWrapper platform="macos">
-        ```swift
-        func fetchTokenThenJoin() async -> Bool {
-            if !channelId.isEmpty,
-               let token = try? await self.agoraManager.fetchToken(
-                from: self.tokenUrl, channel: self.channelId,
-                role: self.agoraManager.role, userId: 0
-            ) {
-                self.agoraManager.joinChannel(channelId, token: token)
-                return true
-            } else { return false }
-        }
-        ```
-    </PlatformWrapper>
+* Call `leaveChannel` [2/2] to leave the current channel, and then pass in a new token when calling `joinChannelByToken` [2/4] to rejoin the channel.
 
-4.  **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
+#### Multi-channel scenario
 
-    A token expires either after the `tokenExpiryTime` specified in the call to the token server or, if the time is
-    not specified, after 24 hours. When the `onTokenPrivilegeWillExpire` is received by your app, retrieve a fresh
-    token and call `renewToken`.
+If you call `joinChannelEx` to join multiple channels, call the `updateChannelExWithMediaOptions` method to update the token.
 
+The following sample code shows calling `renewToken` to update the token when receiving an `onTokenPrivilegeWillExpire` callback notification.
 
-    ```swift
-    func rtcEngine(
-        _ engine: AgoraRtcEngineKit, tokenPrivilegeWillExpire token: String
-    ) {
-        Task {
-            if let token = try? await fetchToken(
-                from: DocsAppConfig.shared.tokenUrl,
-                channel: DocsAppConfig.shared.channel,
-                role: .broadcaster
-            ) { self.agoraEngine.renewToken(token) }
-        }
+```swift
+extension JoinChannelVideoToken: AgoraRtcEngineDelegate {
+    // Callback is triggered when the token is about to expire
+    func rtcEngine(_ engine: AgoraRtcEngineKit, tokenPrivilegeWillExpire token: String) {
+        // Request to generate a fresh token
+        let token = getToken()
+        // Update Token
+        engine.renewToken(token)
     }
-    ```
-
+}
+```

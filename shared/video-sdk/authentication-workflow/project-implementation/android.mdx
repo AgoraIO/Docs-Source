@@ -1,5 +1,5 @@
-
 <PlatformWrapper platform="android">
+import CodeBlock from '@theme/CodeBlock';
 
 ### Use a token
 
@@ -53,5 +53,221 @@ class RtcEngineEventHandlerImpl extends IRtcEngineEventHandler {
     }
 }
 ```
+
+### Complete sample code
+For a complete implementation of token authentication, refer to the following:
+
+1. In `/Gradle Scripts/build.gradle(Module: <projectname>.app)`, add the following dependencies for making HTTP requests to the token server:
+
+    ```yaml
+    dependencies {
+      implementation 'com.squareup.okhttp3:okhttp:3.10.0'
+      implementation 'com.google.code.gson:gson:2.8.4'
+    }
+    ```
+
+1. In `MainActivity.java`, replace the content with the following code:
+
+    <details>
+    <summary>Complete sample code for token authentication</summary>
+    <CodeBlock language="java" showLineNumbers>
+    {` package com.example.rtcquickstart;
+
+    import androidx.appcompat.app.AppCompatActivity;
+    import android.os.Bundle;
+    import androidx.core.app.ActivityCompat;
+    import androidx.core.content.ContextCompat;
+
+    import android.Manifest;
+    import android.content.pm.PackageManager;
+    import android.view.SurfaceView;
+    import android.widget.FrameLayout;
+    import android.widget.Toast;
+    import io.agora.rtc2.Constants;
+    import io.agora.rtc2.IRtcEngineEventHandler;
+    import io.agora.rtc2.RtcEngine;
+    import io.agora.rtc2.video.VideoCanvas;
+    import io.agora.rtc2.ChannelMediaOptions;
+
+    import okhttp3.MediaType;
+    import okhttp3.OkHttpClient;
+    import okhttp3.Request;
+    import okhttp3.RequestBody;
+    import okhttp3.Response;
+    import okhttp3.Call;
+    import okhttp3.Callback;
+
+    import com.google.gson.Gson;
+    import java.util.Map;
+    import org.json.JSONException;
+    import org.json.JSONObject;
+    import java.io.IOException;
+
+    public class MainActivity extends AppCompatActivity {
+
+        // Fill in the App ID from Agora console
+        private String appId = "Your App ID";
+        // Fill in the channel name
+        private String channelName = "demo";
+        private String token = "";
+        private RtcEngine mRtcEngine;
+        private int joined = 1;
+
+        private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {
+            @Override
+            // Listen for the remote user to join the channel and obtain the user ID of the remote user
+            public void onUserJoined(int uid, int elapsed) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        // After obtaining the user ID in the onUserJoined callback, call setupRemoteVideo to set the remote user view
+                        setupRemoteVideo(uid);
+                    }
+                });
+            }
+
+            @Override
+            public void onTokenPrivilegeWillExpire(String token) {
+                fetchToken(1234, channelName, 1);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast toast = Toast.makeText(MainActivity.this, "Token renewed", Toast.LENGTH_SHORT);
+                        toast.show();
+                    }
+                });
+                super.onTokenPrivilegeWillExpire(token);
+            }
+
+            @Override
+            public void onRequestToken() {
+                joined = 1;
+                fetchToken(1234, channelName, 1);
+                super.onRequestToken();
+            }
+
+        };
+
+        private static final int PERMISSION_REQ_ID = 22;
+
+        private static final String[] REQUESTED_PERMISSIONS = {
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.CAMERA
+        };
+
+        private boolean checkSelfPermission(String permission, int requestCode) {
+            if (ContextCompat.checkSelfPermission(this, permission) !=
+                    PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, REQUESTED_PERMISSIONS, requestCode);
+                return false;
+            }
+            return true;
+        }
+
+    // Get RTC Token
+    private void fetchToken(int uid,String channelName,int tokenRole){
+        OkHttpClient client = new OkHttpClient();
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject json = new JSONObject();
+        try {
+            json.put("uid", uid);
+            json.put("ChannelName", channelName);
+            json.put("role", tokenRole);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+            RequestBody requestBody = RequestBody.create(JSON, String.valueOf(json));
+            Request request = new Request.Builder()
+                    .url("http://<Your Host URL and port>/fetch_rtc_token")
+                    .header("Content-Type", "application/json; charset=UTF-8")
+                    .post(requestBody)
+                    .build();
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    if(response.isSuccessful()){
+                        Gson gson = new Gson();
+                        String result = response.body().string();
+                        Map map = gson.fromJson(result, Map.class);
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                token = map.get("token").toString();
+                                // If the user has not joined the channel, use token to join the channel
+                                ChannelMediaOptions options = new ChannelMediaOptions();
+                                if (joined != 0){joined = mRtcEngine.joinChannel(token, channelName, 1234, options);}
+                                // If the user has joined the channel, call renewToken to regenerate the token
+                                else {mRtcEngine.renewToken(token);}
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            setContentView(R.layout.activity_main);
+
+            // If all permissions are granted, initialize the RtcEngine object and join the channel
+            if (checkSelfPermission(REQUESTED_PERMISSIONS[0], PERMISSION_REQ_ID) &&
+                    checkSelfPermission(REQUESTED_PERMISSIONS[1], PERMISSION_REQ_ID)) {
+                initializeAndJoinChannel();
+            }
+        }
+
+        protected void onDestroy() {
+            super.onDestroy();
+
+            mRtcEngine.leaveChannel();
+            mRtcEngine.destroy();
+        }
+
+        private void initializeAndJoinChannel() {
+            try {
+                mRtcEngine = RtcEngine.create(getBaseContext(), appId, mRtcEventHandler);
+            } catch (Exception e) {
+                throw new RuntimeException("Check the error.");
+            }
+
+            // In interactive live broadcast, set the channel scene to BROADCASTING
+            mRtcEngine.setChannelProfile(Constants.CHANNEL_PROFILE_LIVE_BROADCASTING);
+            // Depending on the actual situation, set the user role to BROADCASTER or AUDIENCE
+            mRtcEngine.setClientRole(Constants.CLIENT_ROLE_BROADCASTER);
+
+            // SDK turns off video by default. Call enableVideo to enable video
+            mRtcEngine.enableVideo();
+
+            FrameLayout container = findViewById(R.id.local_video_view_container);
+            // Call CreateRendererView to create a SurfaceView object and add it as a child to the FrameLayout
+            SurfaceView surfaceView = new SurfaceView (getBaseContext());
+            container.addView(surfaceView);
+            // Pass the SurfaceView object to Agora to render local video
+            mRtcEngine.setupLocalVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, 0));
+            // Start local video preview
+            mRtcEngine.startPreview();
+            // Get a token from the token server
+            fetchToken(1234, channelName, 1);
+        }
+
+        private void setupRemoteVideo(int uid) {
+            FrameLayout container = findViewById(R.id.remote_video_view_container);
+            SurfaceView surfaceView = new SurfaceView (getBaseContext());
+            surfaceView.setZOrderMediaOverlay(true);
+            container.addView(surfaceView);
+            mRtcEngine.setupRemoteVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, uid));
+        }
+
+    }`}
+    </CodeBlock>
+    </details>
 
 </PlatformWrapper>

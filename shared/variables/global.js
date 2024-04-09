@@ -162,6 +162,8 @@ export const ACC = 'Acceleration';
 export const ACCM = 'Media Accelerator';
 export const ACCG = 'Global Accelerator';
 
+export const MG = 'Media Gateway';
+
 export const TEMPL = 'Templates';
 
 export const RTEE = 'Extensions';

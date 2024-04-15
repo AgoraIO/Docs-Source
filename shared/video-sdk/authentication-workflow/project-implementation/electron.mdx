@@ -1,125 +1,165 @@
 <PlatformWrapper platform="electron">
-    
-1.  **Add the necessary dependencies**
+import CodeBlock from '@theme/CodeBlock';
 
-    In order to make HTTPS calls to a token server and interpret the JSON return parameters, integrate a HTTP client into your <Vpl k="CLIENT" />. In *agora\_project*, open a command prompt, then run the following command.
+### Use a token
 
-    ```bash
-    npm install axios
-    ```
+This section shows you how to integrate token authentication in your <Vpl k="CLIENT" />.
 
-2.  **Import the HTTP client library**
+1. Open the [SDK quickstart](../get-started/get-started-sdk) project you created earlier.
 
-    To access the axios HTTP client from your project, add the following line at the beginning of the file `preload.js`:
+1. In `renderer.js` replace the contents with the following:
 
-    ```javascript
-    const axios = require('axios');
-    ```
+    <details>
+    <summary>Sample code for basic authentication</summary>
+    <CodeBlock language="dart" showLineNumbers>
+    {`const {
+        createAgoraRtcEngine,
+        VideoMirrorModeType,
+        VideoSourceType,
+        RenderModeType,
+        ChannelProfileType,
+        ClientRoleType,
+    } = require("agora-electron-sdk");
 
-3.  **Enable the user to specify a channel**
+    let rtcEngine;
+    let localVideoContainer;
+    let remoteVideoContainer;
+    let isJoined = false;
 
-    Add a text box to the user interface. Open `index.html` and add the following code before `<button type="button" id="join">`.
+    const EventHandles = {
+        // Listen to local user joining channel events
+        onJoinChannelSuccess: ({ channelId, localUid }, elapsed) => {
+            console.log('Successfully joined the channel：' + channelId);
+            isJoined = true;
+            // After local users join the channel, set the local video window
+            rtcEngine.setupLocalVideo({
+                sourceType: VideoSourceType.VideoSourceCameraPrimary,
+                view: localVideoContainer,
+                mirrorMode: VideoMirrorModeType.VideoMirrorModeDisabled,
+                renderMode: RenderModeType.RenderModeFit,
+            });
+        },
 
-    ```html
-    <input type="text" id="textbox"/>
-    ```
+        onLeaveChannel: ({ channelId, localUid }, stats) => {
+            console.log('Successfully left the channel:' + channelId);
+            isJoined = false;
+        },
 
-4.  **Add variables for your connection to the token server**
-
-    Declare the variables you need to specify the token-server url and the token expire time. In `preload.js`, add the following to declarations.
-    ```javascript
-    // Set the user role.
-    var role = 1;
-    // Set token expire time.
-    var ExpireTime = 60;
-    // The base URL to your token server. For example, https://agora-token-service-production-92ff.up.railway.app".
-    var serverUrl = '';
-    ```
-    Make sure you specify the token-server URL in exactly the same format as shown in the example.
-
-5.  **Retrieve a token from the server**
-
-    Use a GET request to retrieve an authentication token for a specific channel from the token server.
-
-    In `preload.js`, add the following code before `window.onload = () =>`:
-
-    ```javascript
-    // Fetches the <Vg k="VSDK" /> token
-    async function FetchToken()
-    {
-        return new Promise(function (resolve)
-        {
-            axios.get(serverUrl+'rtc/'+channel+'/'+role+'/uid/'+Uid+'/?expiry='+ExpireTime)
-            .then(
-                response =>
+        // Listen to remote user join event
+        onUserJoined: ({ channelId, localUid }, remoteUid, elapsed) => {
+            console.log('Remote user ' + remoteUid + ' 已加入');
+            // Listen to remote user join event
+            rtcEngine.setupRemoteVideoEx(
                 {
-                    console.log(response.data.rtcToken);
-                    resolve(response.data.rtcToken);
-                })
-                .catch(error =>
-                    {
-                        console.log(error);
-                    });
+                    sourceType: VideoSourceType.VideoSourceRemote,
+                    uid: remoteUid,
+                    view: remoteVideoContainer,
+                    mirrorMode: VideoMirrorModeType.VideoMirrorModeDisabled,
+                    renderMode: RenderModeType.RenderModeFit,
+                },
+                { channelId },
+            );
+        },
+
+        // Listen for the token expiration event
+        onTokenPrivilegeWillExpire: ({ channelId, localUid }, token) => {
+            console.log('token ' + token + '即将过期');
+            // Obtain a new token from the server
+            fetchToken(channelId, localUid, ClientRoleType.ClientRoleBroadcaster)
+        },
+
+        // Listen for the token expired event
+        onRequestToken: ({ channelId, localUid }) => {
+            console.log('token expired');
+            token = ''
+        }
+    };
+
+    // Send a token request to the token server
+    function fetchToken(channelName, uid, role) {
+        //Token server URL example: http://12.123.1.123:8082/fetch_rtc_token
+        const url = '<Your host URL and port>/fetch_rtc_token';
+        const body = JSON.stringify({
+            uid,
+            ChannelName: channelName,
+            role
         });
+        fetch(url, {
+            method: 'POST',
+            body,
+        })
+            .then((res) => res.json())
+            .then((res) => {
+                console.log('token ' + res.token);
+                if (+res.code === 200) {
+                    if (isJoined) {
+                        rtcEngine.renewToken(res.token)
+                    } else {
+                        rtcEngine.joinChannel(res.token, channelName, uid, { clientRoleType: role })
+                    }
+                }
+                return res;
+            });
     }
-    ```
 
-6.  **Fetch a token before you join a channel**
+    window.onload = () => {
+        const os = require("os");
+        const path = require("path");
 
-    Before you join a channel, you call `FetchToken` to get a fresh token. To do this, in `preload.js`, add the following code before `agoraEngine.joinChannel(token, channel, null, uid);`:
-    <ProductWrapper product={["interactive-live-streaming", "broadcast-streaming"]}>
-        ```javascript
-        if(document.getElementById('textbox').value == '')
-        {
-            window.alert("Channel name is required!");
-            return;
-        }
-        channel=document.getElementById('textbox').value;
-         if(clientRole == 'host')
-        {
-            role = 1;
-        }
-        else
-        {
-            role =2;
-        }
-        token = await FetchToken();
-        ```
-    </ProductWrapper>
-    <ProductWrapper product="video-calling">
-        ```javascript
-        if(document.getElementById('textbox').value == '')
-        {
-            window.alert("Channel name is required!");
-            return;
-        }
-        channel=document.getElementById('textbox').value;
-        token = await FetchToken();
-        ```
-    </ProductWrapper>
-    <ProductWrapper product="voice-calling">
-        ```javascript
-        if(document.getElementById('textbox').value == '')
-        {
-            window.alert("Channel name is required!");
-            return;
-        }
-        channel=document.getElementById('textbox').value;
-        token = await FetchToken();
-        ```
-    </ProductWrapper>
+        // Fill in your app ID
+        const APPID = "<Your app ID>";
+        // Fill in the channel name 
+        const channel = "Test";
 
-7.  **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
+        localVideoContainer = document.getElementById("join-channel-local-video");
+        remoteVideoContainer = document.getElementById("join-channel-remote-video");
+        const sdkLogPath = path.resolve(os.homedir(), "./test.log");
 
-    A token expires after the `ExpireTime` specified in the call to the token server or after 24 hours, if the time is not specified. The `onRequestToken` event receives a callback when the current token expires so that a fresh token may be retrieved and used. To implement this callback, in `preload.js`, add the following code after `const EventHandles = {`:
+        // Create an RtcEngine instance
+        rtcEngine = createAgoraRtcEngine();
 
-    ```javascript
-     onRequestToken: async (connection) =>
-     {
-        // Occurs when the token expires.
-        console.log("Token for channel "+ connection.channelId+" has been expired");
-        token = await FetchToken();
-        agoraEngine.renewToken(token);
-    },
-    ```
+        // Initialize the RtcEngine instance
+        rtcEngine.initialize({
+            appId: APPID,
+            logConfig: { filePath: sdkLogPath }
+        });
+
+        // Register event handler
+        rtcEngine.registerEventHandler(EventHandles);
+
+        //Set the channel profile to live broadcast 
+        rtcEngine.setChannelProfile(ChannelProfileType.ChannelProfileLiveBroadcasting);
+
+        // Set the user role, for host use ClientRoleBroadcaster, for audience use ClientRoleAudience
+        rtcEngine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+
+        // Enable the video module
+        rtcEngine.enableVideo();
+
+        // Enable camera preview
+        rtcEngine.startPreview();
+
+        // Use the token to join a channel
+        // You need to specify the user ID yourself and ensure its uniqueness within the channel
+        fetchToken(channel, 123456, ClientRoleType.ClientRoleBroadcaster);
+    };`}
+    </CodeBlock>
+    </details>
+
+    Replace `<Your app ID>` with your app ID, which must be consistent with the app ID you specified in the server configuration. Update `<Your host URL and port>` with the host URL and port of the local Golang server you have deployed. For example `99.9.9.99:8082`.
+
+The sample code implements the following logic:
+
+* Calls `joinChannel` to join a channel using the user ID, the channel name, and a token you obtain from the server. The user ID and channel name you specify must be consistent with the values you used to generate the token.
+
+* The SDK triggers an `onTokenPrivilegeWillExpire` callback 30 seconds before the token expires. After receiving the callback, you obtain a new token from the server and call `renewToken` to pass the newly generated token to the SDK.
+
+* If the token expires, the SDK triggers an `onRequestToken` callback. After receiving the callback, obtain a new token from the server and call `joinChannel` with the new token to rejoin the channel.
+
+Build and run the project on the local device, the <Vpl k="CLIENT" /> performs the following operations:
+
+* Obtains a token from your token server.
+* Joins the channel.
+* Automatically renews the token when it is about to expire. 
+
 </PlatformWrapper>

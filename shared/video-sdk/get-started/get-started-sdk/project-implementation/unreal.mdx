@@ -146,8 +146,116 @@ protected:
 
 <details> 
 <summary><code>Project/Source/Project/AgoraWidget.cpp</code></summary>
-<ProductWrapper notAllowed="voice-calling">
+<ProductWrapper product="video-calling">
+```cpp
+#include "AgoraWidget.h"
+void UAgoraWidget::CheckAndroidPermission()
+{
+#if PLATFORM_ANDROID
+    FString pathfromName = UGameplayStatics::GetPlatformName();
+    if (pathfromName == "Android")
+    {
+        TArray AndroidPermission;
+        AndroidPermission.Add(FString("android.permission.CAMERA"));
+        AndroidPermission.Add(FString("android.permission.RECORD_AUDIO"));
+        AndroidPermission.Add(FString("android.permission.READ_PHONE_STATE"));
+        AndroidPermission.Add(FString("android.permission.WRITE_EXTERNAL_STORAGE"));
+        UAndroidPermissionFunctionLibrary::AcquirePermissions(AndroidPermission);
+    }
+#endif
+}
+void UAgoraWidget::SetupVideoSDKEngine()
+{
+    agora::rtc::RtcEngineContext RtcEngineContext;
+    RtcEngineContext.appId = TCHAR_TO_ANSI(*_appID);
+    RtcEngineContext.eventHandler = this;
+    RtcEngineProxy = agora::rtc::ue::createAgoraRtcEngine();
+    RtcEngineProxy->initialize(RtcEngineContext);
+}
+void UAgoraWidget::SetupUI()
+{
+    JoinBtn->OnClicked.AddDynamic(this, &UAgoraWidget::Join);
+    LeaveBtn->OnClicked.AddDynamic(this, &UAgoraWidget::Leave);
+}
+void UAgoraWidget::Join()
+{
+    RtcEngineProxy->enableVideo();
+    agora::rtc::ChannelMediaOptions options;
+    options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_COMMUNICATION;
+    options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
+    RtcEngineProxy->joinChannel(TCHAR_TO_ANSI(_token), TCHAR_TO_ANSI(_channelName), 0, options);
+}
+void UAgoraWidget::Leave()
+{
+    RtcEngineProxy->leaveChannel();
+}
+void UAgoraWidget::NativeConstruct()
+{
+    Super::NativeConstruct();
+    #if PLATFORM_ANDROID
+        CheckAndroidPermission()
+    #endif
+    SetupUI();
+    SetupVideoSDKEngine();
+}
+void UAgoraWidget::NativeDestruct()
+{
+    Super::NativeDestruct();
+    if (RtcEngineProxy != nullptr)
+    {
+        RtcEngineProxy->unregisterEventHandler(this);
+        RtcEngineProxy->release();
+        delete RtcEngineProxy;
+        RtcEngineProxy = nullptr;
+    }
+}
+void UAgoraWidget::onUserJoined(agora::rtc::uid_t uid, int elapsed)
+{
+    agora::rtc::VideoCanvas videoCanvas;
+    videoCanvas.view = RemoteVideo;
+    videoCanvas.uid = uid;
+    videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_REMOTE;
+    agora::rtc::RtcConnection connection;
+    connection.channelId = TCHAR_TO_ANSI(*_channelName);
+    ((agora::rtc::IRtcEngineEx*)RtcEngineProxy)->setupRemoteVideoEx(videoCanvas, connection);
+}
+void UAgoraWidget::onUserOffline(agora::rtc::uid_t uid, agora::rtc::USER_OFFLINE_REASON_TYPE reason)
+{
+    agora::rtc::VideoCanvas videoCanvas;
+    videoCanvas.view = nullptr;
+    videoCanvas.uid = uid;
+    videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_REMOTE;
+    agora::rtc::RtcConnection connection;
+    connection.channelId = TCHAR_TO_ANSI(*_channelName);
+    ((agora::rtc::IRtcEngineEx*)RtcEngineProxy)->setupRemoteVideoEx(videoCanvas, connection);
+}
+void UAgoraWidget::onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed)
+{
+    AsyncTask(ENamedThreads::GameThread, =
+    {
+        UE_LOG(LogTemp, Warning, TEXT("JoinChannelSuccess uid: %u"), uid);
+        agora::rtc::VideoCanvas videoCanvas;
+        videoCanvas.view = LocalVideo;
+        videoCanvas.uid = 0;
+        videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_CAMERA;
+        RtcEngineProxy->setupLocalVideo(videoCanvas);
+    });
+}
+void UAgoraWidget::onLeaveChannel(const agora::rtc::RtcStats& stats)
+{
+    AsyncTask(ENamedThreads::GameThread, =
+    {
+        agora::rtc::VideoCanvas videoCanvas;
+        videoCanvas.view = nullptr;
+        videoCanvas.uid = 0;
+        videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_CAMERA;
+        RtcEngineProxy->setupLocalVideo(videoCanvas);
+    });
+}
+```
+</ProductWrapper>
 
+<ProductWrapper product="interactive-live-streaming">
 <CodeBlock language="cpp" showLineNumbers>
 {`#include "AgoraWidget.h"
 void UAgoraWidget::CheckAndroidPermission()
@@ -183,7 +291,118 @@ void UAgoraWidget::Join()
     RtcEngineProxy->enableVideo();
     agora::rtc::ChannelMediaOptions options;
     options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_LIVE_BROADCASTING;
-    options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_AUDIENCE;
+    options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
+    options.audienceLatencyLevel = agora::rtc::AUDIENCE_LATENCY_LEVEL_TYPE::AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY;
+    RtcEngineProxy->joinChannel(TCHAR_TO_ANSI(_token), TCHAR_TO_ANSI(_channelName), 0, options);
+}
+void UAgoraWidget::Leave()
+{
+    RtcEngineProxy->leaveChannel();
+}
+void UAgoraWidget::NativeConstruct()
+{
+    Super::NativeConstruct();
+    #if PLATFORM_ANDROID
+        CheckAndroidPermission()
+    #endif
+    SetupUI();
+    SetupVideoSDKEngine();
+}
+void UAgoraWidget::NativeDestruct()
+{
+    Super::NativeDestruct();
+    if (RtcEngineProxy != nullptr)
+    {
+        RtcEngineProxy->unregisterEventHandler(this);
+        RtcEngineProxy->release();
+        delete RtcEngineProxy;
+        RtcEngineProxy = nullptr;
+    }
+}
+void UAgoraWidget::onUserJoined(agora::rtc::uid_t uid, int elapsed)
+{
+    agora::rtc::VideoCanvas videoCanvas;
+    videoCanvas.view = RemoteVideo;
+    videoCanvas.uid = uid;
+    videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_REMOTE;
+    agora::rtc::RtcConnection connection;
+    connection.channelId = TCHAR_TO_ANSI(*_channelName);
+    ((agora::rtc::IRtcEngineEx*)RtcEngineProxy)->setupRemoteVideoEx(videoCanvas, connection);
+}
+void UAgoraWidget::onUserOffline(agora::rtc::uid_t uid, agora::rtc::USER_OFFLINE_REASON_TYPE reason)
+{
+    agora::rtc::VideoCanvas videoCanvas;
+    videoCanvas.view = nullptr;
+    videoCanvas.uid = uid;
+    videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_REMOTE;
+    agora::rtc::RtcConnection connection;
+    connection.channelId = TCHAR_TO_ANSI(*_channelName);
+    ((agora::rtc::IRtcEngineEx*)RtcEngineProxy)->setupRemoteVideoEx(videoCanvas, connection);
+}
+void UAgoraWidget::onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed)
+{
+    AsyncTask(ENamedThreads::GameThread, =
+    {
+        UE_LOG(LogTemp, Warning, TEXT("JoinChannelSuccess uid: %u"), uid);
+        agora::rtc::VideoCanvas videoCanvas;
+        videoCanvas.view = LocalVideo;
+        videoCanvas.uid = 0;
+        videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_CAMERA;
+        RtcEngineProxy->setupLocalVideo(videoCanvas);
+    });
+}
+void UAgoraWidget::onLeaveChannel(const agora::rtc::RtcStats& stats)
+{
+    AsyncTask(ENamedThreads::GameThread, =
+    {
+        agora::rtc::VideoCanvas videoCanvas;
+        videoCanvas.view = nullptr;
+        videoCanvas.uid = 0;
+        videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_CAMERA;
+        RtcEngineProxy->setupLocalVideo(videoCanvas);
+    });
+}`}
+</CodeBlock>
+</ProductWrapper>
+
+<ProductWrapper product="broadcast-streaming">
+<CodeBlock language="cpp" showLineNumbers>
+{`#include "AgoraWidget.h"
+void UAgoraWidget::CheckAndroidPermission()
+{
+#if PLATFORM_ANDROID
+    FString pathfromName = UGameplayStatics::GetPlatformName();
+    if (pathfromName == "Android")
+    {
+        TArray AndroidPermission;
+        AndroidPermission.Add(FString("android.permission.CAMERA"));
+        AndroidPermission.Add(FString("android.permission.RECORD_AUDIO"));
+        AndroidPermission.Add(FString("android.permission.READ_PHONE_STATE"));
+        AndroidPermission.Add(FString("android.permission.WRITE_EXTERNAL_STORAGE"));
+        UAndroidPermissionFunctionLibrary::AcquirePermissions(AndroidPermission);
+    }
+#endif
+}
+void UAgoraWidget::SetupVideoSDKEngine()
+{
+    agora::rtc::RtcEngineContext RtcEngineContext;
+    RtcEngineContext.appId = TCHAR_TO_ANSI(*_appID);
+    RtcEngineContext.eventHandler = this;
+    RtcEngineProxy = agora::rtc::ue::createAgoraRtcEngine();
+    RtcEngineProxy->initialize(RtcEngineContext);
+}
+void UAgoraWidget::SetupUI()
+{
+    JoinBtn->OnClicked.AddDynamic(this, &UAgoraWidget::Join);
+    LeaveBtn->OnClicked.AddDynamic(this, &UAgoraWidget::Leave);
+}
+void UAgoraWidget::Join()
+{
+    RtcEngineProxy->enableVideo();
+    agora::rtc::ChannelMediaOptions options;
+    options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_LIVE_BROADCASTING;
+    options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
+    options.audienceLatencyLevel = agora::rtc::AUDIENCE_LATENCY_LEVEL_TYPE::AUDIENCE_LATENCY_LEVEL_LOW_LATENCY;
     RtcEngineProxy->joinChannel(TCHAR_TO_ANSI(_token), TCHAR_TO_ANSI(_channelName), 0, options);
 }
 void UAgoraWidget::Leave()
@@ -305,7 +524,7 @@ void UAgoraWidget::Join()
     // Set channel media options
     agora::rtc::ChannelMediaOptions options;
     // Set channel profile to live broadcasting
-    options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_LIVE_BROADCASTING;
+    options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_COMMUNICATION;
     // Set user role to broadcaster
     options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
     // Join the channel
@@ -723,7 +942,7 @@ To enable local users to join and leave a channel, add the `Join` and `Leave` me
 * `AgoraWidget.cpp`
     
     Add the following code after `SetupUI()`.
-    <ProductWrapper notAllowed="voice-calling">
+    <ProductWrapper product="interactive-live-streaming">
     ```cpp
     void UAgoraWidget::Join()
     {
@@ -734,7 +953,57 @@ To enable local users to join and leave a channel, add the `Join` and `Leave` me
         // Set the channel profile to live broadcasting
         options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_LIVE_BROADCASTING;
         // Set the user role as host or audience
-        options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_AUDIENCE;
+        options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
+        // Set the latency level for optimal experience
+        options.audienceLatencyLevel = agora::rtc::AUDIENCE_LATENCY_LEVEL_TYPE::AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY;
+        // Join a channel
+        RtcEngineProxy->joinChannel(TCHAR_TO_ANSI(*_token), TCHAR_TO_ANSI(*_channelName), 0, options);
+    }
+
+    void UAgoraWidget::Leave()
+    {
+        // Leave the channel
+        RtcEngineProxy->leaveChannel();
+    }
+    ```
+    </ProductWrapper>
+    <ProductWrapper product="broadcast-streaming">
+    ```cpp
+    void UAgoraWidget::Join()
+    {
+        // Enable the video module
+        RtcEngineProxy->enableVideo();
+        // Set channel media options
+        agora::rtc::ChannelMediaOptions options;
+        // Set the channel profile to live broadcasting
+        options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_LIVE_BROADCASTING;
+        // Set the user role as host or audience
+        options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
+        // Set the latency level for optimal experience
+        options.audienceLatencyLevel = agora::rtc::AUDIENCE_LATENCY_LEVEL_TYPE::AUDIENCE_LATENCY_LEVEL_LOW_LATENCY;
+        // Join a channel
+        RtcEngineProxy->joinChannel(TCHAR_TO_ANSI(*_token), TCHAR_TO_ANSI(*_channelName), 0, options);
+    }
+
+    void UAgoraWidget::Leave()
+    {
+        // Leave the channel
+        RtcEngineProxy->leaveChannel();
+    }
+    ```
+    </ProductWrapper>
+    <ProductWrapper product="video-calling">
+    ```cpp
+    void UAgoraWidget::Join()
+    {
+        // Enable the video module
+        RtcEngineProxy->enableVideo();
+        // Set channel media options
+        agora::rtc::ChannelMediaOptions options;
+        // Set the channel profile to live broadcasting
+        options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_COMMUNICATION;
+        // Set the user role as host or audience
+        options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
         // Join a channel
         RtcEngineProxy->joinChannel(TCHAR_TO_ANSI(*_token), TCHAR_TO_ANSI(*_channelName), 0, options);
     }
@@ -753,7 +1022,7 @@ To enable local users to join and leave a channel, add the `Join` and `Leave` me
         // Set channel media options
         agora::rtc::ChannelMediaOptions options;
         // Set the channel profile to live broadcasting
-        options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_LIVE_BROADCASTING;
+        options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_COMMUNICATION;
         // Set the user role as host or audience
         options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_AUDIENCE;
         // Join a channel

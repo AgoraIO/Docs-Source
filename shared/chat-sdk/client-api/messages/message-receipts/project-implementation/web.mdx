@@ -8,18 +8,16 @@ To send a message delivery receipt, take the following steps:
 
    ```javascript
    const conn = new websdk.connection({
-    appKey: "your appKey",
-    delivery: true
-    });
+     appKey: "your appKey",
+     delivery: true,
+   });
    ```
 
-2. Once the recipient receives the message, the SDK triggers `onDeliveredMessage` on the message sender's client, notifying the message sender that the message has been delivered to the recipient.
-
+2. Once the recipient receives the message, the SDK triggers `onDeliveredMessage` on the message sender's client, notifying that the message has been delivered to the recipient.
     ```javascript
-    conn.addEventHandler('customEvent', {
-    onReceivedMessage: function(message){},    // Received a receipt for message delivery to the server.
-    onDeliveredMessage: function(message){},   // Receive a receipt for message delivery to the client.
-
+   conn.addEventHandler("customEvent", {
+     onReceivedMessage: function (message) {}, // Received a receipt for message delivery to the server.
+     onDeliveredMessage: function (message) {}, // Received a receipt for message delivery to the client.
     });
     ```
 
@@ -27,100 +25,119 @@ To send a message delivery receipt, take the following steps:
 
 In both one-to-one chats and group chats, you can use message read receipts to notify the message sender that the message has been read. To minimize the method call for message read receipts, the SDK also supports conversation read receipts in one-to-one chats. 
 
-#### Conversation read receipts
+#### One-to-one chat
 
-After the conversation is read, call `send` from the recipient's client to send a conversation read receipt:
+The one-to-one chats support both conversation read receipts and message read receipts. We recommend you use both types of read receipts together to reduce the number of message read receipts:
 
-```javascript
-// One-to-one chat
-var msg = new WebIM.message('channel');
-msg.set({
-    to: 'username'
-});
-WebIM.conn.send(msg.body);
+- If several messages are received when the chat page is not opened yet, send a conversation read receipt when the chat page is opened.
+- If a message is received on an open chat page, send a message read receipt.
 
-// Group chat
-var msg = new WebIM.message('channel');
-msg.set({
-    to: 'groupid'，
-    chatType: 'groupChat'
-});
-WebIM.conn.send(msg.body);
-```
+##### Conversation read receipts
 
-The message sender can receive the conversation read receipt in the `onChannelMessage` callback:
+1. The message recipient sends a conversation read receipt.
 
-```javascript
-WebIM.conn.listen({
-  onChannelMessage:function(message){
-    ...
-  }
-})
-```
-
-#### Message read receipts
-
-Chat supports sending message read receipts in both one-to-one chats and chat groups. Refer to the following steps to implement message read receipt in one-to-one chats:
-
-1. After the message is read, call `send` from the recipient's client to send the message read receipt
+    The message recipient opens the conversation page to check whether there are unread messages. If yes, call `send` to send a conversation read receipt.
 
     ```javascript
-    var bodyId = message.id;  // The message ID.
-    var msg = new WebIM.message('read');
-    msg.set({
-        id: bodyId,
-        to: message.from
+    let option = {
+      chatType: "singleChat", // The chat type: singleChat for one-to-one.
+      type: "channel", // The type of read receipt: channel indicates the conversation read receipt.
+      to: "userId", // The user ID of the message recipient.
+    };
+    let msg = WebIM.message.create(option);
+    conn.send(msg);
+    ```
+
+2. The message sender receives the conversation read receipt in the `onChannelMessage` callback.
+
+    ```javascript
+    conn.addEventHandler("customEvent", {
+      onChannelMessage: (message) => {},
     });
-    conn.send(msg.body);
     ```
 
-2. On the message sender's client, listen for `onReadMessage` to receive the message read receipt:
+##### Message read receipts
+
+For one-to-one chats, message read receipts are stored as long as messages on the Chat server. Specifically, message read receipts can be sent whenever the messages are available on the Chat server. The message storage period on the Chat server depends on your product plan. For details, see the [pricing plan details](../../reference/pricing-plan-details#message).
+
+Refer to the following steps to implement message read receipt in one-to-one chats:
+
+1. The message recipient sends a message read receipt.
+
+   - If there are several unread messages in the conversation, to minimize the number of sent message read receipts, we recommend that a conversation read receipt be sent when the message recipient enters the conversation.
+
+   ```javascript
+   let option = {
+     chatType: "singleChat", // The chat type: singleChat for one-to-one chat.
+     type: "channel", // The type of read receipt: channel indicates the conversation read receipt.
+     to: "userId", // The user ID of the message receipt.
+   };
+   let msg = WebIM.message.create(option);
+   conn.send(msg);
+   ```
+
+   - If there is only one unread message in the conversation, after reading it, call `send` from the recipient's client to send the message read receipt.
 
     ```javascript
-    WebIM.conn.listen({
-    onReadMessage:function(message){
-        ...
-    }
-    })
+    let option = {
+      type: "read", // The message read receipt.
+      chatType: "singleChat", // The chat type: singleChat for one-to-one chat.
+      to: "userId", // The user ID of the message receipt.
+      id: "id", // The ID of the message that requires the read receipt.
+    };
+    let msg = WebIM.message.create(option);
+    conn.send(msg);
     ```
 
-Refer to the following steps to implement message read receipts in group chats.
+2. The message sender listens for `onReadMessage` to receive the message read receipt.
 
-1. When sending a chat group message, the group owner or admin can require the group message receipt:
+   ```javascript
+   conn.addEventHandler("customEvent", {
+     onReadMessage: (message) => {},
+   });
+   ```
+
+#### Group chat
+
+For a group chat, group members can determine whether to require message read receipts when sending a message. If yes, after a group member reads the message, the SDK sends a read receipt. In a group chat, the number of message read receipts that are sent for the message refers to the number of group members that have read this message.
+
+The read receipts for group messages are valid only for three days. Specifically, if a read receipt is sent three days after the message is sent in the group, the Chat server does not record the group member that reads the message, nor sends the read receipt.
+
+1. When sending a message, a group member can set whether to require a message read receipt by setting `allowGroupAck` to `true`.
 
     ```javascript
     sendGroupReadMsg = () => {
-    let option = {
-        type: 'txt',            // message type。
-        chatType: 'groupChat',  // Conversation type, here is group chat.
-        to: 'groupId',          // The recipient of the message, which is the group ID.
-        msg: 'message content'  // Message content.
-        msgConfig: { allowGroupAck: true } // Setting this message requires a read receipt.
-    }
+       let option = {
+           type: 'txt',            // Message type.
+           chatType: 'groupChat',  // Conversation type: groupChat for group chat.
+           to: 'groupId',          // The message recipient: group ID.
+           msg: 'message content'  // Message content.
+           msgConfig: { allowGroupAck: true } // Setting that this message requires a read receipt.
+       }
 
-    let msg = WebIM.message.create(option);
-    conn.send(msg).then((res) => {
-        console.log('send message success');
-    }).catch((e) => {
-        console.log("send message error");
-    })
-    }
+      let msg = WebIM.message.create(option);
+      conn.send(msg).then((res) => {
+          console.log('send message success');
+      }).catch((e) => {
+          console.log("send message error");
+      })
+   }
     ```
 
-2. After reading the group message, the recipient calls `send` to send the group message read receipt:
+2. After reading the group message, the recipient calls `send` to send the message read receipt.
 
     ```javascript
     sendReadMsg = () => {
-        let option = {
-            type: 'read',           // Whether the message has been read.
-            chatType: 'groupChat',  // Conversation type, here is group chat.
-            id: 'msgId',            // The message ID for which read receipts need to be sent.
-            to: 'groupId',          // Group ID.
-            ackContent: JSON.stringify({}) // Receipt content.
-            }  
-            let msg = WebIM.message.create(option); 
-            conn.send(msg)
-            }
+     let option = {
+       type: "read", // Whether the message has been read.
+       chatType: "groupChat", // Conversation type: groupChat means group chat.
+       id: "msgId", // The message ID for which the read receipt is sent.
+       to: "groupId", // Group ID.
+       ackContent: JSON.stringify({}), // The content of the message read receipt.
+     };
+     let msg = WebIM.message.create(option);
+     conn.send(msg);
+   };
     ```
 
 3. The message sender receives the message read receipt by listening for either of the following callbacks:
@@ -131,32 +148,33 @@ Refer to the following steps to implement message read receipts in group chats.
    // You can listen in onReadMessage when online.
    conn.addEventHandler('customEvent', {
     onReadMessage: (message) => {
-        let { mid } = message;
-        let msg = {
-             id: mid
-             };
-             if(message.groupReadCount){
-                // The message has been read.
-                msg.groupReadCount = message.groupReadCount[message.mid];
-                }
-                },
-                // Receipt is received when offline, and it will be monitored here after logging in.
-                onStatisticMessage: (message) => {
-                    let statisticMsg = message.location && JSON.parse(message.location);
-                    let groupAck = statisticMsg.group_ack || [];
-                    }
-                    })
+      let { mid } = message;
+      let msg = {
+           id: mid,
+      };
+      if (message.groupReadCount){
+              // The message has been read.
+          msg.groupReadCount = message.groupReadCount[message.mid];
+      }
+   },
+   // You can listen for onStatisticMessage upon login when the read receipt is received when you are offline.
+    onStatisticMessage: (message) => {
+      let statisticMsg = message.location && JSON.parse(message.location);
+      let groupAck = statisticMsg.group_ack || [];
+    },
+    });
     ```
 
-4. After receiving the group message receipt, the sender can retrieve the detailed information of the users that have read the message:
+4. After receiving the read receipt, the message sender can retrieve the detailed information of the group members that have read the message.
 
     ```javascript
     conn.getGroupMsgReadUser({
-        msgId: 'messageId',  // Message ID.
-        groupId: 'groupId' // Group ID.
-        }).then((res)=>{
-            console.log(res)
-             })
+        msgId: "messageId", // Message ID.
+        groupId: "groupId", // Group ID.
+     })
+       .then((res) => {
+         console.log(res);
+     });
     ```
 
 </PlatformWrapper>

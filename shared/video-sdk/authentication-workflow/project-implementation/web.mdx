@@ -1,0 +1,156 @@
+<PlatformWrapper platform="web">
+import CodeBlock from '@theme/CodeBlock';
+
+### Use a token
+
+This section shows you how to integrate token authentication in your <Vpl k="CLIENT" />.
+
+1. Open the [SDK quickstart](../get-started/get-started-sdk) project you created earlier.
+
+1. In `index.html`, include an HTTP client library such as `axios` for sending token requests to the authentication server.
+
+    ```html
+    <html>
+        <head>
+            <title>Token demo</title>
+        </head>
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+        <body>
+            <h1>Token demo</h1>
+            <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.8.0.js"></script>
+            <script src="./agoraLogic.js"></script>
+        </body>
+    </html>
+    ```
+
+1. Open `agoraLogic.js`. Refer to the following code to add the `fetchToken` method and use it to retrieve a token from the token server to join a channel. Add token expiration callbacks to renew the token.
+
+    <details>
+    <summary>Sample code for basic authentication</summary>
+    <CodeBlock language="js" showLineNumbers>
+    {`var rtc = {
+        // Set local audio track and video track
+        localAudioTrack: null,
+        localVideoTrack: null,
+    };
+
+    var options = {
+        // Fill in app ID
+        appId: "<Your app ID>",
+        // Fill in a channel name
+        channel: "test",
+        // Set the user as host or audience 
+        role: "host"
+    };
+
+    // Get a token from your token server
+
+    function fetchToken(uid, channelName, tokenRole) {
+
+        return new Promise(function (resolve) {
+            axios.post('http://<Your host URL and port>/fetch_rtc_token', {
+                uid: uid,
+                channelName: channelName,
+                role: tokenRole
+            }, {
+                headers: {
+                    'Content-Type': 'application/json; charset=UTF-8'
+                }
+            })
+                .then(function (response) {
+                    const token = response.data.token;
+                    resolve(token);
+                })
+                .catch(function (error) {
+                    console.log(error);
+                });
+        })
+    }
+
+    async function startBasicCall() {
+
+        const client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
+        client.setClientRole(options.role);
+        const uid = 123456;
+
+        // Assign the obtained token to the token parameter of the join method, and join the channel
+        let token = await fetchToken(uid, options.channel, 1);
+
+        await client.join(options.appId, options.channel, token, uid);
+        rtc.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        rtc.localVideoTrack = await AgoraRTC.createCameraVideoTrack();
+        await client.publish([rtc.localAudioTrack, rtc.localVideoTrack]);
+        const localPlayerContainer = document.createElement("div");
+        localPlayerContainer.id = uid;
+        localPlayerContainer.style.width = "640px";
+        localPlayerContainer.style.height = "480px";
+        document.body.append(localPlayerContainer);
+
+        rtc.localVideoTrack.play(localPlayerContainer);
+
+        console.log("publish success!");
+
+        client.on("user-published", async (user, mediaType) => {
+            await client.subscribe(user, mediaType);
+            console.log("subscribe success");
+
+            if (mediaType === "video") {
+                const remoteVideoTrack = user.videoTrack;
+                const remotePlayerContainer = document.createElement("div");
+                remotePlayerContainer.textContent = "Remote user " + user.uid.toString();
+                remotePlayerContainer.style.width = "640px";
+                remotePlayerContainer.style.height = "480px";
+                document.body.append(remotePlayerContainer);
+                remoteVideoTrack.play(remotePlayerContainer);
+
+            }
+
+            if (mediaType === "audio") {
+                const remoteAudioTrack = user.audioTrack;
+                remoteAudioTrack.play();
+            }
+
+            client.on("user-unpublished", user => {
+                const remotePlayerContainer = document.getElementById(user.uid);
+                remotePlayerContainer.remove();
+            });
+
+        });
+
+        // When you receive the token-privilege-will-expire callback, request a new token from the server and call renewToken to pass the new Token to the SDK
+        client.on("token-privilege-will-expire", async function () {
+            let token = await fetchToken(uid, options.channel, 1);
+            await client.renewToken(token);
+        });
+
+        // When you receive the token-privilege-did-expire callback, request a new token from the server and call join to rejoin the channel.
+        client.on("token-privilege-did-expire", async function () {
+            console.log("Fetching the new Token")
+            let token = await fetchToken(uid, options.channel, 1);
+            console.log("Rejoining the channel with new Token")
+            await client.join(options.appId, options.channel, token, uid);
+        });
+
+    }
+
+    startBasicCall()`}
+    </CodeBlock>
+    </details>
+
+    Replace `<Your app ID>` with your app ID, which must be consistent with the app ID you specified in the server configuration. Update `<Your Host URL and port>` with the host URL and port of the local Golang server you have deployed. For example `99.9.9.99:8082`.
+
+The sample code implements the following logic:
+
+* Calls `join` to join a channel using the user ID, the channel name, and a token you obtain from the server. The user ID and channel name you specify must be consistent with the values you used to generate the token.
+
+* The SDK triggers an `token-privilege-will-expire` callback 30 seconds before the token expires. After receiving the callback, you obtain a new token from the server and call `renewToken` to pass the newly generated token to the SDK.
+
+* If the token expires, the SDK triggers an `token-privilege-did-expire` callback. After receiving the callback, obtain a new token from the server and call `join` with the new token to rejoin the channel.
+
+Build and run the project on the local device, the <Vpl k="CLIENT" /> performs the following operations:
+
+* Obtains a token from your token server.
+* Joins the channel.
+* Automatically renews the token when it is about to expire. 
+
+</PlatformWrapper>

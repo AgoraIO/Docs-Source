@@ -1,5 +1,5 @@
 ---
-title: 'Use Trancoding Scripts'
+title: 'Use Transcoding Scripts'
 sidebar_position: 9
 type: docs
 description: >

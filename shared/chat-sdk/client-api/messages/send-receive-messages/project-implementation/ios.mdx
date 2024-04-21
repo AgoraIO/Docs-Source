@@ -361,31 +361,94 @@ message.chatType = AgoraChatTypeChat;
 }
 ```
 
+### Forward a single message
+
+You can call the `EMChatMessage` constructor method to create a message that is exactly the same as the original message by passing in the message body and extended fields of the original message (if the original message has them), and then call the `EMChatManager#sendMessage` method to forward the message.
+
+You can forward all types of messages in individual chats, group chats, chat rooms, and sub-zones. For attachment type messages, there is no need to re-upload the attachment when forwarding. However, if the message expires (that is, it has been deleted from the server because the storage time has expired), the recipient can view the attachment address after forwarding, but cannot download the attachment.
+
+To forward a single message, refer to the following code:
+
+```objc
+// 'message' is the message to be forwarded
+if let message = EMClient.shared().chatManager?.getMessage(withMessageId: "messageId") {
+  // Create a new message for forwarding using the original message's body and extensions
+  let newMessage = EMMessage(conversationID: "conversationId", body: message.body, ext: message.ext)
+  EMClient.shared().chatManager?.send(newMessage, progress: nil, completion: { messageResult, err in
+    if err == nil {
+      // Forwarding message successful
+    }
+  })
+}
+```
+
 ### Forward multiple messages
 
-Supported types for forwarded messages include text, images, audio & video files, attachment, and custom messages. A user can create a combined message with a list of original messages and send it. When receiving a combined message, the recipient can select it and other messages to create a new layered combined message. A combined message can contain up to 10 layers of messages, with at most 300 messages at each layer.
+To merge multiple messages together for forwarding, you need to take the following steps:
 
-To forward and receive combined messages, refer to the following code:
-1. Create a combined message using multiple message IDs:
-    ```objective-c
-    AgoraChatCombineMessageBody *body = [[AgoraChatCombineMessageBody alloc] initWithTitle:@"Chat History" summary:@"summary" compatibleText:@"The version is low and unable to display the content." messageIdList:@[@"messageId1",@"messageId2"]];
-        AgoraChatMessage *message = [[AgoraChatMessage alloc] initWithConversationID:@"conversationId" body:body ext:nil];
-        [AgoraChatClient.sharedClient.chatManager sendMessage:message progress:nil completion:^(AgoraChatMessage *aMessage, AgoraChatError *aError) {
-    }];
-    ```
-2. Download and parse combined messages:
-    ```objective-c
-    - (void)messagesDidReceive:(NSArray<AgoraChatMessage*> *)aMessages
-    {
-        for(AgoraChatMessage* msg in aMessages) {
-            if (msg.body.type == AgoraChatMessageBodyTypeCombine) {
-                [AgoraChatClient.sharedClient.chatManager downloadAndParseCombineMessage:msg completion:^(NSArray<AgoraChatMessage *> * _Nullable messages, AgoraChatError * _Nullable error) {
+- Create a merged message from the original message list.
+- Send the merged message.
+- After the peer receives the merged message, it parses it and obtains the original message list. After the merged message is forwarded, the title and preview of the message are displayed on the receiving end.
 
-                }];
-            }
+For forwarding merged messages, for example, user A sends a merged message to user B, and user B forwards the merged message to user C, the API for forwarding a single merged message needs to be called.
+
+#### Create and send multiple messages
+
+You can call `EMCombineMessageBody#initWithTitle:summary:compatibleText:messageList` the method to construct a merged message body, then create the message `EMChatMessage` and call `sendMessage` the method to send the message.
+
+When creating a merged message body, you need to set the following parameters:
+
+| Parameter           | Type | Description  |
+| :-------------- | :----- | :----------------------------------------------------------- |
+| `title`  | String | The title of the merged message.  |
+| `summary` | String | Summary of merged messages. |
+| `compatibleText` | String | Compatible text for merged messages. The compatibility text serves to provide backward compatibility with versions that do not support message merging and forwarding. When an SDK that supports merging messages sends a message to a lower version of the SDK that does not support merging messages, the lower version of the SDK will parse this attribute into the message content of the text message. |
+| `messageIdList` | String | List of original message IDs for merged messages. The list contains up to 300 message IDs.|
+
+<Admonition type="caution" title="info">
+1. Merged forwarding supports nesting, up to 10 levels of nesting, and a maximum of 300 messages per level.
+1. Regardless of whether `EMOptions#isAutoTransferMessageAttachments` is set to `false` or `true`, the SDK will upload the merged message attachments to the environment server.
+1. Searching is not supported for merged messages.
+</Admonition>
+
+The sample code is as follows:
+
+```objc
+EMCombineMessageBody* combineMsgBody = [[EMCombineMessageBody alloc] initWithTitle:@"combineTitle" summary:@"combineSummary" compatibleText:@"combineCompatibleText" messageIdList:@[@"messageId1",@"messageId2"]];
+EMChatMessage* msg = [[EMChatMessage alloc] initWithConversationID:@"conversationId" body:combineMsgBody ext:nil];
+[EMClient.sharedClient.chatManager sendMessage:msg progress:nil completion:^(EMChatMessage * _Nullable message, EMError * _Nullable error) {
+
+}];
+```
+
+The operation of receiving multiple messages is the same as that of receiving ordinary messages.
+
+For SDK versions that do not support merged and forwarded messages, this type of message will be parsed as a text message, the message content will be `compatibleText` the content carried, and other fields will be ignored.
+
+For further details see [Multiple messages forwarding limitations](../../reference/limitations#multiple-messages-forwarding-limitations).
+
+#### Parse merge messages
+
+A merge message is actually an attachment message. After receiving the merged message, you can call `downloadAndParseCombineMessage` the method to download the merged message attachment and parse out the original message list.
+
+For a merged message, the first call to this method will download and parse the merged message attachments, and then return the original message list. Subsequent calls will have the following situations:
+
+- If the attachment already exists, this method will directly parse the attachment and return the original message list.
+- If the attachment does not exist, this method first downloads the attachment, then parses the attachment and returns the original message list.
+
+```objc
+- (void)messagesDidReceive:(NSArray<EMChatMessage *> *)aMessages
+{
+    for (EMChatMessage* msg in aMessages) {
+        if (msg.body.type == EMMessageBodyTypeCombine) {
+            // Merged message type, parse the merged message
+            [EMClient.sharedClient.chatManager downloadAndParseCombineMessage:msg completion:^(NSArray<EMChatMessage *> * _Nullable messages, EMError * _Nullable error) {
+
+            }];
         }
     }
-    ```
+}
+```
 
 For further details see [Multiple messages forwarding limitations](../../reference/limitations#multiple-messages-forwarding-limitations).
 

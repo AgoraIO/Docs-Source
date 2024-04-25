@@ -352,30 +352,31 @@ message.getStringAttribute("attribute1",null);message.getBooleanAttribute("attri
 
 ### Forward a single message
 
-You can use the `EMMessage#addBody` and `EMMessage#setAttribute` methods to create a new message identical to the original one, including its body and extended fields. After creating the message, you can forward it using the `EMChatManager#sendMessage` method.
+You can use the `Message#addBody` and `Message#setAttribute` methods to create a new message identical to the original one, including its body and extended fields. After creating the message, you can forward it using the `ChatManager#sendMessage` method.
 
-This forwarding capability applies to all message types in various chat scenarios, such as one-on-one chats, group chats, chat rooms, and sub-zones. For messages with attachments, there's no need to re-upload the attachments during forwarding.
+You can forward all types of messages in individual chats, chat groups, and chat rooms. For messages with attachments, there's no need to re-upload the attachments during forwarding.
 
-However, if the original message expires (i.e., deleted from the server due to storage limitations), the recipient can view the attachment address after forwarding but won't be able to download the attachment.
+However, if the original message expires (for example, deleted from the server due to storage limitations), the recipient can view the attachment address after forwarding but won't be able to download the attachment.
 
 To forward a single message, refer to the following code:
 
 ```java
-// messageId is the ID of the message to be forwarded.
+// messageId: ID of the message for forwarding.
 String messageId = "";
-EMMessage targetMessage = EMClient.getInstance().chatManager().getMessage(messageId);
-// to: For one-to-one chats, it's the ID of the other user; for group chats, it's the group ID; for chat rooms, it's the chat room ID.
+ChatMessage targetMessage = ChatClient.getInstance().chatManager().getMessage(messageId);
+// to: The peer user ID for one-to-one chat, group ID for a group chat, and chat room ID for a room chat.
 String to = "the conversationId you want to send to";
-EMMessage newMessage = EMMessage.createSendMessage(targetMessage.getType());
+ChatMessage newMessage = ChatMessage.createSendMessage(targetMessage.getType());
 newMessage.setTo(to);
-// The chat type defaults to one-to-one chat. For group chats or chat rooms, you need to set the chatType to EMMessage.ChatType.GroupChat or EMMessage.ChatType.ChatRoom.
-// newMessage.setChatType(EMMessage.ChatType.GroupChat);
+// chatType: ChatMessage.ChatType.Chat for one-to-one chat, ChatMessage.ChatType.GroupChat for group chat, or ChatMessage.ChatType.ChatRoom.
+// The default value is `ChatMessage.ChatType.Chat`. For a group chat, add the following line.
+//newMessage.setChatType(ChatMessage.ChatType.GroupChat);
 
-// Create a forwarded message using the body and ext of the original message
-EMMessageBody targetMessageBody = targetMessage.getBody();
+// Create a new message with the body and extension fields of the original message.
+MessageBody targetMessageBody = targetMessage.getBody();
 newMessage.addBody(targetMessageBody);
 Map<String, Object> ext = targetMessage.ext();
-// Iterate over ext
+//Traverse extension fields.
 if (ext != null) {
     for (Map.Entry<String, Object> entry : ext.entrySet()) {
         Object value = entry.getValue();
@@ -398,88 +399,42 @@ if (ext != null) {
         }
     }
 }
-EMClient.getInstance().chatManager().sendMessage(newMessage);
+ChatClient.getInstance().chatManager().sendMessage(newMessage);
 ```
 
 ### Forward multiple messages
 
-To merge multiple messages together for forwarding, you need to take the following steps:
+Supported types for forwarded messages include text, images, audio & video files, attachment, and custom messages. A user can create a combined message with a list of original messages and send it. When receiving a combined message, the recipient can select it and other messages to create a new layered combined message. A combined message can contain up to 10 layers of messages, with at most 300 messages at each layer.
 
-- Create a merged message from the original message list.
-- Send the merged message.
-- After the peer receives the merged message, it parses it and obtains the original message list. After the merged message is forwarded, the title and preview of the message are displayed on the receiving end.
+To forward and receive combined messages, refer to the following code:
 
-For forwarding merged messages, for example, user A sends a merged message to user B, and user B forwards the merged message to user C, the API for forwarding a single merged message needs to be called.
+1. Create a combined message using multiple message IDs:
 
-#### Create and send multiple messages
+    ```java
+    ChatMessage message = ChatMessage.createCombinedSendMessage(title, summary, compatibleText, msgIds, toChatUsername);
+    // Set the chat type:
+    // One-to-one chat: ChatMessage.ChatType.Chat
+    // Group chat: ChatMessage.GroupChat
+    // Room chat: ChatMessage.ChatRoom
+    message.setChatType(ChatMessage.ChatType.Chat);
+    // Send the message
+    ChatClient.getInstance().chatManager().sendMessage(message);
+    ```
+1. Download and parse combined messages:
 
-You can use the `createCombinedSendMessage` method to bundle multiple messages into one, and then use the `sendMessage` method to send the bundled message.
+   ```java
+   ChatClient.getInstance().chatManager().downloadAndParseCombineMessage(combinedMessage, new ValueCallBack<List<ChatMessage>>() {
+               @Override
+               public void onSuccess(List<ChatMessage> value) {
 
-When creating a combined message, you need to set the following parameters:
+               }
 
-| Parameter           | Type | Description  |
-| :-------------- | :----- | :----------------------------------------------------------- |
-| `title`  | String | The title of the merged message.  |
-| `summary` | String | Summary of merged messages. |
-| `compatibleText` | String | Compatible text for merged messages. The compatibility text serves to provide backward compatibility with versions that do not support message merging and forwarding. When an SDK that supports merging messages sends a message to a lower version of the SDK that does not support merging messages, the lower version of the SDK will parse this attribute into the message content of the text message. |
-| `messageIdList` | String | List of original message IDs for merged messages. The list contains up to 300 message IDs.|
-| `userId` | String | Message receiver. The setting of this field depends on the session type: <li> Single chat: the other party's user ID;</li><li>Group chat: group ID;</li><li>Sub-area conversation: sub-area ID;</li><li>Chat room chat: chat room ID.</li>|
+               @Override
+               public void onError(int error, String errorMsg) {
 
-<Admonition type="caution" title="info">
-1. Merged forwarding supports nesting, up to 10 levels of nesting, and a maximum of 300 messages per level.
-1. Regardless of whether `EMOptions#setAutoTransferMessageAttachments` is set to `false` or `true`, the SDK will upload the merged message attachments to the environment server.
-1. Searching is not supported for merged messages.
-</Admonition>
-
-The sample code is as follows:
-
-```java
-String title = "Chat history of A and B";
-String summary = "A: This is A's message content\nB: This is B's message content";
-String compatibleText = "Your current version does not support this message. Please upgrade to the latest version.";
-EMMessage message = EMMessage.createCombinedSendMessage(title, summary, compatibleText, msgIdList, receiverId);
-message.setMessageStatusCallback(new EMCallBack() {
-    @Override
-    public void onSuccess() {
-        // Logic for handling successful message sending
-    }
-
-    @Override
-    public void onError(int code, String error) {
-        // Logic for handling failed message sending
-    }
-});
-EMClient.getInstance().chatManager().sendMessage(message);
-```
-
-The operation of receiving multiple messages is the same as that of receiving ordinary messages.
-
-For SDK versions that do not support merged and forwarded messages, this type of message will be parsed as a text message, the message content will be `compatibleText` the content carried, and other fields will be ignored.
-
-For further details see [Multiple messages forwarding limitations](../../reference/limitations#multiple-messages-forwarding-limitations).
-
-#### Parse merge messages
-
-A merge message is actually an attachment message. After receiving the merged message, you can call `downloadAndParseCombineMessage` the method to download the merged message attachment and parse out the original message list.
-
-For a merged message, the first call to this method will download and parse the merged message attachments, and then return the original message list. Subsequent calls will have the following situations:
-
-- If the attachment already exists, this method will directly parse the attachment and return the original message list.
-- If the attachment does not exist, this method first downloads the attachment, then parses the attachment and returns the original message list.
-
-```java
-EMClient.getInstance().chatManager().downloadAndParseCombineMessage(combineMessage, new EMValueCallBack<List<EMMessage>>() {
-    @Override
-    public void onSuccess(List<EMMessage> value) {
-        // Process and display the message list
-    }
-
-    @Override
-    public void onError(int error, String errorMsg) {
-        // Handle error information
-    }
-});
-```
+               }
+           });
+    ```
 
 ### Modify sent messages
 

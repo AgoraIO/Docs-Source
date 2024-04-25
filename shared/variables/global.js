@@ -164,6 +164,8 @@ export const ACCG = 'Global Accelerator';
 
 export const RTT = 'Real-Time Transcription';
 
+export const MG = 'Media Gateway';
+
 export const TEMPL = 'Templates';
 
 export const RTEE = 'Extensions';
@@ -243,8 +245,6 @@ export const ELE = 'Electron';
 export const UNI = 'Unity';
 export const FLU = 'Flutter';
 export const REA = 'React Native';
-export const COC = 'Cocos Creator';
-export const CO2_AN = 'Cocos2d-x-Android';
 export const SS = 'Server side';
 
 export const ATW = 'Technical Writer';

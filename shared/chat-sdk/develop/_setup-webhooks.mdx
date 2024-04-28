@@ -191,11 +191,219 @@ As shown in the figure, the workflow of post-delivery callbacks is as follows:
 
 <Admonition type="caution" title="Note">If you have set both pre- and post-delivery callbacks, and a message is rejected after the pre-delivery callback returns, the post-delivery callbacks are not triggered.</Admonition>
 
-For post-delivery callback request examples, see [event callbacks](../reference/callbacks-events).
-
 The Chat server places full trust in callback responses received from your app server without verifying them. As long as the returned HTTP status code is 200, the Chat server regards that the callback succeeds.
 
 Responses to the requests cannot exceed 1,000 characters; otherwise, the callbacks fail as the Chat server deems the responses as attack packets.
+
+### HTTP request and response
+
+#### Request Body
+
+| Parameter      | Description |
+| -------------- | ----------- |
+| callId         | callId is `{appkey}_{uuid}` where UUID is randomly generated as the unique identifier of each callback. |
+| eventType      | • chatChat messages; <br/ > • chat_offlineOffline messages. |
+| timestamp      | The Unix timestamp when the IM server received this message, in milliseconds. |
+| chat_type      | • chatSingle chat callback; <br/ > • groupchatGroup chat callback includes group and chat room message callbacks, all are selected by default. |
+| group_id       | This parameter is only available for group chats and calls back the group where the message is located. |
+| from           | The sender of the message. |
+| to             | The recipient of the message. |
+| msg_id         | The ID of the message. |
+| payload        | The message content is consistent with that sent through the REST API. See the message format document. |
+| securityVersion| The security verification version is currently 1.0.0. Ignore this parameter, it will be changed to the console for setting in the future. |
+| security       | Signature, the format is as follows: MD5 (callId+Secret+timestamp). Secret See Console background callback rules. |
+
+#### Request example
+
+```
+{
+  "callId": "XXXX-demo#XXXX-dp01-XXXX-8696-cf3b48b20e7e",
+  "eventType": "chat_offline",
+  "timestamp": 1600060847294,
+  "chat_type": "groupchat",
+  "group_id": "169XXXX21545",
+  "from": "user1",
+  "to": "user2",
+  "msg_id": "8924312242322",
+  "payload": {
+    // Specific message content.
+  },
+  "securityVersion": "1.0.0",
+  "security": "2ca02c394bef9e7abc83958bcc3156d3"
+}
+```
+
+### Response packet field description
+<Vg k="COMPANY" /> server will not verify the response content. As long as your server returns us an HTTP status code of 200, the message callback is considered successful.
+
+### Query callback storage details interface description
+Query the collection of messages and event types stored when the callback fails due to exceptions (such as link timeout, response timeout, callback rule ban, etc.) under the App Key. It is stored as a date key every ten minutes, and then the user can pull it on demand based on the message collection.
+
+#### Description of functional limitations
+The default storage expiration time for abnormal storage is 3 days. If there is storage, it must be reissued in time. It is recommended that the number of reissue retries be controlled within 10 times.
+
+#### Verification method
+<Vg k="COMPANY" /> Messaging RESTful API requires Bearer HTTP authentication. Every time you send an HTTP request, you must fill in the following `Authorizationfields` in the request header:
+
+```
+Authorization：Bearer YourAppToken
+```
+
+In order to improve the security of the project, tokens (dynamic keys) are used to authenticate users who are about to log in to the instant messaging system. The instant messaging RESTful API supports the authentication method using App Token.
+
+#### Basic Information
+
+method:GET
+
+Access Point: `/{org_name}/{app_name}/callbacks/storage/info`
+
+#### Path Parameters
+
+| Parameter       | Type   | Required | Description |
+| --------------- | ------ | --------------- | ----------- |
+| org_name        | String | yes             | The unique ID assigned by HuanXin Instant Messaging IM to each company (organization). For details, see Obtaining Huanxin IM information. |
+| app_name        | String | yes             | The application name you filled in when creating the application in the HuanXin Instant Messaging Cloud Console. For details, see Obtaining Huanxin IM information. |
+
+#### Request header
+
+| Parameter       | Type   | Required | Description |
+| --------------- | ------ | --------------- | ----------- |
+| Authorization   | String | yes             | Authentication Token, administrator Token (inclusive) and above. |
+
+#### Response body
+
+| Parameter       | Type   | Description |
+| --------------- | ------ | ----------- |
+| path            | string | Request path. |
+| uri             | string | The URI of the request path. |
+| timestamp       | long   | The Unix timestamp when the IM server received this message, in milliseconds. |
+| organization    | string | The unique identifier of your organization registered in the HuanXin IM management backend. |
+| application     | string | The unique identifier of the App you registered in the HuanXin IM management backend. |
+| action          | string | Request method. |
+| duration        | long   | Request time taken, in milliseconds. |
+| applicationName | string | The App name you registered in the HuanXin IM management backend. |
+| data            | object | Response data content. Includes the following three parameters: date, size and retry. |
+| -date           | String | The current date key, that is, messages and events within every 10 minutes. key is the starting point of 10 minutes. |
+| -size           | Int    | The number of messages within this date key. |
+| -retry          | Int    | The number of times the data in this date key has been retried. The value is when not retried 0. |
+
+#### Request example
+
+```
+curl -X GET 'https://a1.easemob.com/easemob-demo/easeim/callbacks/storage/info' \
+-H 'Authorization: Bearer <YourAppToken>'
+#Response example
+```
+
+#### Response example
+
+```
+{
+  "path": "/callbacks",
+  "uri": "https://XXXX/XXXX/XXXX/callbacks",
+  "timestamp": 1631193031254,
+  "organization": "XXXX",
+  "application": "8dfb1641-XXXX-XXXX-bbe9-d8d45a3be39f",
+  "action": "post",
+  "data": [
+    {
+      "date": "202109091440",
+      "size": 15,
+      "retry": 0
+    },
+    {
+      "date": "202109091450",
+      "size": 103,
+      "retry": 1
+    }
+  ],
+  "duration": 153,
+  "applicationName": "XXXX"
+}
+```
+
+### Reissue callback storage information interface description
+The calling interface performs callback reissue based on the storage collection.
+
+#### Basic Information
+method:POST
+
+Access Point: `https://{host}/{org_name}/{app_name}/callbacks/storage/retry`
+
+#### Path Parameters
+
+| Parameter | Type   | Is it necessary | Description |
+| --------- | ------ | --------------- | ----------- |
+| org_name  | String | yes             | The unique ID assigned by HuanXin Instant Messaging IM to each company (organization). For details, see Obtaining Huanxin IM information. |
+| app_name  | String | yes             | The application name you filled in when creating the application in the HuanXin Instant Messaging Cloud Console. For details, see Obtaining Huanxin IM information. |
+
+#### Request Header
+
+| Parameter     | Type   | Is it necessary | Description |
+| ------------- | ------ | --------------- | ----------- |
+| Content-Type  | String | yes             | Content type, please fill in application/json. |
+| Authorization | String | yes             | The value of the authentication App Token. For details, see Using App Token for Authentication. |
+
+#### Request Body
+
+| Parameter | Type   | Is it necessary | Description |
+| --------- | ------ | --------------- | ----------- |
+| date      | String | yes             | A ten-minute date key that can be reissued. The key is the starting point of ten minutes. |
+| retry     | Int    | no              | The number of times development has been retried. Taking into account that reissue may also fail, the server will continue to store. It starts with 0. |
+| targetUrl | String | no              | The callback address of the reissue message. If it is empty, the callback address of the original callback rule will be used. |
+
+#### Response Body
+
+| Parameter    | Type   | Description |
+| ------------ | ------ | ----------- |
+| path         | String | Request path. |
+| uri          | String | The URI of the request path. |
+| timestamp    | long   | The Unix timestamp when the IM server received this message, in milliseconds. |
+| organization | String | The unique ID assigned by HuanXin Instant Messaging IM to each company (organization) is org_name the same as the request parameter. |
+| application  | String | The unique identifier of the app you registered in the Huanxin IM management backend. |
+| action       | String | Request method. |
+| data         | Bool   | success/failure. |
+| duration     | long   | Request time taken, in milliseconds. |
+
+#### Request example
+
+```
+curl -X POST 'https://XXXX/XXXX/XXXX/callback/storage/retry' \
+-H 'Authorization: Bearer <YourAppToken>' \
+-H 'Content-Type: application/json' \
+--data-raw '{
+    "date": "202108272230",
+    "retry": 0,
+    "targetUrl": "https://localhost:8000/test"
+}'
+```
+
+#### Response example
+
+```
+{
+  "path": "/callbacks",
+  "uri": "https://XXXX/XXXX/XXXX/callbacks",
+  "timestamp": 1631194031721,
+  "organization": "XXXX",
+  "application": "8dfb1641-XXXX-XXXX-bbe9-d8d45a3be39f",
+  "action": "post",
+  "data": "success",
+  "duration": 225,
+  "applicationName": "XXXX"
+}
+```
+
+#### Response code description
+
+| Status Code | Description |
+| ----------- | ----------- |
+| 200         | The request was successful. |
+| 400         | The request parameters are incorrect, please check according to the returned prompts. |
+| 401         | User permission error. |
+| 403         | The service is not activated or the permissions are insufficient. |
+| 429         | Too many requests per unit time. |
+| 500         | Internal server error. |
 
 **Retry logic**
 

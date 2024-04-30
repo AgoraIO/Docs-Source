@@ -94,7 +94,7 @@ Take the following steps to ensure that the recording service starts successfull
 
 ### Monitor service status during a recording
 
-You can periodically call `query` to ensure that the recording service is in progress and in a normal state. Apart from `query`, you can use the <Vg k="NCS" /> as a complementary method to monitor the service status. See [Comparison Between the <Vg k="NCS" /> and the `query` Method](../reference/rest-api/query#what-are-the-differences-between-the-message-notification-service-and-the-query-method) for detailed comparison between the two methods.
+You can periodically call `query` to ensure that the recording service is in progress and in a normal state. Apart from `query`, you can use the <Vg k="NCS" /> as a complementary method to monitor the service status. See [Comparison Between the <Vg k="NCS" /> and the `query` Method](../reference/restful-api#query#what-are-the-differences-between-the-message-notification-service-and-the-query-method) for detailed comparison between the two methods.
 
 #### Periodically query service status
 
@@ -141,7 +141,7 @@ Network failures and potential risks may occur due to factors such as cloud and 
 
 To guarantee high availability of important scenes with a large audience, best practice is to:
 
-1. Monitor recording tasks with calls to the [query](/en/cloud-recording/reference/rest-api/query) method.
+1. Monitor recording tasks with calls to the [query](/en/cloud-recording/reference/restful-api#query) method.
 
    If the call returns a `404` error, create a new recording task with a different UID.
 

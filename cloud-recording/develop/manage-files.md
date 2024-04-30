@@ -178,7 +178,7 @@ sid713476478245_cnameagora__uid_s_123__uid_e_video_20190920125142485.ts
 
 The sample M3U8 file above contains the file name of a TS file and three descriptive symbols, which indicates that the TS file is the first slice file after the video stream starts or restarts after an interruption, the video rotates by 90 degrees anticlockwise, and the TS file lasts for 6.332 seconds.
 
-The generated M3U8 file does not have a comma after `#EXTINF:&#60-vod_started;length&#62;`, and thus may cause some compatibility issues with certain players. You can set `privateParams` in `recordingConfig` in the [start](../reference/rest-api/start) request to automatically add the comma: `"recordingConfig": {"privateParams":"{\"correctEXTINF\":true}", ...}`.
+The generated M3U8 file does not have a comma after `#EXTINF:&#60-vod_started;length&#62;`, and thus may cause some compatibility issues with certain players. You can set `privateParams` in `recordingConfig` in the [start](../reference/restful-api#start) request to automatically add the comma: `"recordingConfig": {"privateParams":"{\"correctEXTINF\":true}", ...}`.
 
 ## Slicing
 

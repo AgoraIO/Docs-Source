@@ -5,17 +5,16 @@ import CodeBlock from '@theme/CodeBlock';
 import ProjectImplement from '@docs/shared/video-sdk/authentication-workflow/project-implementation/index.mdx';
 import ProjectTest from '@docs/shared/video-sdk/authentication-workflow/project-test/index.mdx';
 import Reference from '@docs/shared/video-sdk/authentication-workflow/reference/index.mdx';
-import ProjectImplementUIKit from '@docs/shared/video-sdk/authentication-workflow/project-implementation-uikit/index.mdx';
 
-Authentication is the act of validating the identity of each user before they access a system. <Vg k="COMPANY" /> uses digital tokens to authenticate users and their privileges. A token is a string used to verify user privileges when joining a channel. When a user connects to <Vg k="COMPANY" /> and passes in the token, the server verifies the user's identity and permissions based on the information in the token.
+Authentication is the process of validating the identity of each user before they access a system. <Vg k="COMPANY" /> uses digital tokens to authenticate users and their privileges. A token is a string used to verify user privileges when joining a channel. When a user connects to <Vg k="COMPANY" /> and passes in the token, the server verifies the user's identity and permissions based on the information in the token.
 
 ## Understand the tech
 
 <Vg k="COMPANY" /> enables you to implement permissions in two distinct ways according to your scenario: 
 
-- **Uniform permissions**: Uniformly set permissions for joining channels and concurrent streams. This is applicable to most scenarios. 
+- **Uniform permissions**: Uniformly set permissions for joining channels and concurrent streams. This is applicable to most scenarios. For details, see [Implement basic authentication](#implement-basic-authentication).
 
-- **Finely control permissions for publishing different streams**: Manage permissions to publish different types of streams, such as audio, video, and data. If you have higher requirements for business security, use these permissions to finely control the validity period of permissions to publish different streams.
+- **Finely control permissions for publishing different streams**: Manage permissions to publish different types of streams, such as audio, video, and data. If you have higher requirements for business security, use these permissions to finely control the validity period of permissions to publish different streams. For details, see [Co-host token authentication](#co-host-token-authentication).
 
 <Admonition type="info" title="Information">
 The information on this page only applies to `AccessToken2`. If you are using `AccessToken`, refer to the [AccessToken upgrade guide](../core-functionality/integrate-token-generation#upgrade-to-accesstoken2) to upgrade from `AccessToken` to `AccessToken2`.
@@ -47,7 +46,7 @@ Before starting, ensure that you have:
 This section shows you how to implement basic authentication by generating a token and joining a channel. To ensure the security of your business, <Vg k="COMPANY" /> recommends that you authenticate every client that joins a channel.
 
 ### Generate a token
-<Vg k="COMPANY" /> provides an open source token generator code repository on [GitHub](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey). The repository provides code in the following languages ​​to generate basic tokens on your own server, based on the `HMAC-SHA256` algorithm:
+<Vg k="COMPANY" /> provides an open source token generator code repository on [GitHub](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey). The repository provides code in the following languages ​​to generate tokens on your own server, based on the `HMAC-SHA256` algorithm:
 
 | Language | Core Method         | Sample Code          |
 |:---------|:--------------------|:---------------------|
@@ -302,11 +301,48 @@ The user ID and channel name used to join a channel must be consistent with the 
 ## Advanced authentication features
 This section presents advanced functions related to token authentication.
 
-### Implement advanced authentication
-In addition to basic authentication, <Vg k="COMPANY" /> also provides fine-grained control over the permissions of users in a channel to publish different types of streams. Advanced authentication ensures that all streaming users in a channel are authorized, thus preventing hackers from stealing tokens or exploiting vulnerabilities to blow up the channel.
+### Generate wildcard token​s
+In scenarios where users need to join multiple channels, or frequently switch between channels, they need to request a new token from the token server, each time they join a channel. To solve the problem of frequently requesting tokens when switching channels, <Vg k="COMPANY" /> enables you to generate wildcard tokens that set the user ID or channel name as a wildcard. Users reuse the same wildcard token to join different channels, which speeds up the process of switching and joining channels. It also helps reduce the pressure on your token server. 
+
+<Admonition type="info" title="Information">
+To generate wildcard tokens you need to have deployed an `AccessToken2` server. If you are still using `AccessToken`, refer to the [AccessToken upgrade guide](../core-functionality/integrate-token-generation) to upgrade to `AccessToken2`.
+</Admonition>
+
+The `AccessToken2` code provides two `BuildTokenWithUid` methods. Choose the method according to your needs. When generating a wildcard token, fill in the following parameters according to your requirements:
+
+| Token type | `uid` | `channelName`  |
+|:----------|:--------------|:---------------|
+| Token for wildcard user ID | Set the user ID to `0` or a wildcard `*` to match any length of characters for user IDs of int and string types. <Vg k="COMPANY" /> also supports extended matching, that is, matching multiple combinations of `*` and strings. For example, `1*a*2` means match user IDs starting with *1*, containing the letter *a*, and ending with *2*, such as *1abc2*. | A string of up to 64 bytes. |
+| Token for wildcard channel name | The user ID of the user to be authenticated. User IDs of type int and string are supported. | Set the channel name as a wildcard `*` or leave it blank. To employ expanded matching, use multiple combinations of `*` and strings. For example, `1*a*2` matches channel names starting with *1*, containing the letter *a*, and ending with *2*, such as *1abc2*. |
+
+#### Precautions
+
+* If you have generated a token for `uid=0`, consider the following when you use the token:
+
+    * If you only need to join a single channel, set the `uid` to `0` when calling `joinChannel`.
+
+    * If you need to join multiple channels, set `uid` to a specific user ID instead of `0` when calling `joinChannelEx`.
+
+* In order to prevent unauthorized users from disrupting the order of the channel if the token is leaked, best practice is that users who use wildcard tokens set their client role as audience, and their token privilege `role` to `kRoleSubscriber`.
+
+If viewers using wildcard tokens need to publish streams, <Vg k="COMPANY" /> recommends the following steps to update the token. 
+The following API uses C++ as an example:
+
+1. Call `setClientRole` to set the user role as **Broadcaster**.
+
+2. When generating a token using `BuildTokenWithUid`, specify the channel name and user ID in the method, and set the token privilege `role` to `kRolePublisher`, thereby generating a token with the permission to send streams.
+
+3. Call `renewToken` to update the token.
+
+A wildcard token is valid for 24 hours. If the token is about to expire, regenerate a new wildcard token on the server and then call `renewToken` to pass in the new wildcard token.
+
+### Co-host token authentication
+In addition to basic authentication, <Vg k="COMPANY" /> also provides fine-grained control over the permissions of users in a channel to publish different types of streams. Co-host token authentication helps you ensure that only the streaming users in a channel are authorized to publish streams, thus preventing hackers from stealing tokens or exploiting vulnerabilities to blow up a live broadcast channel.
 
 <Admonition type="caution" title="Note">
-To send a stream to a channel, ensure that you call the `setClientRole` method to set the user's role as host before joining the channel, or specify the host role in options when joining the channel. 
+- Before using advanced authentication features, ensure that you have enabled [Co-host token authentication](/help/integration-issues/token_cohost#enable-co-host-authentication) in <Vg k="CONSOLE" />.
+
+- To send a stream to a channel, ensure that the client role is set to **Broadcaster** either at the time of joining the channel, or after joining a channel by calling `setClientRole`. 
 </Admonition>
 
 <Vg k="COMPANY" /> provides `BuildTokenWithUidAndPrivilege` methods to set the expiration time of the following privileges:
@@ -319,7 +355,7 @@ To send a stream to a channel, ensure that you call the `setClientRole` method t
 See the [API reference](#api-reference) for detailed parameter descriptions.
 
 #### Generate a token with advanced permissions
-Agora provides an open source token generator code repository on [Github](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey). The repository supports the use of the following languages ​​to generate basic tokens on your own server, based on the `HMAC-SHA256` algorithm:
+Agora provides an open source token generator code repository on [Github](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey). The repository supports the use of the following languages ​​to generate tokens on your own server, based on the `HMAC-SHA256` algorithm:
 
 | Language | Core Method         | Sample Code          |
 |:---------|:--------------------|:---------------------|
@@ -629,41 +665,6 @@ if __name__ == "__main__":
   </TabItem>
 </Tabs>
 
-### Generate wildcard token​s
-In scenarios where users need to join multiple channels, or frequently switch between channels, they need to request a new token from the token server, each time they join a channel. To solve the problem of frequently requesting tokens when switching channels, <Vg k="COMPANY" /> enables you to generate wildcard tokens that set the user ID or channel name as a wildcard. Users reuse the same wildcard token to join different channels, which speeds up switching and joining channels. It also helps reduce the pressure on your token server. 
-
-<Admonition type="info" title="Information">
-To generate wildcard tokens you need to have deployed an `AccessToken2` server. If you are using `AccessToken`, please refer to the `AccessToken` Upgrade Guide to upgrade to `AccessToken2`.
-</Admonition>
-
-The `AccessToken2` code provides two `BuildTokenWithUid` methods. Choose the method according to your needs. When generating a wildcard token, fill in the following parameters according to your requirements:
-
-| Token type | `uid` | `channelName`  |
-|:----------|:--------------|:---------------|
-| Token for wildcard user ID | Set the user ID to `0` or a wildcard `*` to match any length of characters for user IDs of int and string types. <Vg k="COMPANY" /> also supports extended matching, that is, matching multiple combinations of `*` and strings. For example, `1*a*2` means match user IDs starting with *1*, containing the letter *a*, and ending with *2*, such as *1abc2*. | A string of up to 64 bytes. |
-| Token for wildcard channel name | The user ID of the user to be authenticated. User IDs of type int and string are supported. | Set the channel name as a wildcard `*` or leave it blank. To employ expanded matching, use multiple combinations of `*` and strings. For example, `1*a*2` matches channel names starting with *1*, containing the letter *a*, and ending with *2*, such as *1abc2*. |
-
-#### Precautions
-
-* If you have generated a token for `uid=0`, consider the following when you use the token:
-
-    * If you only need to join a single channel, set the `uid` to `0` when calling `joinChannel`.
-
-    * If you need to join multiple channels, set `uid` to a specific user ID instead of `0` when calling `joinChannelEx`.
-
-* In order to prevent unauthorized users from disrupting the order of the channel if the token is leaked, best practice is that users who use wildcard tokens set their role as audience and their user permissions `role` to receive streams `kRoleSubscriber`.
-
-If viewers using wildcard tokens need to connect to the microphone, <Vg k="COMPANY" /> recommends the following steps to update the token. 
-The following API uses C++ as an example:
-
-1. Call `setClientRole` to set the user role as host (`BROADCASTER`).
-
-2. When generating a token using `BuildTokenWithUid`, specify the channel name and user ID in the method, and set the user permission (`role`) to send streams (`kRolePublisher`), thereby generating a token with the permission to send streams.
-
-3. Call `renewToken` to update the token.
-
-A wildcard token is valid for 24 hours. If the token is about to expire, regenerate a new wildcard token on the server and then call `renewToken` to pass in the new wildcard token.
-
 ## Deployment and debugging​
 
 This section shows you how to quickly deploy a token generator locally. After successful deployment, you can use the generated tokens to test and debug your project.
@@ -870,7 +871,7 @@ SDKs using `AccessToken2` can interoperate with SDKs using `AccessToken`. The SD
 
 This section documents the core methods you use to generate tokens, using the Golang language as an example.
 
-- `BuildTokenWithUid`: Generate a token for basic authentication, and set the expiration time for the token and all permissions.
+- `BuildTokenWithUid`: Generate a token, set the expiration time, and define all permissions.
 
 - `BuildTokenWithUidAndPrivilege`: Generate a token with fine control over streaming permissions. Set the validity period of the token and the expiration time of permissions to join channels, publish audio, video, and data streams.
 
@@ -893,7 +894,7 @@ func BuildTokenWithUid(
 * `uid`: The user ID of the user to be authenticated, a 32-bit unsigned integer, ranging from 1 to (2³² - 1). The `uid` must be unique.
 * `role`: User permissions, which determine whether the user can send streams in the channel.
     * `kRolePublisher` (1): (Default) The user has the permission to send streams in the channel.
-    * `kRoleSubscriber` (2): The user has receiving permission only. The user can receive streams in the channel, but cannot send streams. This parameter only takes effect after MIC authentication is turned on.
+    * `kRoleSubscriber` (2): The user has receiving permission only. The user can receive streams in the channel, but cannot send streams. This parameter only takes effect after Co-host authentication is enabled.
 * `tokenExpire`: The token validity period (seconds). The maximum validity period is 24 hours.
 * `privilegeExpire`: Validity time of all permissions (seconds). If set to 0 (default value), it means that the permission will never expire.
 
@@ -927,9 +928,14 @@ func BuildTokenWithUidAndPrivilege(
 <Admonition title="Note" type="caution">
 * The expiration time of the different permissions is calculated from the time the token is generated.
 * <Vg k="COMPANY" /> recommends that the token expiration time be consistent with the expiration time of other permissions.
-* The permission to publish audio, video and data streams in the channel only takes effect after the Lianmai authentication service is turned on. If the permission to join the channel expires earlier than the permission to publish an audio stream, the user is kicked out of the channel after the permission to join the channel expires.
+* The permission to publish audio, video and data streams in the channel only takes effect after Co-host token authentication service is enabled. If the permission to join the channel expires earlier than the permission to publish an audio stream, the user is kicked out of the channel after the permission to join the channel expires.
 </Admonition>
 
 ### Frequently asked questions
 
-[How to deal with token-related error codes?](/help/integration-issues/token_related_issues)
+* [How do I use co-host token authentication?](/help/integration-issues/token_cohost)
+* [How to deal with token-related error codes?](/help/integration-issues/token_related_issues)
+
+### See also
+
+* [AccessToken upgrade guide](../core-functionality/integrate-token-generation)

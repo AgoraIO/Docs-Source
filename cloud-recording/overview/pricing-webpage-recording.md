@@ -103,7 +103,7 @@ If two web page recording processes are started for the same web page, Agora cha
 ### Charge duration
 
 The charging will continue until the web page recording stops. 
-You should set a reasonable [maxRecordingHour](../reference/restful-api#start#extension-service-configuration) based on the 
+You should set a reasonable [maxRecordingHour](../reference/restful-api#extensionserviceconfig) based on the 
 actual business scenario or actively stop the web page recording. 
 
 ## See also

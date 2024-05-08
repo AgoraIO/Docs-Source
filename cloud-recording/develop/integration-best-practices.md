@@ -94,7 +94,7 @@ Take the following steps to ensure that the recording service starts successfull
 
 ### Monitor service status during a recording
 
-You can periodically call `query` to ensure that the recording service is in progress and in a normal state. Apart from `query`, you can use the <Vg k="NCS" /> as a complementary method to monitor the service status. See [Comparison Between the <Vg k="NCS" /> and the `query` Method](../reference/restful-api#query#what-are-the-differences-between-the-message-notification-service-and-the-query-method) for detailed comparison between the two methods.
+You can periodically call `query` to ensure that the recording service is in progress and in a normal state. Apart from `query`, you can use the <Vg k="NCS" /> as a complementary method to monitor the service status. See [Comparison Between the <Vg k="NCS" /> and the `query` Method](../reference/rest-api-overview#what-are-the-differences-between-the-message-notification-service-and-the-query-method) for detailed comparison between the two methods.
 
 #### Periodically query service status
 

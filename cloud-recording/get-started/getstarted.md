@@ -26,7 +26,7 @@ Call the [`query`](#query) method to check the recording status during the recor
 Call the [`stop`](#stop) method to stop the cloud recording.
 
 **5. Upload the recording file**
-After the recording is over, the cloud recording service uploads the recording file to the [third-party cloud storage](../reference/restful-api#start#cloud-storage-configuration) you specify.
+After the recording is over, the cloud recording service uploads the recording file to the [third-party cloud storage](../reference/restful-api#storageconfig) you specify.
 
 ## Prerequisites
 

@@ -64,9 +64,9 @@ In composite recording mode, you can configure the following parameters in `clie
 | Parameter             | Description                                                  | Note                                 |
 | :-------------------- | :----------------------------------------------------------- | :----------------------------------- |
 | [`token`](../reference/glossary#token)               | The dynamic key used for the channel to record. | Required if the channel uses a token |
-| [`recordingConfig`](../reference/restful-api#start#recording-configuration)     | Configures stream subscription, transcoding, and the profile of the output audio and video. | Required                             |
-| [`recordingFileConfig`](../reference/restful-api#start#configurations-for-the-recorded-files) | Configures the recorded files.                               | Optional                             |
-|  [`storageConfig`](../reference/restful-api#start#cloud-storage-configuration)       | Configures the third-party cloud storage.                    | Required                             |
+| [`recordingConfig`](../reference/restful-api#recordingconfig)     | Configures stream subscription, transcoding, and the profile of the output audio and video. | Required                             |
+| [`recordingFileConfig`](../reference/restful-api#recordingfileconfig) | Configures the recorded files.                               | Optional                             |
+|  [`storageConfig`](../reference/restful-api#storageconfig)       | Configures the third-party cloud storage.                    | Required                             |
 
 #### An HTTP request example of `start`
 
@@ -156,9 +156,9 @@ The content of the recorded files varies according to the setting of `streamType
 
 | Recorded content | Settings                           | Recorded files                                               |
 | :--------------- | :--------------------------------- | :----------------------------------------------------------- |
-| Audio only       | Set [`streamTypes`](../reference/restful-api#start#recording-configuration) as `0`           | One M3U8 file, several TS files, and one or more MP4 files if you set avFileType as `["hls","mp4"]`. The TS files and MP4 files store the audio. |
-| Video only       | Set [`streamTypes`](../reference/restful-api#start#recording-configuration) as `1`           | One M3U8 file, several TS files, and one or more MP4 files if you set avFileType as `["hls","mp4"]`. The TS files and MP4 files store the video. |
-| Audio and video  | Set [`streamTypes`](../reference/restful-api#start#recording-configuration) as `2` (default) | One M3U8 file, several TS files, and one or more MP4 files if you set avFileType as `["hls","mp4"]`. The TS files and MP4 files store the audio and video. |
+| Audio only       | Set [`streamTypes`](../reference/restful-api#recordingconfig) as `0`           | One M3U8 file, several TS files, and one or more MP4 files if you set avFileType as `["hls","mp4"]`. The TS files and MP4 files store the audio. |
+| Video only       | Set [`streamTypes`](../reference/restful-api#recordingconfig) as `1`           | One M3U8 file, several TS files, and one or more MP4 files if you set avFileType as `["hls","mp4"]`. The TS files and MP4 files store the video. |
+| Audio and video  | Set [`streamTypes`](../reference/restful-api#recordingconfig) as `2` (default) | One M3U8 file, several TS files, and one or more MP4 files if you set avFileType as `["hls","mp4"]`. The TS files and MP4 files store the audio and video. |
 
 
 For detailed information about the naming conventions of the recorded files, see [Manage Recorded Files](../develop/manage-files).

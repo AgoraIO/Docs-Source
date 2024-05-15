@@ -151,6 +151,78 @@ SDKClient.Instance.ChatManager.RemoveMessagesFromServer(convId, ctype, msgList, 
 ));
 ```
 
+### Pin a message
+
+You can call `ChatManager#PinMessage` to pin a message to the top of a group or room chat, that is, set the `isPinned` parameter to `true`. When the pinned status of a message changes, other members in the group or chat room conversation will receive the `IChatManagerDelegate#OnMessagePinChanged` event. In the case of multi-device login, the updated top status will be synchronized to other logged-in devices, and other devices will receive the `IChatManagerDelegate#OnMessagePinChanged` event, respectively.
+
+In group and chat room conversations, multiple users can pin the same message to the top. The latest pinned message will overwrite the earlier information. That is, the `PinnedInfo` user ID and pin time will correspond to the latest pinned message.
+
+If the message is stored locally but deleted on the server due to expiration, the message will fail to be pinned to the top.
+
+For a single conversation, 20 messages can be pinned to the top by default.
+
+```csharp
+bool isPinned = true;
+SDKClient.Instance.ChatManager.PinMessage(msgId, isPinned, new CallBack(
+    onSuccess: () =>
+    {
+    },
+    onError: (code, desc) =>
+    {
+    }
+));
+```
+
+### Unpin a message
+
+You can call `ChatManager#PinMessage` to unpin a message in a group or room chat, that is, set the `isPinned` parameter to `false`. As with pinned messages, other members of the group or chat room will receive the `IChatManagerDelegate#OnMessagePinChanged` event when the pinned message is unpinned. In the case of multi-device login, the updated pin status will be synchronized to other logged-in devices, and other devices will receive the `IChatManagerDelegate#OnMessagePinChanged` event, respectively.
+
+Any user in a group or room can unpin a message, regardless of who pinned it. After unpinning a message, `PinnedBy` and `PinnedAt` in `Message#PinnedInfo` are returned empty and set to `0`, respectively, and the message is no longer included in the pinned message list.
+
+```csharp
+bool isPinned = false;
+SDKClient.Instance.ChatManager.PinMessage(msgId, isPinned, new CallBack(
+    onSuccess: () =>
+    {
+    },
+    onError: (code, desc) =>
+    {
+    }
+));
+```
+
+### Get pinned messages in a single conversation
+
+You can call `ChatManager#GetPinnedMessagesFromServer` to get the pinned messages from a single conversation from the server. The SDK returns messages in the reverse order of pinning.
+
+```csharp
+SDKClient.Instance.ChatManager.GetPinnedMessagesFromServer(convId, new ValueCallBack<List<Message>>(
+    onSuccess: (list) => {
+        foreach (var it in list)
+        {
+            // Traverse the message list
+        }
+    },
+    onError: (code, desc) => {
+    }
+));
+```
+
+### Get pinned details of a single message
+
+You can call `PinnedInfo` to get the pinned details of a single message.
+
+- If the message is pinned, this class returns the time of pinning and the user ID of the user who has pinned it.
+- If the message is not pinned, then `PinnedBy` is returned empty and `PinnedAt` is set to `0`.
+
+```csharp
+// ...
+const msg: ChatMessage;
+const info = await msg.getPinInfo;
+// todo: Get the pin information of the message
+```
+
+
 ### Delete conversations and related messages from the server unidirectionally
 
 Call `DeleteConversationFromServer` to delete conversations and their historical messages unidirectionally from the server. After the conversations and messages are deleted from the server, you can no longer get them from the server. The deleted conversations still exist on your local device, but the messages are automatically removed from the device. Other chat users can still get the conversations and their historical messages from the server.
@@ -164,6 +236,106 @@ SDKClient.Instance.ChatManager.DeleteConversationFromServer(conversationId, conv
     {
     }
 ));
+```
+
+### Tag a conversation
+
+To tag a conversation, use the `MarkConversations` method. This method allows you to add tags to both local and server-side conversations, that is, set the `isMark` parameter to 'true'. You can tag up to 20 conversations at a time.
+
+After adding a tag, you can retrieve the tagged conversations from the server by calling the `GetConversationsFromServerWithCursor` method. The returned conversation objects will include the conversation tag, which you can obtain using the `marks` property.
+
+If the server conversation list reaches its limit (default 100 conversations), inactive conversations will be deleted based on conversation activity (timestamp of the latest message). Consequently, the conversation tags of these deleted conversations will also be removed.
+
+<Admonition type="info" title="Hint">Adding tags to a conversation, such as stars, does not affect other logic of the conversation, such as the number of unread messages in it.</Admonition>
+
+```csharp
+List<string> list = new List<string>();
+list.Add("huanhuan");
+bool isMarked = true;
+SDKClient.Instance.ChatManager.MarkConversations(list, isMarked, (MarkType)mark, new CallBack(
+    onSuccess: () =>
+    {
+    },
+    onError: (code, desc) =>
+    {
+    }
+));
+```
+
+### Remove tag of a conversation
+
+You can call `MarkConversations` and set the `isMark` parameter to 'false' to untag a conversation. Tags can be removed for up to 20 conversations at a time. Calling this method removes both the local and server-side tags.
+
+```csharp
+List<string> list = new List<string>();
+list.Add("huanhuan");
+bool isMarked = false;
+SDKClient.Instance.ChatManager.MarkConversations(list, isMarked, (MarkType)mark, new CallBack(
+    onSuccess: () =>
+    {
+    },
+    onError: (code, desc) =>
+    {
+    }
+));
+```
+
+### Query conversations from the server by the conversation tag
+
+You can use the `GetConversationsFromServerWithCursor` method to retrieve a list of conversations from the server based on the tag. The SDK returns the conversation list in reverse order of the conversation tag's timestamp. Each conversation object includes the following information:
+
+- Conversation ID
+- Conversation type
+- Pinned status (whether it is pinned or not)
+- Pin time (if the conversation is pinned; otherwise, the value is 0)
+- Conversation tag
+- Latest message
+
+After fetching the conversation list from the server, the local conversation list is updated accordingly:
+
+```csharp
+SDKClient.Instance.ChatManager.GetConversationsFromServerWithCursor((MarkType)mark, cursor, limit, new ValueCallBack<CursorResult<Conversation>>(
+   onSuccess: (result) =>
+   {
+       foreach (var conv in result.Data)
+       {
+       	//Iterate over the sessions in result.Data
+       }
+   },
+   onError: (code, desc) =>
+   {
+   }
+  ));
+```
+
+### Query local conversations by the conversation tag
+
+For local conversations, you can call the `LoadAllConversations` method to obtain all local conversations and then perform conversation filtering yourself. The following is an example of querying all local conversations marked with `EMConversation.EMMarkType.MARK_0`:
+
+```csharp
+// All final query results are put into result.
+List<Conversation> result = new List<Conversation>();
+List<Conversation> localConversations = SDKClient.Instance.ChatManager.LoadAllConversations();
+foreach(var conv in localConversations)
+{
+    List<MarkType> Marks = conv.Marks();
+    foreach(var mark in Marks)
+    {
+        if (MarkType.MarkType0 == mark)
+        {
+            result.Add(conv);
+        }
+    }
+}
+```
+
+### Get all tags of a local conversation
+
+You can call `Conversation#Marks` to get all the tags of a local conversation. The sample code is as follows:
+
+```csharp
+Conversation conv = SDKClient.Instance.ChatManager.GetConversation("conversationId", conversationType);
+List<MarkType> Marks = conv.Marks();
 ```
 
 </PlatformWrapper>

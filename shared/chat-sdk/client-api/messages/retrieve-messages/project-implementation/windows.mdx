@@ -32,46 +32,79 @@ SDKClient.Instance.ChatManager.GetConversationsFromServerWithCursor(pinOnly, cur
 ));
 ```
 
-### Retrieve historical messages of the specified conversation
+### Retrieve message history of the specified conversation
 
-After retrieving conversations, you can retrieve historical messages from the server.
+You can call `FetchHistoryMessagesFromServerBy` based on the `FetchServerMessagesOption` class to pull message history of a one-to-one or group chat from the server. To ensure data reliability, we recommend that you pull 20 messages at a time, with a maximum of 50. If the total number of messages that meet the query conditions is greater than the `pageSize` value, then only the `pageSize` number of messages will be returned. When the message query is completed, the number of returned messages is less than the `pageSize` value.
 
-You can set the search direction to retrieve messages in the chronological or reverse chronological order of when the server receives them, the message type, the time period, the message sender, as well as whether to save the retrieved message to the local database.
+Using the `FetchServerMessagesOption` class, you can pull message history with the following conditions:
 
-If you have integrated Chat SDK after June 8, 2023, you can retrieve historical messages even before joining the Chat Group. For earlier implementations, contact [support@agora.io](mailto:support@agora.io) to enable this.
+- message sender,
+- message type,
+- message time period,
+- message search direction,
+- whether to save the pulled messages to the database.
 
-The Agora Chat server stores the full message history for a certain period of time depending on your subscribed [Chat plan](../../reference/message-overview#limitations-of-message-storage-duration). After an end user logs back into Agora Chat, the servers  automatically send offline messages to them, that is, messages transmitted when that end user was offline. Offline messages are a subset of the full message history stored on Agora Chat server. Sending only a subset of messages prevents distributing too many messages to a single device, which can overwhelm it and slow down the end user login. Agora Chat server stores and manages these offline messages for every end user in the following way:
+For group chats, you can set the `from` parameter to pull messages sent by individual members of the group.
 
-- 1:1 private chat: Store 500 offline messages by default;
-- Chat Group: Store 200 offline messages by default;
-- Chatroom: Doesn't store offline messages. However, whenever an end user joins a chatroom, Agora Chat servers push the 10 latest messages/chatroom to them, by default. This number can be adjusted to 200 messages/chatroom without additional charges.
+<Admonition type="tip" title="Note">
+<ul><li>To use this API, upgrade to v1.3.0 or above.</li>
+<li>By default, you can retrieve message history of one-to-one and group chats. To obtain message history of a chat room, contact support@agora.io.</li>
+<li>The storage time of message history and offline messages on the server is defined by your pricing package. See [Pricing plan details](../../reference/pricing-plan-details).</li>
+<li>For event notifications, if the receiving user is offline, the storage time of the event notification is consistent with the storage time of the offline message, which also depends on your pricing package.</li></ul>
+</Admonition>
 
-For users to receive more offline messages, use the client API or a webhook to sync with Agora Chat's server. End users can also store additional messages on their local database.
-
-To ensure data reliability, we recommend retrieving less than 50 historical messages for each method call. To retrieve more than 50 historical messages, call this method multiple times. Once the messages are retrieved, the SDK automatically updates these messages in the local database.
-
-Refer to the following code sample:
+Refer to the following sample code:
 
 ```csharp
 FetchServerMessagesOption option = new FetchServerMessagesOption();
-option.IsSave = false;
-option.Direction = MessageSearchDirection.UP;
-option.From = "user";
-option.MsgTypes = new List<MessageBodyType>();
-option.MsgTypes.Add(MessageBodyType.TXT);
-option.MsgTypes.Add(MessageBodyType.VIDEO);
-option.StartTime = 1695720454000;
-option.EndTime = 1695720554000;
+   // Message search direction. `UP` means pull the latest message first; `DOWN` means pull the oldest message first.
+   option.Direction = MessageSearchDirection.UP;
+   // The user ID of the message sender, only used for group messages, that is, used when the `type` in `FetchHistoryMessagesFromServerBy` is `ConversationType.Group`.
+   option.From = "xxx";
+   // Array of the message type to pull. If no value is passed, all types of messages will be pulled.
+   option.MsgTypes = new List<MessageBodyType>() { MessageBodyType.TXT };
+   // The starting timestamp of the query, in milliseconds.
+   option.StartTime = 1709284487000;
+   // The end timestamp of the query, in milliseconds.
+   option.EndTime = 1709284499000;
 
-SDKClient.Instance.ChatManager.FetchHistoryMessagesFromServerBy(conversationId, type, cursor, pageSize, option, new ValueCallBack<CursorResult<Message>>(
-    onSuccess: (result) =>
-    {
+   // conversationId: The peer user ID for a one-to-one chat, group ID for a chat group, and chat room ID for a chat room.
+   // type: Conversation type: `Chat`, `Group`, or `Room`.
+   // cursor: The starting message ID of the query. If this parameter is set to an empty string, start from the latest message.
+   // pageSize: The number of messages expected to be pulled per page. The value range is [1,50], and the default value is 10.
+   // option: Find option of type `FetchServerMessagesOption`.
+   SDKClient.Instance.ChatManager.FetchHistoryMessagesFromServerBy(conversationId, type:ConversationType.Group, cursor:"", pageSize:10, option, new ValueCallBack<CursorResult<Message>>(
+       onSuccess: (result) =>
+       {
+           if (0 == result.Data.Count)
+           {
+               return;
+           }
+           foreach (var msg in result.Data)
+           {
+               // Process every msg
+           }
+       },
+       onError: (code, desc) =>
+       {
+       }
+   ));
+```
 
-    },
-    onError: (code, desc) =>
-    {
+You can also call `FetchHistoryMessagesFromServer` to pull messages of a specified conversation from the server.
 
-    }
+To ensure data reliability, we recommend that you pull a maximum of 50 messages at a time and do multiple iterations, if necessary. After pulling, the SDK will automatically update the message to the local database.
+
+```csharp
+SDKClient.Instance.ChatManager.FetchHistoryMessagesFromServer(conversationId, type, startId, pageSize, new ValueCallBack<CursorResult<Message>>(
+     // Message history retrieved successfully.
+     // Result is of type CursorResult<Message>.
+     onSuccess: (result) => {
+     },
+
+     // Failed to retrieve message history.
+     onError:(code, desc) => {
+     }
 ));
 ```
 
@@ -123,31 +156,6 @@ SDKClient.Instance.ChatManager.GetConversationsFromServerWithCursor(pinOnly, cur
    {
 
    }
-));
-```
-
-### Delete historical messages from the server unidirectionally
-
-Call `RemoveMessagesFromServer` to delete historical messages one way from the server. You can remove a maximum of 50 messages from the server each time. Once the messages are deleted, you can no longer retrieve them from the server. The deleted messages are automatically removed from your local device. Other chat users can still get the messages from the server.
-
-<div class="alert note">To use this function, you need to contact [support@agora.io](mailto:support@agora.io) to enable it.</div>
-
-```csharp
-SDKClient.Instance.ChatManager.RemoveMessagesFromServer(convId, ctype, time, new CallBack(
-    onSuccess: () =>
-    {
-    },
-    onError: (code, desc) =>
-    {
-    }
-));
-SDKClient.Instance.ChatManager.RemoveMessagesFromServer(convId, ctype, msgList, new CallBack(
-    onSuccess: () =>
-    {
-    },
-    onError: (code, desc) =>
-    {
-    }
 ));
 ```
 
@@ -222,6 +230,30 @@ const info = await msg.getPinInfo;
 // todo: Get the pin information of the message
 ```
 
+### Delete historical messages from the server unidirectionally
+
+Call `RemoveMessagesFromServer` to delete historical messages one way from the server. You can remove a maximum of 50 messages from the server each time. Once the messages are deleted, you can no longer retrieve them from the server. The deleted messages are automatically removed from your local device. Other chat users can still get the messages from the server.
+
+<div class="alert note">To use this function, you need to contact [support@agora.io](mailto:support@agora.io) to enable it.</div>
+
+```csharp
+SDKClient.Instance.ChatManager.RemoveMessagesFromServer(convId, ctype, time, new CallBack(
+    onSuccess: () =>
+    {
+    },
+    onError: (code, desc) =>
+    {
+    }
+));
+SDKClient.Instance.ChatManager.RemoveMessagesFromServer(convId, ctype, msgList, new CallBack(
+    onSuccess: () =>
+    {
+    },
+    onError: (code, desc) =>
+    {
+    }
+));
+```
 
 ### Delete conversations and related messages from the server unidirectionally
 

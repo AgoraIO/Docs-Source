@@ -138,7 +138,7 @@ const App = () => {
     }
     rollLog('start login ...');
     chatClient
-      .loginWithAgoraToken(username, chatToken)
+      .login(username, chatToken, false)
       .then(() => {
         rollLog('login operation success.');
       })

@@ -1,99 +1,128 @@
+<PlatformWrapper platform="web">
 
-### Set up an event listener
+### Create a stream channel
 
-    Keep track of the users who join and leave topics, and events in the topic. In this implementation, we use the
-  event listener in [signalingManager](/en/signaling/develop/get-started-sdk#handle-events).
+To use the stream channel functionality, call `createStreamChannel` to create a `RTMStreamChannel` object instance.
 
-### Join and leave a channel
+```javascript
+const channelName = "chat_room";
+const streamChannel = rtmClient.createStreamChannel(channelName);
+```
 
-    To create a new stream channel, call `createStreamChannel`. When you join the channel, you configure the features
-    you will use. For example, [Presence](/en/signaling/reference/api#presence), [Storage](/en/signaling/reference/api#storage), and [Lock](/en/signaling/reference/api#lock). You use the [RTC authentication
-    token](/en/signaling/get-started/authentication-workflow#authenticate-your--session) for the current UID to join the channel. To join a channel:
+This method creates only one `RTMStreamChannel` instance at a time. If you need to create multiple instances, call the method multiple times.
 
-      ```javascript
-        const streamChannelJoinAndLeave = async function (
-          isStreamChannelJoined,
-          uid,
-          streamChannelName
-        ) {
-          const token = await fetchRTCToken(uid, streamChannelName);
-          if (getSignalingStreamChannel() === null) {
-            streamChannel = await signalingManager
-              .getSignalingEngine()
-              .createStreamChannel(streamChannelName); // creates stream channel
-          }
+```javascript
+// Create the first instance
+const streamChannel = rtmClient.createStreamChannel("chat_room_1");
+// Create the second instance
+const streamChannel = rtmClient.createStreamChannel("chat_room_2");
+```
 
-          if (isStreamChannelJoined === false) {
-            await streamChannel
-              .join({
-                token: token,
-                withPresence: true,
-              })
-              .then((response) => {
-                console.log(response);
-              });
-          } else {
-            streamChannel.leave().then((response) => {
-              console.log(response);
-              messageCallback("Left the channel: " + streamChannelName);
-              streamChannel = null;
-            });
-          }
-        };
-      ```
+<Admonition>
+<Vg k="SIG" /> enables you to create unlimited stream channel instances in a single <Vpl k="CLIENT"/>. However, best practice is to create channels based on your actual requirements to maintain optimal client-side performance. For instance, if you hold multiple stream channel instances, destroy the ones that are no longer in use to prevent resource blocking, and recreate them when they are needed again.
+</Admonition>
 
-<a name='topic'></a>
-### Join and leave a topic
+### Join a stream channel
 
-     A topic is a data stream management mechanism in stream channels. Users join, leave, subscribe, and
-    unsubscribe to topics. You join a topic to publish and recieve messages sent to all users in the topic.
-    You subscribe to listen to messages sent by publishers only. When a user joins or leaves a topic, <Vg k="MESS"/>
-    triggers an topic event notification. Users in the channel receive the notifications in real time. You use topic events
-    to track changes in topic status. To join a topic:
+Call the `join` method on the `RTMStreamChannel` instance with the appropriate options as follows:
 
-      ```javascript
-      const topicJoinAndLeave = async function (isTopicJoined, topicName) {
-        if (isTopicJoined === false) {
-          await signalingManager.getSignalingStreamChannel().joinTopic(topicName).then((response) => {
-            messageCallback("Joined the topic: " + response.topicName);
-          });
-        } else {
-          signalingManager.getSignalingStreamChannel().leaveTopic(topicName).then((response) => {
-            console.log(response);
-            messageCallback("Left the topic: " + response.topicName);
-          });
-        }
-      };
-      ```
-      There is no limit to the number of subscribers and publishers in each topic. However, there are limitations to
-      the [number of topics and messages a user can subscribe to](/en/signaling/reference/limitations).
+```javascript
+const options = {
+  token: "your_token",
+  withPresence: true,
+  withLock: true,
+  withMetadata: true
+};
+try {
+  const result = await streamChannel.join(options);
+} catch (status) {
+  const { operation, reason, errorCode } = status;
+  console.log(`${operation} failed, ErrorCode: ${errorCode}, due to: ${reason}.`);
+}
+```
 
-### Publish messages to a topic
+When joining a channel, fill the `token` parameter in `JoinChannelOptions` with a temporary token from <Vg k="CONSOLE" />.
 
-   Messages are transmitted through the topic. After your user has joined a topic in a channel, you
-   publish messages to the topic. Publishers and subscribers receive the messages. To send a message:
+<Admonition>
+
+To facilitate testing of the app during development, set the **Authentication mechanism** to **Debugging mode** when creating the project, and use the app ID in the `token` parameter when joining a channel.
+</Admonition>
+
+```js
+const options = {
+    token: "your_appId",
+    withPresence: true,
+    withLock: true,
+    withMetadata: true
+};
+try {
+    const result = await streamChannel.join(options);
+} catch (status) {
+    const { operation, reason, errorCode } = status;
+    console.log(`${operation} failed, ErrorCode: ${errorCode}, due to: ${reason}.`);
+}
+```
+
+In stream channels, message flow is managed using topics. Even if you configure a global message listener, you must still join a topic to send messages. Similarly, to receive messages you must subscribe to a topic. See [Topics](../core-functionality/topics) for more information.
+
+### Send a message 
+
+To send a message to a stream channel, you first need to:
+
+- Create a `RTMStreamChannel` instance.
+- Use the `join` method to join a channel.
+- Call `joinTopic` to register as a message publisher for the specified topic. See [Topics](../core-functionality/topics).
+
+Call `publishTopicMessage` to publish a message to a topic. This method sends a message to a single topic at a time. To deliver messages to multiple topics, call the method separately for each topic.
+
+Refer to the following sample code for sending messages:
+
+* String message
 
     ```javascript
-    const sendTopicMessage = function (message, topicName) {
-      if (message === "" || topicName === "") {
-        console.log(
-          "Make sure you specified a message and a topic to send messages"
-        );
-        return;
-      }
-      signalingManager.getSignalingStreamChannel().publishTopicMessage(topicName, message).then((response) => {
-        console.log(response);
-        messageCallback("Topic: " + topicName + ",  Message:" + message);
-      });
-    };
+    // Sending a string message
+    const payload = "Hello Agora!"; // Message content
+    const topicName = "chat_topic"; // Topic to which the message is sent
+    const options = { customType: "PainTxt" }; // Options for sending the message
+    try {
+      const result = await streamChannel.publishTopicMessage(topicName, payload, options); // Sending the message asynchronously
+    } catch (status) {
+      const { operation, reason, errorCode } = status;
+      console.log(`${operation} failed, ErrorCode: ${errorCode}, due to: ${reason}.`); // Logging error information if message sending fails
+    }
     ```
 
-### Subscribe to a topic
-
-    To receive messages published to a topic, you subscribe to the topic. To subscribe:
+* Binary message
 
     ```javascript
-    await signalingManager.getSignalingStreamChannel().subscribeTopic(topicName);
-    ```javascript
+    // Sending a binary message
+    const message = "Hello Agora!"; // Binary message content
+    const payload = new TextEncoder().encode(message); // Encoding message to binary data
+    const topicName = "chat_topic"; // Topic to which the message is sent
+    const options = { customType: "ByteArray" }; // Options for sending the message
+    try {
+      const result = await streamChannel.publishTopicMessage(topicName, payload, options); // Sending the message asynchronously
+    } catch (status) {
+      const { operation, reason, errorCode } = status;
+      console.log(`${operation} failed, the error code is ${errorCode}, because of: ${reason}.`); // Logging error information if message sending fails
+    }
+    ```
 
+In <Vg k="SIG" />, a user may register as a message publisher for up to 8 topics concurrently. However, there are no limitations on the number of users a single topic can accommodate. You can achieve a message transmission frequency to a topic of up to 120 QPS. This capability is useful in scenarios that demand high-frequency and high-concurrency data processing, such as Metaverse location status synchronization, collaborative office sketchpad applications, and parallel control operation-instructions transmission.
 
+### Leave a stream channel
+
+To leave a channel, call the `leave` method on the `RTMStreamChannel` instance:
+
+```javascript
+try {
+  const result = await streamChannel.leave();
+} catch (status) {
+  const { operation, reason, errorCode } = status;
+  console.log(`${operation} failed, ErrorCode ${errorCode}, due to: ${reason}.`);
+}
+```
+
+To rejoin a stream channel, call the `join` method again. You can join and leave as long as the corresponding `RTMStreamChannel` instance remains active and has not been destroyed.
+
+</PlatformWrapper>

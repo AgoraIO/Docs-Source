@@ -1,19 +1,164 @@
 <PlatformWrapper platform="android">
-1.  **Set <Vpd k="SDK" /> to connect to <Vg k="CP"/> before you join a channel**
 
-    To access <Vg k="AGORA_BACKEND" /> in a restricted network environment, call `setCloudProxy` and pass `0` as a parameter to select the automatic mode for transmission. The `setCloudProxy` method returns `0` upon
-    successful initiation of cloud proxy service.
+### Create a stream channel
 
-    To enable the <Vg k="CP"/> service in your <Vpl k="CLIENT" />, in `/app/java/com.example.<projectname>/MainActivity`, add the following code after `agoraEngine = RtcEngine.create(config);`:
+To use the stream channel functionality, call `createStreamChannel` to create a `StreamChannel` object instance.
 
-    ``` java
-    // Start cloud proxy service and set automatic transmission mode.
-    int proxyStatus = agoraEngine.setCloudProxy(0);
-    if (proxyStatus == 0) {
-        showMessage("Proxy service started successfully");
-    } else {
-        showMessage("Proxy service failed with error :" + proxyStatus);
+```java
+StreamChannel mStreamChannel = mRtmClient.createStreamChannel("chat_room");
+```
+
+This method creates only one `StreamChannel` instance at a time. If you need to create multiple instances, call the method multiple times.
+
+```java
+// Create the first instance
+StreamChannel mStreamChannel1 = mRtmClient.createStreamChannel("chat_room1");
+// Create the second instance
+StreamChannel mStreamChannel2 = mRtmClient.createStreamChannel("chat_room2");
+```
+
+<Admonition>
+<Vg k="SIG" /> enables you to create unlimited stream channel instances in a single <Vpl k="CLIENT"/>. However, best practice is to create channels based on your actual requirements to maintain optimal client-side performance. For instance, if you hold multiple stream channel instances, destroy the ones that are no longer in use to prevent resource blocking, and recreate them when they are needed again.
+</Admonition>
+
+### Join a stream channel
+
+Call the `join` method on the `StreamChannel` instance with the appropriate options as follows:
+
+```java
+JoinChannelOptions options = new JoinChannelOptions();
+options.setToken("your_token");
+options.setWithPresence(true);
+options.setWithLock(true);
+options.setWithMetadata(true);
+
+mStreamChannel.join(options, new ResultCallback<Void>() {
+    @Override
+    public void onSuccess(Void responseInfo) {
+        log(CALLBACK, "join stream channel success");
     }
+
+    @Override
+    public void onFailure(ErrorInfo errorInfo) {
+        log(ERROR, errorInfo.toString());
+    }
+});
+```
+
+When joining a channel, fill the `token` parameter in `JoinChannelOptions` with a temporary token from <Vg k="CONSOLE" />.
+
+<Admonition>
+
+To facilitate testing of the app during development, set the **Authentication mechanism** to **Debugging mode** when creating the project, and use the app ID in the `token` parameter when joining a channel.
+</Admonition>
+
+```java
+JoinChannelOptions options = new JoinChannelOptions("your_appid", true, true, true);
+mStreamChannel.join(options, new ResultCallback<Void>() {
+    @Override
+    public void onSuccess(Void responseInfo) {
+        log(CALLBACK, "join stream channel success");
+    }
+
+    @Override
+    public void onFailure(ErrorInfo errorInfo) {
+        log(ERROR, errorInfo.toString());
+    }
+});
+```
+
+In stream channels, message flow is managed using topics. Even if you configure a global message listener, you must still join a topic to send messages. Similarly, to receive messages you must subscribe to a topic. See [Topics](../core-functionality/topics) for more information.
+
+### Send a message 
+
+To send a message to a stream channel, you first need to:
+
+- Create a `StreamChannel` instance.
+- Use the `join` method to join a channel.
+- Call `joinTopic` to register as a message publisher for the specified topic. See [Topics](../core-functionality/topics).
+
+Call `publishTopicMessage` to publish a message to a topic. This method sends a message to a single topic at a time. To deliver messages to multiple topics, call the method separately for each topic.
+
+Refer to the following sample code for sending messages:
+
+* String message
+
+    ```java
+    // Send a string message
+    String message = "Hello Agora!"; // Message content
+    String topicName = "chat_topic"; // Topic name for publishing
+    var options = new TopicMessageOptions(); // Topic message sending options
+    options.customType = "PlainTxt"; // Set a custom type for the message
+    mStreamChannel.publishTopicMessage(topicName, message, options, new ResultCallback<Void>() {
+        @Override
+        public void onSuccess(Void responseInfo) {
+            // Log success
+            log(CALLBACK, "publish topic message success"); 
+        }
+
+        @Override
+        public void onFailure(ErrorInfo errorInfo) {
+            // Log failure
+            log(ERROR, errorInfo.toString()); 
+        }
+    });
     ```
+
+* Binary message
+
+    ```java
+    // Send a binary message
+    byte[] message = new byte[] { 00, 01, 35, 196 }; // Binary message content
+    String topicName = "chat_topic"; // Topic name for publishing
+    var options = new TopicMessageOptions(); // Topic message sending options
+    options.customType = "ByteArray"; // Set a custom type for the message
+    mStreamChannel.publishTopicMessage(topicName, message, options, new ResultCallback<Void>() {
+        @Override
+        public void onSuccess(Void responseInfo) {
+            // Log success
+            log(CALLBACK, "publish topic message success"); 
+        }
+
+        @Override
+        public void onFailure(ErrorInfo errorInfo) {
+            // Log failure
+            log(ERROR, errorInfo.toString()); 
+        }
+    });
+    ```
+
+In <Vg k="SIG" />, a user may register as a message publisher for up to 8 topics concurrently. However, there are no limitations on the number of users a single topic can accommodate. You can achieve a message transmission frequency to a topic of up to 120 QPS. This capability is useful in scenarios that demand high-frequency and high-concurrency data processing, such as Metaverse location status synchronization, collaborative office sketchpad applications, and parallel control operation-instructions transmission.
+
+### Leave a stream channel
+
+To leave a channel, call the `leave` method on the `StreamChannel` instance:
+
+```java
+mStreamChannel.leave(new ResultCallback<Void>() {
+    @Override
+    public void onSuccess(Void responseInfo) {
+        log(CALLBACK, "leave stream channel success");
+    }
+
+    @Override
+    public void onFailure(ErrorInfo errorInfo) {
+        log(ERROR, errorInfo.toString());
+    }
+});
+```
+
+To rejoin a stream channel, call the `join` method again. You can join and leave as long as the corresponding `StreamChannel` instance remains active and has not been destroyed.
+
+### Destroy the stream channel instance
+
+To destroy a stream channel instance, call `release`:
+
+```java
+mStreamChannel.release();
+```
+
+<Admonition>
+Destroying a stream channel removes the `StreamChannel` instance from your <Vpl k="CLIENT"/>. This action is local to your <Vpl k="CLIENT"/> and does not affect other users or the <Vg k="SIG" /> channel.
+</Admonition>
 
 </PlatformWrapper>

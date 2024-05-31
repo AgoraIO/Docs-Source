@@ -33,6 +33,7 @@ export const API_REF_RNJS_ROOT  = `${API_REF_ROOT}/reactjs/2.x`;
 export const API_REF_RNJS_ROOT_VOICE = `${API_REF_ROOT_VOICE_SDK}/reactjs/2.x`;
 export const API_REF_RN_ROOT  = `${API_REF_ROOT}/react-native/${MAJOR_VERSION}/API`;
 export const API_REF_UE_ROOT  = `${API_REF_ROOT}/unreal-engine/${MAJOR_VERSION}/API`;
+export const API_REF_BLUEPRINT_ROOT  = `${API_REF_ROOT}/blueprint/${MAJOR_VERSION}/API`;
 export const API_REF_RN_PREVIOUS_ROOT  = `${API_REF_ROOT}/react-native/${VSDK_PREVIOUS_RELEASE_API}`;
 export const API_REF_RN_ROOT_VOICE = `${API_REF_ROOT_VOICE_SDK}/react-native/${MAJOR_VERSION}/API`;
 export const API_REF_MACOS_ROOT = `${API_REF_ROOT}/macos/${VSDK_RELEASE_API}/documentation`;
@@ -65,6 +66,7 @@ export const API_REF_FLUTTER_ROOT_PREV_SDK = `${API_REF_ROOT}/flutter/5.x/API`;
 export const API_REF_WINDOWS_ROOT_CPP  = `${API_REF_ROOT}/cpp/${VSDK_RELEASE_API}/API`;
 export const API_REF_UE_ROOT_VOICE_SDK  = `${API_REF_ROOT_VOICE_SDK}/unreal-engine/${VSDK_RELEASE_API}/API`;
 export const API_REF_WINDOWS_ROOT_CPP_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/cpp/${VSDK_RELEASE_API}/API`;
+export const API_REF_UBP_ROOT  = `${API_REF_ROOT}/blueprint/${VSDK_RELEASE_API}/API`;
 
 export const API_REF_SIG_ANDROID = '../reference/api';
 export const API_REF_SIG_WEB = '../reference/api';
@@ -110,6 +112,7 @@ export const VSDK_FLUTTER_RELEASE = '6.0.0-rc.2';
 export const VSDK_LATEST_RELEASE = '4.1.0';
 
 export const AV = 'Audio/Video';
+export const SCR_SHR = 'screen sharing';
 
 export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;

@@ -83,7 +83,7 @@ The following parameters are required in the request body.
   - `7`: AES_128_GCM2. 128-bit AES encryption, GCM mode. Compared to AES_128_GCM encryption mode, AES_128_GCM2 encryption mode is more secure and requires you to set the secret and salt.
 - `8`: AES_256_GCM2. 256-bit AES encryption, GCM mode. Compared to AES_256_GCM encryption mode, AES_256_GCM2 encryption mode is more secure and requires you to set the secret and salt.
 - `secret`: (Optional) String. The decryption password when decryption mode is enabled. If `decryptionMode` is not `0`, you need to set this value.
-- `salt`: (Optional) Base64 encoding, 32-bit bytes. The decryption [salt](/video-calling/develop/media-stream-encryption#_understand_the_tech) that needs to be set for the GCM2 encryption mode. If `decryptionMode` is `7` or `8`, you need to set this value.
+- `salt`: (Optional) Base64 encoding, 32-bit bytes. The decryption [salt](/video-calling/core-functionality/media-stream-encryption#_understand_the_tech) that needs to be set for the GCM2 encryption mode. If `decryptionMode` is `7` or `8`, you need to set this value.
 - `audioProfile`: (Optional) Number. The profile of the output audio stream, including the sample rate, bitrate, encoding mode, and the number of channels. You cannot set this parameter in individual recording mode.
   - `0`: (Default) Sample rate of 48 kHz, music encoding, mono, and a bitrate of up to 48 Kbps.
   - `1`: Sample rate of 48 kHz, music encoding, mono, and a bitrate of up to 128 Kbps.

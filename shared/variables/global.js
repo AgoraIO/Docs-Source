@@ -70,7 +70,7 @@ export const API_REF_UBP_ROOT  = `${API_REF_ROOT}/blueprint/${VSDK_RELEASE_API}/
 
 export const API_REF_SIG_ANDROID = '../reference/api';
 export const API_REF_SIG_WEB = '../reference/api';
-export const API_REF_SIG_APPLE = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
+export const API_REF_SIG_APPLE = '../reference/api';
 export const API_REF_SIG_UNITY = '../reference/api';
 export const API_REF_SIG_LNX_CPP = '../reference/api';
 

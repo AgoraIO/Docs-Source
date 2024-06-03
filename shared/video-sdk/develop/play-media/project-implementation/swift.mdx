@@ -1,162 +1,103 @@
-import CreateUI from '@docs/assets/code/video-sdk/play-media/swift/create-ui.mdx';
-import ConfigureButtons from '@docs/assets/code/video-sdk/play-media/swift/configure-buttons.mdx';
-import OpenPausePlayMedia from '@docs/assets/code/video-sdk/play-media/swift/open-play-pause-media.mdx';
 
-### Implement the user interface
-
-In a real-word application, you provide several buttons to enable a user to open, play, pause and stop playing files in the media player. In this page, you use a single `UIButton` to demonstrate the basic media player functions. You also add a `UIProgressView` to display the play progress to the user.
-
-To create this user interface, in the `ViewController` class:
-
-1.  **Add UI elements to control video play and show progress**
-
-    Add the following variables at the top of the class with the other declarations:
-
-    <CreateUI />
-
-2.  **Configure the buttons in your interface**
-
-    Add the following lines to the `initViews` function:
-
-    <ConfigureButtons />
-
-### Handle the system logic
-
-To setup your project to use the media player APIs and access the UI elements, take the following steps:
-
-1.  **Declare the variables you need**
-
-    To create and manage an instance of the media player and access the UI elements, add the following declarations to `ViewController`:
+1. After initializing an instance of `AgoraRtcEngineKit`, create a `mediaPlayerKit` object.
 
     ```swift
-    var mediaPlayer: AgoraRtcMediaPlayerProtocol? // Instance of the media player
-    var isMediaPlaying: Bool = false
-    var mediaDuration: Int = 0
-    // In a real world app, you declare the media location variable with an empty string
-    // and update it when a user chooses a media file from a local or remote source.
-    var mediaLocation =
-            "https://webdemo.agora.io/agora-web-showcase/examples/Agora-Custom-VideoSource-Web/assets/sample.mp4"
+    // Initialize AgoraRtcEngineKit and create a mediaPlayerKit object.
+    agoraKit = AgoraRtcEngineKit.sharedEngine(with: config, delegate: self)
+    // Create mediaPlayerKit object
+    mediaPlayerKit = agoraKit.createMediaPlayer(with: self)
     ```
 
-### Implement media player functions
-
-To implement playing and publishing media files in your <Vpl k="CLIENT" />, take the following steps:
-
-1.  **Open, play and pause media files**
-
-    When a user presses the button for the first time, you create an instance of the media player, set its `mediaPlayerBtnClicked` function to receive the callbacks, and open the media file. When the user presses the button again, you play the media file. On subsequent button presses, you pause or resume playing the media file alternately. To do this, add the following `mediaPlayerBtnClicked` function to the `ViewController` class:
-
-    <OpenPausePlayMedia />
-
-2.  **Manage media player callbacks**
-
-    The `AgoraRtcMediaPlayerDelegate` implements media player callbacks. When the player state changes, update the UI using the `didChangedToState`, `didChangedToPosition` callbacks. To setup the `AgoraRtcMediaPlayerDelegate`, add the following extension to the `ViewController`:
+1. Implement media player callbacks. Observe the status of the player through callbacks and obtain the playback progress of the current media file.
 
     ```swift
-    extension ViewController: AgoraRtcMediaPlayerDelegate {
+    extension MediaPlayerMain: AgoraRtcMediaPlayerDelegate {
+        // Observe the state of the player
         func agoraRtcMediaPlayer(_ playerKit: AgoraRtcMediaPlayerProtocol, didChangedTo state: AgoraMediaPlayerState, error: AgoraMediaPlayerError) {
-            if (state == .openCompleted) {
-                // Media file opened successfully
-                DispatchQueue.main.async {[weak self] in
-                    guard let weakself = self else { return }
-                    weakself.showMessage(title: "Media Player", text: "Media file opened successfully")
+            LogUtils.log(message: "Player RTC channel publish helper state changed to: \(state.rawValue), error: \(error.rawValue)", level: .info)
+            DispatchQueue.main.async { [weak self] in
+                guard let weakself = self else { return }
+                switch state {
+                case .failed:
+                    weakself.showAlert(message: "Media player error: \(error.rawValue)")
+                    break
+                case .openCompleted:
+                    let duration = weakself.mediaPlayerKit.getDuration()
+                    weakself.playerControlStack.isHidden = false
+                    weakself.playerDurationLabel.text = "\(String(format: "%02d", duration / 60)) : \(String(format: "%02d", duration % 60))"
+                    weakself.playerProgressSlider.setValue(0, animated: true)
+                    break
+                case .stopped:
+                    weakself.playerControlStack.isHidden = true
+                    weakself.playerProgressSlider.setValue(0, animated: true)
+                    weakself.playerDurationLabel.text = "00 : 00"
+                    break
+                default: break
                 }
-                mediaDuration = mediaPlayer!.getDuration()
-                // Update the UI
-                DispatchQueue.main.async {[weak self] in
-                    guard let weakself = self else { return }
-                    weakself.mediaPlayerBtn.setTitle("Play Media File", for: .normal)
-                    weakself.mediaPlayerBtn.isEnabled = true
-                    weakself.mediaProgressView.progress = 0
-                }
-            } else if (state == .playBackAllLoopsCompleted) {
-                isMediaPlaying = false
-                // Media file finished playing
-                DispatchQueue.main.async {[weak self] in
-                    guard let weakself = self else { return }
-                    weakself.mediaPlayerBtn.setTitle("Load Media File", for: .normal)
-                    // Restore camera and microphone streams
-                    weakself.setupLocalVideo(false)
-                    weakself.updateChannelPublishOptions(false)
-                }
-                // Clean up
-                agoraEngine.destroyMediaPlayer(mediaPlayer)
-                mediaPlayer = nil
             }
         }
-
+        // Observe the current playback progress
         func agoraRtcMediaPlayer(_ playerKit: AgoraRtcMediaPlayerProtocol, didChangedToPosition position: Int) {
-            if (mediaDuration > 0) {
-                let result = (Float(position) / Float(mediaDuration))
-                DispatchQueue.main.async {[weak self] in
-                    guard let weakself = self else { return }
-                    weakself.mediaProgressView.progress = result
+            let duration = Float(mediaPlayerKit.getDuration() * 1000)
+            var progress: Float = 0
+            var left: Int = 0
+            if duration > 0 {
+                progress = Float(mediaPlayerKit.getPosition()) / duration
+                left = Int((mediaPlayerKit.getDuration() * 1000 - mediaPlayerKit.getPosition()) / 1000)
+            }
+            DispatchQueue.main.async { [weak self] in
+                guard let weakself = self else { return }
+                weakself.playerDurationLabel.text = "\(String(format: "%02d", left / 60)) : \(String(format: "%02d", left % 60))"
+                if !weakself.playerProgressSlider.isTouchInside {
+                    weakself.playerProgressSlider.setValue(progress, animated: true)
                 }
             }
         }
     }
     ```
 
-3.  **Configure <Vg k="ENGINE" /> to publish the media player stream**
-
-    You use the `AgoraRtcChannelMediaOptions` class and the `updateChannelWithMediaOptions` method functions to specify the type of stream to publish. To switch between publishing media player and camera and microphone streams, add the following function to the `ViewController`:
+1. Call the `setupLocalVideo` method to render the local media player view.
 
     ```swift
-    func updateChannelPublishOptions(_ publishMediaPlayer: Bool) {
-        let channelOptions: AgoraRtcChannelMediaOptions = AgoraRtcChannelMediaOptions()
-
-        channelOptions.publishMediaPlayerAudioTrack = publishMediaPlayer
-        channelOptions.publishMediaPlayerVideoTrack = publishMediaPlayer
-        channelOptions.publishMicrophoneTrack = !publishMediaPlayer
-        channelOptions.publishCameraTrack = !publishMediaPlayer
-        if (publishMediaPlayer) { channelOptions.publishMediaPlayerId = Int(mediaPlayer!.getMediaPlayerId()) }
-
-        agoraEngine.updateChannel(with: channelOptions)
-    }
+    mediaPlayerKit.setView(localVideo.videoView)
+    let videoCanvas = AgoraRtcVideoCanvas()
+    videoCanvas.view = localVideo.videoView
+    videoCanvas.renderMode = .hidden
+    videoCanvas.sourceType = .mediaPlayer
+    videoCanvas.sourceId = mediaPlayerKit.getMediaPlayerId()
+    agoraKit.setupLocalVideo(videoCanvas)
     ```
 
-4.  **Display media player output locally**
-
-    Create an `AgoraRtcVideoCanvas` and use it in the `setupLocalVideo` method of the <Vg k="ENGINE" /> to show the media player output locally. To switch between displaying media player output and the camera stream, replace the `setupLocalVideo()` method in the `ViewController` with the following:
+1. When joining a channel using `joinChannelByToken`, set the media player ID, publish media player's audio and video, and share media resources with remote users in the channel through the `mediaOptions` parameter.
 
     ```swift
-    func setupLocalVideo(_ forMediaPlayer: Bool) {
-        // Enable the video module
-        agoraEngine.enableVideo()
-        let videoCanvas = AgoraRtcVideoCanvas()
-        videoCanvas.view = localView
-        videoCanvas.renderMode = .hidden
-        videoCanvas.mirrorMode = .auto
-        videoCanvas.uid = 0
+    let option1 = AgoraRtcChannelMediaOptions()
+    
+    // ...
+    
+    option1.publishMediaPlayerId = .of((Int32)(mediaPlayerKit.getMediaPlayerId()))
 
-        // Pass the AgoraRtcVideoCanvas object to the engine so that it renders the local video.
-        if (forMediaPlayer) {
-            videoCanvas.sourceType = .mediaPlayer
-            videoCanvas.sourceId = mediaPlayer!.getMediaPlayerId()
-        } else {
-            // Start the local video preview
-            agoraEngine.startPreview()
-        }
-
-        // Set the local video view
-        agoraEngine.setupLocalVideo(videoCanvas)
-    }
     ```
 
-5.  **Update the `joinChannel` method**
-
-    When you join a channel, you set up the local video panel to initially display the camera output. In the `joinChannel()` function, replace `setupLocalVideo()` with a call to the updated function:
+1. Use the `open` method to open a local or online media file.
 
     ```swift
-    setupLocalVideo(false)
+    mediaPlayerKit.open(url, startPos: 0)
     ```
 
-6.  **Clean up when you leave the channel**
-
-    To free up resources when you exit the channel, add the following lines at the end of the `leaveChannel` function:
+1. Call the `play` method to play the media file.
 
     ```swift
-    // Destroy the media player
-    agoraEngine.destroyMediaPlayer(mediaPlayer)
-    mediaPlayer = nil
+    mediaPlayerKit.play()
+    ```
+    
+    <Admonition type="caution" title="Caution">
+    Call the `play` method to play the media file only after receiving the `didChangedToState` callback reporting the player state as `AgoraMediaPlayerStateOpenCompleted`.   
+    </Admonition>
+
+1. When a user leaves the channel, call `stop` to stop playback, and `destroyMediaPlayer` to release resources.
+
+    ```swift
+    mediaPlayerKit.stop()
+    agoraKit.destroyMediaPlayer(mediaPlayerKit)
     ```

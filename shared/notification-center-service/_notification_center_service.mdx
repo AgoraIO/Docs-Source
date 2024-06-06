@@ -66,60 +66,106 @@ For <Vg k="NCS_LONG" />, a webhook is an endpoint on an `HTTP` server that handl
 
 To do this, take the following steps:
 
-1. **Set up a Java project for your server**
+1. **Set up a Go project for your server**
 
-    Your server receives and handles notifications. The `RootHandler` handles requests sent to the root address of your server and the `NcsHandler` handles the notifications sent to `<your server address>/ncsNotify`. To set up your server, create a new Java project and add the following code to a file named `Main.java`:
+    Ensure you have Go installed on your system. If not, download and install it from the official [Go](https://go.dev/dl/) website.
 
-    ```java
-    import java.io.IOException;
-    import java.net.InetSocketAddress;
-    import com.sun.net.httpserver.HttpServer;
+2. **Create a Go file**
 
-    public class Main {
-      public static int port = 80;
+    Create a new directory for your project and navigate into it:
 
-      public static void main(String[] args) {
-        // Start http server
-        SimpleHttpServer httpServer = new SimpleHttpServer();
-        httpServer.Start(port);
-      }
+    ```sh
+    mkdir agora-webhook-server
+    cd agora-webhook-server
+    ```
+    Create a new file called `main.go`:
 
-      static class SimpleHttpServer {
-        private HttpServer server;
+    ```sh
+    touch main.go
+    ```
+    Open `main.go` with your preferred text editor and add the following code:
 
-        public void Start(int port) {
-          try {
-            server = HttpServer.create(new InetSocketAddress(port), 0);
-            System.out.println("Notifications webhook server started on port " + port);
-            server.createContext("/", new Handlers.RootHandler());
-            server.createContext("/ncsNotify", new Handlers.NcsHandler());
-            server.setExecutor(null);
-            server.start();
-          } catch (IOException e) {
-            e.printStackTrace();
-          }
+    ```go
+    package main
+    
+    import (
+      "encoding/json"
+      "fmt"
+      "io/ioutil"
+      "log"
+      "net/http"
+    )
+
+    type WebhookRequest struct {
+        NoticeID   string `json:"noticeId"`
+        ProductID  int64  `json:"productId"`
+        EventType  int    `json:"eventType"`
+        Payload    Payload `json:"payload"`
+    }
+
+    type Payload struct {
+        ClientSeq   int64  `json:"clientSeq"`
+        UID         int    `json:"uid"`
+        ChannelName string `json:"channelName"`
+    }
+
+    func rootHandler(w http.ResponseWriter, r *http.Request) {
+        response := `<h1>Agora Notifications demo</h1><h2>Port: 80</h2>`
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte(response))
+    }
+
+    func ncsHandler(w http.ResponseWriter, r *http.Request) {
+        agoraSignature := r.Header.Get("Agora-Signature")
+        fmt.Println("Agora-Signature:", agoraSignature)
+
+        body, err := ioutil.ReadAll(r.Body)
+        if err != nil {
+            http.Error(w, "Unable to read request body", http.StatusBadRequest)
+            return
         }
 
-        public void Stop() {
-          server.stop(0);
+        var req WebhookRequest
+        if err := json.Unmarshal(body, &req); err != nil {
+            http.Error(w, "Invalid JSON", http.StatusBadRequest)
+            return
         }
-      }
+
+        fmt.Printf("Event code: %d Uid: %d Channel: %s ClientSeq: %d\n",
+            req.EventType, req.Payload.UID, req.Payload.ChannelName, req.Payload.ClientSeq)
+
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte("Ok"))
+    }
+
+    func main() {
+        http.HandleFunc("/", rootHandler)
+        http.HandleFunc("/ncsNotify", ncsHandler)
+
+        port := ":80"
+        fmt.Printf("Notifications webhook server started on port %s\n", port)
+        if err := http.ListenAndServe(port, nil); err != nil {
+            log.Fatalf("Failed to start server: %v", err)
+        }
     }
     ```
 
-1.  **Add a JSON library to your project**
+1. **Run your Go server**
 
-    The body of an HTTP request that your server receives contains event parameters in JSON format. To read these parameters download the [`json-simple-1.1.1.jar`](https://repo1.maven.org/maven2/com/googlecode/json-simple/json-simple/1.1.1/) library and add it to your JAVA project. 
 
-1. **Handle <Vg k="NCS_LONG" /> callbacks**
-
-    To define the `RootHandler` and the `NcsHandler`, create a new file named `Handlers.java` in your Java project folder. Add the following code to this file:
-
-    <EventHandler />
+    Run the server using the following command:
+    
+    ```sh
+    go run main.go
+    ```
+    If you run into permission issues binding to port `80`, use a higher port number like `8080`:
+    ```go
+    port := ":8080"
+    ```
 
 1. **Create a public URL for your server**
 
-    In this example you use ngrok to create a public URL for your server.
+    In this example you use `ngrok` to create a public URL for your server.
 
     1. Download and install [ngrok](https://ngrok.com/download). If you have `Chocolatey`, use the following command:
 
@@ -139,10 +185,49 @@ To do this, take the following steps:
     1. Start a tunnel to your local server using the following command:
 
         ```bash
-        ngrok http <local server port>
+        ngrok http port:80
         ```
+        You see a **Forwarding** URL and a **Web Interface** URL in the console. Open the web interface URL in your browser.
 
-        You see a **Forwarding** URL displayed such as `https://1111-123-456-789-99.ap.ngrok.io`. This is the public URL for your local server that you use to enable <Vg k="NCS_LONG" />.
+1. **Test the server**
+
+    Open a web browser and navigate to the public URL provided by `ngrok` to see the root handler response.
+
+    Use a tool like curl or Postman to send a `POST` request to `https://<ngrok_url>/ncsNotify` with the required `JSON` payload.
+
+    Example using `curl`:
+
+    ```sh
+    curl -X POST <ngrok_url>/ncsNotify \
+    -H "Content-Type: application/json" \
+    -H "Agora-Signature: your_signature" \
+    -d '{
+      "noticeId": "some_notice_id",
+      "productId": 12345,
+      "eventType": 1,
+      "payload": {
+        "clientSeq": 67890,
+        "uid": 123,
+        "channelName": "test_channel"
+      }
+    }'
+    ```
+    Make sure you replace `ngrok_url` with the forwarding url.
+
+    Once the HTTP request is successful, you see the following `JSON` payload in your browser:
+
+    ```json
+    {
+      "noticeId": "some_notice_id",
+      "productId": 12345,
+      "eventType": 1,
+      "payload": {
+        "clientSeq": 67890,
+        "uid": 123,
+        "channelName": "test_channel"
+      }
+    }
+    ```
 
 ### Enable Notifications
 

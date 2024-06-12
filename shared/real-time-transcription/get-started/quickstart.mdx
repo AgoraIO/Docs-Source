@@ -1,0 +1,206 @@
+Real-Time Transcription takes the audio content of a media stream and transcribes it into written words in real time. This page shows you how to send basic API requests to transcribe speech to text.
+
+Note that the command-line examples are for demonstration purposes only. In a production environment, send RESTful API requests through your application server.
+
+## Understand the tech
+
+The following diagram illustrates the complete process of implementing Real-Time Transcription:
+
+
+
+This includes the following steps:
+
+1. Get a resource ID
+
+    Before starting the transcription, call `acquire` to obtain a transcription resource. If the request is successful, you get a resource ID in the response body.
+
+1. Start the transcription
+
+    Call `start` to join the channel and start the transcription. If the request is successful, you get a task ID in the response body that marks the current transcription session.
+
+1. Stop the transcription
+
+    Call `stop` to stop the transcription.
+
+1. Upload the recorded `.vtt` file
+
+    After the transcription is over, the Real-Time Transcription service uploads the `.vtt` file to the third-party cloud storage of your choice.
+
+1. Between the `start` and `stop` calls, you can query the service status and update configuration parameters.
+
+## Prerequisites
+
+To follow this procedure, you must:
+
+- Have a valid <Link to="{{Global.AGORA_CONSOLE_URL}}">Agora Account</Link>.
+- Have a valid Agora project with an app ID and a temporary token. For details, see [Agora account management](manage-agora-account).
+- Have a computer with access to the internet. If your network has a firewall, follow the steps in [Firewall requirements](../reference/firewall).
+- Join an RTC channel, have a host in it, and be streaming.
+- Make sure that Real-Time Transcription is enabled for your app.
+
+## Project setup
+
+To enable Real-Time Transcription before using it for the first time, take the following steps:
+
+1. Log in to <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link> and open the **Project Management** page.
+1. Find the project for which you want to enable Real-Time Transcription and click the pencil icon.
+1. On the **Edit Project** page, find Real-Time Transcription and click **Enable**.
+1. Click **Enable Real-Time Transcription** and **Apply** to confirm.
+
+Now you can use Agora Real-Time Transcription and see the usage statistics on the **Usage** page.
+
+## Implement Real-Time Transcription
+
+The following diagram shows a simple API call sequence of Real-Time Transcription, including querying the status and updating the configuration before the transcription stops:
+
+### Pass basic HTTP authentication
+
+RESTful APIs require you to pass basic HTTP authentication by setting the `Authorization` parameter in every HTTP request header. For how to get the `Authorization` value, see [RESTful authentication](../reference/restul-authentication).
+
+### Acquire a token and reserve a resource
+
+Call `acquire` to request `buildToken` and reserve a resource for Real-Time Transcription.
+
+After a successful request, you get `tokenName` in the response body. `tokenName` is valid for five minutes only, so you need to start transcribing within that time. Because the `stop` request also requires `tokenName`, store it until the transcription is stopped. One `buildToken` can be used only for one transcription session.
+
+**Request example**
+
+```curl
+curl --location -g 'https://api.agora.io/v1/projects/{{appId}}/rtsc/speech-to-text/builderTokens' \
+--header 'Content-Type: application/json' \
+--data '{
+    // Set by developer and maximum length is 64 characters (a-z,A-Z,0-9,"-","_"), suggest to use channel name as instanceID
+    "instanceId": "XXXX"
+}'
+```
+
+**Response example**
+
+- Success
+
+    ```json
+    {
+      "createTs": 1678505791,  // Create time stamp of builderToken,
+      "instanceId": "XXXX",    // Same as aquire request.
+      "tokenName": "nUwUbQf9Zg6tsgtLslGnDg0lk8RYaUE09pqOuSIgwfy1uJa4K6lWCzLqJNDen8tHgNjbAcOGIWpgWQEllEvR86LKWnExC9WFhPSQo0Eim0W2guETD_yO4hsHLKNpKvcTivXo5PNOYqLEANOdsLbU8pQ5fRgwcxplOVI_GT5MR6YhPT-2O4h64xTS3qpMZv1qtV8dLpcaxTKDwK5zckGk6PKjRycZ_BClZTTKlKXKkfPztQNwyKa00UJDJK5uyZqzExx-Q_PGQEB2r-u4oWriMaqmSo1M8ShsI4TX-920jE0MoB_JBb5GHQUpmHcZOJCTMO2SiKwZLzMK0F-jAaWYBbhRAu3hnQ_LjtcWvDJEDWkEJZonYjTfENjvwOsjFPvp"
+    }
+    ```
+
+- Failure
+
+    ```json
+    {
+     "message": string // Error reason
+    }
+    ```
+
+### Start the service
+
+Call `start` within five minutes after getting the resource ID to join the channel and start a transcription session.
+
+After a successful request you get `taskID` in the HTTP response body. This ID is a unique identification of the current transcription session.
+
+**Request example**
+
+This is a simple request example to start the Real-Time Transcription service. Refer to [Encrypt captions](../develop/encrypt-captions), [Record captions](../develop/record-captions), and [Transcribe individual user](../develop/transcribe-individual-user) for more figure configurations.
+
+```curl
+curl --location -g 'https://api.agora.io/v1/projects/{{appId}}/rtsc/speech-to-text/tasks?builderToken={{tokenName}}' \
+--header 'Content-Type: application/json' \
+--data '{
+    "languages": [
+        "<YourTranscribeLanguages>"    // Max can configure 2 languages. e.g. "en-US", "ru-RU". If set 2 languages, STT service will automaticly enable Language Detection feature it will cause addtional cost.
+    ],
+    "maxIdleTime": 60,                 // If channel has no host, STT service will be stoped after 60s. 5~2592000 seconds.
+    "rtcConfig": {
+        "channelName": "{<YourChannelName>}",          // RTC channel name which need enable STT service.
+        "subBotUid": "{<YourSubscribeBotUid>}",        // The unique uid in channel for the bot to subscribe audio.
+        "subBotToken":"{<YourSubscribeBotRtcToken>}",  // RTC token for subBot to join RTC channel.(Optional, based on RTC channel security configuration)
+        "pubBotUid": "{{textUID}}",                // The unique uid in channel for the bot to publish text. Be noticed, subBotUid and pubBotUid must different.
+        "subBotToken":"{{audioUIDChannelToken}}",  // RTC token for pubBot to join RTC channel. Please apply admin token. (Optional, based on RTC channel security configuration)
+    },
+}'
+```
+
+**Response example**
+
+- Success
+
+    ```json
+    {
+      "taskId": "String",      // taskId
+       "createTs": number,     // create ts
+       "status": enum(STATUS)  // task status: IDLE, PREPARING, IN_PROGRESS, STOPPING, STOPPED
+    }
+    ```
+
+- Failure
+
+    ```json
+    {
+     "message": string // error reason
+    }
+    ```
+
+### Query transcription status
+
+You can call `query` to find out the status of the transcription session multiple times during a transcription session. After a successful request, you get the status and related information in the response body.
+
+**Request example**
+
+```curl
+curl --location -g 'https://api.agora.io/v1/projects/{{appId}}/rtsc/speech-to-text/tasks/{{taskId}}?builderToken={{tokenName}}' \
+--header 'Content-Type: application/json'
+```
+
+**Response example**
+
+- Success
+
+    ```json
+    {
+       "taskId": "String",     // taskId
+       "createTs": number,     // create ts
+       "status": enum(STATUS)  // task status: IDLE, PREPARING, RUNNING, STOPPING, STOPPED, RECONNECTING
+    }
+    ```
+
+- Failure
+
+    ```json
+    {
+     "message": string // error reason
+    }
+    ```
+
+### Stop transcription
+
+Call `stop` to stop transcribing. After a successful request, you get the status of the transcription session in the response body.
+
+**Request example**
+
+```curl
+curl --location -g --request DELETE 'https://api.agora.io/v1/projects/{{appID}}/rtsc/speech-to-text/tasks/{{taskId}}?builderToken={{tokenName}}' \
+--header 'Content-Type: application/json'
+```
+
+## Considerations
+
+### API calls
+
+- Call the `start` method within 5 minutes after obtaining a resource ID. In case of timeout you'll need to request a new resource ID.
+- Since a transcription session is started and stopped with the same `buildToken`, once a session is started, it will automatically stop when `buildToken` expires. The default validity time is 24 hours.
+
+## See also
+
+### Sample project
+
+Agora provides a [Postman collection](https://documenter.getpostman.com/view/6319646/SVSLr9AM#69bd200a-7543-4104-8ccc-415741abbeb7) with sample RESTful API requests for Real-Time Transcription. When using the collection, use the [`start v2`](https://documenter.getpostman.com/view/6319646/SVSLr9AM#905e6096-42b9-46a1-9741-ff354a01fd43) method as [`start v1`](https://documenter.getpostman.com/view/6319646/SVSLr9AM#92041cab-1f45-4ff3-83a5-601fa06a0427) is not maintained anymore.
+
+### Demo app and source code
+
+Try the [demo](https://stt-demo.agora.io) to try out Real-Time Transcription and check its accuracy and latency.
+
+You can also refer to the [demo code on Github](https://github.com/AgoraIO-Community/Agora-RTT-Demo) to see how captions and transcription are implemented. For more demo code, contact [support@agora.io](mailto:support@agora.io).
+
+

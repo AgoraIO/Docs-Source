@@ -2,177 +2,232 @@
 
 ### Implement online user status tracking
 
-This section provides sample Java code to show how to use channel event callbacks to maintain online user status at your app server.
+This section provides sample Go code to show how to use channel event callbacks to maintain online user status at your app server.
 
 To maintain a user registry, take the following steps:
 
-1. Create a new file in you JAVA project folder named `UserRegistry.java` containing the following code.
+1. Replace the content of the `main.go` file with the following code:
 
-    ```java
-    import java.util.HashMap;
-    import java.util.Timer;
-    import java.util.TimerTask;
+    ```go
+    package main
 
-    public class UserRegistry {
-        public static int EVENT_BROADCASTER_JOIN = 103;
-        public static int EVENT_BROADCASTER_QUIT = 104;
-        public static int EVENT_AUDIENCE_JOIN = 105;
-        public static int EVENT_AUDIENCE_QUIT = 106;
-        public static int EVENT_CHANGE_ROLE_TO_BROADCASTER = 111;
-        public static int EVENT_CHANGE_ROLE_TO_AUDIENCE = 112;
-        
-        public static int ROLE_BROADCASTER = 1;
-        public static int ROLE_AUDIENCE = 2;
-        public static int WAIT_TIMEOUT_MS = 60 * 1000;
-        private static Timer timer = new Timer();
+	import (
+		"crypto/hmac"
+		"crypto/sha1"
+		"encoding/hex"
+		"encoding/json"
+		"fmt"
+		"io/ioutil"
+		"log"
+		"net/http"
+		"sync"
+		"time"
+	)
 
-        class User { // Holds user information
-            int uid; // user ID
-            int role; // user role
-            boolean isOnline; // whether the user is in a channel
-            long lastClientSeq; // clientSeq of the last event handled by your server
+	const secret = "<Add Your secret key here>"
 
-            public User(int uid, int role, boolean isOnline, long clientSeq) {
-                this.uid = uid;
-                this.role = role;
-                this.isOnline = isOnline;
-                this.lastClientSeq = clientSeq;
-            }
-        };
+	type WebhookRequest struct {
+		NoticeID  string  `json:"noticeId"`
+		ProductID int64   `json:"productId"`
+		EventType int     `json:"eventType"`
+		Payload   Payload `json:"payload"`
+	}
 
-        // Channel list
-        private static HashMap<String, Channel> channels = new HashMap<>();;
+	type Payload struct {
+		ClientSeq   int64  `json:"clientSeq"`
+		UID         int    `json:"uid"`
+		ChannelName string `json:"channelName"`
+	}
 
-        class Channel { // Holds the list of users in each channel
-            HashMap<Integer, User> users = new HashMap<>();
-        };
+	const (
+		EventBroadcasterJoin         = 103
+		EventBroadcasterQuit         = 104
+		EventAudienceJoin            = 105
+		EventAudienceQuit            = 106
+		EventChangeRoleToBroadcaster = 111
+		EventChangeRoleToAudience    = 112
 
-        // Process Agora Notifications  callbacks to update user registry
-        public void HandleNcsEvent(String channelName, int uid, int eventType, long clientSeq) {
-            // Check the eventType to process events that notify of users joining or
-            // leaving a channel or a change in the user role
-            if (eventType != EVENT_BROADCASTER_JOIN &&
-                eventType != EVENT_BROADCASTER_QUIT &&
-                eventType != EVENT_AUDIENCE_JOIN &&
-                eventType != EVENT_AUDIENCE_QUIT &&
-                eventType != EVENT_CHANGE_ROLE_TO_BROADCASTER &&
-                eventType != EVENT_CHANGE_ROLE_TO_AUDIENCE) {
-                
-                return;
-            }
+		RoleBroadcaster = 1
+		RoleAudience    = 2
+		WaitTimeoutMs   = 60 * 1000
+	)
 
-            // Determine whether a user is online
-            boolean isOnlineInNotice = IsUserOnlineInNotice(eventType);
-            // Get the user role from eventType
-            int roleInNotice = GetUserRoleInNotice(eventType);
+	var (
+		channels = make(map[string]*Channel)
+		mu       sync.Mutex
+	)
 
-            Channel channel = channels.get(channelName);
-            if (channel == null) {
-                // If a channel does not exist, create a channel and add it to the list
-                channel = new Channel();
-                channels.put(channelName, channel);
-                System.out.println("New channel " + channelName + " created");
-            }
+	type User struct {
+		UID           int
+		Role          int
+		IsOnline      bool
+		LastClientSeq int64
+	}
 
-            User user = channel.users.get(uid);
-            // Get whether a user has left a channel
-            boolean isQuit = !isOnlineInNotice && (user == null || user.isOnline);
-            if (user == null) {
-                // Create a new user and add it to the user list of the corresponding channel
-                user = new User(uid, roleInNotice, isOnlineInNotice, clientSeq);
-                channel.users.put(uid, user);
+	type Channel struct {
+		Users map[int]*User
+	}
 
-                if (isOnlineInNotice) {
-                    System.out.println("New User " + uid + " joined channel " + channelName);
-                } else {
-                    // Set a timer for deleting a user's data after the user leaves a channel
-                    DelayedRemoveUserFromChannel(channelName, uid, clientSeq);
-                }
-            } else if (clientSeq > user.lastClientSeq) {
-                /*
-                * If the data for a user already exists, compare the clientSeq
-                * of the latest notification with that of the last notification
-                * callback handled by your server. If the latest value is greater,
-                * update the user data; otherwise, ignore the notification callback.
-                */
-                user.role = roleInNotice;
-                user.isOnline = isOnlineInNotice;
-                user.lastClientSeq = clientSeq;
+	func handleNCSEvent(channelName string, uid int, eventType int, clientSeq int64) {
+		mu.Lock()
+		defer mu.Unlock()
 
-                if (isQuit) {
-                    // Mark the status of a user as offline, and delete the user after one minute
-                    System.out.println("User " + uid + " quit channel " + channelName);
-                    DelayedRemoveUserFromChannel(channelName, uid, clientSeq);
-                }
-            }
-        }
+		if !isValidEventType(eventType) {
+			return
+		}
 
-        // Set a timer for deleting the data of an offline user
-        private void DelayedRemoveUserFromChannel(final String channelName, final int uid, final long clientSeq) {
-            timer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    Channel channel = channels.get(channelName);
-                    if (channel == null) return;
-                    User user = channel.users.get(uid);
-                    if (user == null) return;
+		isOnlineInNotice := isUserOnlineInNotice(eventType)
+		roleInNotice := getUserRoleInNotice(eventType)
 
-                    // If the value in the clientSeq field changes, do not delete data
-                    if (user.lastClientSeq != clientSeq) return;
+		channel, exists := channels[channelName]
+		if !exists {
+			channel = &Channel{Users: make(map[int]*User)}
+			channels[channelName] = channel
+			fmt.Println("New channel", channelName, "created")
+		}
 
-                    if (!user.isOnline) {
-                        // Delete user data only when the user is offline
-                        channel.users.remove(uid);
-                        System.out.println("Removed user " + uid + " from channel " + channelName);
-                    } else {
-                        System.out.println("User " + uid + " is online while delayed removing, cancelled");
-                    }
+		user, exists := channel.Users[uid]
+		if !exists {
+			user = &User{UID: uid, Role: roleInNotice, IsOnline: isOnlineInNotice, LastClientSeq: clientSeq}
+			channel.Users[uid] = user
 
-                    // If there are no users left in the channel, delete the channel
-                    if (channel.users.isEmpty()) {
-                        channels.remove(channelName);
-                        System.out.println("Removed channel " + channelName);
-                    }
-                }
-            }, WAIT_TIMEOUT_MS);
-        }
+			if isOnlineInNotice {
+				fmt.Println("New User", uid, "joined channel", channelName)
+			} else {
+				delayedRemoveUserFromChannel(channelName, uid, clientSeq)
+			}
+		} else if clientSeq > user.LastClientSeq {
+			user.Role = roleInNotice
+			user.IsOnline = isOnlineInNotice
+			user.LastClientSeq = clientSeq
 
-        // Determine whether a user is online.
-        private static boolean IsUserOnlineInNotice(int eventType) {
-            return eventType == EVENT_BROADCASTER_JOIN ||
-                eventType == EVENT_AUDIENCE_JOIN ||
-                eventType == EVENT_CHANGE_ROLE_TO_BROADCASTER ||
-                eventType == EVENT_CHANGE_ROLE_TO_AUDIENCE;
-        }
+			if !isOnlineInNotice && user.IsOnline {
+				fmt.Println("User", uid, "quit channel", channelName)
+				delayedRemoveUserFromChannel(channelName, uid, clientSeq)
+			}
+		}
+	}
 
-        // Get the user role.
-        private static int GetUserRoleInNotice(int eventType) {
-            if (eventType == EVENT_BROADCASTER_JOIN ||
-                eventType == EVENT_BROADCASTER_QUIT ||
-                eventType == EVENT_CHANGE_ROLE_TO_BROADCASTER) {
-            return ROLE_BROADCASTER;
-            } else {
-                return ROLE_AUDIENCE;
-            }
-        }
-    }
+	func delayedRemoveUserFromChannel(channelName string, uid int, clientSeq int64) {
+		time.AfterFunc(WaitTimeoutMs*time.Millisecond, func() {
+			mu.Lock()
+			defer mu.Unlock()
+
+			channel, exists := channels[channelName]
+			if !exists {
+				return
+			}
+
+			user, exists := channel.Users[uid]
+			if !exists {
+				return
+			}
+
+			if user.LastClientSeq != clientSeq {
+				return
+			}
+
+			if !user.IsOnline {
+				delete(channel.Users, uid)
+				fmt.Println("Removed user", uid, "from channel", channelName)
+			} else {
+				fmt.Println("User", uid, "is online while delayed removing, cancelled")
+			}
+
+			if len(channel.Users) == 0 {
+				delete(channels, channelName)
+				fmt.Println("Removed channel", channelName)
+			}
+		})
+	}
+
+	func isValidEventType(eventType int) bool {
+		return eventType == EventBroadcasterJoin ||
+			eventType == EventBroadcasterQuit ||
+			eventType == EventAudienceJoin ||
+			eventType == EventAudienceQuit ||
+			eventType == EventChangeRoleToBroadcaster ||
+			eventType == EventChangeRoleToAudience
+	}
+
+	func isUserOnlineInNotice(eventType int) bool {
+		return eventType == EventBroadcasterJoin ||
+			eventType == EventAudienceJoin ||
+			eventType == EventChangeRoleToBroadcaster ||
+			eventType == EventChangeRoleToAudience
+	}
+
+	func getUserRoleInNotice(eventType int) int {
+		if eventType == EventBroadcasterJoin ||
+			eventType == EventBroadcasterQuit ||
+			eventType == EventChangeRoleToBroadcaster {
+			return RoleBroadcaster
+		}
+		return RoleAudience
+	}
+
+	func calcSignature(secret, payload string) string {
+		mac := hmac.New(sha1.New, []byte(secret))
+		mac.Write([]byte(payload))
+		return hex.EncodeToString(mac.Sum(nil))
+	}
+
+	func verifySignature(requestBody, signature string) bool {
+		calculatedSignature := calcSignature(secret, requestBody)
+		fmt.Println("Calculated Signature:", calculatedSignature)
+		fmt.Println("Received Signature:", signature)
+		return calculatedSignature == signature
+	}
+
+	func rootHandler(w http.ResponseWriter, r *http.Request) {
+		response := `<h1>Agora Notifications demo</h1><h2>Port: 80</h2>`
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(response))
+	}
+
+	func ncsHandler(w http.ResponseWriter, r *http.Request) {
+		agoraSignature := r.Header.Get("Agora-Signature")
+		fmt.Println("Agora-Signature:", agoraSignature)
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Unable to read request body", http.StatusBadRequest)
+			return
+		}
+
+		if !verifySignature(string(body), agoraSignature) {
+			http.Error(w, "Invalid signature", http.StatusUnauthorized)
+			return
+		}
+
+		var req WebhookRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		fmt.Printf("Event code: %d Uid: %d Channel: %s ClientSeq: %d\n",
+			req.EventType, req.Payload.UID, req.Payload.ChannelName, req.Payload.ClientSeq)
+
+		handleNCSEvent(req.Payload.ChannelName, req.Payload.UID, req.EventType, req.Payload.ClientSeq)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Ok"))
+	}
+
+	func main() {
+		http.HandleFunc("/", rootHandler)
+		http.HandleFunc("/ncsNotify", ncsHandler)
+
+		port := ":80"
+		fmt.Printf("Notifications webhook server started on port %s\n", port)
+		if err := http.ListenAndServe(port, nil); err != nil {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}
     ```
 
-1. Instantiate the `UserRegistry` class
-
-    Add the following code to the `Handlers` class after `public class Handlers ` :
-
-    ```java
-      public static UserRegistry userRegistry = new UserRegistry();
-    ```
-
-
-1. To update the user registry when you receive a <Vg k="NCS_LONG" /> callback, add the following code to the `handle` method in the `NcsHandler` class after `os.close();`:
-
-    ```java
-    // Maintain user registry
-    userRegistry.HandleNcsEvent(channelName, uid, eventType, clientSeq);
-    ```
+1. To test the SignatureVerification, follow the steps given in the [Enable notifications](#enable-notifications) section.
 
 When adopting the solutions recommended by <Vg k="COMPANY" /> to maintain user online status, you need to recognize the following:
 

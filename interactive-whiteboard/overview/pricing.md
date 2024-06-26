@@ -98,13 +98,19 @@ The usage duration is calculated in minutes.
 
 ### File conversion usage
 
-Agora calculates the usage amount by the number of images and web pages successfully converted from source files.
+<Vg k="COMPANY" /> calculates the usage amount by the number of images and web pages successfully converted from source files.
 
-Agora does not charge for a failed file conversion task. 
+<Vg k="COMPANY" /> does not charge for a failed file conversion task. 
 You can call the [Query file conversion progress](../reference/whiteboard-api/file-conversion#query-the-progress-of-a-file-conversion-task) 
 API to get the result of a file conversion task. 
 
-The file conversion feature can also be charged by QPS. See [QPS-based Pricing](../reference/qps-pricing).
+The file conversion feature is billed based on the following models:
+
+- **Peak Concurrent Workers (PCW)**: This represents the maximum number of file transcoding tasks that WB servers can process simultaneously for each VID. The listing price is $499/PCW, with unlimited usage (number of images converted) of the file conversion feature. <Vg k="COMPANY" /> meter the actual PCW consumption and bill customers accordingly. The PCW consumption depends on the frequency of requests submitted to our servers and the file size. It increases when our service is processing existing file conversion tasks and a new task is submitted.
+
+- **Queue Per Second (QPS)**: This represents the number of API calls developers can make per second.
+
+Customers can choose from two pricing models via the console. A hard cap on PCW is set by default at 5 PCW/VID, and customers can adjust this via the <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>.
 
 ## Examples
 
@@ -128,7 +134,7 @@ The following table shows the calculation of the total cost of the lecture:
 
 <div><table><colgroup><col/><col/><col/><col/></colgroup><thead><tr><th><span class="td-span"><span class="md-plain">Billed service</span></span></th><th><span class="td-span"><span class="md-plain">Unit price, US$/1,000 minutes </span></span></th><th><span class="td-span"><span class="md-plain">Cost of each service, US$</span></span></th><th><span class="td-span"><span class="md-plain">Total cost, US$</span></span></th></tr></thead><tbody><tr><td class="confluenceTd"><span class="td-span"><span class="md-plain">Online whiteboard</span></span></td><td class="confluenceTd"><span class="td-span"><span class="md-plain">$1.40/1,000 minutes</span></span></td><td class="confluenceTd"><span class="td-span"><span class="md-plain">(12,060 - 10,000)/1000 × 1.40 = 2.884</span></span></td><td rowspan="3" class="confluenceTd"><span class="td-span"><span class="md-plain">2.884 </span><span><strong>≈ 2.89</strong></span></span><br/><br/></td></tr><tr><td class="confluenceTd"><span class="td-span"><span class="md-plain">File conversion to web page</span></span></td><td class="confluenceTd"><span class="td-span"><span class="md-plain">$2.50/1,000 web pages</span></span></td><td class="confluenceTd">0 (The first 1,000 converted web pages are free of charge）<span> </span></td></tr></tbody></table></div>
 
-Agora rounds up the total cost to two decimal places.
+<Vg k="COMPANY" /> rounds up the total cost to two decimal places.
 
 
 ## Reference
@@ -146,7 +152,7 @@ You can check your usage of <Vg k="WHITE" /> in <Vg k="CONSOLE" />. Perform the 
  ![](https://web-cdn.agora.io/docs-files/1620288770652)
 
 - The time frame cannot exceed 12 months.
-- Only Agora accounts that are assigned with the role of Admin or Finance have access to the usage statistics.
+- Only <Vg k="COMPANY" /> accounts that are assigned with the role of Admin or Finance have access to the usage statistics.
 - The usage duration provided by <Vg k="CONSOLE" /> is for reference only. Your actual billing may differ.
 
 ## See also 

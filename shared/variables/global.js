@@ -219,6 +219,8 @@ export const API_REF_ROOT_CGATE_SDK = `${API_ROOT}/server-gateway-sdk`;
 export const CGATE_SDK_API_CPP  = `${API_REF_ROOT_CGATE_SDK}/linux-cpp/${CGATE_RELEASE_API}`;
 export const CGATE_SDK_API_JAVA  = `${API_REF_ROOT_CGATE_SDK}/linux-java/${CGATE_RELEASE_API}`
 
+export const SGATE = 'SIP Gateway';
+
 export const UCS = 'Use Cases';
 export const AB = 'App Builder';
 export const UIK = 'UI Kit';

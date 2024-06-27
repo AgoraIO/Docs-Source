@@ -110,7 +110,14 @@ const data = {
     SDK: 'Chat SDK',
     PRODUCT: 'Peer-to-Peer Messaging',
     IOS_PACKAGE_NAME: 'AgoraChat_iOS'
-}
+  },
+
+  'sip-gateway': {
+    NAME: 'SIP Gateway',
+    PATH: 'sip-gateway',
+    SDK: 'SIP Gateway',
+    PRODUCT: 'SIP Gateway',
+  },
 };
 
 export default data;

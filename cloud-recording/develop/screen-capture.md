@@ -16,10 +16,12 @@ The following two screenshot methods are supported:
 - Capture screenshots and recording during a recording process. Agora only charges recording fees.
 
 For pricing details, see [Pricing](../overview/pricing).
-To implement client-side screen capture, see [Screenshot Upload](../../video-calling/enable-features/screenshot-upload).
+To implement client-side screen capture, see [Screenshot Upload](../../video-calling/advanced/screenshot-upload).
 
 
 ## Implementation
+
+<Admonition type="info" title="Note">The initial Queries Per Second (QPS) limit is 10 per app ID when you register. If you need to extend the limit for QPS, contact support@agora.io. For more details on existing limitations, see [Integration best practices](integration-best-practices#check-the-limits).</Admonition>
 
 ### Get a resource ID
 
@@ -171,3 +173,5 @@ Pay attention to the following parameters as incorrect settings result in errors
 - If you set `subscribeAudioUid`, you must also set `subscribeVideoUids`.
 
 If a user stops sending video stream during a session, the Cloud Recording service stops taking screenshots until the stream resumes.
+
+

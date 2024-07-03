@@ -23,20 +23,7 @@ Check that your Peak Concurrent Worker (PCW), Queries Per Second (QPS), and the 
 
 #### PCW
 
-The PCW limit depends on your video stream resolution and region. 
-
-Resolutions: 
-
-- SD: Standard definition video, resolution ≤ 640 × 360
-- HD: High definition video, resolution ≤ 1280 × 720 and > 640 × 360
-- FHD: Full HD video, resolution ≤ 1920 × 1080 and > 1280 × 720
-
-| Service type         | Mainland China         | Europe       | America      | Asia (excluding mainland China) |
-|:---------------------|:-----------------------|:---------|:--------------|:--------------------------------|
-| Individual recording | 1000              | 200                  | 400                   | 300            |
-| Composite recording  | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 50</li> <li>HD 30</li> <li>FHD 10</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul>           |
-
-If you need to extend the PCW limit, please contact support@agora.io.
+The PCW limit is set to 200 for all regions and resolutions. If you need to extend the PCW limit, please contact support@agora.io.
 
 #### QPS
 

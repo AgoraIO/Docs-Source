@@ -23,7 +23,71 @@ This section shows you how to integrate token authentication in your <Vpl k="CLI
     </html>
     ```
 
-1. Open `agoraLogic.js`. Refer to the following code to add the `fetchToken` method and use it to retrieve a token from the token server to join a channel. Add token expiration callbacks to renew the token.
+1. Add a `fetchToken` method to retrieve a token from your token server to join a channel. 
+
+    ```js
+    // Retrieve a token from your token server
+    function fetchToken(uid, channelName, tokenRole) {
+
+        return new Promise(function (resolve) {
+            axios.post('http://<Your host URL and port>/fetch_rtc_token', {
+                uid: uid,
+                channelName: channelName,
+                role: tokenRole
+            }, {
+                headers: {
+                    'Content-Type': 'application/json; charset=UTF-8'
+                }
+            })
+                .then(function (response) {
+                    const token = response.data.token;
+                    resolve(token);
+                })
+                .catch(function (error) {
+                    console.log(error);
+                });
+        })
+    }
+    ```
+
+1. Use the token to join a channel
+
+    ```js
+    // Assign the obtained token to the token parameter in the join method
+    let token = await fetchToken(uid, options.channel, 1);
+    await client.join(options.appId, options.channel, token, uid);
+    ```
+
+### Token expiration
+
+After you join a channel using a token, the SDK triggers the `token-privilege-will-expire` callback, 30 seconds before the token is set to expire. Upon receiving this callback, retrieve a fresh token from the server and call the `renewToken` method to pass the newly generated token to the SDK.
+
+    ```javascript
+    client.on("token-privilege-will-expire", async function () {
+        // When you receive the token-privilege-will-expire callback, request a fresh token from the server 
+        let token = await fetchToken(uid, options.channel, 1);
+        // Call renewToken to pass the new token to the SDK
+        await client.renewToken(token);
+    });
+    ```
+
+When the token expires, the SDK triggers the `token-privilege-did-expire` callback. In this case, retrieve a fresh token from the server and call the `join` method to rejoin the channel with the new token:
+
+    ```javascript
+    // The token expired. 
+    client.on("token-privilege-did-expire", async function () {
+    console.log("Fetching a new token")
+    // Request a new token from the server 
+    let token = await fetchToken(uid, options.channel, 1);
+    console.log("Rejoining the channel with new token")
+    // Call join to rejoin the channel
+    await client.join(options.appId, options.channel, token, uid);
+    });
+    ```
+
+### Complete sample code
+
+For a complete implementation of token authentication, refer to the following code:
 
     <details>
     <summary>Sample code for basic authentication</summary>
@@ -117,7 +181,7 @@ This section shows you how to integrate token authentication in your <Vpl k="CLI
 
         });
 
-        // When you receive the token-privilege-will-expire callback, request a new token from the server and call renewToken to pass the new Token to the SDK
+        // When you receive the token-privilege-will-expire callback, request a new token from the server and call renewToken to pass the new token to the SDK
         client.on("token-privilege-will-expire", async function () {
             let token = await fetchToken(uid, options.channel, 1);
             await client.renewToken(token);
@@ -125,9 +189,9 @@ This section shows you how to integrate token authentication in your <Vpl k="CLI
 
         // When you receive the token-privilege-did-expire callback, request a new token from the server and call join to rejoin the channel.
         client.on("token-privilege-did-expire", async function () {
-            console.log("Fetching the new Token")
+            console.log("Fetching a new token")
             let token = await fetchToken(uid, options.channel, 1);
-            console.log("Rejoining the channel with new Token")
+            console.log("Rejoining the channel with a new token")
             await client.join(options.appId, options.channel, token, uid);
         });
 
@@ -138,16 +202,6 @@ This section shows you how to integrate token authentication in your <Vpl k="CLI
     </details>
 
     Replace `<Your app ID>` with your app ID, which must be consistent with the app ID you specified in the server configuration. Update `<Your Host URL and port>` with the host URL and port of the local Golang server you have deployed. For example `99.9.9.99:8082`.
-
-Use the obtained Token, user ID, channel name, app ID and other information to join the channel through the `join` method.
-
-The sample code implements the following logic:
-
-* Calls `join` to join a channel using the user ID, the channel name, and a token you obtain from the server. The user ID and channel name you specify must be consistent with the values you used to generate the token.
-
-* The SDK triggers an `token-privilege-will-expire` callback 30 seconds before the token expires. After receiving the callback, you obtain a new token from the server and call `renewToken` to pass the newly generated token to the SDK.
-
-* If the token expires, the SDK triggers an `token-privilege-did-expire` callback. After receiving the callback, obtain a new token from the server and call `join` with the new token to rejoin the channel.
 
 Build and run the project on the local device, the <Vpl k="CLIENT" /> performs the following operations:
 

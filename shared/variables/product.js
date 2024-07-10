@@ -97,6 +97,13 @@ const data = {
     PRODUCT: 'Media Push'
   },
 
+  'media-gateway': {
+    NAME: 'Media Gateway',
+    PATH: 'media-gateway',
+    SDK: 'Media Gateway',
+    PRODUCT: 'Media Gateway'
+  },
+
   'agora-chat': {
     NAME: 'Chat',
     PATH: 'agora-chat',

@@ -21,6 +21,8 @@ To implement client-side screen capture, see [Screenshot Upload](../../video-cal
 
 ## Implementation
 
+<Admonition type="info" title="Note">The initial Queries Per Second (QPS) limit is 10 per app ID when you register. If you need to extend the limit for QPS, contact support@agora.io. For more details on existing limitations, see [Integration best practices](integration-best-practices#check-the-limits).</Admonition>
+
 ### Get a resource ID
 
 Before recording, call the [`acquire`](../reference/rest-api/acquire) method to apply for a resource ID.
@@ -171,3 +173,5 @@ Pay attention to the following parameters as incorrect settings result in errors
 - If you set `subscribeAudioUid`, you must also set `subscribeVideoUids`.
 
 If a user stops sending video stream during a session, the Cloud Recording service stops taking screenshots until the stream resumes.
+
+

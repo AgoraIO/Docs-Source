@@ -1,0 +1,516 @@
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<PlatformWrapper platform="android">
+
+Once the project configuration is complete, follow these steps to explore the various functional modules of the MetaKit plugin:
+
+#### Listen to extension events
+
+When calling `createInitialize` on `RtcEngine`, ensure the following configurations are performed in `RtcEngineConfig`:
+
+    1. Call `addExtension` with `AgoraFaceCapturePlugin` (`agora_face_capture_extension`) and `MetaKitPlugin` (`agora_metakit_extension`). Then, implement the event callback interface `IMediaExtensionObserver` for plug-ins and register it for `onEvent` plug-in event callbacks.
+        
+        ```java
+        // Configure RtcEngineConfig
+        RtcEngineConfig config = new RtcEngineConfig();
+        config.mContext = getBaseContext();
+        config.mAppId = appId;
+        config.mEventHandler = mRtcEventHandler;
+
+        // Add Face Capture plugin
+        config.addExtension("agora_face_capture_extension");
+
+        // Add MetaKit plugin
+        config.addExtension("agora_metakit_extension");
+
+        // Create the event callback interface class for plugins and register callbacks for plugin events such as onEvent
+        config.mExtensionObserver = new IMediaExtensionObserver() {
+            public void onEvent(String provider, String extension, String key, String value) {
+                // Implementation of onEvent callback
+            }
+            public void onStarted(String provider, String extension) {
+                // Implementation of onStarted callback
+            }
+            public void onStopped(String provider, String extension) {
+                // Implementation of onStopped callback
+            }
+            public void onError(String provider, String extension, int error, String message) {
+                // Implementation of onError callback
+            }
+        };
+
+        // Create and initialize RtcEngine
+        mRtcEngine = RtcEngine.create(config);
+        ```
+    1. In the callback, specify `provider` as `agora_video_filters_metakit` and `extension` as `metakit` to filter events from the MetaKit plugin. The `onEvent` event transmits engine status events transparently, such as `unityLoadFinish` (Unity environment loading completed) and `loadSceneResp` (scene resource loading completed).
+        
+        ```java
+        public void onEvent(String provider, String ext, String key, String msg) {
+            // Filter events from the MetaKit plugin
+            if (!provider.equals("agora_video_filters_metakit") || !ext.equals("metakit")) return;
+
+            // Log event details
+            Log.i(TAG, "metakitx onEvent: " + key + ", msg: " + msg);
+
+            // Handle different event keys
+            switch(key) {
+                case "initializeFinish":
+                    runningState = IMetaRunningState.initialized;
+                    break;
+                // Unity environment loaded
+                case "unityLoadFinish":
+                    runningState = IMetaRunningState.unityLoaded;
+                    Log.d(TAG, "metakitx to enter scene");
+                    enterScene();
+                    break;
+                // Scene resource loaded
+                case "loadSceneResp":
+                    Log.d(TAG,"metakitx receive loadSceneResp");
+                    runningState = IMetaRunningState.sceneLoaded;
+                    setMetaFeatureMode(curFeatrueType);
+                    break;
+                case "addSceneViewResp":
+                    runningState = IMetaRunningState.sceneViewLoaded;
+                    // If special effects are set, configure background and effects
+                    if (setSpecialEffect) {
+                        setMetaBGMode(BackgroundType.BGTypePano);
+                        configMetaBackgroundEffectMode(curSpecialEffectType, true);
+                    }
+                    break;
+                case "unloadSceneResp":
+                    runningState = IMetaRunningState.sceneUnloaded;
+                    // Perform scene cleanup if necessary
+                    //destroyScene();
+                    break;
+            }
+            isSyncing = false;
+        }
+
+        public void onError(String provider, String ext, int key, String msg) {
+            // Filter errors from the MetaKit plugin
+            if (!provider.equals("agora_video_filters_metakit") || !ext.equals("metakit")) return;
+
+            // Log error details
+            Log.i("[MetaKit]", "onError: " + key + ", msg: " + msg);
+        }
+
+        public void onStart(String provider, String ext) {
+            // Filter start events from the MetaKit plugin
+            if (!provider.equals("agora_video_filters_metakit") || !ext.equals("metakit")) return;
+
+            // Log start event
+            Log.i("[MetaKit]", "onStart");
+        }
+
+        public void onStop(String provider, String ext) {
+            // Filter stop events from the MetaKit plugin
+            if (!provider.equals("agora_video_filters_metakit") || !ext.equals("metakit")) return;
+
+            // Log stop event
+            Log.i("[MetaKit]", "onStop");
+        }
+        ```
+
+#### Enable the facial capture plugin
+
+To enable the facial capture plugin, follow these steps:
+    
+    <Admonition type="alert" info="info">
+    Before enabling the MetaKit plugin, ensure that both the Facial Capture plugin and the Virtual Background plugin are enabled.
+    </Admonition>
+    1. Call `registerExtension` and `enableExtension` with the provider name `agora_video_filters_face_capture` and the plugin name `face_capture`.
+
+        ```java
+        // Register the facial capture plugin
+        mRtcEngine.registerExtension("agora_video_filters_face_capture", "face_capture", Constants.MediaSourceType.PRIMARY_CAMERA_SOURCE);
+
+        // Enable the facial capture plugin
+        mRtcEngine.enableExtension("agora_video_filters_face_capture", "face_capture", true);
+        ```
+    1. Call `setExtensionProperty` to authenticate and authorize the facial capture plugin. Use `authentication_information` as the key, and a value containing the company name (`company_id`) and the facial capture certificate (`license`).
+
+        ```java
+        mRtcEngine.setExtensionProperty("agora_video_filters_face_capture","face_capture", "authentication_information",
+            "{\"company_id\":\"agoraDemo\"," +
+                "\"license\":\"" +
+                "xxxxxxxxxx"}", Constants.MediaSourceType.PRIMARY_CAMERA_SOURCE);
+        ```
+        <Admonition type="alert" info="info">
+        To obtain the company name and interview certificate, please contact us at [extensions.marketplace@agora.io](mailto:extensions.marketplace@agora.io).
+        </Admonition>
+
+#### Enable the virtual background plugin
+
+To enable the virtual background plugin, take the following steps:
+    1. Call `setParameters` to set `"rtc.video.seg_before_exts"` to `true`:
+        
+        ```java
+        mRtcEngine.setParameters("{\"rtc.video.seg_before_exts\":true}");
+        ```
+
+    1. Call `enableVirtualBackground` with the following configurations:
+        - Set `backgroundSourceType` to `0` to process the background into alpha information, separating the portrait from the background.
+        - Set `modelType` to `1` to select background processing suitable for all scenes.
+
+        ```java
+        VirtualBackgroundSource source = new VirtualBackgroundSource();
+        // Set backgroundSourceType to 0 to process the background into alpha information, separating the portrait from the background
+        source.backgroundSourceType = 0;
+        source.color = 0xFFFFFF;
+        source.source = "";
+        source.blurDegree = 1;
+
+        SegmentationProperty param = new SegmentationProperty();
+        // Set modelType to 1 to select background processing suitable for all scenes
+        param.modelType = 1;
+        param.greenCapacity = 0.5f;
+
+        // Enable the virtual background plugin
+        mRtcEngine.enableVirtualBackground(true, source, param, Constants.MediaSourceType.PRIMARY_CAMERA_SOURCE);
+        ````
+
+#### Enable metadata plugin
+
+To enable the MetaKit plugin, follow these steps:
+
+    1. Call `registerExtension` with the service provider name `agora_video_filters_metakit` and the plugin name `metakit`.
+
+        ```java
+        mRtcEngine.registerExtension("agora_video_filters_metakit", "metakit", Constants.MediaSourceType.PRIMARY_CAMERA_SOURCE);
+        ```
+    1. Call `enableExtension` with the same service provider name and plugin name.
+   
+        ```java
+        mRtcEngine.enableExtension("agora_video_filters_metakit", "metakit", true);
+        ```
+
+    1. To set the Android activity context for starting the rendering engine, call `setExtensionProperty` with the following parameters:
+
+        - `key`: `setActivityContext`
+        - `value`: The activity context address
+
+        ```java
+        Activity mActivity;
+        JSONObject valueObj = new JSONObject();
+        try {
+            long address = getContextHandler(mActivity);
+            valueObj.put("activityContext", String.valueOf(address));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        mRtcEngine.setExtensionProperty("agora_video_filters_metakit", "metakit", "setActivityContext", valueObj.toString());
+        ```
+
+    1. To initialize the MetaKit plugin, call `setExtensionProperty` with the following parameters:
+
+        - `key`: initialize
+        - `value`: an empty string
+
+        ```java
+        mRtcEngine.setExtensionProperty("agora_video_filters_metakit", "metakit", "initialize","{}");
+        ```
+    1. When the `onEvent` callback captures the `unityLoadFinish` event, it indicates that the Unity environment has been loaded. At this point, you can call `setExtensionProperty` to load MetaKit scene resources. Use the following parameters:
+
+        - `key`: `loadScene`
+        - `value`: A string containing relevant information about the scene resources
+
+        ```java
+        JSONObject valueObj = new JSONObject();
+        try {
+            JSONObject sceneObj = new JSONObject();
+            // highlight-start
+            // Set the path of the scene resources on the phone
+            // Assume the resources are stored at /first/second/DefaultPackage/ on the phone; only /first/second needs to be specified in scenePath
+            sceneObj.put("scenePath", "/sdcard/metaAssets/15");
+            // highlight-end
+
+            JSONObject customObj = new JSONObject();
+            // highlight-start
+            // Set the scene index to 0
+            customObj.put("sceneIndex", 0);
+            // highlight-end
+
+            valueObj.put("sceneInfo", sceneObj);
+            valueObj.put("assetManifest", "");
+            valueObj.put("userId", "123456");
+            valueObj.put("extraCustomInfo", customObj.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        // highlight-start
+        // Load scene resources based on the JSON configuration
+        mRtcEngine.setExtensionProperty("agora_video_filters_metakit", "metakit", "loadScene", valueObj.toString());
+        // highlight-end
+
+        ```
+
+    1. When the `onEvent` callback captures the `loadSceneResp` event, it indicates that the scene resources have been loaded. You can then follow these steps to experience the virtual human, Animoji, lighting effects, and 360 background function modules.
+
+        ```java
+        JSONObject valueObj = new JSONObject();
+        try {
+            JSONObject configObj = new JSONObject();
+            // highlight-start
+            configObj.put("key", "bsname"); // The key is the resource ID of the face pinching part
+            configObj.put("value", 30); // The value is the corresponding intensity of the face pinching, ranging from [0,100], with a default of 50
+            // highlight-end
+            valueObj.put("value", configObj);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        // highlight-start
+        // Perform face pinching operation based on JSON configuration
+        mRtcEngine.setExtensionProperty("agora_video_filters_metakit", "metakit", "updateFace", valueObj.toString());
+        // highlight-end
+        ```
+
+#### Use the avatar effect
+
+1. Call `setExtensionProperty` to request texture and render the virtual human scene. Set `key` to `requestTexture` and `value` to include the scene configuration information. To experience the virtual human feature, set `avatarMode` to `0` for the virtual human scene mode and specify the avatar as your desired virtual human image, such as girl or huamulan.
+
+    <Admonition type="info" title="Info">
+    In addition to the default avatars `girl` and `huamulan`, the Agora MetaKit plugin offers an open artistic ecosystem. It supports **one-click import** of virtual human models created according to Agora's art standards, providing users with more flexible creation and integration options. Contact Agora [Technical Support](mailto:extensions.marketplace@agora.io) to use this feature.
+    </Admonition>
+
+    ```java
+    JSONObject valueObj = new JSONObject();
+    try {
+        // highlight-start
+        valueObj.put("index", 0); // Texture index, currently only supports 0
+        valueObj.put("enable", true); // Enable texture request
+        // highlight-end
+
+        JSONObject configObj = new JSONObject();
+        configObj.put("width", 640);
+        configObj.put("height", 480);
+
+        JSONObject extraObj = new JSONObject();
+        // highlight-start
+        extraObj.put("sceneIndex", 0); // Scene index, currently only supports 0
+        extraObj.put("avatarMode", 0); // Set scene mode to 0, which is virtual human mode
+        extraObj.put("avatar", "huamulan"); // Set the virtual human image to "huamulan"
+        // highlight-end
+        extraObj.put("userId", "123");
+        configObj.put("extraInfo", extraObj.toString());
+
+        valueObj.put("config", configObj);
+
+    } catch (JSONException e) {
+        e.printStackTrace();
+    }
+
+    // highlight-start
+    // Render the virtual human scene based on the JSON configuration
+    mRtcEngine.setExtensionProperty("agora_video_filters_metakit", "metakit", "requestTexture", valueObj.toString());
+    // highlight-end
+    ```
+    After the scene rendering is complete, a Blendshape-driven virtual human image will be displayed, capturing your facial expressions and making corresponding facial changes, following your head movements.
+
+1. Call `setExtensionProperty` to perform face pinching operations on the virtual human. Set `key` to `updateFace` and value to support passing multiple sets of resource IDs for face pinching parts and their corresponding adjustment ranges. See [face pinching] for details.
+
+    ```java
+    JSONObject valueObj = new JSONObject();
+    try {
+        JSONObject configObj = new JSONObject();
+        // highlight-start
+        configObj.put("key", "bsname"); // The key is the resource ID of the face pinching part
+        configObj.put("value", 30); // The value is the corresponding intensity of the face pinching, ranging from [0,100], with a default of 50
+        // highlight-end
+        valueObj.put("value", configObj);
+    } catch (JSONException e) {
+        e.printStackTrace();
+    }
+
+    // highlight-start
+    // Perform face pinching operations based on the JSON configuration
+    mRtcEngine.setExtensionProperty("agora_video_filters_metakit", "metakit", "updateFace", valueObj.toString());
+    // highlight-end
+    ```
+1. Call `setExtensionProperty` to perform dressing operations on the virtual human. Set `key` to `updateDress` and value to support passing an array of integers containing multiple resource IDs for dressing parts. See [dressing resources](#) for details.
+
+    ```java
+    JSONObject valueObj = new JSONObject();
+    try {
+        // highlight-start
+        valueObj.put("id", "[10002]"); // Set the id to an array of integers containing multiple resource IDs
+        // highlight-end
+    } catch (JSONException e) {
+        e.printStackTrace();
+    }
+    // highlight-start
+    // Perform dressing operations based on the JSON configuration
+    mRtcEngine.setExtensionProperty("agora_video_filters_metakit", "metakit", "updateDress", valueObj.toString());
+    // highlight-end
+    ```
+    Additionally, the MetaKit plugin supports switching the virtual human's image and perspective. See [Virtual Human Key-Value Description](#) for details.
+
+#### Use the Animoji effect
+
+Call `setExtensionProperty` to request the texture and render the Animoji scene. Set key to `requestTexture`, which includes the scene configuration information. To experience the Animoji function, set `avatarMode` to `1` for Animoji scene mode. Specify avatar to the Animoji image you want to use, such as `dog`, `girl`, or `headarkit`.
+
+<Admonition type="alert" info="info">
+
+In addition to the Animoji images already available in the three plug-ins (dog, girl, headarkit), the Agora MetaKit plug-in provides an open art ecosystem. It supports one-click import of Animoji images created according to Agora's art standards, offering users more flexible creation and integration options. Contact Agora [Technical Support](mailto:extensions.marketplace@agora.io) to use this feature.
+</Admonition>
+
+```java
+JSONObject valueObj = new JSONObject(); 
+try {
+    // highlight-start
+    valueObj.put("index", 0); // Texture index, currently only supports 0
+    valueObj.put("enable", true); // Enable texture request
+    // highlight-end
+
+    JSONObject configObj = new JSONObject(); 
+    configObj.put("width", 640); 
+    configObj.put("height", 480);
+
+    JSONObject extraObj = new JSONObject(); 
+    // highlight-start
+    extraObj.put("sceneIndex", 0); // Scene index, currently only supports 0
+    extraObj.put("avatarMode", 1); // Set scene mode to 1, which is Animoji mode
+    extraObj.put("avatar", "dog"); // Set Animoji image to "dog"
+    // highlight-end
+    extraObj.put("userId", "123"); 
+    configObj.put("extraInfo", extraObj.toString());
+
+    valueObj.put("config", configObj);
+} catch (JSONException e) {
+    e.printStackTrace();
+}
+
+// highlight-start
+// Render the Animoji scene based on the JSON configuration
+mRtcEngine.setExtensionProperty("agora_video_filters_metakit", "metakit", "requestTexture", valueObj.toString());
+// highlight-end
+```
+
+#### Apply lighting effect and 360 background
+
+1. Call `setExtensionProperty` to request the texture and render a scene with lighting effects and 360 background features. The `key` is `requestTexture`, and the `value` contains the configuration information of the scene. To experience lighting effects and the 360 background feature, set `avatarMode` to `2`, which corresponds to lighting effects and 360 background mode.
+
+    ```java
+    JSONObject valueObj = new JSONObject(); 
+    try {
+        // highlight-start
+        valueObj.put("index", 0); // Texture index, currently only supports 0
+        valueObj.put("enable", true); // Enable texture request
+        // highlight-end
+
+        JSONObject configObj = new JSONObject(); 
+        configObj.put("width", 640); 
+        configObj.put("height", 480);
+
+        JSONObject extraObj = new JSONObject(); 
+        // highlight-start
+        extraObj.put("sceneIndex", 0); // Scene index, currently only supports 0
+        extraObj.put("avatarMode", 2); // Set scene mode to 2, which is lighting effects and 360 background mode
+        // highlight-end
+        extraObj.put("userId", "123"); 
+        configObj.put("extraInfo", extraObj.toString()); 
+        
+        valueObj.put("config", configObj);
+    } catch (JSONException e) {
+        e.printStackTrace();
+    }
+
+    // highlight-start
+    // Render the scene with lighting effects and 360 background based on the JSON configuration
+    mRtcEngine.setExtensionProperty("agora_video_filters_metakit", "metakit", "requestTexture", valueObj.toString());
+    // highlight-end
+    ```
+
+2. Experience lighting effects and 360 background.
+
+    1. **Lighting Effects**:
+
+        Call `setExtensionProperty` to set up lighting effects. The `key` is `setEffectVideo`, and the `value` contains a series of lighting materials and their corresponding parameter configurations. The MetaKit plugin provides lighting effects such as 3D lighting, screen ripples, aurora effects, and portrait edge flames, and supports fine-tuning of parameters such as color, intensity, and range. See the [Lighting Effects key-value documentation](../../reference/metakit-key-value-description#lighting-effects) for more details. The example code below demonstrates how to overlay advertising lights on a live video.
+
+        ```java
+        JSONObject configObj = new JSONObject();
+        try {
+            // highlight-start
+            configObj.put("id", 3002); // Specify the effect material ID as 3002, which is advertising lights
+            configObj.put("enable", true); // Enable lighting effect
+            // highlight-end
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        // highlight-start
+        // Add advertising light effect based on the JSON configuration
+        mRtcEngine.setExtensionProperty("agora_video_filters_metakit", "metakit", "setEffectVideo", configObj.toString());
+        // highlight-end
+        ```
+
+    1. **360 background**:
+
+        Call `setExtensionProperty` to set up a 360 panoramic background. The `key` is `setBGVideo`, and the `value` sets the background mode, resource path, and rotation angle.
+
+        ```java
+        JSONObject picObj = new JSONObject();
+        try {
+            // highlight-start
+            picObj.put("mode", "tex360"); // Set background mode to 360 panoramic background mode
+            // highlight-end
+            JSONObject configObj = new JSONObject();
+            // highlight-start
+            configObj.put("path", "/sdcard/metaFiles/bg_pano.jpg"); // Specify the file path of the background resource
+            // highlight-end
+            picObj.put("param", configObj);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        // highlight-start
+        // Add 360 background based on the JSON configuration
+        mRtcEngine.setExtensionProperty("agora_video_filters_metakit", "metakit", "setBGVideo", picObj.toString());
+        // highlight-end
+        ```
+
+        You can also call `setExtensionProperty` to enable the gyroscope, specify `key` as `setCameraGyro`, and enable the gyroscope function in the `value` to further enhance the interactivity and immersion of the background.
+
+        ```java
+        JSONObject gyroObj = new JSONObject();
+        try {
+            // highlight-start
+            gyroObj.put("state", "on"); // Enable gyroscope function
+            // highlight-end
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        // highlight-start
+        // Enable gyroscope function based on the JSON configuration
+        mRtcEngine.setExtensionProperty("agora_video_filters_metakit", "metakit", "setCameraGyro", gyroObj.toString());
+        // highlight-end
+        ```
+    
+        After successfully setting this effect, you can see that the video background is replaced with the specified resource, and you can experience the panoramic effect by rotating the phone. For more configurations, see the [360 Background key-value documentation](../../reference/metakit-key-value-description#360-background).
+
+#### Release resources
+
+    When you are done using the plugin, you can follow the sample code below to stop texture requests, unload scene resources, and destroy the engine.
+
+    ```java
+    // 1. Stop texture requests
+    JSONObject valueObj = new JSONObject();
+    try {
+        valueObj.put("index", 0); // Texture index, currently only supports setting to 0
+        valueObj.put("enable", false); // Set enable to false to stop the texture request feature
+    } catch (JSONException e) {
+        e.printStackTrace();
+    }
+
+    mRtcEngine.setExtensionProperty("agora_video_filters_metakit", "metakit", "requestTexture", valueObj.toString());
+
+    // 2. Unload scene resources
+    mRtcEngine.setExtensionProperty("agora_video_filters_metakit", "metakit", "unloadScene", "{}");
+
+    // 3. Destroy the engine
+    mRtcEngine.setExtensionProperty("agora_video_filters_metakit", "metakit", "destroy", "{}");
+    ```
+
+</PlatformWrapper>

@@ -1,0 +1,402 @@
+<PlatformWrapper platform="ios">
+
+After configuring your project, follow these steps to experience the various functional modules of the <Vg k="RTEE_MK"/> extension.
+
+### Listen to extension events
+
+1. Initialize `AgoraRtcEngineKit` by calling `sharedEngineWithConfig`. In `AgoraRtcEngineConfig`, create the event callback interface class `AgoraMediaFilterEventDelegate` for the extension and register extension event callbacks such as `onEvent`.
+
+    ```swift
+    let config = AgoraRtcEngineConfig()
+    config.appId = appID
+    config.eventDelegate = self
+    // Create and initialize AgoraRtcEngineKit
+    agoraEngine = AgoraRtcEngineKit.sharedEngine(with: config, delegate: self)
+    // Create the event callback interface class for the extension and register extension event callbacks
+    extension ViewController: AgoraMediaFilterEventDelegate {
+        func onEvent(_ provider: String?, extension: String?, key: String?, value: String?) {
+        }
+
+        func onExtensionStarted(_ provider: String?, extension: String?) {
+        }
+
+        func onExtensionStopped(_ provider: String?, extension: String?) {
+        }
+
+        func onExtensionError(_ provider: String?, extension: String?, error: Int32, message: String?) {
+        }
+    }
+    ```
+
+1. In the callback, specify `provider` as `agora_video_filters_metakit` and `extension` as `metakit` to filter events from the <Vg k="RTEE_MK"/> extension. `onEvent` will pass through engine states such as `unityLoadFinish` (Unity environment loaded) and `addSceneViewResp` (scene view loaded).
+
+    ```swift
+    func onEvent(_ provider: String?, extension: String?, key: String?, value: String?) {
+        guard let provider = provider, let extension = extension, provider == "agora_video_filters_metakit", extension == "metakit" else {
+            return
+        }
+
+        guard let status = key else {
+            return
+        }
+
+        switch status {
+        case "initializeFinish", "unityLoadFinish", "loadSceneResp", "addSceneViewResp", "removeSceneViewResp", "unloadSceneResp":
+            // Capture and handle events such as Unity environment loaded and scene view loaded
+            break
+        default:
+            break
+        }
+    }
+
+    func onExtensionError(_ provider: String?, extension: String?, error: Int32, message: String?) {
+        if provider == "agora_video_filters_metakit" && extension == "metakit" {
+            print("[MetaKit] onExtensionError, Code: \(error), Message: \(message ?? "")")
+        }
+    }
+    ```
+### Enable extensions
+
+Before enabling the <Vg k="RTEE_MK"/> extension, ensure that both the Facial Capture extension and the Virtual Background extension are enabled.
+
+#### Enable the Face Capture extension
+
+To enable the Face Capture extension, follow these steps:
+
+    1. Call `registerExtensionWithVendor` and `enableExtensionWithVendor` to register and enable the extension, specifying the extension service provider name (`agora_video_filters_face_capture`) and extension name (`face_capture`).
+    1. Call `setExtensionPropertyWithVendor` to authenticate and authorize the AI module of the extension, where `key` is `authentication_information`, and `value` includes the company name (`company_id`) and face capture license (`license`).
+
+    <Admonition type="caution" title="Note">
+    Contact [Agora](mailto:extensions.marketplace@agora.io) to obtain the company name and face capture license.
+    </Admonition>
+
+    ```swift
+    // Register Face Capture extension
+    agoraEngine?.registerExtension(withVendor: "agora_video_filters_face_capture", extension: "face_capture", sourceType: AgoraMediaSourceType.primaryCamera)
+    // Enable Face Capture extension
+    agoraEngine?.enableExtension(withVendor: "agora_video_filters_face_capture", extension: "face_capture", enabled: true)
+    // Authorize Face Capture extension
+    agoraEngine?.setExtensionPropertyWithVendor("agora_video_filters_face_capture",
+                                                extension: "face_capture",
+                                                key: "authentication_information",
+                                                value: "{\"company_id\":\"agoraDemo\", \"license\":\"xxxxxxxxxx\"}",
+                                                sourceType: AgoraMediaSourceType.primaryCamera)
+    ```
+
+#### Enable the Virtual Background extension
+
+    1. Call `setParameters` to set `"rtc.video.seg_before_exts"` to `true`, ensuring that the Virtual Background extension executes before <Vg k="RTEE_MK"/>.
+    1. Call `enableVirtualBackground` to enable the extension, specifying the following:
+        - `backgroundSourceType` as `AgoraVirtualBackgroundNone` to process the background as alpha information, separating the subject from the background.
+        - `modelType` as `SegModelAgoraAi` for background processing suitable for all scenarios.
+
+    ```swift
+    // Ensure Virtual Background executes before <Vg k="RTEE_MK"/>
+    agoraKit.setParameters("{\"rtc.video.seg_before_exts\":true}")
+
+    let bg_src = AgoraVirtualBackgroundSource()
+    // Process background as alpha information, separate subject from background
+    bg_src.backgroundSourceType = .none
+    let seg_prop = AgoraSegmentationProperty()
+    seg_prop.greenCapacity = 0
+    // Choose background processing suitable for all scenarios
+    seg_prop.modelType = .agoraAi
+    // Enable Virtual Background
+    agoraEngine?.enableVirtualBackground(true, backData: bg_src, segData: seg_prop)
+    ```
+
+#### Enable the <Vg k="RTEE_MK"/> extension
+
+Call `registerExtensionWithVendor` and `enableExtensionWithVendor` to register and enable the <Vg k="RTEE_MK"/> extension, specifying the extension service provider name (`agora_video_filters_metakit`) and extension name (`metakit`).
+
+    ```swift
+    // Register MetaKit
+    agoraEngine?.registerExtension(withVendor: "agora_video_filters_metakit", extension: "metakit", sourceType: AgoraMediaSourceType.primaryCamera)
+    // Enable MetaKit
+    agoraEngine?.enableExtension(withVendor: "agora_video_filters_metakit", extension: "metakit", enabled: true)
+    ```
+
+### Initialize <Vg k="RTEE_MK"/>
+
+Initialize the <Vg k="RTEE_MK"/> extension by calling `setExtensionPropertyWithVendor`, with `key` set to `initialize` and `value` set to an empty `JSON object ({})`.
+
+```swift
+agoraEngine?.setExtensionPropertyWithVendor("agora_video_filters_metakit", extension: "metakit", key: "initialize", value: "{}")
+```
+
+### Load scene resources
+
+When the `onEvent` callback captures the `unityLoadFinish` event, it indicates that the Unity environment has finished loading. At this point, use `setExtensionPropertyWithVendor` to load MetaKit scene resources, with `key` set to `loadScene` and `value` containing relevant scene information.
+
+```swift
+// Set the scene resource path
+// Assume the resource path is /first/second/DefaultPackage/, where scenePath should only be /first/second
+let infoDict = ["sceneInfo": ["scenePath": "xxxx"]] as [String: Any]
+let infoData = try? JSONSerialization.data(withJSONObject: infoDict, options: [])
+let infoStr = String(data: infoData!, encoding: .utf8)
+
+// Load scene resources based on JSON configuration
+agoraKit?.setExtensionPropertyWithVendor("agora_video_filters_metakit",
+                                         extension: "metakit",
+                                         key: "loadScene",
+                                         value: infoStr!)
+```
+
+### Use the avatar effect
+
+1. Use `setExtensionPropertyWithVendor` to add a scene view for a virtual human, with key set to `addSceneView` and value containing scene view configuration information. To experience the virtual human functionalities, set `avatarMode` to `0` for the scene view, indicating virtual human mode, and specify `avatar` as the desired character such as `girl` or `huamulan`.
+
+```swift
+// Get the view's address handle
+let address = unsafeBitCast(sceneView!, to: Int64.self)
+
+let extraDict = [
+    "sceneIndex": 0,        // Scene index, currently supports only 0
+    "avatar": "huamulan",   // Set avatar to "huamulan"
+    "avatarMode": 0         // Set scene mode to 0, i.e., virtual human mode
+] as [String: Any]
+
+let extraData = try? JSONSerialization.data(withJSONObject: extraDict, options: [])
+let extraStr = String(data: extraData!, encoding: .utf8) ?? ""
+
+let dict = [
+    "view": String(address),
+    "config": [
+        "width": 720,
+        "height": 1280,
+        "extraInfo": extraStr
+    ]
+] as [String: Any]
+
+let data = try? JSONSerialization.data(withJSONObject: dict, options: [])
+let dataStr = String(data: data!, encoding: .utf8)
+
+// Add virtual human scene view based on JSON configuration
+agoraKit?.setExtensionPropertyWithVendor("agora_video_filters_metakit",
+                                        extension: "metakit",
+                                        key: "addSceneView",
+                                        value: dataStr!)
+```
+When the `onEvent` callback captures the `addSceneViewResp` event, the scene view has been successfully added. It will display a Blendshape-driven virtual human character that mimics your facial expressions and follows head movements.
+
+1. Use `setExtensionPropertyWithVendor` to manipulate the virtual human's facial features, with key set to `updateFace` and value supporting multiple sets of resource `IDs` and corresponding adjustment amplitudes. See [Facial pinching resources](#face-pinching-resources) for details.
+
+```swift
+let parts = [
+    ["key": "C_updown_2", "value": 20],
+    ["key": "EB_thickness", "value": 40],
+    ["key": "E_width_1", "value": 60],
+    ["key": "N_width_1", "value": 80]
+]
+
+let dict = ["value": parts]
+let data = try? JSONSerialization.data(withJSONObject: dict, options: [])
+let str = String(data: data!, encoding: .utf8)
+
+// Perform facial manipulation based on JSON configuration
+agoraKit?.setExtensionPropertyWithVendor("agora_video_filters_metakit",
+                                        extension: "metakit",
+                                        key: "updateFace",
+                                        value: str!)
+```
+
+1. Use `setExtensionPropertyWithVendor` to change the virtual human's outfit, with `key` set to `updateDress` and `value` supporting an array of integers representing the resource IDs for different outfit parts. See [Dress-up resources](##dress-up-resources) for details.
+
+    ```swift
+    // Set the ID to an array of resource IDs
+    let dict = ["id": [10002, 10102, 10402, 12102, 12501, 14102, 15002]]
+    let data = try? JSONSerialization.data(withJSONObject: dict, options: [])
+    let str = String(data: data!, encoding: .utf8)
+
+    // Change outfit based on JSON configuration
+    agoraKit?.setExtensionPropertyWithVendor("agora_video_filters_metakit",
+                                            extension: "metakit",
+                                            key: "updateDress",
+                                            value: str!)
+    ```
+
+    Additionally, MetaKit supports switching the virtual human's appearance and perspective. For more details, refer to the [virtual human key-value description](#virtual-human).
+
+### Use the Animoji effect
+
+Use `setExtensionPropertyWithVendor` to add an Animoji scene view, with `key` set to `addSceneView` and `value` containing the scene view configuration. To experience Animoji features, set `avatarMode` to `1` for the scene view, indicating Animoji mode, and specify `avatar` as the desired Animoji character, such as `dog`, `girlhead`, or `arkit`.
+
+<Admonition type="info" title="Information">
+In addition to the already available Animoji images (`dog`, `girl`,` headarkit`), the Agora <Vg k="RTEE_MK"/> extension provides an open art ecosystem. It supports one-click import of Animoji images created according to Agora's art standards, offering users more flexible creation and integration options. Contact Agora [technical support](mailto:extensions.marketplace@agora.io) to use this feature.
+</Admonition>
+
+```swift
+// Get the view's address handle
+let address = unsafeBitCast(sceneView!, to: Int64.self)
+
+let extraDict = [
+    "sceneIndex": 0,        // Scene index, currently supports only 0
+    "avatar": "dog",        // Set Animoji to "dog"
+    "avatarMode": 1         // Set scene mode to 1, that is, Animoji mode
+] as [String: Any]
+
+let extraData = try? JSONSerialization.data(withJSONObject: extraDict, options: [])
+let extraStr = String(data: extraData!, encoding: .utf8) ?? ""
+
+let dict = [
+    "view": String(address),
+    "config": [
+        "width": 720,
+        "height": 1280,
+        "extraInfo": extraStr
+    ]
+] as [String: Any]
+
+let data = try? JSONSerialization.data(withJSONObject: dict, options: [])
+let dataStr = String(data: data!, encoding: .utf8)
+
+// Add Animoji scene view based on JSON configuration
+agoraKit?.setExtensionPropertyWithVendor("agora_video_filters_metakit",
+                                         extension: "metakit",
+                                         key: "addSceneView",
+                                         value: dataStr!)
+```
+
+When the `onEvent` callback captures the `addSceneViewResp` event, it indicates that the scene view has been successfully added. At this point, the view will display a dog head covering your face, capturing your facial expressions and mimicking them, as well as following your head movements. Additionally, the MetaKit extension allows you to switch Animoji characters and adjust the rendering level of the Animoji characters. For more details, refer to the [Animoji key-value description](#animoji).
+
+### Apply lighting effects and 360 background
+
+1. Use `setExtensionPropertyWithVendor` to add a scene view, with `key` set to `addSceneView` and `value` containing the scene view configuration. To experience lighting effects and 360 background features, set `backgroundEffect` to `true` when adding the scene view.
+
+    ```swift
+    // Get the view's address handle
+    let address = unsafeBitCast(sceneView!, to: Int64.self)
+
+    let extraDict = [
+        "sceneIndex": 0,           // Scene index, currently supports only 0
+        "backgroundEffect": true   // Enable lighting effects and 360 background
+    ] as [String: Any]
+
+    let extraData = try? JSONSerialization.data(withJSONObject: extraDict, options: [])
+    let extraStr = String(data: extraData!, encoding: .utf8) ?? ""
+
+    let dict = [
+        "view": String(address),
+        "config": [
+            "width": 720,
+            "height": 1280,
+            "extraInfo": extraStr
+        ]
+    ] as [String: Any]
+
+    let data = try? JSONSerialization.data(withJSONObject: dict, options: [])
+    let dataStr = String(data: data!, encoding: .utf8)
+
+    // Add scene view with lighting effects and 360 background based on JSON configuration
+    agoraKit?.setExtensionPropertyWithVendor("agora_video_filters_metakit",
+                                            extension: "metakit",
+                                            key: "addSceneView",
+                                            value: dataStr!)
+    ```
+
+1. Experience lighting effects and 360 background.
+
+    1. **Lighting effects**:
+
+        Use `setExtensionPropertyWithVendor` to set lighting effects, with `key` set to `setEffectVideo` and `value` containing a series of lighting materials and their corresponding parameter configurations. MetaKit offers lighting effects such as 3D lighting, ad lights, screen ripples, aurora effects, portrait edge flames, and ambient light groups, and allows fine-tuning of parameters like color, intensity, and range. S
+
+        The following example demonstrates how to implement 3D lighting. Once the effect is successfully set, a 3D light will sweep across the screen.
+
+        ```swift
+        let lightDict = [
+            "id": 1001, // Set effect material ID to 1001, i.e., 3D lighting
+            "param": ["intensity": 2.0, "scale": 0.3] as [String: Any],
+            "enable": true // Enable the 3D lighting effect
+        ] as [String: Any]
+
+        let lightData = try? JSONSerialization.data(withJSONObject: lightDict, options: [])
+        let lightInfo = String(data: lightData!, encoding: .utf8)
+
+        // Add 3D lighting effect based on JSON configuration
+        agoraKit?.setExtensionPropertyWithVendor("agora_video_filters_metakit",
+                                                extension: "metakit",
+                                                key: "setEffectVideo",
+                                                value: lightInfo!)
+        ```
+
+        The following example demonstrates how to implement portrait edge flames. Once the effect is successfully set, purple flames will surround the portrait in the frame.
+
+        ```swift
+        let lightDict = [
+            "id": 2001, // Set effect material ID to 2001, i.e., purple flames
+            "enable": true // Enable the portrait edge flames effect
+        ] as [String: Any]
+
+        let lightData = try? JSONSerialization.data(withJSONObject: lightDict, options: [])
+        let lightInfo = String(data: lightData!, encoding: .utf8)
+
+        // Add portrait edge flames effect based on JSON configuration
+        agoraKit?.setExtensionPropertyWithVendor("agora_video_filters_metakit",
+                                                extension: "metakit",
+                                                key: "setEffectVideo",
+                                                value: lightInfo!)
+        ```
+
+    1. **360 background**
+
+        Use `setExtensionPropertyWithVendor` to set the 360 background, with `key` set to `setBGVideo` and `value` specifying the background mode, resource path, and rotation angle.
+
+        ```swift
+        let panoPath = "https://img.zcool.cn/community/010cab5aab3eeda80120be1412c007.jpg@3000w_1l_0o_100sh.jpg"
+        let bgDict = [
+            "mode": "tex360", // Set background mode to 360 panorama mode
+            "param": [
+                "path": panoPath, // Set the file path of the background resource
+                "rotation": "0"
+            ]
+        ] as [String: Any]
+
+        let bgData = try? JSONSerialization.data(withJSONObject: bgDict, options: [.withoutEscapingSlashes])
+        let bgInfo = String(data: bgData!, encoding: .utf8)
+
+        // Add 360 background based on JSON configuration
+        agoraKit?.setExtensionPropertyWithVendor("agora_video_filters_metakit",
+                                                extension: "metakit",
+                                                key: "setBGVideo",
+                                                value: bgInfo!)
+        ```
+
+        You can also use `setExtensionPropertyWithVendor` to enable the gyroscope, by setting `key` to `setCameraGyro` and enabling the gyroscope function in `value`, enhancing the interactivity and immersion of the background.
+
+        ```swift
+        let gyroDict = ["state": "on"] as [String : String] // Set state to "on" to enable the gyroscope
+        let gyroData = try? JSONSerialization.data(withJSONObject: gyroDict, options: [])
+        let gyroInfo = String(data: gyroData!, encoding: .utf8)
+
+        // Enable the gyroscope function based on JSON configuration
+        agoraEngine?.setExtensionPropertyWithVendor("agora_video_filters_metakit", extension: "metakit",
+                                                    key:"setCameraGyro",
+                                                    value:gyroInfo!)
+        ```
+
+        Once the effect is successfully set, the video background will be replaced with the specified resource, and rotating the phone will allow you to experience the panoramic effect. For more configurations, see [360 Background key-value description](#360-background).
+
+### Release resources
+
+When you stop using the extension, you can refer to the following sample code to remove the scene view, unload the scene resources, and destroy the engine.
+
+```swift
+// 1. Remove the scene view
+let address = unsafeBitCast(view, to: Int64.self)
+agoraKit?.setExtensionPropertyWithVendor("agora_video_filters_metakit", extension: "metakit",
+                                         key: "removeSceneView",
+                                         value: "{\"view\":\"\(address)\"}")
+
+// 2. Unload the scene resources
+agoraEngine?.setExtensionPropertyWithVendor("agora_video_filters_metakit", extension: "metakit",
+                                            key: "unloadScene",
+                                            value: "{}")
+
+// 3. Destroy the engine
+agoraEngine?.setExtensionPropertyWithVendor("agora_video_filters_metakit", extension: "metakit",
+                                            key: "destroy",
+                                            value: "{}")
+```
+
+
+</PlatformWrapper>

@@ -17,6 +17,7 @@ A complete code sample that implements the basic process of real-time interactio
 #include <string>
 // Include relevant header files
 #include <IAgoraRtcEngine.h>
+
 using namespace agora;
 using namespace agora::rtc;
 using namespace agora::media;
@@ -24,16 +25,12 @@ using namespace agora::media::base;
 
 // Define message IDs
 #define WM_MSGID(code) (WM_USER+0x200+code)
-#define EID_ERROR        0x00000001
 #define EID_JOIN_CHANNEL_SUCCESS        0x00000002
-#define EID_LEAVE_CHANNEL        0x00000003
 #define EID_USER_JOINED        0x00000004
 #define EID_USER_OFFLINE        0x00000004
 
 // Define CAgoraQuickStartRtcEngineEventHandler class to handle user joining, leaving channel callbacks
-class CAgoraQuickStartRtcEngineEventHandler
-    : public IRtcEngineEventHandler
-{
+class CAgoraQuickStartRtcEngineEventHandler : public IRtcEngineEventHandler {
 public:
     // Set the handle of the message receiving window
     void SetMsgReceiver(HWND hWnd) { m_hMsgHanlder = hWnd; }
@@ -62,24 +59,6 @@ public:
         }
     }
 
-    // Register onLeaveChannel callback
-    // Triggered when the local host successfully leaves the channel
-    virtual void onLeaveChannel(const RtcStats& stats) {
-        if (m_hMsgHanlder) {
-            ::PostMessage(m_hMsgHanlder, WM_MSGID(EID_LEAVE_CHANNEL), 0, 0);
-        }
-    }
-
-    // Register onError callback
-    // Triggered when an error occurs during SDK runtime
-    virtual void onError(int err, const char* msg) {
-        if (m_hMsgHanlder) {
-            char* message = new char[1024] {0};
-            memcpy(message, msg, strlen(msg));
-            ::PostMessage(m_hMsgHanlder, WM_MSGID(EID_ERROR), (WPARAM)message, err);
-        }
-    }
-
 private:
     HWND m_hMsgHanlder;
 };
@@ -90,7 +69,6 @@ class CAgoraQuickStartDlg : public CDialog
 // Construction
 public:
     CAgoraQuickStartDlg(CWnd* pParent = nullptr);        // Standard constructor
-
     virtual ~CAgoraQuickStartDlg();
 
 // Dialog Data
@@ -103,14 +81,11 @@ public:
     afx_msg void OnBnClickedBtnLeave();
     // Handling user joining/leaving channel callback events
     afx_msg LRESULT OnEIDJoinChannelSuccess(WPARAM wParam, LPARAM lParam);
-    afx_msg LRESULT OnEIDError(WPARAM wParam, LPARAM lParam);
-    afx_msg LRESULT OnEIDLeaveChannel(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnEIDUserJoined(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnEIDUserOffline(WPARAM wParam, LPARAM lParam);
 
 protected:
     HICON m_hIcon;
-
     CStatic        m_staRemote;
     CStatic        m_staLocal;
     CEdit        m_edtChannelName;
@@ -200,8 +175,6 @@ BEGIN_MESSAGE_MAP(CAgoraQuickStartDlg, CDialog)
     ON_BN_CLICKED(ID_BTN_JOIN, &CAgoraQuickStartDlg::OnBnClickedBtnJoin)
     ON_BN_CLICKED(ID_BTN_LEAVE, &CAgoraQuickStartDlg::OnBnClickedBtnLeave)
     ON_MESSAGE(WM_MSGID(EID_JOIN_CHANNEL_SUCCESS), CAgoraQuickStartDlg::OnEIDJoinChannelSuccess)
-    ON_MESSAGE(WM_MSGID(EID_ERROR), &CAgoraQuickStartDlg::OnEIDError)
-    ON_MESSAGE(WM_MSGID(EID_LEAVE_CHANNEL), CAgoraQuickStartDlg::OnEIDLeaveChannel)
     ON_MESSAGE(WM_MSGID(EID_USER_JOINED), &CAgoraQuickStartDlg::OnEIDUserJoined)
     ON_MESSAGE(WM_MSGID(EID_USER_OFFLINE), &CAgoraQuickStartDlg::OnEIDUserOffline)
 END_MESSAGE_MAP()
@@ -258,7 +231,27 @@ void CAgoraQuickStartDlg::OnSysCommand(UINT nID, LPARAM lParam) {
         CDialog::OnSysCommand(nID, lParam);
     }
 }
-// If the dialog box has a minimize button, the framework should draw the icon
+// If you add a minimize button to the dialog box, you need the following code
+// to draw the icon. For MFC applications using the document/view model, this is done automatically by the framework
+void CAgoraQuickStartDlg::OnPaint() {
+    if (IsIconic()) {
+        CPaintDC dc(this);
+        // Device context for drawing
+        SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()),0);
+        // Center the icon in the client rectangle
+        int cxIcon = GetSystemMetrics(SM_CXICON);
+        int cyIcon = GetSystemMetrics(SM_CYICON);
+        CRect rect;
+        GetClientRect(&rect);
+        int x = (rect.Width() - cxIcon + 1) / 2;
+        int y = (rect.Height() - cyIcon + 1) / 2;
+        // Draw the icon
+        dc.DrawIcon(x, y, m_hIcon);
+    } else {
+        CDialog::OnPaint();
+    }
+}
+
 // This function is called by the framework to obtain the cursor when the user drags the minimized window
 HCURSOR CAgoraQuickStartDlg::OnQueryDragIcon() {
     return static_cast<HCURSOR>(m_hIcon);
@@ -277,15 +270,19 @@ void CAgoraQuickStartDlg::OnBnClickedBtnJoin() {
         AfxMessageBox(_T("Fill channel name first"));
         return;
     }
-    ChannelMediaOptions option;
+    ChannelMediaOptions options;
     // Set channel profile to live broadcasting
-    option.channelProfile = CHANNEL_PROFILE_COMMUNICATION;
+    options.channelProfile = CHANNEL_PROFILE_COMMUNICATION;
     // Set user role to broadcaster
-    option.clientRoleType = CLIENT_ROLE_BROADCASTER;
+    options.clientRoleType = CLIENT_ROLE_BROADCASTER;
     // Automatically subscribe to audio streams in the channel
-    option.autoSubscribeAudio = true;
+    options.autoSubscribeAudio = true;
     // Automatically subscribe to video streams in the channel
-    option.autoSubscribeVideo = true;
+    options.autoSubscribeVideo = true;
+    // Publish the microphone track
+    options.publishMicrophoneTrack = true;
+    // Publish the camera track
+    options.publishCameraTrack = true;
     // Join the channel with the temporary token obtained from the Agora Console
     int ret = m_rtcEngine->joinChannel(token, cs2utf8(strChannelName).c_str(), 0, option);
     // Render local view
@@ -294,8 +291,12 @@ void CAgoraQuickStartDlg::OnBnClickedBtnJoin() {
     canvas.uid = 0;
     canvas.view = m_staLocal.GetSafeHwnd();
     m_rtcEngine->setupLocalVideo(canvas);
+    // Preview the local video
+    m_rtcEngine->startPreview();
 }
 void CAgoraQuickStartDlg::OnBnClickedBtnLeave() {
+    // Stop local video preview
+    m_rtcEngine->stopPreview();
     // Leave the channel
     m_rtcEngine->leaveChannel();
     // Clear local view
@@ -307,10 +308,6 @@ void CAgoraQuickStartDlg::OnBnClickedBtnLeave() {
 LRESULT CAgoraQuickStartDlg::OnEIDJoinChannelSuccess(WPARAM wParam, LPARAM lParam) {
     // Join channel success callback
     uid_t localUid = wParam;
-    return 0;
-}
-LRESULT CAgoraQuickStartDlg::OnEIDLeaveChannel(WPARAM wParam, LPARAM lParam) {
-    // Leave channel callback
     return 0;
 }
 LRESULT CAgoraQuickStartDlg::OnEIDUserJoined(WPARAM wParam, LPARAM lParam) {
@@ -339,10 +336,6 @@ LRESULT CAgoraQuickStartDlg::OnEIDUserOffline(WPARAM wParam, LPARAM lParam) {
     canvas.uid = remoteUid;
     m_rtcEngine->setupRemoteVideo(canvas);
     m_remoteRender = false;
-    return 0;
-}
-LRESULT CAgoraQuickStartDlg::OnEIDError(WPARAM wParam, LPARAM lParam) {
-    // Error callback
     return 0;
 }`}
 </CodeBlock>
@@ -412,8 +405,6 @@ BEGIN_MESSAGE_MAP(CAgoraQuickStartDlg, CDialog)
     ON_BN_CLICKED(ID_BTN_JOIN, &CAgoraQuickStartDlg::OnBnClickedBtnJoin)
     ON_BN_CLICKED(ID_BTN_LEAVE, &CAgoraQuickStartDlg::OnBnClickedBtnLeave)
     ON_MESSAGE(WM_MSGID(EID_JOIN_CHANNEL_SUCCESS), CAgoraQuickStartDlg::OnEIDJoinChannelSuccess)
-    ON_MESSAGE(WM_MSGID(EID_ERROR), &CAgoraQuickStartDlg::OnEIDError)
-    ON_MESSAGE(WM_MSGID(EID_LEAVE_CHANNEL), CAgoraQuickStartDlg::OnEIDLeaveChannel)
     ON_MESSAGE(WM_MSGID(EID_USER_JOINED), &CAgoraQuickStartDlg::OnEIDUserJoined)
     ON_MESSAGE(WM_MSGID(EID_USER_OFFLINE), &CAgoraQuickStartDlg::OnEIDUserOffline)
 END_MESSAGE_MAP()
@@ -470,7 +461,27 @@ void CAgoraQuickStartDlg::OnSysCommand(UINT nID, LPARAM lParam) {
         CDialog::OnSysCommand(nID, lParam);
     }
 }
-// If the dialog box has a minimize button, the framework should draw the icon
+// If you add a minimize button to the dialog box, you need the following code
+// to draw the icon. For MFC applications using the document/view model, this is done automatically by the framework
+void CAgoraQuickStartDlg::OnPaint() {
+    if (IsIconic()) {
+        CPaintDC dc(this);
+        // Device context for drawing
+        SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()),0);
+        // Center the icon in the client rectangle
+        int cxIcon = GetSystemMetrics(SM_CXICON);
+        int cyIcon = GetSystemMetrics(SM_CYICON);
+        CRect rect;
+        GetClientRect(&rect);
+        int x = (rect.Width() - cxIcon + 1) / 2;
+        int y = (rect.Height() - cyIcon + 1) / 2;
+        // Draw the icon
+        dc.DrawIcon(x, y, m_hIcon);
+    } else {
+        CDialog::OnPaint();
+    }
+}
+
 // This function is called by the framework to obtain the cursor when the user drags the minimized window
 HCURSOR CAgoraQuickStartDlg::OnQueryDragIcon() {
     return static_cast<HCURSOR>(m_hIcon);
@@ -489,18 +500,19 @@ void CAgoraQuickStartDlg::OnBnClickedBtnJoin() {
         AfxMessageBox(_T("Fill channel name first"));
         return;
     }
-    ChannelMediaOptions option;
+    
+    ChannelMediaOptions options;
     // Set channel profile to live broadcasting
-    option.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
+    options.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
     // Set user role to broadcaster; keep default value if setting user role to audience
-    option.clientRoleType = CLIENT_ROLE_BROADCASTER;
+    options.clientRoleType = CLIENT_ROLE_BROADCASTER;
     // Automatically subscribe to all audio streams
-    option.autoSubscribeAudio = true;
+    options.autoSubscribeAudio = true;
     // Automatically subscribe to all video streams
-    option.autoSubscribeVideo = true;
+    options.autoSubscribeVideo = true;
 
     // Specify the audio latency level
-    option.audienceLatencyLevel = AUDIENCE_LATENCY_LEVEL_LOW_LATENCY;
+    options.audienceLatencyLevel = AUDIENCE_LATENCY_LEVEL_LOW_LATENCY;
 
     // Join the channel with the temporary token obtained from the Agora Console
     int ret = m_rtcEngine->joinChannel(token, cs2utf8(strChannelName).c_str(), 0, option);
@@ -518,15 +530,13 @@ void CAgoraQuickStartDlg::OnBnClickedBtnLeave() {
     VideoCanvas canvas;
     canvas.uid = 0;
     m_rtcEngine->setupLocalVideo(canvas);
+    // Star the local video preview
+    m_rtcEngine->startPreview();
     m_remoteRender = false;
 }
 LRESULT CAgoraQuickStartDlg::OnEIDJoinChannelSuccess(WPARAM wParam, LPARAM lParam) {
     // Join channel success callback
     uid_t localUid = wParam;
-    return 0;
-}
-LRESULT CAgoraQuickStartDlg::OnEIDLeaveChannel(WPARAM wParam, LPARAM lParam) {
-    // Leave channel callback
     return 0;
 }
 LRESULT CAgoraQuickStartDlg::OnEIDUserJoined(WPARAM wParam, LPARAM lParam) {
@@ -542,6 +552,8 @@ LRESULT CAgoraQuickStartDlg::OnEIDUserJoined(WPARAM wParam, LPARAM lParam) {
     canvas.view = m_staRemote.GetSafeHwnd();
     m_rtcEngine->setupRemoteVideo(canvas);
     m_remoteRender = true;
+    // Stop the local video preview
+    m_rtcEngine->stopPreview();
     return 0;
 }
 LRESULT CAgoraQuickStartDlg::OnEIDUserOffline(WPARAM wParam, LPARAM lParam) {
@@ -555,10 +567,6 @@ LRESULT CAgoraQuickStartDlg::OnEIDUserOffline(WPARAM wParam, LPARAM lParam) {
     canvas.uid = remoteUid;
     m_rtcEngine->setupRemoteVideo(canvas);
     m_remoteRender = false;
-    return 0;
-}
-LRESULT CAgoraQuickStartDlg::OnEIDError(WPARAM wParam, LPARAM lParam) {
-    // Error callback
     return 0;
 }`}
 </CodeBlock>
@@ -628,8 +636,6 @@ BEGIN_MESSAGE_MAP(CAgoraQuickStartDlg, CDialog)
     ON_BN_CLICKED(ID_BTN_JOIN, &CAgoraQuickStartDlg::OnBnClickedBtnJoin)
     ON_BN_CLICKED(ID_BTN_LEAVE, &CAgoraQuickStartDlg::OnBnClickedBtnLeave)
     ON_MESSAGE(WM_MSGID(EID_JOIN_CHANNEL_SUCCESS), CAgoraQuickStartDlg::OnEIDJoinChannelSuccess)
-    ON_MESSAGE(WM_MSGID(EID_ERROR), &CAgoraQuickStartDlg::OnEIDError)
-    ON_MESSAGE(WM_MSGID(EID_LEAVE_CHANNEL), CAgoraQuickStartDlg::OnEIDLeaveChannel)
     ON_MESSAGE(WM_MSGID(EID_USER_JOINED), &CAgoraQuickStartDlg::OnEIDUserJoined)
     ON_MESSAGE(WM_MSGID(EID_USER_OFFLINE), &CAgoraQuickStartDlg::OnEIDUserOffline)
 END_MESSAGE_MAP()
@@ -686,7 +692,27 @@ void CAgoraQuickStartDlg::OnSysCommand(UINT nID, LPARAM lParam) {
         CDialog::OnSysCommand(nID, lParam);
     }
 }
-// If the dialog box has a minimize button, the framework should draw the icon
+// If you add a minimize button to the dialog box, you need the following code
+// to draw the icon. For MFC applications using the document/view model, this is done automatically by the framework
+void CAgoraQuickStartDlg::OnPaint() {
+    if (IsIconic()) {
+        CPaintDC dc(this);
+        // Device context for drawing
+        SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()),0);
+        // Center the icon in the client rectangle
+        int cxIcon = GetSystemMetrics(SM_CXICON);
+        int cyIcon = GetSystemMetrics(SM_CYICON);
+        CRect rect;
+        GetClientRect(&rect);
+        int x = (rect.Width() - cxIcon + 1) / 2;
+        int y = (rect.Height() - cyIcon + 1) / 2;
+        // Draw the icon
+        dc.DrawIcon(x, y, m_hIcon);
+    } else {
+        CDialog::OnPaint();
+    }
+}
+
 // This function is called by the framework to obtain the cursor when the user drags the minimized window
 HCURSOR CAgoraQuickStartDlg::OnQueryDragIcon() {
     return static_cast<HCURSOR>(m_hIcon);
@@ -705,18 +731,18 @@ void CAgoraQuickStartDlg::OnBnClickedBtnJoin() {
         AfxMessageBox(_T("Fill channel name first"));
         return;
     }
-    ChannelMediaOptions option;
+    ChannelMediaOptions options;
     // Set channel profile to live broadcasting
-    option.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
+    options.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
     // Set user role to broadcaster; keep default value if setting user role to audience
-    option.clientRoleType = CLIENT_ROLE_BROADCASTER;
+    options.clientRoleType = CLIENT_ROLE_BROADCASTER;
     // Automatically subscribe to all audio streams
-    option.autoSubscribeAudio = true;
+    options.autoSubscribeAudio = true;
     // Automatically subscribe to all video streams
-    option.autoSubscribeVideo = true;
+    options.autoSubscribeVideo = true;
 
     // Specify the audio latency level
-    option.audienceLatencyLevel = AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY;
+    options.audienceLatencyLevel = AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY;
 
     // Join the channel with the temporary token obtained from the Agora Console
     int ret = m_rtcEngine->joinChannel(token, cs2utf8(strChannelName).c_str(), 0, option);
@@ -726,6 +752,8 @@ void CAgoraQuickStartDlg::OnBnClickedBtnJoin() {
     canvas.uid = 0;
     canvas.view = m_staLocal.GetSafeHwnd();
     m_rtcEngine->setupLocalVideo(canvas);
+    // Start the local video preview
+    m_rtcEngine->startPreview();
 }
 void CAgoraQuickStartDlg::OnBnClickedBtnLeave() {
     // Leave the channel
@@ -734,15 +762,13 @@ void CAgoraQuickStartDlg::OnBnClickedBtnLeave() {
     VideoCanvas canvas;
     canvas.uid = 0;
     m_rtcEngine->setupLocalVideo(canvas);
+    // Stop the local video preview
+    m_rtcEngine->stopPreview();
     m_remoteRender = false;
 }
 LRESULT CAgoraQuickStartDlg::OnEIDJoinChannelSuccess(WPARAM wParam, LPARAM lParam) {
     // Join channel success callback
     uid_t localUid = wParam;
-    return 0;
-}
-LRESULT CAgoraQuickStartDlg::OnEIDLeaveChannel(WPARAM wParam, LPARAM lParam) {
-    // Leave channel callback
     return 0;
 }
 LRESULT CAgoraQuickStartDlg::OnEIDUserJoined(WPARAM wParam, LPARAM lParam) {
@@ -771,10 +797,6 @@ LRESULT CAgoraQuickStartDlg::OnEIDUserOffline(WPARAM wParam, LPARAM lParam) {
     canvas.uid = remoteUid;
     m_rtcEngine->setupRemoteVideo(canvas);
     m_remoteRender = false;
-    return 0;
-}
-LRESULT CAgoraQuickStartDlg::OnEIDError(WPARAM wParam, LPARAM lParam) {
-    // Error callback
     return 0;
 }`}
 </CodeBlock>
@@ -857,8 +879,6 @@ BEGIN_MESSAGE_MAP(CAgoraQuickStartDlg, CDialog)
     ON_BN_CLICKED(ID_BTN_JOIN, &CAgoraQuickStartDlg::OnBnClickedBtnJoin)
     ON_BN_CLICKED(ID_BTN_LEAVE, &CAgoraQuickStartDlg::OnBnClickedBtnLeave)
     ON_MESSAGE(WM_MSGID(EID_JOIN_CHANNEL_SUCCESS), &CAgoraQuickStartDlg::OnEIDJoinChannelSuccess)
-    ON_MESSAGE(WM_MSGID(EID_ERROR), &CAgoraQuickStartDlg::OnEIDError)
-    ON_MESSAGE(WM_MSGID(EID_LEAVE_CHANNEL), &CAgoraQuickStartDlg::OnEIDLeaveChannel)
     ON_MESSAGE(WM_MSGID(EID_USER_JOINED), &CAgoraQuickStartDlg::OnEIDUserJoined)
     ON_MESSAGE(WM_MSGID(EID_USER_OFFLINE), &CAgoraQuickStartDlg::OnEIDUserOffline)
 END_MESSAGE_MAP()
@@ -926,12 +946,31 @@ void CAgoraQuickStartDlg::OnSysCommand(UINT nID, LPARAM lParam)
     }
 }
 
-// If you add a minimize button to your dialog, you will need the code below
+// If you add a minimize button to the dialog box, you need the following code
+// to draw the icon. For MFC applications using the document/view model, this is done automatically by the framework
+void CAgoraQuickStartDlg::OnPaint() {
+    if (IsIconic()) {
+        CPaintDC dc(this);
+        // Device context for drawing
+        SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()),0);
+        // Center the icon in the client rectangle
+        int cxIcon = GetSystemMetrics(SM_CXICON);
+        int cyIcon = GetSystemMetrics(SM_CYICON);
+        CRect rect;
+        GetClientRect(&rect);
+        int x = (rect.Width() - cxIcon + 1) / 2;
+        int y = (rect.Height() - cyIcon + 1) / 2;
+        // Draw the icon
+        dc.DrawIcon(x, y, m_hIcon);
+    } else {
+        CDialog::OnPaint();
+    }
+}
+
 //  to draw the icon. For MFC applications using the document/view model,
 //  this is automatically done for you by the framework.
 
-void CAgoraQuickStartDlg::OnPaint()
-{
+void CAgoraQuickStartDlg::OnPaint() {
     if (IsIconic())
     {
         CPaintDC dc(this); // Device context for painting
@@ -981,13 +1020,15 @@ void CAgoraQuickStartDlg::OnBnClickedBtnJoin()
         return;
     }
 
-    ChannelMediaOptions option;
+    ChannelMediaOptions options;
     // Set channel profile to live broadcasting
-    option.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
+    options.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
     // Set user role to broadcaster
-    option.clientRoleType = CLIENT_ROLE_BROADCASTER;
+    options.clientRoleType = CLIENT_ROLE_BROADCASTER;
     // Auto subscribe to all audio streams in the channel
-    option.autoSubscribeAudio = true;
+    options.autoSubscribeAudio = true;
+    // Publish the microphone track
+    options.publishMicrophoneTrack = true;
     // Fill in your temporary Token from the console to join the channel
     m_rtcEngine->joinChannel(token, cs2utf8(strChannelName).c_str(), 0, option);
 
@@ -1006,11 +1047,6 @@ LRESULT CAgoraQuickStartDlg::OnEIDJoinChannelSuccess(WPARAM wParam, LPARAM lPara
     return 0;
 }
 
-LRESULT CAgoraQuickStartDlg::OnEIDLeaveChannel(WPARAM wParam, LPARAM lParam) {
-    // Callback for leaving channel
-    return 0;
-}
-
 LRESULT CAgoraQuickStartDlg::OnEIDUserJoined(WPARAM wParam, LPARAM lParam) {
     // Callback for remote user join
     uid_t remoteUid = wParam;
@@ -1020,12 +1056,6 @@ LRESULT CAgoraQuickStartDlg::OnEIDUserJoined(WPARAM wParam, LPARAM lParam) {
 LRESULT CAgoraQuickStartDlg::OnEIDUserOffline(WPARAM wParam, LPARAM lParam) {
     // Callback for remote user leaving
     uid_t remoteUid = wParam;
-    return 0;
-}
-
-
-LRESULT CAgoraQuickStartDlg::OnEIDError(WPARAM wParam, LPARAM lParam) {
-    // Error callback
     return 0;
 }`}
 </CodeBlock>
@@ -1061,6 +1091,10 @@ if (ret == 0) {
 }
 ```
 
+<Admonition type="caution" title="Note">
+Before initializing the SDK, ensure that the user fully understands and agrees to the relevant privacy policy.
+</Admonition>
+
 ### Setup an event handler
 
 Add callbacks to receive notification of users joining and leaving the channel.
@@ -1069,7 +1103,7 @@ Add callbacks to receive notification of users joining and leaving the channel.
 class CAgoraQuickStartRtcEngineEventHandler : public IRtcEngineEventHandler {
 public:
     // Register onJoinChannelSuccess callback
-    // Triggered when the local user successfully joins the channel
+    // This callback is triggered when the local user successfully joins the channel
     virtual void onJoinChannelSuccess(const char* channel, uid_t uid, int elapsed) {
         if (m_hMsgHanlder) {
             ::PostMessage(m_hMsgHanlder, WM_MSGID(EID_JOIN_CHANNEL_SUCCESS), uid, 0);
@@ -1077,7 +1111,7 @@ public:
     }
 
     // Register onUserJoined callback
-    // Triggered when a remote user successfully joins the channel
+    // This callback is triggered when a remote broadcaster successfully joins the channel
     virtual void onUserJoined(uid_t uid, int elapsed) {
         if (m_hMsgHanlder) {
             ::PostMessage(m_hMsgHanlder, WM_MSGID(EID_USER_JOINED), uid, 0);
@@ -1085,28 +1119,10 @@ public:
     }
 
     // Register onUserOffline callback
-    // Triggered when a remote user leaves the channel or goes offline
+    // This callback is triggered when a remote broadcaster leaves the channel or goes offline
     virtual void onUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason) {
         if (m_hMsgHanlder) {
             ::PostMessage(m_hMsgHanlder, WM_MSGID(EID_USER_OFFLINE), uid, 0);
-        }
-    }
-
-    // Register onLeaveChannel callback
-    // Triggered when the local user successfully leaves the channel
-    virtual void onLeaveChannel(const RtcStats& stats) {
-        if (m_hMsgHanlder) {
-            ::PostMessage(m_hMsgHanlder, WM_MSGID(EID_LEAVE_CHANNEL), 0, 0);
-        }
-    }
-
-    // Register onError callback
-    // Triggered when an error occurs during SDK runtime
-    virtual void onError(int err, const char* msg) {
-        if (m_hMsgHanlder) {
-            char* message = new char[1024] {0};
-            memcpy(message, msg, strlen(msg));
-            ::PostMessage(m_hMsgHanlder, WM_MSGID(EID_ERROR), (WPARAM)message, err);
         }
     }
 
@@ -1117,7 +1133,10 @@ private:
 <ProductWrapper notAllowed="voice-calling">
 
 ### Enable the video module
-To enable the video module, call `enableVideo`.
+
+1. Call the `enableVideo` method to enable the video module.
+1. Call `setupLocalVideo` to initialize the local view and set the local video display properties.
+1. Call the `startPreview` method to start the local video preview.
 
 ```cpp
 m_rtcEngine->enableVideo();
@@ -1137,35 +1156,44 @@ canvas.uid = 0;
 // Video display window
 canvas.view = m_staLocal.GetSafeHwnd();
 m_rtcEngine->setupLocalVideo(canvas);
+// Preview the local video
+m_rtcEngine->startPreview();
 ```
 </ProductWrapper>
 
 ### Join a channel
 
-Set the channel name and user role, and use a temporary token to join a channel.
+Call the `joinChannel`[2/2] method, fill in the temporary token obtained from the console, the channel name used when obtaining the token, and set the user role.
+
 <ProductWrapper product="video-calling">
 
 ```cpp
 void CAgoraQuickStartDlg::OnBnClickedBtnJoin() {
     CString strChannelName;
-    // Get channel name
+    // Get the channel name
     m_edtChannelName.GetWindowText(strChannelName);
     if (strChannelName.IsEmpty()) {
         AfxMessageBox(_T("Fill channel name first"));
         return;
     }
 
-    ChannelMediaOptions option;
-    // Set channel profile to live broadcasting
-    option.channelProfile = CHANNEL_PROFILE_COMMUNICATION;
-    // Set user role to broadcaster; keep default value if setting user role to audience
-    option.clientRoleType = CLIENT_ROLE_BROADCASTER;
+    ChannelMediaOptions options;
+    // Set the channel profile to live broadcasting
+    options.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
+    // Set the user role to broadcaster; to set the user role as audience, keep the default value
+    options.clientRoleType = CLIENT_ROLE_BROADCASTER;
+    // Publish the audio stream captured by the microphone
+    options.publishMicrophoneTrack = true;
     // Automatically subscribe to all audio streams
-    option.autoSubscribeAudio = true;
-    // Automatically subscribe to all video streams
-    option.autoSubscribeVideo = true;
-    // Fill in your temporary token obtained from the Agora Console to join the channel
+    // Publish the microphone track
+    options.publishMicrophoneTrack = true;
+    // Publish the camera track
+    options.publishCameraTrack = true;
+    options.autoSubscribeAudio = true;
+    options.autoSubscribeVideo = true;
+    // Join the channel using the temporary token obtained from the console
     m_rtcEngine->joinChannel(token, cs2utf8(strChannelName).c_str(), 0, option);
+
 }
 ```
 </ProductWrapper>
@@ -1189,18 +1217,22 @@ void CAgoraQuickStartDlg::OnBnClickedBtnJoin() {
         return;
     }
 
-    ChannelMediaOptions option;
+    ChannelMediaOptions options;
     // Set channel profile to live broadcasting
-    option.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
+    options.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
     // Set user role to broadcaster; keep default value if setting user role to audience
-    option.clientRoleType = CLIENT_ROLE_BROADCASTER;
+    options.clientRoleType = CLIENT_ROLE_BROADCASTER;
+    // Publish the local video track
+    options.publishMicrophoneTrack = true;
+    // Publish the camera track
+    options.publishCameraTrack = true;
     // Automatically subscribe to all audio streams
-    option.autoSubscribeAudio = true;
+    options.autoSubscribeAudio = true;
     // Automatically subscribe to all video streams
-    option.autoSubscribeVideo = true;
+    options.autoSubscribeVideo = true;
 
     // Specify the audio latency level
-    option.audienceLatencyLevel = AUDIENCE_LATENCY_LEVEL_LOW_LATENCY;
+    options.audienceLatencyLevel = AUDIENCE_LATENCY_LEVEL_LOW_LATENCY;
 
     // Fill in your temporary token obtained from the Agora Console to join the channel
     m_rtcEngine->joinChannel(token, cs2utf8(strChannelName).c_str(), 0, option);
@@ -1227,18 +1259,22 @@ void CAgoraQuickStartDlg::OnBnClickedBtnJoin() {
         return;
     }
 
-    ChannelMediaOptions option;
+    ChannelMediaOptions options;
     // Set channel profile to live broadcasting
-    option.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
+    options.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
     // Set user role to broadcaster; keep default value if setting user role to audience
-    option.clientRoleType = CLIENT_ROLE_BROADCASTER;
+    options.clientRoleType = CLIENT_ROLE_BROADCASTER;
+    // Publish the microphone track
+    options.publishMicrophoneTrack = true;
+    // Publish the camera track
+    options.publishCameraTrack = true;
     // Automatically subscribe to all audio streams
-    option.autoSubscribeAudio = true;
+    options.autoSubscribeAudio = true;
     // Automatically subscribe to all video streams
-    option.autoSubscribeVideo = true;
+    options.autoSubscribeVideo = true;
 
     // Specify the audio latency level
-    option.audienceLatencyLevel = AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY;
+    options.audienceLatencyLevel = AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY;
 
     // Fill in your temporary token obtained from the Agora Console to join the channel
     m_rtcEngine->joinChannel(token, cs2utf8(strChannelName).c_str(), 0, option);
@@ -1259,13 +1295,15 @@ void CAgoraQuickStartDlg::OnBnClickedBtnJoin()
         return;
     }
 
-    ChannelMediaOptions option;
+    ChannelMediaOptions options;
     // Set the channel profile to live broadcasting
-    option.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
+    options.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
     // Set the user role as broadcaster; keep the default value if you want to set the user role as audience
-    option.clientRoleType = CLIENT_ROLE_BROADCASTER;
+    options.clientRoleType = CLIENT_ROLE_BROADCASTER;
+    // Publish the microphone track
+    options.publishMicrophoneTrack = true;
     // Automatically subscribe to all audio streams
-    option.autoSubscribeAudio = true;
+    options.autoSubscribeAudio = true;
     // Fill in the temporary token you obtained from the console to join the channel
     m_rtcEngine->joinChannel(token, cs2utf8(strChannelName).c_str(), 0, option);
 }
@@ -1306,6 +1344,8 @@ When a user ends a call, closes the <Vpl k="CLIENT"/>, or switches the <Vpl k="C
 
 ```cpp
 void CAgoraQuickStartDlg::OnBnClickedBtnLeave() {
+    // Stop local video preview
+    m_rtcEngine->stopPreview();
     // Leave the channel
     m_rtcEngine->leaveChannel();
 

@@ -21,7 +21,7 @@ The unit prices for whiteboard features are as follows:
         <tr>
             <th>Whiteboard feature</th>
             <th>Volume</th>
-            <th>Pricing per volume/month</th>
+            <th>Pricing volume/month</th>
             <th>Pricing per PCW/month</th>
         </tr>
     </thead>
@@ -52,7 +52,7 @@ The unit prices for whiteboard features are as follows:
             <td rowspan="3">File conversion</td>
             <td>0 - 1,000 images/web pages</td>
             <td>Free</td>
-            <td rowspan="3">$450/PCW</td>
+            <td rowspan="3">$499/PCW with unlimited usage  (number of images or webpages converted)</td>
         </tr>
         <tr>
             <td>Static file conversion (to image)</td>
@@ -64,6 +64,12 @@ The unit prices for whiteboard features are as follows:
         </tr>
     </tbody>
 </table>
+
+<Admonition>
+* Use the <Vg k="CONSOLE" /> to choose the file-conversion pricing model.
+
+* The default PCW cap is 5 PCW/VID. Adjust the maximum number of PCW/VID/WB server through the <Vg k="CONSOLE" />. ​
+</Admonition>
 
 If your scenario involves other Agora products or services, such as the <Vg k="VIDEO" />, <Vg k="MESS" />, or <Vg k="CREC" />, expect additional charges for these products or services. For details, see the pricing policy for each Agora product or service.
 

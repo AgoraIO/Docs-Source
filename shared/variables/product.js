@@ -1,6 +1,7 @@
 const data = {
     'video-calling': {
     NAME: 'Video Calling',
+    SDK_LITE: 'Lite SDK',
     PATH: 'video-calling',
     SDK: 'Video SDK',
     PRODUCT: 'Video Calling',
@@ -19,6 +20,7 @@ const data = {
 
   'interactive-live-streaming': {
     NAME: 'Interactive Live Streaming',
+    SDK_LITE: 'Lite SDK',
     PATH: 'interactive-live-streaming',
     SDK: 'Video SDK',
     PRODUCT: 'Interactive Live Streaming',
@@ -70,6 +72,7 @@ const data = {
 
   'broadcast-streaming': {
     NAME: 'Broadcast Streaming',
+    SDK_LITE: 'Lite SDK',
     PATH: 'broadcast-streaming',
     SDK: 'Video SDK',
     PRODUCT: 'Broadcast Streaming',

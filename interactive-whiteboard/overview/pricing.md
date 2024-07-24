@@ -21,7 +21,7 @@ The unit prices for whiteboard features are as follows:
         <tr>
             <th>Whiteboard feature</th>
             <th>Volume</th>
-            <th>Pricing volume/month</th>
+            <th>Pricing per volume/month</th>
             <th>Pricing per PCW/month</th>
         </tr>
     </thead>
@@ -52,7 +52,7 @@ The unit prices for whiteboard features are as follows:
             <td rowspan="3">File conversion</td>
             <td>0 - 1,000 images/web pages</td>
             <td>Free</td>
-            <td rowspan="3">$499/PCW with unlimited usage  (number of images or webpages converted)</td>
+            <td rowspan="3">$499/PCW</td>
         </tr>
         <tr>
             <td>Static file conversion (to image)</td>
@@ -64,12 +64,6 @@ The unit prices for whiteboard features are as follows:
         </tr>
     </tbody>
 </table>
-
-<Admonition>
-* Use the <Vg k="CONSOLE" /> to choose the file-conversion pricing model.
-
-* The default PCW cap is 5 PCW/VID. Adjust the maximum number of PCW/VID/WB server through the <Vg k="CONSOLE" />. ​
-</Admonition>
 
 If your scenario involves other Agora products or services, such as the <Vg k="VIDEO" />, <Vg k="MESS" />, or <Vg k="CREC" />, expect additional charges for these products or services. For details, see the pricing policy for each Agora product or service.
 
@@ -113,15 +107,17 @@ The usage duration is calculated in minutes.
 
 <Vg k="COMPANY" /> calculates the number of files converted to images/web pages per month and applies the unit prices specified in the table below. In this model, only 1 conversion task can be running while the rest are queued. 
 
+<Vg k="COMPANY" /> does not charge for a failed file conversion task. 
+You can call the [Query file conversion progress](../reference/whiteboard-api/file-conversion#query-the-progress-of-a-file-conversion-task) 
+API to get the result of a file conversion task. 
+
 #### Per Peak Concurrent Workers
 
 **Peak Concurrent Workers (PCW)** are the maximum number of file conversion tasks that Interactive Whiteboard servers can process simultaneously for each project. The unit pricing is per PCW per month, with an unlimited number of files that can be converted to images or web pages. If you set PCW to 2 or 3, this means you will be able to run up to 2 or 3 conversion tasks at the same time, respectively. The hard cap on the PCW used in this model is set to 5 per project, with the ability to adjust it in the <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>. 
 
 At that, if you use less PCW during the month, <Vg k="COMPANY" /> will bill only for the actual PCW usage. Your PCW usage depends on the frequency of requests submitted to our servers and the file size. It increases when the service is processing existing file conversion tasks and a new task is submitted.
 
-<Vg k="COMPANY" /> does not charge for a failed file conversion task. 
-You can call the [Query file conversion progress](../reference/whiteboard-api/file-conversion#query-the-progress-of-a-file-conversion-task) 
-API to get the result of a file conversion task. 
+
 
 ## Examples
 

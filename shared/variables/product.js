@@ -12,6 +12,7 @@ const data = {
 
   'voice-calling': {
     NAME: 'Voice Calling',
+    SDK_LITE: 'Lite SDK',
     PATH: 'voice-calling',
     SDK: 'Voice SDK',
     PRODUCT: 'Voice Calling',

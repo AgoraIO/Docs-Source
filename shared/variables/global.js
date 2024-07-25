@@ -173,7 +173,6 @@ export const TEMPL = 'Templates';
 
 export const RTEE = 'Extensions';
 export const RTEE_BEAUTY = 'Beauty Effect';
-export const RTEE_CLARITY = 'Super Clarity';
 export const RTEE_COMPOSITOR = 'Video Compositor';
 export const RTEE_DRM = `${COMPANY} DRM`;
 export const RTEE_DRM_FRAMEWORK = `AgoraDrmLoader.framework`;

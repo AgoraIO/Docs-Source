@@ -1,125 +1,119 @@
 <PlatformWrapper platform="windows">
 
-### Implement a user interface
+### Spatial audio effects for users
 
-In a real-word application, you report your local spatial position to a server in your environment and retrieve positions of remote users in the channel from your server. In this page, you use a single [CSliderCtrl](https://learn.microsoft.com/en-us/cpp/mfc/reference/csliderctrl-class?view=msvc-170) to set the spatial position of a remote user.
+To implement this workflow, take the following steps:
 
-To add the slider to the UI, do the following:
-    
-    1. Go to menu **View** > **Other Windows** > **Resource View**.
-        
-        If the **Resource View** window isn't the top-most window, select the **Resource View** tab to bring it to the top.
+1.  Initialize an `IRtcEngine` instance by calling its `createAgoraRtcEngine` and `initialize` methods with your app ID.
+1.  To initialize an instance of the `ILocalSpatialAudioEngine` class, call its `initialize` method.
+1.  To configure audio settings, call `setAudioProfile` and set the `profile` to `AUDIO_PROFILE_DEFAULT` and the scenario to `AUDIO_SCENARIO_GAME_STREAMING`.
+1.  Join a channel using an RTC token by calling `joinChannel`. Configure `options` to set the `channelProfile` to `CHANNEL_PROFILE_LIVE_BROADCASTING` and the `clientRoleType` to `CLIENT_ROLE_BROADCASTER`.
+1.  By default, <Vpd k="SDK" /> automatically subscribes to all remote audio streams. Unsubscribe from all streams by calling `muteAllRemoteAudioStreams(true)` on the `IRtcEngine` instance. This is necessary to set the audio receiving range in the next step or the changes won't apply.
+1.  Adjust the audio receiving range as follows:
 
-    1. In **Resource View**, go to **AgoraImplementation.rc** > **Dialog** and double-click `IDD_AGORAIMPLEMENTATION_DIALOG`.
-        
-        The resource opens inside the **Dialog Editor**. 
-    
-    1. Click **View** > **ToolBox**. The **Toolbox** opens.
+    1. Use `setMaxAudioRecvCount` to limit the number of receivable audio streams.
+    1. Call `setAudioRecvRange` to define the range in meters.
+    1. Call `setDistanceUnit` to specify the game engine's unit distance in meters.
 
-    1. From **ToolBox**, drag **Slider** to the surface of the **Dialog Editor**.
+1. To experience spatial audio, update local and remote user spatial positions using `updateSelfPosition` and `updateRemotePosition` respectively.
+1. To stop using spatial audio, remove all remote spatial positions by calling`clearRemotePositions`. This method renders remote users inaudible to the local user.
+1. Finalize the `ILocalSpatialAudioEngine` instance by calling its `release` method.
+    <Admonition type="caution" title="Note">
+    You must destroy the `ILocalSpatialAudioEngine` object before you `release` the `IRtcEngine` instance.
+    </Admonition>
+1. Exit the channel using `leaveChannel` and `release` the `IRtcEngine` instance.
 
-       Adjust the slider position as needed.
+### Spatial audio effects for media player
 
-### Handle the system logic
+To set up a spatial audio effect for media player:
 
-1. **Add the required libraries**
+1. Follow the procedure to set up an instance of `IRtcEngine` and `ILocalSpatialAudioEngine` as for the users implementation described in the previous section. 
 
-    To set up and configure an instance of the spatial audio engine, import the corresponding <Vg k="COMPANY" /> libraries. In `AgoraImplementationDlg.h`, add the following header file before `AgoraEventHandler`:
+1. Update the local user and media player spatial positions using `updateSelfPosition` and `updatePlayerPositionInfo` to experience spatial audio.
 
-    ```cpp
-    #include "IAgoraSpatialAudio.h"
-    ```
+To implement spatial audio effects for media player using a local Cartesian coordinate system calculation scheme, refer to the following example:
 
-### Implement spatial audio
+```cpp
+bool CAgoraSpatialAudioDlg::InitAgora() {
+    // Create IRtcEngine 
+    m_rtcEngine = createAgoraRtcEngine();
 
-To implement these features in your <Vpl k="CLIENT" />, take the following steps:
+    RtcEngineContext context;
+    std::string strAppID = GET_APP_ID;
+    context.appId = strAppID.c_str();
+    context.eventHandler = &m_eventHandler;
+    // Initialize IRtcEngine
+    int ret = m_rtcEngine->initialize(context);
 
-1. **Declare the variables you need**
+    // Set channel profile
+    m_rtcEngine->setChannelProfile(CHANNEL_PROFILE_LIVE_BROADCASTING);
+    // Set user role
+    m_rtcEngine->setClientRole(CLIENT_ROLE_BROADCASTER);
+    // Join channel
+    ChannelMediaOptions options;
+    options.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
+    options.clientRoleType = CLIENT_ROLE_BROADCASTER;
+    m_rtcEngine->joinChannel("Your token", szChannelId.c_str(), 0, options);
+    // Enable spatial audio
+    m_rtcEngine->enableSpatialAudio(true);
+}
 
-    You create an instance of `ILocalSpatialAudioEngine` to configure spatial audio and set self and remote user positions. In `AgoraImplementationDlg.h`, add the following to `CAgoraImplementationDlg`:
+void CAgoraSpatialAudioDlg::UnInitAgora() {
+    if (m_rtcEngine) {
+        if (m_joinChannel)
+            // Leave channel
+            m_joinChannel = !m_rtcEngine->leaveChannel();
+        // Destroy IRtcEngine
+        m_rtcEngine->release(true);
+        m_rtcEngine = NULL;
+    }
+}
 
-    ```cpp
-    ILocalSpatialAudioEngine* localSpatial;
-    BOOL isSpatialAudio = false;
-    CSliderCtrl* distnaceBar;
-    ```
+// Enable spatial audio for media player
+void CAgoraSpatialAudioDlg::SetSpatialAudioParam() {
+    POINT ptLocal = {rcLocal.left + localWidth / 2.0f, 
+                     rcLocal.top + localWidth / 2.0f};
+    POINT ptRemote = {rcRemote.left + remoteWidth / 2.0f, 
+                      rcRemote.top + remoteWidth / 2.0f};
 
-1. **Instantiate and configure the spatial audio engine**
+    SpatialAudioParams spatial_audio_params;
+    int deltaX = ptRemote.x - ptLocal.x;
+    int deltaY = ptLocal.y - ptRemote.y;
 
-    To create an instance of `ILocalSpatialAudioEngine` at startup take the following steps:
-    <ProductWrapper notAllowed = "voice-calling">
-    1. Setup a method to configure the spatial audio engine. In `AgoraImplementationDlg.h`, add the following to `CAgoraImplementationDlg` before `void setupVideoSDKEngine();`:
-        ```cpp
-        void configureSpatialAudioEngine();
-        ```
-    </ProductWrapper>
-    <ProductWrapper product = "voice-calling">
-    1. Setup a method to configure the spatial audio engine. In `AgoraImplementationDlg.h`, add the following to `CAgoraImplementationDlg` before `void setupVoiceSDKEngine();`:
+    int tanAngle = 0;
+    float tanValue = 1;
+    if (deltaX == 0) {
+        if (deltaY > 0)
+            tanAngle = 360;
+        else if (deltaY < 0)
+            tanAngle = 180;
+    } else {
+        tanValue = fabs(deltaY) / fabs(deltaX);
+        tanAngle = atan(tanValue) * 180.0 / 3.1415926;
+    }
 
-        ```cpp
-        void configureSpatialAudioEngine();
-        ```
-    </ProductWrapper>
+    int spatialAngle = 0.0;
+    if (deltaX > 0 && deltaY > 0) {
+        spatialAngle = 270.0 + tanAngle;
+    } else if (deltaX < 0 && deltaY > 0) {
+        spatialAngle = 90.0 - tanAngle;
+    } else if (deltaX < 0 && deltaY < 0) {
+        spatialAngle = 90.0 + tanAngle;
+    } else if (deltaX > 0 && deltaY < 0) {
+        spatialAngle = 270.0 - tanAngle;
+    }
 
-    1. When a user launches the <Vpl k="CLIENT" />, you create an instance of `ILocalSpatialAudioEngine`, configure it and update the user's self position. To do this, add the following method to `AgoraImplementationDlg.cpp` before `DoDataExchange`:
-
-        ```cpp
-        void CAgoraImplementationDlg::configureSpatialAudioEngine() 
-        {
-            distnaceBar = (CSliderCtrl*)GetDlgItem(IDC_SLIDER1);
-            distnaceBar->SetRange(0, (int)10, TRUE);
-            LocalSpatialAudioConfig localSpatialAudioConfig;
-            localSpatialAudioConfig.rtcEngine = agoraEngine;
-            agoraEngine->queryInterface(AGORA_IID_LOCAL_SPATIAL_AUDIO, (void**)&localSpatial);
-            localSpatial->initialize(localSpatialAudioConfig);
-            // Set the audio reception range, in meters, of the local user
-            localSpatial->setAudioRecvRange(50);
-            // Set the length, in meters, of unit distance
-            localSpatial->setDistanceUnit(1);
-            
-            // Update self position
-            float pos[] = {1.0F, 1.0F, 1.0F};
-            float forward[] = {1.0F, 0.0F, 0.0F};
-            float right[] = {0.0F, 1.0F, 0.0F};
-            float up[] = {0.0F, 0.0F, 1.0F};
-            localSpatial->updateSelfPosition(pos, forward, right, up);
-        }
-        ```
-
-    1. To execute this method at startup, in `AgoraImplementationDlg.cpp`, add the following line after `setupVideoSDKEngine();` to the `OnInitDialogs` method:
-
-        ```cpp
-        configureSpatialAudioEngine();
-        ```
-
-1. **Set the spatial position of a remote user**
-
-    When a user moves the slider, you create a `RemoteVoicePositionInfo` object and specify information about the position and orientation of the remote user audio stream. Then, you call `updateRemotePosition` with the `RemoteVoicePositionInfo` object and `remoteUId` to update the remote user spatial audio position. To implement this workflow, in **Dialog Editor**, double-click the slider control. **Dialog Editor** automatically set up an event listener for you. Add the following code to the event listener you just created:
-
-        ```cpp
-        int value = distnaceBar->GetPos();
-        if (remoteUId == NULL)
-        {
-            OutputDebugStringW(L"No remote user in the channel\n");
-            return;
-        }
-        RemoteVoicePositionInfo positionInfo;
-        // Set the coordinates in the world coordinate system.
-        // This parameter is an array of length 3
-        // The three values represent the front, right, and top coordinates
-        // Set the unit vector of the x axis in the coordinate system.
-        positionInfo.position[0] = value;
-        positionInfo.position[1] = 1.0;
-        positionInfo.position[2] = 1.0;
-        // This parameter is an array of length 3,
-        // The three values represent the front, right, and top coordinates
-        positionInfo.forward[0] = value;
-        positionInfo.forward[1] = 0.0;
-        positionInfo.forward[2] = 0.0;
-        // Update the spatial position of the specified remote user
-        localSpatial->updateRemotePosition(remoteUId, positionInfo);
-        ```
-
-Spatial audio functionality is currently available as beta.
+    CString str;
+    str.Format(_T("%d\n"), spatialAngle);
+    OutputDebugString(str);
+    int spatialDistance = 
+        sqrt(deltaX * deltaX + deltaY * deltaY) / distanceRate;
+    spatial_audio_params.speaker_distance = 0;
+    spatial_audio_params.speaker_azimuth = spatialAngle;
+    spatial_audio_params.speaker_elevation = 0;
+    spatial_audio_params.speaker_orientation = 0;
+    m_rtcEngine->setRemoteUserSpatialAudioParams(uid, spatial_audio_params);
+}
+```
 
 </PlatformWrapper>

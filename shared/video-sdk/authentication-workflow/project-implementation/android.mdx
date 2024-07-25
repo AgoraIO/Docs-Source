@@ -1,198 +1,273 @@
 <PlatformWrapper platform="android">
+import CodeBlock from '@theme/CodeBlock';
 
-<ProductWrapper product="iot">
+### Use a token
 
-1.  **Add the necessary dependencies**:
+The client requests a token from your authentication server corresponding to the user ID and the channel name. You use the received token to join a channel.
 
-    In order to make HTTPS calls to a token server and interpret the JSON return parameters, integrate the `OkHttp` client and `Gson` library into your Android project. In `/Gradle Scripts/build.gradle (Module: <projectname>.app)`, add the following lines under `dependencies`.
-        ```java
-        dependencies
-        {
-            ...
-            implementation 'com.squareup.okhttp3:okhttp:4.9.3'
-            implementation 'com.google.code.gson:gson:2.9.0'
-            ...
-        }
-        ```
+```java
+// Channel name
+String channelId = "xxx";
+// User ID
+int uid = 0;
+// Request a token from the server corresponding to channelId and uid
+String token = getToken(channelId, uid);
+// Set channel media options
+ChannelMediaOptions option = new ChannelMediaOptions();
+option.clientRoleType = Constants.CLIENT_ROLE_BROADCASTER;
+// Join a channel
+engine.joinChannel(token, channelId, 0, option);
+```
 
-2.  **Allow cleartext network traffic**:
+### Token expiration 
 
-    Add the following line in `/app/Manifests/AndroidManifest.xml`, under `<application`:
+After you join a channel using a token, the SDK triggers an `onTokenPrivilegeWillExpire` callback, 30 seconds before the token is set to expire.
 
-    ```xml
-    android:usesCleartextTraffic = "true"
+When the token expires, the SDK triggers an `onRequestToken` callback. After receiving the callback, you regenerate a new token on the server side, and then update the token in one of the following ways:
+
+#### Single channel scenario
+
+* Call `renewToken` to pass in the newly generated Token (Recommended).
+
+* Call `updateChannelMediaOptions` to update the token.
+
+* Call `leaveChannel` [2/2] to leave the current channel, and then pass in a new token when calling `joinChannel` [2/2] to rejoin the channel.
+
+#### Multi-channel scenario
+
+If you call `joinChannelEx` to join multiple channels, call the `updateChannelMediaOptionsEx` method to update the token.
+
+The following sample code shows calling `renewToken` to update the token when receiving an `onTokenPrivilegeWillExpire` callback notification.
+
+```java
+class RtcEngineEventHandlerImpl extends IRtcEngineEventHandler {
+    // Callback is triggered when the token is about to expire
+    @Override
+    public void onTokenPrivilegeWillExpire(String token) {
+        super.onTokenPrivilegeWillExpire(token);
+
+        // Request to generate a fresh token
+        String token = getToken();
+        // Update token
+        engine.renewToken(token);
+    }
+}
+```
+
+### Complete sample code
+For a complete implementation of token authentication, refer to the following:
+
+1. In `/Gradle Scripts/build.gradle(Module: <projectname>.app)`, add the following dependencies for making HTTP requests to the token server:
+
+    ```yaml
+    dependencies {
+      implementation 'com.squareup.okhttp3:okhttp:3.10.0'
+      implementation 'com.google.code.gson:gson:2.8.4'
+    }
     ```
 
-3.  **Enable the user to specify a channel name**:
+1. In `MainActivity.java`, replace the content with the following code:
 
-    Add a text box to the user interface. In `/app/res/layout/activity_main.xml` add the following lines before `</RelativeLayout>`:
+    <details>
+    <summary>Complete sample code for token authentication</summary>
+    <CodeBlock language="java" showLineNumbers>
+    {` package com.example.rtcquickstart;
 
-    ```xml
-    <EditText
-        android:id="@+id/editChannelName"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/JoinButton"
-        android:layout_alignStart="@id/JoinButton"
-        android:layout_alignEnd="@id/LeaveButton"
-        android:hint="Type the channel name here"
-        android:inputType="text"
-        android:text="" />
-    ```
+    import androidx.appcompat.app.AppCompatActivity;
+    import android.os.Bundle;
+    import androidx.core.app.ActivityCompat;
+    import androidx.core.content.ContextCompat;
 
-4.  **Add the required import statements**:
+    import android.Manifest;
+    import android.content.pm.PackageManager;
+    import android.view.SurfaceView;
+    import android.widget.FrameLayout;
+    import android.widget.Toast;
+    import io.agora.rtc2.Constants;
+    import io.agora.rtc2.IRtcEngineEventHandler;
+    import io.agora.rtc2.RtcEngine;
+    import io.agora.rtc2.video.VideoCanvas;
+    import io.agora.rtc2.ChannelMediaOptions;
 
-    In `/app/java/com.example.<projectname>/MainActivity`, add the following lines after the last `import` statement:
-
-    ```java
-    import android.util.Log;
-    import android.widget.EditText;
-
+    import okhttp3.MediaType;
     import okhttp3.OkHttpClient;
     import okhttp3.Request;
+    import okhttp3.RequestBody;
     import okhttp3.Response;
     import okhttp3.Call;
     import okhttp3.Callback;
 
     import com.google.gson.Gson;
-
-    import java.io.IOException;
     import java.util.Map;
-    ```
+    import org.json.JSONException;
+    import org.json.JSONObject;
+    import java.io.IOException;
 
-5.  **Add variables for your connection to the token server**:
+    public class MainActivity extends AppCompatActivity {
 
-    Declare the variables you need to specify the user id, token role, token server URL and the token expire time. Add the following declarations to the `MainActivity` class:
+        // Fill in the App ID from Agora console
+        private String appId = "Your App ID";
+        // Fill in the channel name
+        private String channelName = "demo";
+        private String token = "";
+        private RtcEngine mRtcEngine;
+        private int joined = 1;
 
-    ```java
-    private int tokenRole; // The token role: Broadcaster or Audience
-    private String serverUrl = "<Token Server URL>"; // The base URL to your token server, for example, "https://agora-token-service-production-xxxx.up.railway.app".
-    private int tokenExpireTime = 40; // Time in seconds after which the token will expire.
-    private EditText editChannelName; // To read the channel name from the UI.
-    ```
+        private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {
+            @Override
+            // Listen for the remote user to join the channel and obtain the user ID of the remote user
+            public void onUserJoined(int uid, int elapsed) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        // After obtaining the user ID in the onUserJoined callback, call setupRemoteVideo to set the remote user view
+                        setupRemoteVideo(uid);
+                    }
+                });
+            }
 
-    Make sure you specify the token server URL in exactly the same format as shown in the example.
+            @Override
+            public void onTokenPrivilegeWillExpire(String token) {
+                fetchToken(1234, channelName, 1);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast toast = Toast.makeText(MainActivity.this, "Token renewed", Toast.LENGTH_SHORT);
+                        toast.show();
+                    }
+                });
+                super.onTokenPrivilegeWillExpire(token);
+            }
 
-6.  **Set up access to the channel name text box from code**:
+            @Override
+            public void onRequestToken() {
+                joined = 1;
+                fetchToken(1234, channelName, 1);
+                super.onRequestToken();
+            }
 
-    Add the following line to the `onCreate` method:
+        };
 
-    ```java
-    editChannelName = (EditText) findViewById(R.id.editChannelName);
-    ```
+        private static final int PERMISSION_REQ_ID = 22;
 
-7.  **Retrieve a token from the server**:
+        private static final String[] REQUESTED_PERMISSIONS = {
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.CAMERA
+        };
 
-    Use a GET request to retrieve an authentication token for a specific channel from the token server, then decode the return parameters.
+        private boolean checkSelfPermission(String permission, int requestCode) {
+            if (ContextCompat.checkSelfPermission(this, permission) !=
+                    PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, REQUESTED_PERMISSIONS, requestCode);
+                return false;
+            }
+            return true;
+        }
 
-    In the `MainActivity` class, add the following `fetchToken` method:
-
-    ```java
-    private void fetchToken(int uid, String channelName, int tokenRole) {
-        // Prepare the Url
-        String URLString = serverUrl + "/rtc/" + channelName + "/" + tokenRole + "/"
-                + "uid" + "/" + uid + "/?expiry=" + tokenExpireTime;
-
+    // Get RTC Token
+    private void fetchToken(int uid,String channelName,int tokenRole){
         OkHttpClient client = new OkHttpClient();
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject json = new JSONObject();
+        try {
+            json.put("uid", uid);
+            json.put("ChannelName", channelName);
+            json.put("role", tokenRole);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
 
-        // Instantiate the RequestQueue.
-        Request request = new Request.Builder()
-                .url(URLString)
-                .header("Content-Type", "application/json; charset=UTF-8")
-                .get()
-                .build();
-        Call call = client.newCall(request);
-        call.enqueue(new Callback() {
+            RequestBody requestBody = RequestBody.create(JSON, String.valueOf(json));
+            Request request = new Request.Builder()
+                    .url("http://<Your Host URL and port>/fetch_rtc_token")
+                    .header("Content-Type", "application/json; charset=UTF-8")
+                    .post(requestBody)
+                    .build();
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
 
-            @Override
-            public void onFailure(Call call, IOException e) {
-                Log.e("IOException", e.toString());
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                if (response.isSuccessful()) {
-                    Log.i("Token Received", token);
-                    Gson gson = new Gson();
-                    String result = response.body().string();
-                    Map map = gson.fromJson(result, Map.class);
-                    String _token = map.get("rtcToken").toString();
-                    // Use the token to join a channel or to renew an expiring token
-                    setToken(_token);
                 }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    if(response.isSuccessful()){
+                        Gson gson = new Gson();
+                        String result = response.body().string();
+                        Map map = gson.fromJson(result, Map.class);
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                token = map.get("token").toString();
+                                // If the user has not joined the channel, use token to join the channel
+                                ChannelMediaOptions options = new ChannelMediaOptions();
+                                if (joined != 0){joined = mRtcEngine.joinChannel(token, channelName, 1234, options);}
+                                // If the user has joined the channel, call renewToken to regenerate the token
+                                else {mRtcEngine.renewToken(token);}
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            setContentView(R.layout.activity_main);
+
+            // If all permissions are granted, initialize the RtcEngine object and join the channel
+            if (checkSelfPermission(REQUESTED_PERMISSIONS[0], PERMISSION_REQ_ID) &&
+                    checkSelfPermission(REQUESTED_PERMISSIONS[1], PERMISSION_REQ_ID)) {
+                initializeAndJoinChannel();
             }
-        });
-    }
-    ```
+        }
 
-8.  **Join a channel using the token**:
+        protected void onDestroy() {
+            super.onDestroy();
 
-    Use the retrieved token to either join a channel or to renew an expiring token.
+            mRtcEngine.leaveChannel();
+            mRtcEngine.destroy();
+        }
 
-    ```java
-    void setToken(String newValue) {
-        token = newValue;
-        if (!isJoined) { // Join a channel
-            // Set channel options
-            AgoraRtcService.ChannelOptions channelOptions = new AgoraRtcService.ChannelOptions();
-            channelOptions.autoSubscribeAudio = true;
-            channelOptions.autoSubscribeVideo = true;
-            channelOptions.audioCodecOpt.audioCodecType
-                    = AgoraRtcService.AudioCodecType.AUDIO_CODEC_TYPE_OPUS;
-            channelOptions.audioCodecOpt.pcmSampleRate = 16000;
-            channelOptions.audioCodecOpt.pcmChannelNum = 1;
-
-            // Join a channel
-            int ret = agoraEngine.joinChannel(connectionId, channelName,
-                    uid, token, channelOptions);
-            if (ret != AgoraRtcService.ErrorCode.ERR_OKAY) {
-                showMessage("Join channel failure!");
-                isJoined = false;
-            } else {
-                isJoined = true;
+        private void initializeAndJoinChannel() {
+            try {
+                mRtcEngine = RtcEngine.create(getBaseContext(), appId, mRtcEventHandler);
+            } catch (Exception e) {
+                throw new RuntimeException("Check the error.");
             }
-        } else { // Already joined, renew the token by calling renewToken
-            agoraEngine.renewToken(connectionId, token);
-            showMessage("Token renewed");
-        }
-    }
-    ```
 
-9.  **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**:
+            // In interactive live broadcast, set the channel scene to BROADCASTING
+            mRtcEngine.setChannelProfile(Constants.CHANNEL_PROFILE_LIVE_BROADCASTING);
+            // Depending on the actual situation, set the user role to BROADCASTER or AUDIENCE
+            mRtcEngine.setClientRole(Constants.CLIENT_ROLE_BROADCASTER);
 
-    A token expires after the `expireTime` specified in the call to the token server or expires after 24 hours, if the time is not specified. The `onTokenPrivilegeWillExpire` event receives a callback when the current token is about to expire so that a fresh token may be retrieved and used.
+            // SDK turns off video by default. Call enableVideo to enable video
+            mRtcEngine.enableVideo();
 
-    In the `MainActivity` class, add the following code inside the `onTokenPrivilegeWillExpire` method of the `AgoraRtcEvents` instance:
-
-    ```java
-    Log.i("i", "Token Will expire");
-    fetchToken(uid, channelName, tokenRole);
-    ```
-    
-
-10. **Update the `joinChannel` method to fetch a token**:
-
-    In the `MainActivity` class, replace the `joinChannel` method with the following:
-
-    ```java
-    public void joinChannel(View view) {
-        channelName = editChannelName.getText().toString();
-        if (channelName.length() == 0) {
-            showMessage("Type a channel name");
-            return;
-        } else if (!serverUrl.contains("http")) {
-            showMessage("Invalid token server URL");
-            return;
+            FrameLayout container = findViewById(R.id.local_video_view_container);
+            // Call CreateRendererView to create a SurfaceView object and add it as a child to the FrameLayout
+            SurfaceView surfaceView = new SurfaceView (getBaseContext());
+            container.addView(surfaceView);
+            // Pass the SurfaceView object to Agora to render local video
+            mRtcEngine.setupLocalVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, 0));
+            // Start local video preview
+            mRtcEngine.startPreview();
+            // Get a token from the token server
+            fetchToken(1234, channelName, 1);
         }
 
-        if (checkSelfPermission()) {
-            tokenRole = 1; // use 1 for publisher, 2 for subscriber
-            showMessage("Fetching token...");
-            fetchToken(uid, channelName, tokenRole);
-        } else {
-            showMessage("Permissions was not granted");
+        private void setupRemoteVideo(int uid) {
+            FrameLayout container = findViewById(R.id.remote_video_view_container);
+            SurfaceView surfaceView = new SurfaceView (getBaseContext());
+            surfaceView.setZOrderMediaOverlay(true);
+            container.addView(surfaceView);
+            mRtcEngine.setupRemoteVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, uid));
         }
-    }
-    ```
-</ProductWrapper>
+
+    }`}
+    </CodeBlock>
+    </details>
+
 </PlatformWrapper>

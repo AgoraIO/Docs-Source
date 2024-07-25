@@ -11,6 +11,21 @@ import SwitchDomainName from '@docs/shared/common/_switch-domain-name.mdx';
 
 To improve application robustness, Agora recommends that you do the following when integrating Cloud Recording RESTful APIs:
 
+## Failover
+In response to network failures, as well as risks that arise from factors such as non-Agora cloud services, non-Agora software, infrastructure, and force majeure, Agora cloud recording provides high-availability automatic task migration services. When the fault is confirmed, the migration is completed in the shortest possible time (estimated to be within 90 seconds). During this period, there are risks such as recording interruption and recording file loss.
+
+For scenarios with a large number of viewers in the channel or extremely high requirements for high availability, consider whether you can accept the impact of high availability migration based on your own business characteristics, and decide whether to adopt higher quality assurance measures, such as [Multi-channel task assurance](#multi-channel-task-assurance), or [Monitor service status during a recording](#monitor-service-status-during-a-recording) through periodic channel query and message notification service, and re-initiate new recording tasks in a timely manner using a different `uid`.
+
+## Multi-channel task assurance
+If you need higher quality assurance than failover, use a multi-tasking assurance strategy. Each cloud recording task is billed separately. Please see [Pricing](../overview/pricing) for details on the billing method. Take the following steps to implement this strategy:
+
+1. Initiate the main task and a backup task at the same time to achieve multi-channel recording of the same channel. To do this, use the same `appId` and `cname`, and different `uid`s to initiate multiple recording tasks. When initiating a subsequent recording task, set the `clientRequest.excludeResourceIds` field in the `acquire` request's body to the previous recording task or several previous recording tasks. This prevents the subsequent task from using resources in the area where the previous recording task is located. When the network in the area where the previous recording task is located fails, the subsequent recording task will not be affected.
+
+1. Listening to the following callback events on the client side promptly notifies the audience to subscribe to the backup task `uid`:
+
+   - Anchor offline `callbackonUserOffline`
+   - Anchor audio and video status change callbacks `onRemoteAudioStateChanged` and `onRemoteVideoStateChanged`
+
 ## Use dual domain names
 
 If you send a Cloud Recording RESTful API request to `api.agora.io` and the request fails, retry with the same domain name first. If it fails again, replace the domain name with `api.sd-rtn.com` and retry. Best practice is to first try the DNS domain close to your server. See the [domain name table](#domain-name-table) for a list of DNS servers.
@@ -23,20 +38,7 @@ Check that your Peak Concurrent Worker (PCW), Queries Per Second (QPS), and the 
 
 #### PCW
 
-The PCW limit depends on your video stream resolution and region. 
-
-Resolutions: 
-
-- SD: Standard definition video, resolution ≤ 640 × 360
-- HD: High definition video, resolution ≤ 1280 × 720 and > 640 × 360
-- FHD: Full HD video, resolution ≤ 1920 × 1080 and > 1280 × 720
-
-| Service type         | Mainland China         | Europe       | America      | Asia (excluding mainland China) |
-|:---------------------|:-----------------------|:---------|:--------------|:--------------------------------|
-| Individual recording | 1000              | 200                  | 400                   | 300            |
-| Composite recording  | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 50</li> <li>HD 30</li> <li>FHD 10</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul>           |
-
-If you need to extend the PCW limit, please contact support@agora.io.
+The PCW limit is set to 200 for all regions and resolutions. If you need to extend the PCW limit, please contact support@agora.io.
 
 #### QPS
 
@@ -79,7 +81,7 @@ Take the following steps to ensure that the recording service starts successfull
 
 ### Monitor service status during a recording
 
-You can periodically call `query` to ensure that the recording service is in progress and in a normal state. Apart from `query`, you can use the <Vg k="NCS" /> as a complementary method to monitor the service status. See [Comparison Between the <Vg k="NCS" /> and the `query` Method](../reference/rest-api/query#what-are-the-differences-between-the-message-notification-service-and-the-query-method) for detailed comparison between the two methods.
+You can periodically call `query` to ensure that the recording service is in progress and in a normal state. Apart from `query`, you can use the <Vg k="NCS" /> as a complementary method to monitor the service status. See [Comparison Between the <Vg k="NCS" /> and the `query` Method](../reference/rest-api-overview#what-are-the-differences-between-the-message-notification-service-and-the-query-method) for detailed comparison between the two methods.
 
 #### Periodically query service status
 
@@ -122,12 +124,11 @@ For example, if there is a fixed 5-minute break in each class, you can set `maxI
 
 ## Fault recovery
 
-
 Network failures and potential risks may occur due to factors such as cloud and network software, infrastructure, and other elements outside of <Vg k="COMPANY"/>'s control. To enhance the user experience, Cloud Recording offers automatic high availability task migration for failure recovery. When a failure is detected, the recording task will be migrated within 90 seconds. During this time, the recording may be disrupted and recorded files may be lost.
 
 To guarantee high availability of important scenes with a large audience, best practice is to:
 
-1. Monitor recording tasks with calls to the [query](/en/cloud-recording/reference/rest-api/query) method.
+1. Monitor recording tasks with calls to the [query](/en/cloud-recording/reference/restful-api#query) method.
 
    If the call returns a `404` error, create a new recording task with a different UID.
 

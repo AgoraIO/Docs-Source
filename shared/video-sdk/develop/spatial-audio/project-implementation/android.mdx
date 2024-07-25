@@ -1,143 +1,178 @@
 <PlatformWrapper platform="android">
 
-### Implement a user interface
+### Spatial audio effects for users
 
-In a real-word application, you report your local spatial position to a server in your environment and retrieve positions of remote users in the channel from your server. In this simple example, you use a [`SeekBar`](https://developer.android.com/reference/android/widget/SeekBar) to set the spatial position of a remote user. 
+To implement this workflow, take the following steps:
 
-To add a `SeekBar` to the UI, in `/app/res/layout/activity_main.xml`, add the following code before `</RelativeLayout>`:
+1.  Initialize an `RtcEngine` instance by calling its `create` method with your app ID.
+1.  To initialize an instance of the `ILocalSpatialAudioEngine` class, call its `create` and `initialize` methods.
+1.  To configure audio settings, call `setAudioProfile` and set the `profile` to `AUDIO_PROFILE_DEFAULT` and the scenario to `AUDIO_SCENARIO_GAME_STREAMING`.
+1.  Join a channel using an RTC token by calling `joinChannel`. Configure `options` to set the `channelProfile` to `CHANNEL_PROFILE_LIVE_BROADCASTING` and the `clientRoleType` to `CLIENT_ROLE_BROADCASTER`.
+1.  By default, <Vpd k="SDK" /> automatically subscribes to all remote audio streams. Unsubscribe from all streams by calling `muteAllRemoteAudioStreams(true)` on the `RtcEngine` instance. This is necessary to set the audio receiving range in the next step or the changes won't apply.
+1.  Adjust the audio receiving range as follows:
 
-```xml
-<TextView
-    android:id="@+id/seekBarText"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_below="@id/JoinButton"
-    android:text="Change spatial position"
-    android:layout_alignStart="@id/JoinButton"/>
+    1. Use `setMaxAudioRecvCount` to limit the number of receivable audio streams.
+    1. Call `setAudioRecvRange` to define the range in meters.
+    1. Call `setDistanceUnit` to specify the game engine's unit distance in meters.
 
-<SeekBar
-    android:id="@+id/distanceSeekBar"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_below="@id/seekBarText"
-    android:layout_alignStart="@id/JoinButton"
-    android:layout_alignEnd="@id/LeaveButton"
-    android:min="0"
-    android:max="10"
-    android:progress="0" />
+1. To experience spatial audio, update local and remote user spatial positions using `updateSelfPosition` and `updateRemotePosition` respectively.
+1. To stop using spatial audio, remove all remote spatial positions by calling`clearRemotePositions`. This method renders remote users inaudible to the local user.
+1. Finalize the `ILocalSpatialAudioEngine` instance by calling its `destroy` method.
+    <Admonition type="caution" title="Note">
+    You must destroy the `ILocalSpatialAudioEngine` object before you `destroy` the `RtcEngine` instance.
+    </Admonition>
+1. Exit the channel using `leaveChannel` and `destroy` the `RtcEngine` instance.
+
+### Spatial audio effects for media player
+
+To set up a spatial audio effect for media player:
+
+1. Follow the procedure to set up an instance of `RtcEngine` and `ILocalSpatialAudioEngine` as for the users implementation described in the previous section. 
+
+1. Update the local user and media player spatial positions using `updateSelfPosition` and `updatePlayerPositionInfo` to experience spatial audio.
+
+To implement spatial audio effects for media player using a local Cartesian coordinate system calculation scheme, refer to the following example:
+
+```java
+import static io.agora.api.example.common.model.Examples.ADVANCED;
+import static io.agora.mediaplayer.Constants.MediaPlayerState.PLAYER_STATE_IDLE;
+import static io.agora.mediaplayer.Constants.MediaPlayerState.PLAYER_STATE_OPEN_COMPLETED;
+import static io.agora.mediaplayer.Constants.MediaPlayerState.PLAYER_STATE_PLAYBACK_COMPLETED;
+import static io.agora.mediaplayer.Constants.MediaPlayerState.PLAYER_STATE_STOPPED;
+
+import io.agora.api.example.common.Constant;
+import io.agora.mediaplayer.Constants;
+import io.agora.mediaplayer.IMediaPlayer;
+import io.agora.mediaplayer.IMediaPlayerObserver;
+import io.agora.mediaplayer.data.PlayerUpdatedInfo;
+import io.agora.mediaplayer.data.SrcInfo;
+import io.agora.rtc2.IRtcEngineEventHandler;
+import io.agora.rtc2.RtcEngine;
+import io.agora.rtc2.SpatialAudioParams;
+import io.agora.spatialaudio.ILocalSpatialAudioEngine;
+import io.agora.spatialaudio.LocalSpatialAudioConfig;
+import io.agora.spatialaudio.RemoteVoicePositionInfo;
+
+public class SpatialSound extends BaseFragment {
+    private RtcEngine engine;
+    private IMediaPlayer mediaPlayer;
+    private ILocalSpatialAudioEngine localSpatial;
+    private RemoteVoicePositionInfo positionInfo = new RemoteVoicePositionInfo();
+    private int speakerUid;
+
+    @Nullable
+    @Override
+
+    private void startRecord() {
+        startTv.setVisibility(View.GONE);
+        // Open media resources
+        mediaPlayer.open(Constant.URL_PLAY_AUDIO_FILES, 0);
+
+        LocalSpatialAudioConfig localSpatialAudioConfig = new LocalSpatialAudioConfig();
+        localSpatialAudioConfig.mRtcEngine = engine;
+        // Create ILocalSpatialAudioEngine
+        localSpatial = ILocalSpatialAudioEngine.create();
+        // Initialize ILocalSpatialAudioEngine
+        localSpatial.initialize(localSpatialAudioConfig);
+        // Set the audio receiving range (in meters)
+        localSpatial.setAudioRecvRange(50);
+        // Set the length of the game engine unit distance (in meters)
+        localSpatial.setDistanceUnit(1);
+        // Update the spatial position of the local user
+        float[] pos = new float[]{0.0F, 0.0F, 0.0F};
+        float[] forward = new float[]{1.0F, 0.0F, 0.0F};
+        float[] right = new float[]{0.0F, 1.0F, 0.0F};
+        float[] up = new float[]{0.0F, 0.0F, 1.0F};
+        localSpatial.updateSelfPosition(pos, forward, right, up);
+    }
+
+    private void updateSpatialSoundParam() {
+        float transX = speakerIv.getTranslationX();
+        float transY = speakerIv.getTranslationY();
+        double viewDistance = Math.sqrt(Math.pow(transX, 2) + Math.pow(transY, 2));
+        double viewMaxDistance = Math.sqrt(Math.pow((rootView.getWidth() - speakerIv.getWidth()) / 2.0f, 2) + Math.pow((rootView.getHeight() - speakerIv.getHeight()) / 2.0f, 2));
+        double spkMaxDistance = 3;
+        double spkMinDistance = 1;
+
+        double spkDistance = spkMaxDistance * (viewDistance / viewMaxDistance);
+        if (spkDistance < spkMinDistance) {
+            spkDistance = spkMinDistance;
+        }
+        if (spkDistance > spkMaxDistance) {
+            spkDistance = spkMaxDistance;
+        }
+        double degree = getDegree((int) transX, (int) transY);
+        if (transX > 0) {
+            degree = 360 - degree;
+        }
+
+        double posForward = spkDistance * Math.cos(degree);
+        double posRight = spkDistance * Math.sin(degree);
+
+        // Update the spatial position of the media player
+        RemoteVoicePositionInfo positionInfo = new RemoteVoicePositionInfo();
+        positionInfo.forward = new float[]{1.0F, 0.0F, 0.0F};
+        positionInfo.position = new float[]{(float) posForward, (float) posRight, 0.0F};
+        localSpatial.updatePlayerPositionInfo(mediaPlayer.getMediaPlayerId(), positionInfo);
+    }
+
+    private int getDegree(int point1X, int point1Y) {
+        int vertexPointX = 0, vertexPointY = 0, point0X = 0;
+        int point0Y = -10;
+        int vector = (point0X - vertexPointX) * (point1X - vertexPointX) + (point0Y - vertexPointY) * (point1Y - vertexPointY);
+        double sqrt = Math.sqrt(
+                (Math.abs((point0X - vertexPointX) * (point0X - vertexPointX)) + Math.abs((point0Y - vertexPointY) * (point0Y - vertexPointY)))
+                        * (Math.abs((point1X - vertexPointX) * (point1X - vertexPointX)) + Math.abs((point1Y - vertexPointY) * (point1Y - vertexPointY)))
+        );
+        double radian = Math.acos(vector / sqrt);
+        return (int) (180 * radian / Math.PI);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // Stop playing media resources
+        mediaPlayer.stop();
+        handler.removeCallbacksAndMessages(null);
+        handler.post(RtcEngine::destroy);
+        engine = null;
+    }
+
+    @Override
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+        Context context = getContext();
+        if (context == null) {
+            return;
+        }
+        try {
+            String appId = getString(R.string.agora_app_id);
+            // Create and initialize RtcEngine
+            engine = RtcEngine.create(getContext().getApplicationContext(), appId, iRtcEngineEventHandler);
+            // Create IMediaPlayer
+            mediaPlayer = engine.createMediaPlayer();
+            // Register a playback observer
+            mediaPlayer.registerPlayerObserver(iMediaPlayerObserver);
+        } catch (Exception e) {
+            e.printStackTrace();
+            getActivity().onBackPressed();
+        }
+    }
+
+    private IMediaPlayerObserver iMediaPlayerObserver = new IMediaPlayerObserver() {
+        @Override
+        // Reports player state changes
+        public void onPlayerStateChanged(io.agora.mediaplayer.Constants.MediaPlayerState mediaPlayerState, io.agora.mediaplayer.Constants.MediaPlayerError mediaPlayerError) {
+            Log.e(TAG, "onPlayerStateChanged mediaPlayerState " + mediaPlayerState);
+            if (mediaPlayerState.equals(PLAYER_STATE_OPEN_COMPLETED)) {
+                // Set media resources to loop
+                mediaPlayer.setLoopCount(-1);
+                // Play media resources
+                mediaPlayer.play();
+            }
+        }
+    };
+}
 ```
 
-### Handle the system logic
-
-1. **Add the required libraries**
-
-    To set up and configure an instance of the spatial audio engine and use the `SeekBar`, import the corresponding <Vg k="COMPANY" /> and Android libraries. In `/app/java/com.example.<projectname>/MainActivity`, add the following to the list of `import` statements:
-
-    ```java
-    import io.agora.spatialaudio.ILocalSpatialAudioEngine;
-    import io.agora.spatialaudio.LocalSpatialAudioConfig;
-    import io.agora.spatialaudio.RemoteVoicePositionInfo;
-
-    import android.widget.SeekBar;
-    ```
-
-### Implement spatial audio
-
-To implement spatial audio features in your <Vpl k="CLIENT" />, take the following steps:
-
-1. **Declare the variables you need**
-
-    You create an instance of `ILocalSpatialAudioEngine` to configure spatial audio parameters and set self and remote user positions. In `/app/java/com.example.<projectname>/MainActivity`, add the following declarations to the `MainActivity` class:
-
-    ```java
-    private ILocalSpatialAudioEngine localSpatial;
-    private int remoteUid = 0; // Stores the uid of the remote user
-    private SeekBar distanceSeekBar;
-    ```
-
-1. **Instantiate and configure the spatial audio engine**
-
-    To create an instance of `ILocalSpatialAudioEngine` at startup, take the following steps:
-
-    1. When a user launches the <Vpl k="CLIENT" />, you create an instance of `ILocalSpatialAudioEngine`, configure it and update the user's self position. To do this, add the following method to the `MainActivity` class:
-
-        ```java
-        private void configureSpatialAudioEngine() {
-            // Enable spatial audio
-            agoraEngine.enableSpatialAudio(true);
-
-            // Create and initialize the spatial audio engine
-            LocalSpatialAudioConfig localSpatialAudioConfig = new LocalSpatialAudioConfig();
-            localSpatialAudioConfig.mRtcEngine = agoraEngine;
-            localSpatial = ILocalSpatialAudioEngine.create();
-            localSpatial.initialize(localSpatialAudioConfig);
-
-            // Set the audio reception range of the local user in meters
-            localSpatial.setAudioRecvRange(50);
-
-            // Set the length of unit distance in meters
-            localSpatial.setDistanceUnit(1);
-
-            // Define the position of the local user
-            float[] pos = new float[]{0.0F, 0.0F, 0.0F};
-            float[] forward = new float[]{1.0F, 0.0F, 0.0F};
-            float[] right = new float[]{0.0F, 1.0F, 0.0F};
-            float[] up = new float[]{0.0F, 0.0F, 1.0F};
-            // Set the position of the local user
-            localSpatial.updateSelfPosition(pos, forward, right, up);
-        }
-        ```
-
-    1. To execute this method at startup, add the following line to the `onCreate` method after `setupVideoSDKEngine();`:
-
-        ```java
-        configureSpatialAudioEngine();
-        ```
-
-1. **Set the spatial position of a remote user**
-
-    To update the spatial position of a remote user:
-
-    1. Define the `RemoteVoicePositionInfo` and call `updateRemotePosition`. 
-
-        ```java
-        public void updateSpatialAudioPosition(float sourceDistance){ //View view){
-            // Define a remote user's spatial position
-            RemoteVoicePositionInfo positionInfo = new RemoteVoicePositionInfo();
-            // The three values represent the front, right, and top coordinates
-            positionInfo.position = new float[]{sourceDistance, 0.0F, 0.0F};
-            positionInfo.forward = new float[]{sourceDistance, 0.0F, 0.0F};
-
-            // Update the spatial position of the specified remote user
-            localSpatial.updateRemotePosition(remoteUid, positionInfo);
-
-            showMessage("Spatial position updated");
-        }
-        ```
-
-    1. To call `updateSpatialAudioPosition` when a user moves the slider, add the following code to `onCreate`:
-
-        ```java
-        distanceSeekBar = (SeekBar)findViewById(R.id.distanceSeekBar);
-
-        distanceSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                //Required to implement OnSeekBarChangeListener
-            }
-
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                //Required to implement OnSeekBarChangeListener
-            }
-
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                updateSpatialAudioPosition((float) seekBar.getProgress());
-            }
-        });
-        ```
-
-    1. To update the spatial position of a specific remote user, you need the `uid` of that user. Add the following line to the `onUserJoined` callback, to store the `remoteUid`: 
-
-        ```java
-        remoteUid = uid;
-        ```
 </PlatformWrapper>

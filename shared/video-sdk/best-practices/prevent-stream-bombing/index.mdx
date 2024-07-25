@@ -1,0 +1,136 @@
+import Reference from '@docs/shared/video-sdk/best-practices/prevent-stream-bombing/reference/index.mdx';
+import NotAvailable from '@docs/shared/common/not-available.mdx'
+
+<PlatformWrapper notAllowed="web, react-js, unreal, blueprint">
+
+Room bombing refers to one or more users maliciously disrupting the order of a channel. It usually occurs in chat rooms, and other multi-user interactive scenarios. Some common patterns of room bombing and disruptive behavior include:
+
+- Intercepting a token and joining a channel illegally, or utilizing the long validity period of a token to join the channel repeatedly.
+
+- Continuously making noise or sending illegal audio or video content.
+
+- Hijacking the signaling messages sent from the application server to the client to disrupt the client's microphone updates and room management.
+
+- Joining a channel when the network is down and reconnecting.
+
+This page describes a series of measures to deal with room bombing and disruptive behavior to help maintain room order and improve business security.
+
+## Basic security solutions
+
+This section introduces basic measures to safeguard the security of your client and server in multi-user interaction scenarios.
+
+### Use the latest SDK version
+
+To take advantage of the latest security updates, best practice is to upgrade to the latest version of the <Vg k="VSDK" />. Visit the [SDKs](/sdks) page and download the latest version of the <Vpl k="NAME" /> <Vg k="VSDK" />.
+
+### Use token authentication
+
+To ensure communication security, <Vg k="COMPANY" /> strongly recommends use of token authentication in your <Vpl k="CLIENT" />. Token authentication not only ensures that only authorized users can join a channel, but also controls the user's streaming privileges.
+
+Choose the method of token authentication according to your project:
+
+- New Project: When creating a project in the console, select **App ID + Token** as the authentication mechanism.
+
+- Existing project: If you chose **App ID** as the authentication mechanism when creating the project, upgrade to **App ID + Token** authentication.
+
+When using token authentication:
+
+- Ensure the secrecy of your **App ID** and **App certificate**. <Vg k="COMPANY" /> recommends storing the App ID and App certificate on the app server and not making them public. If leakage is suspected, replace the primary certificate.
+
+- Best practice is to update the App certificate when the number of online users is at a minimum to avoid large-scale user login failure.
+
+In order to prevent users from frequently joining a channel by taking advantage of the long token validity period, strengthen the security of token authentication as follows:
+
+- Set a reasonable token privileges validity period: The default token validity is 24 hours. Set the expiration time of all privileges using the `privilegeExpire` parameter according to the average online time of users in the channel. After the privilege expires, users are removed from the channel, and illegal users will not be able to join the channel repeatedly using the same token.
+
+- Update the token in a timely manner: When the token is about to expire, the SDK triggers the `onTokenPrivilegeWillExpire` callback. When you receive this callback, you obtain a fresh token from the app server, and then call `renewToken` to pass the newly generated token to the SDK.
+
+### Use Co-host token authentication
+
+Typically, using token authentication and strengthening the security performance of token authentication is sufficient to meet the needs of most real-time interaction scenarios.
+
+Additionally, <Vg k="COMPANY" /> supports the authentication of users' for publishing streams in the channel which is known as Co-host token authentication. This feature is especially suitable for scenarios where the audience needs to frequently go on and off the microphone.
+
+<Admonition type="caution" title="Note">
+Before using this feature, make sure you have enabled **Co-host token authentication**.
+</Admonition>
+
+<Vg k="COMPANY" /> offers the following two Co-host token authentication solutions:
+
+- Unified setting of streaming privileges: When generating a token, set user role using the `role` parameter, and set the effective time of all privileges using `privilegeExpire`. If a user wants to publish a stream in the channel, they first apply for a token with the role of host (`role` is set to `kRolePublisher`), and then call `setClientRole` to switch the role to host.
+
+- Set streaming permissions separately: When generating a token, set the effective time for users to send audio streams, video streams, and data streams using the `pubAudioPrivilegeExpire`, `pubVideoPrivilegeExpire`, and `pubDataStreamPrivilegeExpire` parameters respectively.
+
+### Query and synchronize user status
+
+When a user joins, leaves, or switches roles within the channel, your app server and <Vg k="COMPANY" /> server need to synchronize information in a timely manner to avoid illegal users from taking advantage of the situation.
+
+To ensure timely synchronization of important events in your channel, use the following channel management functions:
+
+* In scenarios where real-time synchronization requirements are not high: Call APIs such as **query user status**, **query user list**, and **query channel list** to query and synchronize the user list and status of the channel.
+
+* In scenarios that require high synchronization in real time: Enable the **<Vg k="COMPANY" /> message notification service** and receive **channel event callbacks (Webhook)** to listen to remote users joining or leaving the channel in real time, and user role switching events in live broadcasting scenarios.
+
+In addition, listen to the `onRejoinChannelSuccess` callback when reconnecting from a network outage to get the ID of the user who has rejoined the channel. This ensures that the channel user list on the app server side is consistent with the list of channel users on the <Vg k="COMPANY" /> server side.
+
+## Advanced response plan
+
+This section describes the response measures after a room bombing and disruption occurs. <Vg k="COMPANY" /> recommends that you implement the preventive measures in the basic security plan before taking the following steps.
+
+### Locate illegal users
+
+Use one of the following methods to find illegal users in a channel:
+
+- Method 1 (recommended):
+
+    Enable <Vg k="COMPANY" /> **message notification service** and receive channel event callbacks (Webhook). When you receive a **host joining the channel** or **user role switching to host** event, query the list of users on the app server to determine whether the newly joined host is legitimate.
+
+- Method 2:
+
+    Regularly call the <Vg k="COMPANY" /> RESTful API `http://api.sd-rtn.com/dev/v1/channel/user/{appid}/{channelName}/{hosts_only}` on the app server to query the <Vg k="COMPANY" /> server's online channel user list, and compare it with the list of users maintained on the app server to find illegal users.
+    The API call frequency is capped at 20 times per second.
+
+- Method 3:
+
+    Call `enableAudioVolumeIndication` on the client app to enable speaker volume indication. Once enabled, the SDK periodically returns the `onAudioVolumeIndication` callback to the app, which contains a list of remote users who are publishing audio streams. Compare the returned list with the list of users maintained by the app server to find illegal users.
+
+### Handle illegal users
+
+After you find an illegal user, stop their room bombing and disruptive behavior to restore order to the room. Use one or more of the following methods to stop the disruptive activity:
+
+- Method 1: Ban illegal users from posting streams
+
+    Use the following methods to achieve this:
+
+    - The app server sends a message to the user's client requesting the client to call `setClientRole` to set the user's role as **audience**, and cancel his streaming privileges.
+    
+    - The app server calls the <Vg k="COMPANY" /> RESTful API `http://api.sd-rtn.com/dev/v1/kicking-rule` and sets the privileges parameter to **publish_audio** and **publish_video** in the request packet body to prohibit illegal users from sending audio and video streams.
+
+- Method 2: Stop receiving audio streams from illegal users
+
+    If an illegal user hijacks the messages sent to them, the app server can send a ban message to all relevant clients to have them call `muteRemoteAudioStream` to stop receiving audio streams from the illegal user.
+
+- Method 3: Kick illegal users out of the channel or ban their IP addresses
+
+    When the app server calls `http://api.sd-rtn.com/dev/v1/kicking-rule`, for the **privileges** parameter in the `join_channel` request packet body, the three fields **cname**, **uid**, and **ip** fields are set to kick illegal users out of the channel or block their IP addresses.
+
+    The <Vg k="COMPANY" /> server kicks the illegal users based on the content in **cname**, **uid**, and **ip** fields. The specific rules are as follows:
+
+    - If you fill in **cname** without **uid** and **ip**, no one can join to the channel corresponding to that **cname** in the app.
+    - If you fill in **uid** without **cname** and **ip**, the **uid** cannot join any channel in the app.
+    - If you fill in **ip** without **cname** and **uid**, the **ip** cannot join any channel in the app.
+    - If you fill in **cname** and **uid** without **ip**, the **uid** cannot join the channel corresponding to the **cname** in the app.
+
+## Reference
+This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
+
+### See Also
+
+* [Channel Management RESTful API](../channel-management-api/overview)
+
+<Reference/>
+
+</PlatformWrapper>
+<PlatformWrapper platform="web, react-js, unreal, blueprint">
+<NotAvailable />
+</PlatformWrapper>

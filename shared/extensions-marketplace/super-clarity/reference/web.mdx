@@ -1,0 +1,132 @@
+import CodeBlock from '@theme/CodeBlock';
+
+<PlatformWrapper platform="web">
+
+### Considerations
+
+The <Vg k="RTEE_CLARITY" /> extension may not adaptively switch resolutions on iOS devices. As a workaround, when the remote video resolution changes, destroy the processor and then recreate it.
+
+<details> 
+<summary>Sample code to destroy the processor and then recreate it. </summary>
+<CodeBlock language="js" showLineNumbers>
+{`
+const isIOS =
+  // @ts-ignore
+  /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const versions = navigator.userAgent.match(/Version\/([\d.]+).*Safari/);
+let version = 0;
+if (versions && versions.length > 1) {
+  version = parseInt(versions[1]);
+}
+var shouldCleanResource: boolean =
+  isIOS && isSafari && version < 16 ? true : false;
+
+
+var extension: SuperClarityExtension | undefined = undefined;
+
+var initSCProcessor = async () => {
+  if (!extension) {
+    extension = new SuperClarityExtension();
+    AgoraRTC.registerExtensions([extension]);
+  }
+
+  var processor = extension.createProcessor();
+
+  processor.on(SuperClarityEvents.FIRST_VIDEO_FRAME, (stats: any) => {
+    console.log('plugin have first video frame, stats:', stats);
+  });
+  processor.on(SuperClarityEvents.ERROR, (msg: any) => {
+    console.log('plugin error:', msg);
+  });
+  processor.on(SuperClarityEvents.STATS, (stats: any) => {
+    console.log('plugin stats:', Date.now(), stats);
+  });
+  return processor;
+};
+var destroySCProcessor = async (processor) => {
+  if (!processor ) {
+    return;
+  }
+  processor.removeAllListeners(SuperClarityEvents.FIRST_VIDEO_FRAME);
+  processor.removeAllListeners(SuperClarityEvents.ERROR);
+  processor.removeAllListeners(SuperClarityEvents.STATS);
+  await processor .release();
+  processor= undefined;
+};
+// Refresh processor
+{
+    var info:{ w?:number, h?:number}={}
+    if (shouldCleanResource) {
+      setInterval(async ()=>{
+        !info.w && info.w = track?.getStats().receiveResolutionWidth;
+        !info.h && info.h = track?.getStats().receiveResolutionHeight;
+        if (
+        (track?.getStats().receiveResolutionWidth &&
+          info.w &&
+          track?.getStats().receiveResolutionWidth !== info.w) ||
+        (track?.getStats().receiveResolutionHeight &&
+          info.h &&
+          track?.getStats().receiveResolutionHeight !== info.h)
+      ) {
+        info.w = track?.getStats().receiveResolutionWidth;
+        info.h = track?.getStats().receiveResolutionHeight;
+        if (processor) {
+          processor.unpipe();
+          track?.unpipe();
+          track?.pipe(track.processorDestination);
+          await destroySCProcessor(processor);
+          processor= undefined;
+        }
+          processor = await initSCProcessor();
+            track!.pipe(processor !).pipe(track!.processorDestination);
+            await processor !.enable();
+        }
+      }, 1000);
+    }
+}
+`}
+</CodeBlock>
+</details> 
+
+### API Reference
+
+This section provides the API reference for the <Vg k="RTEE_CLARITY" /> plugin.
+
+#### `ISuperClarityExtension`
+
+##### `createProcessor`
+
+Creates an instance of `ISuperClarityProcessor`.
+
+```typescript
+createProcessor(): ISuperClarityProcessor;
+```
+
+#### `ISuperClarityExtension`
+
+##### `enable`
+
+Enables the <Vg k="RTEE_CLARITY" /> function.
+
+```typescript
+enable(): void | Promise<void>;
+```
+
+##### `disable`
+
+Disables the <Vg k="RTEE_CLARITY" /> function.
+
+```typescript
+disable(): void | Promise<void>;
+```
+
+##### `release`
+
+Releases all resources used by the plugin.
+
+```typescript
+release(): Promise<void>;
+```
+
+</PlatformWrapper>

@@ -168,6 +168,10 @@ export const MG = 'Media Gateway';
 
 export const TEMPL = 'Templates';
 
+// Solutions
+export const SOL_LIVE = `${COMPANY} Live`;
+
+// Extensions
 export const RTEE = 'Extensions';
 export const RTEE_DRM = `${COMPANY} DRM`;
 export const RTEE_DRM_FRAMEWORK = `AgoraDrmLoader.framework`;
@@ -180,6 +184,7 @@ export const RTEE_AF_D = `ActiveOS`;
 export const RTEE_HT3D = `HTEffect 3D Avatar`
 export const RTEE_LDCI = `LiveData Conversation Intelligence`
 export const RTEE_DUB = `Dubbing AI Voice Changer`
+
 export const AA = `${COMPANY} Analytics`;
 export const AA_DI = `Data Insights`;
 export const AA_DIP = `Data Insights Plus`;

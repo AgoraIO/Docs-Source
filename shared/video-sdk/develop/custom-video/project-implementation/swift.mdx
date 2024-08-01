@@ -1,0 +1,194 @@
+The figure below shows the workflow you need to implement to stream a custom video source in your <Vpl k="CLIENT"/>.
+
+![API call sequence](/images/video-sdk/custom-video-capture-apple.svg)
+
+### Custom video capture
+
+Follow the steps below to implement custom video capture in your project:
+
+1. Before joining s channel, call `setExternalVideoSource` to enable custom video capture. Once enabled, you cannot use the default SDK methods to capture video frames.
+
+   ```swift
+   // Call setExternalVideoSource to notify the SDK that your app is using custom video capture
+   agoraKit.setExternalVideoSource(true, useTexture: true, encodedFrame: true)
+   ```
+
+1. After you enable custom video capture, call methods outside the SDK to implement the video capture process. For example, the [sample project](#sample-project) defines the `AgoraCameraSourcePush` class and uses native system methods to implement video capture.
+
+    ```swift
+    class AgoraCameraSourcePush: NSObject {
+
+        // Delegate to handle AgoraCameraSourcePush events
+        fileprivate var delegate: AgoraCameraSourcePushDelegate?
+
+        // View for previewing the custom video source
+        private var videoView: CustomVideoSourcePreview
+
+        // Current camera used for video capture
+        private var currentCamera = Camera.defaultCamera()
+
+        // AVCaptureSession for managing the video capture session
+        private let captureSession: AVCaptureSession
+
+        // DispatchQueue for managing capture-related tasks
+        private let captureQueue: DispatchQueue
+
+        // Current AVCaptureVideoDataOutput used for video data
+        private var currentOutput: AVCaptureVideoDataOutput? {
+            if let outputs = self.captureSession.outputs as? [AVCaptureVideoDataOutput] {
+                return outputs.first
+            } else {
+                return nil
+            }
+        }
+
+        // Initialize custom video capture
+        init(delegate: AgoraCameraSourcePushDelegate?, videoView: CustomVideoSourcePreview) {
+            self.delegate = delegate
+            self.videoView = videoView
+
+            // Initialize AVCaptureSession
+            captureSession = AVCaptureSession()
+            captureSession.usesApplicationAudioSession = false
+
+            // Create AVCaptureVideoDataOutput for video data
+            let captureOutput = AVCaptureVideoDataOutput()
+            captureOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange]
+            if captureSession.canAddOutput(captureOutput) {
+                captureSession.addOutput(captureOutput)
+            }
+
+            // Initialize captureQueue for managing capture tasks
+            captureQueue = DispatchQueue(label: "MyCaptureQueue")
+
+            // Render the captured frames on the preview layer
+            let previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
+            videoView.insertCaptureVideoPreviewLayer(previewLayer: previewLayer)
+        }
+
+        // Deinitialize the class and stop the capture session
+        deinit {
+            captureSession.stopRunning()
+        }
+
+        // Start capturing video frames
+        func startCapture(ofCamera camera: Camera) {
+            guard let currentOutput = currentOutput else {
+                return
+            }
+
+            // Set the capture device to the current camera
+            currentCamera = camera
+            currentOutput.setSampleBufferDelegate(self, queue: captureQueue)
+
+            // Asynchronously configure and start the capture session
+            captureQueue.async { [weak self] in
+                guard let strongSelf = self else {
+                    return
+                }
+                strongSelf.changeCaptureDevice(toIndex: camera.rawValue, ofSession: strongSelf.captureSession)
+                strongSelf.captureSession.beginConfiguration()
+                if strongSelf.captureSession.canSetSessionPreset(AVCaptureSession.Preset.vga640x480) {
+                    strongSelf.captureSession.sessionPreset = AVCaptureSession.Preset.vga640x480
+                }
+                strongSelf.captureSession.commitConfiguration()
+                strongSelf.captureSession.startRunning()
+            }
+        }
+
+        // Stop capturing video frames
+        func stopCapture() {
+            currentOutput?.setSampleBufferDelegate(nil, queue: nil)
+            captureQueue.async { [weak self] in
+                self?.captureSession.stopRunning()
+            }
+        }
+
+        // Switch to the next available capture camera
+        func switchCamera() {
+            stopCapture()
+            currentCamera = currentCamera.next()
+            startCapture(ofCamera: currentCamera)
+        }
+    }
+    ```
+
+    This example uses the `AgoraCameraSourcePushDelegate` class to receive the captured video frames.
+
+    ```swift
+    protocol AgoraCameraSourcePushDelegate {
+        func myVideoCapture(_ capture: AgoraCameraSourcePush, didOutputSampleBuffer pixelBuffer: CVPixelBuffer, rotation: Int, timeStamp: CMTime)
+    }
+    ```
+
+1. Push the captured video frames to the SDK. Call the `pushExternalVideoFrame` method to push the captured video frames to the SDK.
+
+    ```swift
+    extension CustomVideoSourcePushMain: AgoraCameraSourcePushDelegate {
+
+        // Delegate method called when a video frame is captured
+        func myVideoCapture(_ capture: AgoraCameraSourcePush, didOutputSampleBuffer pixelBuffer: CVPixelBuffer, rotation: Int, timeStamp: CMTime) {
+        
+            // Create an AgoraVideoFrame to store the captured video frame information
+            let videoFrame = AgoraVideoFrame()
+            videoFrame.format = 12
+            videoFrame.textureBuf = pixelBuffer
+            videoFrame.time = timeStamp
+            videoFrame.rotation = Int32(rotation)
+
+            // Push the captured video frame to the Agora SDK
+            agoraKit?.pushExternalVideoFrame(videoFrame)
+        }
+    }
+    ```
+    
+### Custom video rendering
+
+To implement custom video rendering in your <Vpl k="CLIENT" />, refer to the following steps:
+
+1. Set up `onCapture` or `onRenderVideoFrame` callback to obtain the video data to be played.
+1. Implement video rendering and playback yourself.
+
+<Admonition>
+In `renderPixelBuffer` or `renderRawData`, the `rotation` parameter of the video frame may not be 0 due to the video capture terminal settings. Ensure that you have set the `rotation` parameter.
+</Admonition>
+
+In push mode, <Vg k= "VSDK"/> does not support rendering the captured video. You call external SDK methods to implement custom video rendering.
+
+1. Implement custom video rendering
+
+    The sample project defines a `CustomVideoSourcePreview` class based on the native `AVCaptureVideoPreviewLayer` class.
+
+    ```swift
+    var localVideo = CustomVideoSourcePreview(frame: CGRect.zero)
+
+    class CustomVideoSourcePreview : UIView {
+
+        private var previewLayer: AVCaptureVideoPreviewLayer?
+        func insertCaptureVideoPreviewLayer(previewLayer: AVCaptureVideoPreviewLayer) {
+            self.previewLayer?.removeFromSuperlayer()
+
+            previewLayer.frame = bounds
+            layer.insertSublayer(previewLayer, below: layer.sublayers?.first)
+            self.previewLayer = previewLayer
+        }
+
+        override func layoutSublayers(of layer: CALayer) {
+            super.layoutSublayers(of: layer)
+            previewLayer?.frame = bounds
+        }
+    }
+    ```
+
+1. Start capturing and rendering video frames
+
+    The sample project creates an instance of the `AgoraCameraSourcePush` class based on the `customCamera` instance and then calls `startCapture` to begin capturing and rendering.
+
+    ```swift
+    // Initialize the AgoraCameraSourcePush class and set the camera as the capture device
+    customCamera = AgoraCameraSourcePush(delegate: self, videoView: localVideo)
+
+    // Call the startCapture method in the AgoraCameraSourcePush class to start capturing video frames
+    customCamera?.startCapture(ofCamera: .defaultCamera())
+    ```
+    

@@ -114,7 +114,14 @@ const data = {
     SDK: 'Chat SDK',
     PRODUCT: 'Peer-to-Peer Messaging',
     IOS_PACKAGE_NAME: 'AgoraChat_iOS'
-}
+  },
+
+  'real-time-stt': {
+    NAME: 'Real-Time STT',
+    PATH: 'real-time-stt',
+    SDK: 'Real-Time STT',
+    PRODUCT: 'Real-Time STT'
+  }
 };
 
 export default data;

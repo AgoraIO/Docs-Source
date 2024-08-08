@@ -7,34 +7,20 @@ To create a new metadata item for the user, or to update the `value` of am exist
 The following example saves a set of metadata items for a specified user. It configures the `options` parameter to add timestamp and modifier information to each metadata item.
 
 ```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(174298270);
+Metadata metadata;
+std::vector<agora::rtm::MetadataItem> items;
+items.emplace_back(MetadataItem("Name", "Tony"));
+items.emplace_back(MetadataItem("Age", "40"));
+items.emplace_back(MetadataItem("Avatar", "https://your-domain/avatar/tong.png"));
+metadata.items = items.data();
+metadata.items = items.size();
 
-MetadataItem name;
-name.key = "Name";
-name.value = "Tony";
+MetadataOptions options;
+options.recordTs = true;
+options.recordUserId = true;
 
-MetadataItem age;
-age.key = "Age";
-age.value = "40";
-
-MetadataItem avatar;
-avatar.key = "Avatar";
-avatar.value = "https://your-domain/avatar/tony.png";
-
-metadata->setMetadataItem(name);
-metadata->setMetadataItem(age);
-metadata->setMetadataItem(avatar);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-// Set user metadata and handle potential errors
-ret = rtm_client->getStorage()->setUserMetadata("Tony", metadata, meta_opt, req_id);
-if (ret != RTM_ERROR_OK) {
-    printf("setUserMetadata failed, error is %d, reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtm_client->getStorage()->setUserMetadata("Tony", metadata, options, requestId);
 ```
 
 After you call this method, the SDK triggers the `onSetUserMetadataResult` callback to return the call result.
@@ -42,13 +28,13 @@ After you call this method, the SDK triggers the `onSetUserMetadataResult` callb
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onSetUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("SetUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("SetUserMetadata success\n");
+    void onSetUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("SetUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("SetUserMetadata success\n");
+        }
     }
-  }
 };
 ```
 
@@ -59,10 +45,8 @@ Additionally, <Vg k="SIG" /> triggers an `onStorageEvent` notification of event 
 To retrieve all metadata items associated with a specific user, call `getUserMetadata`. Refer to the following example:
 
 ```cpp
-ret = rtm_client->getStorage()->getUserMetadata("Tony", req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("getUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->getUserMetadata("Tony", requestId);
 ```
 
 After you call this method, the SDK triggers the `onGetUserMetadataResult` callback to return the call result.
@@ -70,19 +54,16 @@ After you call this method, the SDK triggers the `onGetUserMetadataResult` callb
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onGetUserMetadataResult(const uint64_t requestId, const char *userId, const IMetadata &data, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("GetUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("GetUserMetadata success user id: %s\n", userId);
-      const MetadataItem* items;
-      size_t size;
-      data.getMetadataItems(&items, &size);
-      for (int i = 0 ; i < size; i++) {
-          printf("key: %s value: %s revison: %lld\n", items[i].key, items[i].value, items[i].revision);
-      }
+    void onGetUserMetadataResult(const uint64_t requestId, const char *userId, const Metadata& data, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("GetUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("GetUserMetadata success user id: %s\n", userId);
+            for (int i = 0 ; i < data.itemCount; i++) {
+                printf("key: %s value: %s revision: %lld\n", data.items[i].key, data.items[i].value, data.items[i].revision);
+            }
+        }
     }
-  }
 };
 ```
 
@@ -90,35 +71,30 @@ class RtmEventHandler : public IRtmEventHandler {
 You can also leave the `userId` parameter blank to get the local user's metadata:
 
 ```cpp
-ret = rtm_client->getStorage()->getUserMetadata("", req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("getUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->getUserMetadata("userId", requestId);
 ```
 
 <Vpd k="SDK" /> returns the following data structure:
 
-```json
+```js
 {
     majorRevision: 734874892,
     metadata:{
-        {
-            key:"Name",
+        "Name":{
             value:"Tony",
             revision:734874872,
-            updateTs:1688978391900,
+            updated:1688978391900,
             authorUid:"Tony"
         },
-        {
-            key:"Age",
+        "Age":{
             value:"40",
             revision:734874862,
             updated:1688978390900,
             authorUid:"Tony"
         },
-        {
-            key:"Avatar",
-            value:"https://your-domain/avatar/tony.png",
+        "Avatar":{
+            value:"https://your-domain/avatar/tong.png",
             revision:734874812,
             updated:1688978382900,
             authorUid:"Tony"
@@ -134,23 +110,18 @@ To modify existing metadata items, call `updateUserMetadata`. If the metadata it
 The following example updates the value of an existing metadata item:
 
 ```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(174298270);
+Metadata metadata;
+std::vector<MetadataItem> items;
+items.emplace_back(MetadataItem("Age", "45"));
+metadata.items = items.data();
+metadata.itemCount = items.size();
 
-MetadataItem announcement;
-announcement.key = "Age";
-announcement.value = "45";
+MetadataOptions options;
+options.recordTs = true;
+options.recordUserId = true;
 
-metadata->setMetadataItem(item0);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-ret = rtm_client->getStorage()->updateUserMetadata("Tony", metadata, meta_opt, req_id);
-if (ret != RTM_ERROR_OK) {
-    printf("updateUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->updateUserMetadata("Tony", metadata, options, requestId);
 ```
 
 After you call this method, the SDK triggers the `onUpdateUserMetadataResult` callback to return the call result.
@@ -158,13 +129,13 @@ After you call this method, the SDK triggers the `onUpdateUserMetadataResult` ca
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onUpdateUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("UpdateUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("UpdateUserMetadata success\n");
+    void onUpdateUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("UpdateUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("UpdateUserMetadata success\n");
+        }
     }
-  }
 };
 ```
 
@@ -175,20 +146,16 @@ Additionally, <Vg k="SIG" /> triggers an `onStorageEvent` notification of event 
 To delete metadata items that are no longer required, call `removeUserMetadata`. Refer to the following sample code:
 
 ```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(174298270);
+Metadata metadata;
+std::vector<MetadataItem> items;
+MetadataItem item;
+item.key = "Age";
+items.emplace_back(item);
+metadata.items = items.data();
+metadata.itemCount = items.size();
 
-MetadataItem Age;
-Age.key = "Age";
-
-metadata->setMetadataItem(Age);
-
-MetadataOptions meta_opt;
-
-ret = rtm_client->getStorage()->removeUserMetadata("Tony", metadata, meta_opt, req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("removeUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->removeUserMetadata("Tony", metadata, MetadataOptions(), requestId);
 ```
 
 Setting the `value` for a metadata item that is being deleted has no effect.
@@ -198,13 +165,13 @@ After you call this method, the SDK triggers the `onRemoveUserMetadataResult` ca
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onRemoveUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-        printf("RemoveUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-        printf("RemoveUserMetadata success\n");
+    void onRemoveUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("RemoveUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("RemoveUserMetadata success\n");
+        }
     }
-  }
 };
 ```
 
@@ -213,14 +180,11 @@ Additionally, <Vg k="SIG" /> triggers an `onStorageEvent` notification of event 
 To delete the entire set of metadata for a user, do not add any metadata items when calling `removeUserMetadata`. Refer to the following sample code:
 
 ```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
+Metadata metadata;
+MetadataOptions options;
 
-MetadataOptions meta_opt;
-
-ret = rtm_client->getStorage()->removeUserMetadata("Tony", metadata, meta_opt, req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("removeUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->removeUserMetadata("Tony", metadata, options, requestId);
 ```
 
 <Admonition>
@@ -242,10 +206,8 @@ Currently, <Vg k="SIG" /> only supports the full data update mode. This means th
 To monitor updates to a user's metadata, you subscribe to their metadata. Refer to the following sample code:
 
 ```cpp
-int ret = rtm_client->getStorage()->subscribeUserMetadata("Tony", req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("subscribeUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->subscribeUserMetadata("Tony", requestId);
 ```
 
 After you call this method, the SDK triggers the `onSubscribeUserMetadataResult` callback to return the call result.
@@ -253,13 +215,13 @@ After you call this method, the SDK triggers the `onSubscribeUserMetadataResult`
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onSubscribeUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("SubscribeUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("SubscribeUserMetadata success\n");
+    void onSubscribeUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("SubscribeUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("SubscribeUserMetadata success\n");
+        }
     }
-  }
 };
 ```
 
@@ -270,12 +232,23 @@ When there are changes in the user metadata, <Vg k="SIG" /> triggers an `onStora
 When you no longer need to receive notifications about a user's metadata updates, unsubscribe from the users's metadata. Refer to the following sample code:
 
 ```cpp
-int ret = rtm_client->getStorage()->unsubscribeUserMetadata("Tony");
-if (ret != RTM_ERROR_OK) {
-    printf("unsubscribeUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-} else {
-    printf("unsubscribeUserMetadata success");
-}
+uint64_t requestId;
+rtm_client->getStorage()->unsubscribeUserMetadata("Tony", requestId);
+```
+
+After you call this method, the SDK triggers the `onUnsubscribeUserMetadataResult`  callback to return the API call result.
+
+```cpp
+// Asynchronous callback
+class RtmEventHandler : public IRtmEventHandler {
+    void onUnsubscribeUserMetadataResult(const uint64_t requestId, const char* userId, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("UnsubscribeUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("UnsubscribeUserMetadata success\n");
+        }
+    }
+};
 ```
 
 ## Version control
@@ -303,23 +276,19 @@ When setting user metadata, or a single user metadata item, use the revision att
 The following code snippet demonstrates how to employ `majorRevision` and `revision` for updating user metadata and metadata items:
 
 ```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(734874892);
+Metadata metadata;
+metadata.majorRevision = 734874892;
+std::vector<MetadataItem> items;
+items.emplace_back(MetadataItem("Avatar", "https://your-domain/avatar/tony.png", 734874812));
+metadata.items = items.data();
+metadata.itemCount = items.size();
 
-MetadataItem item0;
-item0.key = "https://your-domain/avatar/tony.png";
-item0.revision = 734874812;
+MetadataOptions options;
+options.recordTs = true;
+options.recordUserId = true;
 
-metadata->setMetadataItem(item0);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-ret = rtm_client->getStorage()->updateUserMetadata("Tony", metadata, meta_opt, req_id);
-if (ret != RTM_ERROR_OK) {
-    printf("updateUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->updateUserMetadata("Tony", metadata, options, requestId);
 ```
 
 In this example, CAS verification for user metadata and metadata items is enabled by setting `majorRevision` and `revision` parameters to positive integers. Upon receiving the update call request, <Vg k="SIG" /> first verifies the provided major revision number against the latest value in the database. If there's a mismatch, it returns an error; if the values match, <Vg k="SIG" /> verifies the `revision` number for each metadata item using a similar logic.
@@ -329,441 +298,4 @@ In this example, CAS verification for user metadata and metadata items is enable
 When using version control, monitor `onStorageEvent` notifications to retrieve updated values for `majorRevision` and `revision` to ensure that the latest revision values are used for subsequent operations.
 </Admonition>
 
-</PlatformWrapper>
-
-<PlatformWrapper platform ="lx-cpp">
-
-### Set channel metadata
-
-You can set up a set of user metadata for a specified user to achieve user-level data storage and real-time notification in your application. This metadata can include the user's name, grade, avatar link, self-introduction, and any other customized data. Each user can have only one set of user metadata, but each set can contain multiple metadata items. For relevant restrictions, see [API usage restrictions](../reference/limitations).
-
-Each metadata item contains predefined fields: `key`, `value`, and `revision`.
-
-If the current user metadata or metadata item does not exist, this method will add new attributes for the specified user. If the user metadata or metadata item exists, the new value will overwrite the original value.
-
-The following example code shows how to set user metadata:
-
-```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(174298270);
-
-MetadataItem properties;
-properties.key = "Name";
-properties.value = "Tony";
-
-MetadataItem announcement;
-announcement.key = "Age";
-announcement.value = "40";
-
-MetadataItem price;
-price.key = "Avatar";
-price.value = "https://your-domain/avatar/tony.png";
-
-metadata->setMetadataItem(properties);
-metadata->setMetadataItem(announcement);
-metadata->setMetadataItem(price);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-ret = rtm_client->getStorage()->setUserMetadata("Tony", metadata, meta_opt, req_id);
-if (ret != RTM_ERROR_OK) {
-    printf("setUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
-```
-
-After you call this method, the SDK triggers the `onSetUserMetadataResult` callback to return the API call result:
-
-```cpp
-class RtmEventHandler : public IRtmEventHandler {
-  void onSetUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("SetUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("SetUserMetadata success\n");
-    }
-  }
-};
-```
-In the sample code above, we set a set of user metadata for the user `Tony`, which includes three metadata items: `Name`, `Age`, and `Avatar`. We also set the options parameter to require the RTM service to add timestamps and modifier information when storing these metadata items.
-
-For details about the `setUserMetadata` interface, see the storage <Link to="{{Global.API_REF_SIG_LNX_CPP}}#storage">API reference</Link>.
-
-Additionally, RTM will trigger an `RTM_STORAGE_EVENT_TYPE_UPDATE` event of type `onStorageEvent` and notify other subscribers of this user metadata within 100 ms. See event notification for details.
-
-### Get channel metadata
-
-You can obtain all attribute data of a specified user by calling the `getUserMetadata` method. The following sample code shows how to obtain user metadata:
-
-```cpp
-ret = rtm_client->getStorage()->getUserMetadata("Tony", req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("getUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
-```
-After you call this method, the SDK triggers the `onGetUserMetadataResult` callback and returns the API call result.
-
-```cpp
-class RtmEventHandler : public IRtmEventHandler {
-  void onGetUserMetadataResult(const uint64_t requestId, const char *userId, const IMetadata &data, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("GetUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("GetUserMetadata success user id: %s\n", userId);
-      const MetadataItem* items;
-      size_t size;
-      data.getMetadataItems(&items, &size);
-      for (int i = 0 ; i < size; i++) {
-          printf("key: %s value: %s revison: %lld\n", items[i].key, items[i].value, items[i].revision);
-      }
-    }
-  }
-};
-```
-
-You can also retrieve your own user metadata without specifying the userId parameter.
-
-```cpp
-ret = rtm_client->getStorage()->getUserMetadata("", req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("getUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
-```
-
-When the above operation is successful, the SDK returns the following data structure:
-
-```cpp
-{
-    majorRevision: 734874892,
-    metadata:{
-        "Name":{
-            value:"Tony",
-            revision:734874872,
-            updated:1688978391900,
-            authorUid:"Tony"
-        },
-        "Age":{
-            value:"40",
-            revision:734874862,
-            updated:1688978390900,
-            authorUid:"Tony"
-        },
-        "Avatar":{
-            value:"https://your-domain/avatar/tony.png",
-            revision:734874812,
-            updated:1688978382900,
-            authorUid:"Tony"
-        }
-    }
-}
-```
-
-### Update channel metadata
-
-To update existing user metadata, you can use `updateUserMetadata`. If the metadata does not exist, an error will be returned. This interface is suitable for business scenarios requiring permission control, where the application setter defines the `data` fields and `formats` of the metadata, and users only have update permissions.
-
-Below is an example code snippet demonstrating how to update a user metadata item:
-
-```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(174298270);
-
-MetadataItem announcement;
-announcement.key = "Age";
-announcement.value = "45";
-
-metadata->setMetadataItem(item0);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-ret = rtm_client->getStorage()->updateUserMetadata("Tony", metadata, meta_opt, req_id);
-if (ret != RTM_ERROR_OK) {
-    printf("updateUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
-```
-
-After you call this method, the SDK triggers the `onUpdateUserMetadataResultthe` callback and returns the API call result.
-
-```cpp
-class RtmEventHandler : public IRtmEventHandler {
-  void onUpdateUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("UpdateUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("UpdateUserMetadata success\n");
-    }
-  }
-};
-```
-The above example code updates the age data for the key `Age` to `45`.
-
-Additionally, RTM will trigger an event notification of type `RTM_STORAGE_EVENT_TYPE_UPDATE` for the `onStorageEvent`, notifying other subscribers of this user metadata within 100 milliseconds. For details, refer to the <Link to="{{Global.API_REF_SIG_LNX_CPP}}#event-listeners">event listeners</Link> on `onStorageEvent`.
-
-### Delete user metadata
-
-When you no longer need the user metadata or certain metadata items of the specified user, you can delete them. Below is an example code demonstrating how to perform a delete operation using `removeUserMetadata`:
-
-```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(174298270);
-
-MetadataItem Age;
-Age.key = "Age";
-
-metadata->setMetadataItem(Age);
-
-MetadataOptions meta_opt;
-
-ret = rtm_client->getStorage()->removeUserMetadata("Tony", metadata, meta_opt, req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("removeUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
-```
-
-After you call this method, the SDK triggers the `onRemoveUserMetadataResult` callback and returns the API call result.
-
-```cpp
-class RtmEventHandler : public IRtmEventHandler {
-  void onRemoveUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-        printf("RemoveUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-        printf("RemoveUserMetadata success\n");
-    }
-  }
-};
-```
-
-In the above example code, the `value` parameter has no effect, regardless of its content.
-
-```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-
-MetadataOptions meta_opt;
-
-ret = rtm_client->getStorage()->removeUserMetadata("Tony", metadata, meta_opt, req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("removeUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
-```
-
-In the process of account deletion, it's common to delete the entire set of user metadata. Once this data is removed, it's irrecoverable. Exercise caution when using this method and ensure data backups are in place if restoration is necessary.
-
-Additionally, RTM will trigger an event notification of type `RTM_STORAGE_EVENT_TYPE_UPDATE` for the `onStorageEvent`, informing other subscribers of this user metadata within 100 milliseconds. Refer to the <Link to="{{Global.API_REF_SIG_LNX_CPP}}#event-listeners">event listeners</Link> section for details on `onStorageEvent`.
-
-### Subscribe to user metadata
-
-If you wish to monitor attribute updates for a user similar to subscribing to channel metadata, you can subscribe to the user metadata of that user. Refer to the following sample code for guidance:
-
-```cpp
-int ret = rtm_client->getStorage()->subscribeUserMetadata("Tony", req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("subscribeUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
-```
-
-After you call this method, the SDK triggers the `onSubscribeUserMetadataResult` callback and returns the API call result.
-
-```cpp
-class RtmEventHandler : public IRtmEventHandler {
-  void onSubscribeUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("SubscribeUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("SubscribeUserMetadata success\n");
-    }
-  }
-};
-```
-
-### Unsubscribe from user metadata
-
-If you no longer wish to receive updates for a user's user metadata changes, you can unsubscribe. Refer to the following sample code:
-
-```cpp
-int ret = rtm_client->getStorage()->unsubscribeUserMetadata("Tony");
-if (ret != RTM_ERROR_OK) {
-    printf("unsubscribeUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-} else {
-    printf("unsubscribeUserMetadata success");
-}
-```
-After the operation is successful, you will no longer receive this user metadata change notification.
-
-### CAS control
-
-User Metadata shares similarities with channel metadata and also incorporates a CAS (Compare-And-Swap) control mechanism. This method provides two independent version control fields, allowing flexibility based on the business requirements:
-
-- Enable version number verification for a metadata item using the `revision` attribute.
-- Apply CAS control in scenarios requiring permission management. For instance, in a dating app, only one viewer can chat with an anchor at a time. When multiple users initiate requests concurrently, only the first user's operation will succeed.
-
-Below is a sample code demonstrating how to utilize `majorRevision` and `revision` to update user metadata and metadata items:
-
-```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(734874892);
-
-MetadataItem item0;
-item0.key = "https://your-domain/avatar/tony.png";
-item0.revision = 734874812;
-
-metadata->setMetadataItem(item0);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-ret = rtm_client->getStorage()->updateUserMetadata("Tony", metadata, meta_opt, req_id);
-if (ret != RTM_ERROR_OK) {
-    printf("updateUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
-```
-In the above example, we enable CAS verification for both user metadata and metadata item, setting `majorRevision` to `734874892`. Upon receiving the interface call request, the server first verifies whether the provided `majorRevision` matches the latest value in the database. If there's a mismatch, an error is returned; if it matches, the server proceeds to verify the metadata item's revision, following a similar logic as for user metadata.
-
-When version control is enabled, it's essential to monitor `onStorageEvent` notifications to retrieve updated values for `majorRevision` and `revision`. This ensures that the latest values are provided when calling the interface.
-
-### Add event listeners
-
-If you want to receive storage event notifications, you need to implement an event listener. See <Link to="{{Global.API_REF_SIG_LNX_CPP}}#event-listeners">event listeners</Link> for details. In addition, if you want to receive event notifications from channel metadata, you need to set the parameters to `true` when subscribing or joining the channel. If you want to receive event notifications from user metadata, you need to call `subscribeUserMetadata` with `withMetadata` set to `true`.
-
-| Parameter   | Description                                                                                                         |
-|-------------|---------------------------------------------------------------------------------------------------------------------|
-| `type`        | Presence event type. See details in <Link to="{{Global.API_REF_SIG_LNX_CPP}}#enumvpresencetypepropsag_platform">RTM_PRESENCE_EVENT_TYPE</Link>.                                                      |
-| `channelType` | Type of channel, which may be either Message Channel or Stream Channel.                                             |
-| `channelName` | Name of the channel where the event occurred.                                                                       |
-| `publisher`   | User ID that triggered this event.                                                                                  |
-| `stateItems`  | List of user temporary status information, valid when the event type is `RTM_PRESENCE_EVENT_TYPE_REMOTE_STATE_CHANGED`. |
-| `interval`    | In Interval mode, aggregated incremental information about event notifications such as user joining, leaving, timeout, and status change of the current channel in the previous cycle. |
-| `snapshot`    | Snapshot details, valid when the event type is `RTM_PRESENCE_EVENT_TYPE_SNAPSHOT` and is triggered when a user joins or subscribes to the channel for the first time.  |
-
-#### Event notification type
-
-RTM's Storage event notifications consist of the following types:
-
-| Enumeration Value     | Description                                                                                                        |
-|-----------------------|--------------------------------------------------------------------------------------------------------------------|
-| `SNAPSHOT`              | 1: Triggered when a user subscribes or joins a channel for the first time. Local users will receive such event notifications. |
-| `INTERVAL`              | 2: When the number of people in the channel reaches the set value, event notifications in the channel will be converted from real-time notifications to scheduled notifications. |
-| `REMOTE_JOIN`           | 3: Triggered when a user subscribes to or joins a channel, other people in the channel will receive such notifications. |
-| `REMOTE_LEAVE`          | 4: Triggered when a user unsubscribes or leaves the channel, other people in the channel will receive such notifications. |
-| `REMOTE_TIMEOUT`        | 5: Triggered when the user disconnects and times out, other people in the channel will receive such notification. |
-| `REMOTE_STATE_CHANGED` | 6: Triggered when the user's temporary status data changes, other people in the channel will receive such notifications. |
-| `ERROR_OUT_OF_SERVICE` | 7: Presence notifications are not triggered when a user joins the channel, and local users will receive such event notifications. |
-
-#### Event notification modes
-
-The presence event notification mode determines how subscribed users are notified of presence events in the channel. There are two modes: real-time notification mode (`Announce`) and scheduled notification mode (`Interval`). Users can specify the **AnnounceMax** size to determine the conditions for switching between the two modes. The scheduled notification mode can help prevent noisy events caused by too many online users in the channel. The range for **AnnounceMax** can be set between 8 and 128. If your requirements exceed this range, please contact [rtm@agora.io](mailto:rtm@agora.io) for further adjustments.
-
-1. **Real-time notification mode**
-
-    If the number of online users in the channel is less than the **AnnounceMax** parameter setting value (default is 50), the presence event notification operates in real-time notification mode. In this mode, events such as `RTM_PRESENCE_EVENT_TYPE_REMOTE_JOIN_CHANNEL`, `RTM_PRESENCE_EVENT_TYPE_REMOTE_LEAVE_CHANNEL`, `RTM_PRESENCE_EVENT_TYPE_REMOTE_TIMEOUT`, and `RTM_PRESENCE_EVENT_TYPE_REMOTE_STATE_CHANGED` are immediately sent to the client upon being triggered.
-
-    <details>
-      <summary>Join</summary>
-      ```cpp
-      {
-        type: RTM_PRESENCE_EVENT_TYPE_REMOTE_JOIN_CHANNEL;
-        channelType: RTM_CHANNEL_TYPE_MESSAGE;
-        channelName: "test_channel";
-        publisher: "publisher_name";
-        states: [];
-        interval: [];
-        snapshot: [];
-      }
-      ```
-    </details>
-    <details>
-      <summary>Leave</summary>
-      ```cpp
-      {
-        eventType: RTM_PRESENCE_EVENT_TYPE_REMOTE_LEAVE_CHANNEL;
-        channelType: RTM_CHANNEL_TYPE_MESSAGE;
-        channelName: "test_channel";
-        publisher: "publisher_name";
-        stateChanged: [];
-        interval: [];
-        snapshot: [];
-      }
-      ```
-    </details>
-    <details>
-      <summary>Timeout</summary>
-      ```cpp
-      {
-        eventType: RTM_PRESENCE_EVENT_TYPE_REMOTE_TIMEOUT;
-        channelType: RTM_CHANNEL_TYPE_MESSAGE;
-        channelName: "test_channel";
-        publisher: "publisher_name";
-        stateChanged: [];
-        interval: [];
-        snapshot: [];
-      }
-      ```
-    </details>
-    <details>
-      <summary>Snapshot</summary>
-      ```cpp
-      {
-        eventType: RTM_PRESENCE_EVENT_TYPE_SNAPSHOT;
-        channelType: RTM_CHANNEL_TYPE_MESSAGE;
-        channelName: "test_channel";
-        publisher: "";
-        stateChanged: [];
-        interval: [];
-        snapshot: [
-          { userId: "user_a", states: {}},
-          { userId: "user_b", states: { key_1: "value_1" }},
-          { userId: "yourSelf", states: {}},
-        ];
-      }
-      ```
-    </details>
-    <details>
-      <summary>State change</summary>
-      ```cpp
-      {
-        eventType: RTM_PRESENCE_EVENT_TYPE_REMOTE_STATE_CHANGED;
-        channelType: RTM_CHANNEL_TYPE_MESSAGE;
-        channelName: "test_channel";
-        publisher: "publisher_name";
-        states: {
-          "key_1": "value_1",
-        };
-        interval: [];
-        snapshot: [];
-      }
-      ```
-    </details>
-
-2. **Scheduled notification**
-
-    When the number of online users in the channel exceeds the **AnnounceMax** value, the channel will switch to scheduled notification mode. In this mode, events such as ` RTM_PRESENCE_EVENT_TYPE_REMOTE_JOIN_CHANNEL`, `RTM_PRESENCE_EVENT_TYPE_REMOTE_LEAVE_CHANNEL`, `RTM_PRESENCE_EVENT_TYPE_REMOTE_TIMEOUT`, and `RTM_PRESENCE_EVENT_TYPE_REMOTE_STATE_CHANGED` will be replaced by `RTM_PRESENCE_EVENT_TYPE_INTERVAL` events and sent to all users in the channel at specific time intervals.
-
-    ```cpp
-    {
-      "type" : RTM_PRESENCE_EVENT_TYPE_INTERVAL,
-      "channelTye" : RTM_CHANNEL_TYPE_MESSAGE,
-      "channelName" : "Chat_room",
-      "publisher" : "Tony",
-      "interval" : {
-          "remote_join" : ["Tony","Lily"],
-          "remote_leave" : ["Jason"],
-          "remote_timeout" : ["Wang"],
-          "remote_state_change" : [
-              {
-                "userId" : "Harvard",
-                "states" :  [{"Mic":"False"},{"Position":" Beijing"}],
-              },
-              {
-                "userId" : "Harvard",
-                "states" :  [{"Mic":"False"},{"Position":" Beijing"}],
-              }
-          ]
-          
-        } 
-    }
-    ```
 </PlatformWrapper>

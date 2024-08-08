@@ -7,28 +7,21 @@ To create a new metadata item for the channel, or to update the `value` of an ex
 The following example saves a set of metadata items for a stream channel. It configures the `options` parameter to append additional timestamp and modifier information to each metadata item.
 
 ```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
+Metadata metadata;
+std::vector<agora::rtm::MetadataItem> items;
+MetadataItem item0("Quantity", "20");
+MetadataItem item1("Announcement", "Welcome to our shop!");
+MetadataItem item2("T-shirt", "100");
+items.emplace_back(item0);
+items.emplace_back(item1);
+items.emplace_back(item2);
 
-MetadataItem item0;
-item0.key = "Quantity";
-item0.value = "Welcome to our shop!";
+MetadataOptions options;
+options.recordTs = true;
+options.recordUserId = true;
 
-MetadataItem item1;
-item1.key = "Announcement";
-item1.value = "200";
-item1.revision = 174298100;
-
-metadata->setMetadataItem(item0);
-metadata->setMetadataItem(item1);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-ret = rtm_client->getStorage()->setChannelMetadata("channel_name", RTM_CHANNEL_TYPE_STREAM, metadata, meta_opt, nullptr, req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("setChannelMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->setChannelMetadata("channel1", RTM_CHANNEL_TYPE_MESSAGE, metadata, options, "lockName", requestId);
 ```
 
 After you call this method, the SDK triggers the `onSetChannelMetadataResult` callback to return the call result.
@@ -36,13 +29,13 @@ After you call this method, the SDK triggers the `onSetChannelMetadataResult` ca
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onSetChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("SetChannelMetadata failed. Error code: %d. Reason: %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("SetChannelMetadata successful.\n");
+    void onSetChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            // set channel metadata failed
+        } else {
+            // set channel metadata success
+        }
     }
-  }
 };
 ```
 
@@ -53,10 +46,8 @@ Additionally, <Vg k="SIG" /> triggers an `onStorageEvent` notification of event 
 To retrieve all metadata items associated with a specific channel, call `getChannelMetadata` by specifying the channel name and the channel type. Refer to the following example:
 
 ```cpp
-ret = rtm_client->getStorage()->getChannelMetadata("channel_name", RTM_CHANNEL_TYPE_STREAM, req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("getChannelMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->getChannelMetadata("channel1", RTM_CHANNEL_TYPE_MESSAGE, requestId);
 ```
 
 After you call this method, the SDK triggers the `onGetChannelMetadataResult` callback to return the call result.
@@ -64,47 +55,42 @@ After you call this method, the SDK triggers the `onGetChannelMetadataResult` ca
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onGetChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, const IMetadata &data, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("GetChannelMetadata failed. Error code: %d. Reason: %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("GetChannelMetadata successful. Channel: %s, Channel type: %d\n", channelName, channelType);
-      const MetadataItem* items;
-      size_t size;
-      data.getMetadataItems(&items, &size);
-      for (int i = 0 ; i < size; i++) {
-        printf("Key: %s Value: %s Revision: %lld\n", items[i].key, items[i].value, items[i].revision);
-      }
+    void onGetChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, const Metadata& data, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("GetChannelMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("GetChannelMetadata success %d channel: %s, channel type: %d\n");
+            for (int i = 0 ; i < data.itemCount; i++) {
+                printf("key: %s value: %s revision: %lld\n", data.items[i].key, data.items[i].value, data.items[i].revision);
+            }
+        }
     }
-  }
 };
 ```
 
 <Vpd k="SDK" /> returns the following data structure:
 
-```json
+```js
 {
     majorRevision: 734874892,
-    metadata:{
-        {   key:"Quantity",
-            value:"20",
-            revision:734874888,
-            updateTs:1688978391900,
-            authorUid:"Tony"
+    metadata: {
+        "Quantity": {
+            value: "20",
+            revision: 734874888,
+            updated: 1688978391900,
+            authorUid: "Tony"
         },
-        {
-            key:"Announcement",
-            value:"Welcome to our Shop!",
-            revision:734874333,
-            updated:1688978391800,
-            authorUid:"Tomas"
+        "Announcement": {
+            value: "Welcome to our Shop!",
+            revision: 734874333,
+            updated: 1688978391800,
+            authorUid: "Tomas"
         },
-        {
-            key:"T-shirt",
-            value:"100",
-            revision:734874222,
-            updated:168897839100,
-            authorUid:"Adam"
+        "T-shirt": {
+            value: "100",
+            revision: 734874222,
+            updated: 168897839100,
+            authorUid: "Adam"
         }
     }
 }
@@ -120,22 +106,18 @@ To modify existing metadata items for a specified channel, call `updateChannelMe
 The following example updates the value of a metadata item:
 
 ```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
+Metadata metadata;
+std::vector<agora::rtm::MetadataItem> items;
+items.push_back(MetadataItem("T-shirt", "299"));
+metadata.items = items.data();
+metadata.itemCount = items.size();
 
-MetadataItem item0;
-item0.key = "T-shirt";
-item0.value = "299";
+MetadataOptions options;
+options.recordTs = true;
+options.recordUserId = true;
 
-metadata->setMetadataItem(item0);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-ret = rtm_client->getStorage()->updateChannelMetadata("channel_name", RTM_CHANNEL_TYPE_STREAM, metadata, meta_opt, nullptr, req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("updateChannelMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->updateChannelMetadata("channel1", RTM_CHANNEL_TYPE_MESSAGE, metadata, options, "lockName", requestId);
 ```
 
 After you call this method, the SDK triggers the `onUpdateChannelMetadataResult` callback to return the call result.
@@ -143,13 +125,13 @@ After you call this method, the SDK triggers the `onUpdateChannelMetadataResult`
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onUpdateChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("UpdateChannelMetadata failed. Error code: %d. Reason: %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("UpdateChannelMetadata success.\n");
+    void onUpdateChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("UpdateChannelMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("UpdateChannelMetadata success\n");
+        }
     }
-  }
 };
 ```
 
@@ -160,21 +142,20 @@ Additionally, <Vg k="SIG" /> triggers an `onStorageEvent` notification of event 
 To delete metadata items that are no longer required, call `removeChannelMetadata`. Refer to the following sample code:
 
 ```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
+Metadata metadata;
+std::vector<agora::rtm::MetadataItem> items;
+MetadataItem item;
+item.key = "Announcement";
+items.push_back(item);
+metadata.items = items.data();
+metadata.itemCount = items.size();
 
-MetadataItem item0;
-item0.key = "Announcement";
+MetadataOptions options;
+options.recordTs = true;
+options.recordUserId = true;
 
-metadata->setMetadataItem(item0);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-ret = rtm_client->getStorage()->removeChannelMetadata("channel_name", RTM_CHANNEL_TYPE_STREAM, metadata, meta_opt, "", req_id);
-if (ret != RTM_ERROR_OK) {
-    printf("removeChannelMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->removeChannelMetadata("channel1", RTM_CHANNEL_TYPE_MESSAGE, metadata, options, "lockName", requestId);
 ```
 
 Setting the `value` for a metadata item that is being deleted has no effect.
@@ -184,13 +165,13 @@ After you call this method, the SDK triggers the `onRemoveChannelMetadataResult`
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onRemoveChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("RemoveChannelMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("RemoveChannelMetadata success\n");
+    void onRemoveChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("RemoveChannelMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("RemoveChannelMetadata success\n");
+        }
     }
-  }
 };
 ```
 
@@ -199,12 +180,10 @@ Additionally, <Vg k="SIG" /> triggers an `onStorageEvent` notification of event 
 To delete the entire set of metadata for a channel, do not specify any metadata items when calling `removeChannelMetadata`. Refer to the following sample code:
 
 ```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
+Metadata metadata;
 
-ret = rtm_client->getStorage()->removeChannelMetadata("channel_name", RTM_CHANNEL_TYPE_STREAM, metadata, meta_opt, "", req_id);
-if (ret != RTM_ERROR_OK) {
-    printf("removeChannelMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->removeChannelMetadata("channel1", RTM_CHANNEL_TYPE_MESSAGE, metadata, MetadataOptions(), "lockName", requestId);
 ```
 
 <Admonition>
@@ -243,24 +222,21 @@ When setting channel metadata, or a single channel metadata item, use the revisi
 The following sample shows how to use `majorRevision` and `revision` to update channel metadata and a metadata item:
 
 ```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
+Metadata metadata;
+metadata.majorRevision = 734874892;
+std::vector<MetadataItem> items;
+items.emplace_back(MetadataItem("Quantity", "30", 734874888));
+items.emplace_back(MetadataItem("Announcement", "Welcome to our shop!"));
+items.emplace_back(MetadataItem("T-shirt", "101", 734874222));
+metadata.items = items.data();
+metadata.itemCount = items.size();
 
-MetadataItem item0;
-item0.key = "T-shirt";
-item0.value = "101";
-item0.revision = 734874888;
+MetadataOptions options;
+options.recordTs = true;
+options.recordUserId = true;
 
-metadata->setMetadataItem(item0);
-metadata->setMajorRevision(174298270);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-ret = rtm_client->getStorage()->updateChannelMetadata("channel_name", RTM_CHANNEL_TYPE_STREAM, metadata, meta_opt, nullptr, req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("updateChannelMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->updateChannelMetadata("channel1", RTM_CHANNEL_TYPE_MESSAGE, metadata, options, "lockName", requestId);
 ```
 
 In the above example, CAS verification for channel metadata and metadata items is enabled by setting `majorRevision` and `revision` parameters to positive integers. Upon receiving the update call request, <Vg k="SIG" /> first verifies the provided major revision number against the latest value in the database. If there's a mismatch, it returns an error; if the values match, <Vg k="SIG" /> verifies the `revision` number for each metadata item using a similar logic.
@@ -285,24 +261,21 @@ Compared to CAS, which controls the version of channel metadata, locks offer a h
 The following code demonstrates using a lock to update channel metadata. The user calling `updateChannelMetadata` must acquire the lock first for the call to succeed. 
 
 ```cpp
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(174298270);
+Metadata metadata;
+std::vector<MetadataItem> items;
+items.emplace_back(MetadataItem("Quantity", "40"));
+items.emplace_back(MetadataItem("Announcement", "Welcome to our shop!"));
+items.emplace_back(MetadataItem("T-shirt", "300"));
+metadata.items = items.data();
+metadata.itemCount = items.size();
 
-MetadataItem item0;
-item0.key = "Apple";
-item0.value = "120";
-item0.revision = 174298200;
+MetadataOptions options;
+options.recordTs = true;
+options.recordUserId = true;
 
-metadata->setMetadataItem(item0);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-ret = rtm_client->getStorage()->updateChannelMetadata("channel_name", RTM_CHANNEL_TYPE_STREAM, metadata, meta_opt, "manage", req_id);
-if (ret != RTM_ERROR_OK) {
-    printf("updateChannelMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+std::string lockName = "manage";
+rtm_client->getStorage()->updateChannelMetadata("channel1", RTM_CHANNEL_TYPE_MESSAGE, metadata, options, lockName, requestId);
 ```
 
 For more information on setting, acquiring, releasing, revoking, and removing locks, see [Locks](../reference/api#lock).

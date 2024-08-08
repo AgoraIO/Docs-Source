@@ -5,8 +5,9 @@
 To use stream channel functionality, call `createStreamChannel` to create an `IStreamChannel` object instance. 
 
 ```cpp
-IStreamChannel* stream_channel = rtm_client->createStreamChannel("channel_name");
-if (stream_channel == nullptr) {
+int errorCode = 0;
+IStreamChannel* stream_channel = rtm_client->createStreamChannel("channel_name", errorCode);
+if (stream_channel == nullptr || errorCode != 0) {
     printf("create stream channel failed");
 } else {
     printf("create stream channel success");
@@ -16,15 +17,16 @@ if (stream_channel == nullptr) {
 This method creates only one `IStreamChannel` instance at a time. If you need to create multiple instances, call the method multiple times.
 
 ```cpp
-IStreamChannel* stream_channel1 = rtm_client->createStreamChannel("chat_room1");
-if (stream_channel1 == nullptr) {
+int errorCode = 0;
+IStreamChannel* stream_channel1 = rtm_client->createStreamChannel("chat_room1", errorCode);
+if (stream_channel1 == nullptr || errorCode != 0) {
     printf("create stream channel failed");
 } else {
     printf("create stream channel success");
 }
 
-IStreamChannel* stream_channel2 = rtm_client->createStreamChannel("chat_room2");
-if (stream_channel2 == nullptr) {
+IStreamChannel* stream_channel2 = rtm_client->createStreamChannel("chat_room2", errorCode);
+if (stream_channel2 == nullptr || errorCode != 0) {
     printf("create stream channel failed");
 } else {
     printf("create stream channel success");
@@ -40,45 +42,43 @@ if (stream_channel2 == nullptr) {
 Call the `join` method on the `IStreamChannel` instance with appropriate options as follows:
 
 ```cpp
-JoinChannelOptions join_chn_opt;
-join_chn_opt.token = "your_token";
+JoinChannelOptions options;
+options.token = "your_token";
 
-int ret = stream_channel->join(join_chn_opt, req_id);
-if (ret != RTM_ERROR_OK) {
-printf("join rtm channel failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+stream_channel->join(options, requestId);
 ```
 
 When joining a channel, set the `token` parameter in `JoinChannelOptions` with a temporary token from <Vg k="CONSOLE" />. When you call this method, the SDK triggers the `onJoinResult` callback and returns the call result.
 
 ```cpp
-// Triggers when you call the join method
+// Triggered when you call the join method
 class RtmEventHandler : public IRtmEventHandler {
     void onJoinResult(const uint64_t requestId, const char *channelName, const char *userId, RTM_ERROR_CODE errorCode) {
         if (errorCode != RTM_ERROR_OK) {
-        printf("join rtm channel failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+            printf("join rtm channel failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
         } else {
-        printf("join rtm channel %s success\n", channelName);
+            printf("join rtm channel %s success\n", channelName);
         }
     }
 };
 ```
 
 <Admonition>
-
 To facilitate testing of the app during development, set the **Authentication mechanism** to **Debugging mode** when creating the project, and use the app ID in the `token` parameter when joining a channel.
 </Admonition>
 
+When joining a channel, set the notification subscription parameters in `JoinChannelOptions`:
+
 ```cpp
-JoinChannelOptions join_chn_opt;
-join_chn_opt.token = "your_token";
-join_chn_opt.withLock = false;
-join_chn_opt.withMetadata = false;
-join_chn_opt.withPresence = true;
-int ret = stream_channel->join(join_chn_opt, req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("join rtm channel failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+JoinChannelOptions options;
+options.token = "your_token";
+options.withLock = false;  // Disable lock event notifications
+options.withMetadata = false; // Disable storage event notifications 
+options.withPresence = true; // Subscribe to presence event notifications
+
+uint64_t requestId;
+stream_channel->join(options, requestId);
 ```
 
 In stream channels, message flow is managed using topics. Even if you configure a global message listener, you must still join a topic to send messages. Similarly, to receive messages you must subscribe to a topic. See [Topics](../core-functionality/topics) for more information.
@@ -97,45 +97,43 @@ Refer to the following sample code for sending messages:
 
 * String message
 
-    ```java
+    ```cpp
     // Sending a string message
-    String message = "Hello Agora!"; // Message content
-    String topicName = "chat_topic"; // Name of the topic to send the message to
-    var options = new TopicMessageOptions(); // Options for sending topic messages
-    options.customType = "PainTxt"; // Setting a custom type for the message
-    mStreamChannel.publishTopicMessage(topicName, message, options, new ResultCallback<Void>() {
-        @Override
-        public void onSuccess(Void responseInfo) {
-            log(CALLBACK, "publish topic message success"); // Logging success when message is published successfully
-        }
-
-        @Override
-        public void onFailure(ErrorInfo errorInfo) {
-            log(ERROR, errorInfo.toString()); // Logging error information if message publishing fails
-        }
-    });
+    std::string message = "Hello Agora!";
+    TopicMessageOptions options;
+    options.messageType = RTM_MESSAGE_TYPE_STRING;
+    options.customType = "PainTxt";
+    uint64_t requestId;
+    streamChannel.publishTopicMessage("topicName", message.c_str(), message.size(), options, requestId);
     ```
 
 * Binary message
 
-    ```java
+    ```cpp
     // Sending a binary message
-    byte[] message = new byte[] { 00, 01, 35, 196 }; // Binary message content
-    String topicName = "chat_topic"; // Name of the topic to send the message to
-    var options = new TopicMessageOptions(); // Options for sending topic messages
-    options.customType = "ByteArray"; // Setting a custom type for the message
-    mStreamChannel.publishTopicMessage(topicName, message, options, new ResultCallback<Void>() {
-        @Override
-        public void onSuccess(Void responseInfo) {
-            log(CALLBACK, "publish topic message success"); // Logging success when message is published successfully
-        }
+    char message[5] = {0x00, 0x01, 0x02, 0x03, 0x04};
 
-        @Override
-        public void onFailure(ErrorInfo errorInfo) {
-            log(ERROR, errorInfo.toString()); // Logging error information if message publishing fails
-        }
-    });
+    TopicMessageOptions options;
+    options.messageType = RTM_MESSAGE_TYPE_BINARY;
+    options.customType = "ByteArray";
+    uint64_t requestId;
+    streamChannel.publishTopicMessage("topicName", message, 5, options, requestId);
     ```
+
+When you this method, the SDK triggers the `onPublishTopicMessageResult` callback and returns the API call result.
+
+```cpp
+// Asynchronous callback
+class RtmEventHandler : public IRtmEventHandler {
+    void onPublishTopicMessageResult(const uint64_t requestId, const char* channelName, const char* topic, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            // publish topic message failed
+        } else {
+            // publish topic message success
+        }
+    }
+};
+```
 
 In <Vg k="SIG" />, a user may register as a message publisher for up to 8 topics concurrently. However, there are no limitations on the number of users a single topic can accommodate. You can achieve a message transmission frequency to a topic of up to 120 QPS. This capability is useful in scenarios that demand high-frequency and high-concurrency data processing, such as Metaverse location status synchronization, collaborative office sketchpad applications, and parallel control operation-instructions transmission.
 
@@ -145,20 +143,18 @@ To leave a channel, call the `leave` method on the `IStreamChannel` instance:
 
 ```cpp
 // Leave the channel
-ret = stream_channel->leave(req_id);
-if (ret != RTM_ERROR_OK) {
-    printf("leave rtm channel failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+streamChannel->leave(requestId);
 ```
 
 When you call this method, the SDK triggers the `onLeaveResult` callback and returns the call result.
 
 ```cpp
-// Triggers when you call the leave method
+// Triggered when you call the leave method
 class RtmEventHandler : public IRtmEventHandler {
     void onLeaveResult(const uint64_t requestId, const char *channelName, const char *userId, RTM_ERROR_CODE errorCode) {
         if (errorCode != RTM_ERROR_OK) {
-        printf("leave rtm channel failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+            printf("leave rtm channel failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
         } else {
             printf("leave rtm channel %s success\n", channelName);
         }

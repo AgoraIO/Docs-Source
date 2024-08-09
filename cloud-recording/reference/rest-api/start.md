@@ -346,6 +346,14 @@ Agora supports only taking screenshots in a recording process or recording and t
 
 - `secretKey`: String. The secret key of the third-party cloud storage.
 
+- `stsToken`: String. A temporary security token for third-party cloud storage. This token is issued by the cloud service provider's Security Token Service (STS) and used to grant limited access rights to third-party cloud storage resources.
+
+  <Admonition type="info" title="Note">Currently supported cloud service providers include only the following: `1`: Amazon S3, `2`: Alibaba Cloud, `3`: Tencent Cloud.</Admonition>
+
+- `stsExpiration`: Number. The `stsToken` expiration timestamp used to mark UNIX time, in seconds.
+
+  <Admonition type="info" title="Note"><ul><li>To avoid timestamp overflow, use Uint64 storage.</li><li>Set the longest possible validity period when applying the `stsToken`. The minimum validity period must be at least 4 hours. Call `update` to update the `stsToken` value before it expires.</li><li>If the recording task lasts for more than 1 hour, reapply the `stsToken` every 60 minutes and call `update` to update the relevant parameters in `storageConfig`</li></ul></Admonition>
+
 - `fileNamePrefix`: (Optional) JSONArray. An array of strings. Sets the path of the recorded files in the third-party cloud storage. For example, if `fileNamePrefix` = `["directory1","directory2"]`, Agora Cloud Recording will add the prefix "`directory1/directory2/`" before the name of the recorded file, that is, `directory1/directory2/xxx.m3u8`. The prefix's length, including the slashes, should not exceed 128 characters. The string itself should not contain symbols such as slash, underscore, or parenthesis. The supported characters are as follows:
   - The 26 lowercase English letters: a to z
   - The 26 uppercase English letters: A to Z

@@ -98,7 +98,6 @@ curl --location --request POST 'https://api.agora.io/v1/apps/<appid>/cloud_recor
   "clientRequest":{
   }
 }'
-
 ```
 
 <a name="start"></a>
@@ -242,6 +241,10 @@ Agora provides a [Postman collection](https://documenter.getpostman.com/view/631
 You can also use Postman to generate code snippets written in various programming languages. To do so, select a request, click **Code**, and select the desired language in **GENERATE CODE SNIPPETS**.
 
 ![img](https://web-cdn.agora.io/docs-files/1588737379230)
+
+### REST API middleware 
+
+[Agora Go Backend Middleware](https://github.com/AgoraIO-Community/agora-go-backend-middleware) is an open-source microservice that exposes a RESTful API designed to simplify <Vpd k="NAME" /> interactions with Agora. Written in Golang and powered by the Gin framework, this community project serves as a middleware to bridge front-end applications using Agora's <Vg k="VSDK" /> or <Vg k="ASDK" /> with Agora's RESTful APIs.
 
 ### Reference documents
 

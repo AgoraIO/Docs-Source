@@ -32,11 +32,11 @@ The following parameters are required in the URL:
 
 The following parameters are required in the request body:
 
-| Parameter       | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| :-------------- | :----- |:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `cname`         | String | The name of the channel to be recorded.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `uid`           | String | A string that contains the user ID of the recording client. Must be the same user ID used in the [`acquire`](../rest-api/acquire) method.                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `clientRequest` | JSON   | A specific client request that includes the `streamSubscribe` parameter and `webRecordingConfig` parameter.<li>Use `streamSubscribe` to update the subscription list. This is only applicable to individual recording (`individual`) and composite recording (`mix`).</li><li>Use `webRecordingConfig` to update parameters of web page recording. This is only applicable to Web page recording (`web`).</li><li>Use `rtmpPublishConfig` to update parameters of pushing media stream to the CDN during a web page recording. This is only applicable to Web page recording (`web`).</li> |
+| Parameter       | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| :-------------- | :----- |:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `cname`         | String | The name of the channel to be recorded.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `uid`           | String | A string that contains the user ID of the recording client. Must be the same user ID used in the [`acquire`](../rest-api/acquire) method.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `clientRequest` | JSON   | A specific client request that includes the `streamSubscribe`, `webRecordingConfig`, `rtmpPublishConfig`, and `storageConfig` parameters.<li>Use `streamSubscribe` to update the subscription list. This is only applicable to individual recording (`individual`) and composite recording (`mix`).</li><li>Use `webRecordingConfig` to update parameters of web page recording. This is only applicable to Web page recording (`web`).</li><li>Use `rtmpPublishConfig` to update parameters of pushing media stream to the CDN during a web page recording. This is only applicable to Web page recording (`web`).</li><li>Use `storageConfig` to update the configuration items of third-party cloud storage.</li> |
 
 `streamSubscribe` requires the following parameters:
 
@@ -56,8 +56,185 @@ The following parameters are required in the request body:
   - (Default) `false`: Continues the web page recording. If the recording has been paused, call the `update` method and set the `onhold` parameter to false to continue the recording. If you need to continuously call the `update` method to pause or resume page recording, call it after receiving the last HTTP response of `update`; otherwise the actual result may be inconsistent with your expectation.
 
 `rtmpPublishConfig` requires the following parameters:
+
 - `outputs`：JSON Array. Configure as follows:
 - `rtmpUrl`：String. The CDN address which you want to push stream to.
+
+`storageConfig` requires the following parameters:
+
+- `vendor`: Number. The third-party cloud storage vendor.
+
+  - `1`: [Amazon S3](https://aws.amazon.com/s3/?nc1=h_ls)
+  - `2`: [Alibaba Cloud](https://www.alibabacloud.com/product/object-storage-service)
+  - `3`: [Tencent Cloud](https://intl.cloud.tencent.com/product/cos)
+  - `4`: [Kingsoft Cloud](https://en.ksyun.com/nv/product/KS3)
+  - `5`: [Microsoft Azure](https://azure.microsoft.com/en-us/services/storage/blobs/)
+  - `6`: [Google Cloud](https://cloud.google.com/storage)
+  - `7`: [Huawei Cloud](https://www.huaweicloud.com/intl/en-us/product/obs)
+  - `8`: [Baidu AI Cloud](https://intl.cloud.baidu.com/product/bos.html)
+
+- `region`: Number. The region information specified for the third-party cloud storage. The recording service only supports regions in the following lists:
+
+  In order to improve the success rate and real-time performance when uploading recording files, if you set the `region` of the cloud recording service in the `acquire` method, make sure that the region of the third-party cloud storage corresponds to the same geographical region. For example, if the region of the cloud recording service is set to `NA` (North America), the third-party cloud storage needs to be set to a location within North America.
+
+  - Third-party cloud storage is Amazon S3 (`vendor` = 1):
+    - `0`: US_EAST_1
+    - `1`: US_EAST_2
+    - `2`: US_WEST_1
+    - `3`: US_WEST_2
+    - `4`: EU_WEST_1
+    - `5`: EU_WEST_2
+    - `6`: EU_WEST_3
+    - `7`: EU_CENTRAL_1
+    - `8`: AP_SOUTHEAST_1
+    - `9`: AP_SOUTHEAST_2
+    - `10`: AP_NORTHEAST_1
+    - `11`: AP_NORTHEAST_2
+    - `12`: SA_EAST_1
+    - `13`: CA_CENTRAL_1
+    - `14`: AP_SOUTH_1
+    - `15`: CN_NORTH_1
+    - `16`: CN_NORTHWEST_1
+    - `17`: US_GOV_WEST_1
+    - `20`：AP_NORTHEAST_3
+    - `21`：EU_NORTH_1
+    - `22`：ME_SOUTH_1
+    - `23`：US_GOV_EAST_1
+    - `24`: AP_SOUTHEAST_3
+    - `25`: EU_SOUTH_1
+    - `28`: IL_CENTRAL_1
+  - Third-party cloud storage is Alibaba Cloud (`vendor` = 2):
+    - `0`: CN_Hangzhou
+    - `1`: CN_Shanghai
+    - `2`: CN_Qingdao
+    - `3`: CN_Beijing
+    - `4`: CN_Zhangjiakou
+    - `5`: CN_Huhehaote
+    - `6`: CN_Shenzhen
+    - `7`: CN_Hongkong
+    - `8`: US_West_1
+    - `9`: US_East_1
+    - `10`: AP_Southeast_1
+    - `11`: AP_Southeast_2
+    - `12`: AP_Southeast_3
+    - `13`: AP_Southeast_5
+    - `14`: AP_Northeast_1
+    - `15`: AP_South_1
+    - `16`: EU_Central_1
+    - `17`: EU_West_1
+    - `18`: EU_East_1
+    - `19`：AP_Southeast_6
+    - `20`：CN_Heyuan
+    - `21`：CN_Guangzhou
+    - `22`：CN_Chengdu
+    - `23`: CN_Nanjing
+    - `24`: CN_Fuzhou
+    - `25`: CN_Wulanchabu
+    - `26`: CN_Northeast_2
+    - `27`: CN_Southeast_7
+      For details, see <a href="https://www.alibabacloud.com/help/doc-detail/31837.html">Alibaba Cloud Documentation</a>.
+  - Third-party cloud storage is Tencent Cloud (`vendor` = 3):
+    - `0`：AP_Beijing_1
+    - `1`：AP_Beijing
+    - `2`：AP_Shanghai
+    - `3`：AP_Guangzhou
+    - `4`：AP_Chengdu
+    - `5`：AP_Chongqing
+    - `6`：AP_Shenzhen_FSI
+    - `7`：AP_Shanghai_FSI
+    - `8`：AP_Beijing_FSI
+    - `9`：AP_Hongkong
+    - `10`：AP_Singapore
+    - `11`：AP_Mumbai
+    - `12`：AP_Seoul
+    - `13`：AP_Bangkok
+    - `14`：AP_Tokyo
+    - `15`：NA_Siliconvalley
+    - `16`：NA_Ashburn
+    - `17`：NA_Toronto
+    - `18`：EU_Frankfurt
+    - `19`：EU_Moscow
+  - Third-party cloud storage is Kingsoft Cloud (`vendor` = 4):
+    - `0`：CN_Hangzhou
+    - `1`：CN_Shanghai
+    - `2`：CN_Qingdao
+    - `3`：CN_Beijing
+    - `4`：CN_Guangzhou
+    - `5`：CN_Hongkong
+    - `6`：JR_Beijing
+    - `7`：JR_Shanghai
+    - `8`：NA_Russia_1
+    - `9`：NA_Singapore_1
+  - Third-party cloud storage is Microsoft Azure (`vendor` = 5), the `region` parameter has no effect, if it is set or not.
+  - Third-party cloud storage is Google Cloud (`vendor` = 6), the `region` parameter has no effect, if it is set or not.
+  - Third-party cloud storage is Huawei Cloud (`vendor` = 7):
+    - `0`：CN_North_1
+    - `1`：CN_North_4
+    - `2`：CN_East_2
+    - `3`：CN_East_3
+    - `4`：CN_South_1
+    - `5`：CN_Southwest_2
+    - `6`：AP_Southeast_1
+    - `7`：AP_Southeast_2
+    - `8`：AP_Southeast_3
+    - `9`：AF_South_1
+    - `10`：SA_Argentina_1
+    - `11`：SA_Peru_1
+    - `12`：NA_Mexico_1
+    - `13`：SA_Brazil_1
+    - `14`：LA_South_2
+    - `15`：SA_Chile_1
+  - Third-party cloud storage is Huawei Cloud (`vendor` = 7):
+    - `0`：CN_North_1
+    - `1`：CN_North_4
+    - `2`：CN_East_2
+    - `3`：CN_East_3
+    - `4`：CN_South_1
+    - `5`：CN_Southwest_2
+    - `6`：AP_Southeast_1
+    - `7`：AP_Southeast_2
+    - `8`：AP_Southeast_3
+    - `9`：AF_South_1
+    - `10`：SA_Argentina_1
+    - `11`：SA_Peru_1
+    - `12`：NA_Mexico_1
+    - `13`：SA_Brazil_1
+    - `14`：LA_South_2
+    - `15`：SA_Chile_1
+  - Third-party cloud storage is Baidu AI Cloud (`vendor` = 8):
+    - `0`：Beijing
+    - `1`：Baoding
+    - `2`：Suzhou
+    - `3`：Guangzhou
+    - `4`：Hongkong
+    - `5`：Singapore
+    - `6`：Wuhan
+    - `7`：Shanghai
+
+- `bucket`: String. The bucket name of the third-party cloud storage.
+
+- `accessKey`: String. The access key of the third-party cloud storage. Agora suggests that you use a write-only access key.
+
+- `secretKey`: String. The secret key of the third-party cloud storage.
+
+- `stsToken`: String. A temporary security token for third-party cloud storage. This token is issued by the cloud service provider's Security Token Service (STS) and used to grant limited access rights to third-party cloud storage resources.
+
+  <Admonition type="info" title="Note">Currently supported cloud service providers include only the following: `1`: Amazon S3, `2`: Alibaba Cloud, `3`: Tencent Cloud.</Admonition>
+
+- `stsExpiration`: Number. The `stsToken` expiration timestamp used to mark UNIX time, in seconds.
+
+  <Admonition type="info" title="Note"><ul><li>To avoid timestamp overflow, use Uint64 storage.</li><li>Set the longest possible validity period when applying the `stsToken`. The minimum validity period must be at least 4 hours. Call `update` to update the `stsToken` value before it expires.</li><li>If the recording task lasts for more than 1 hour, reapply the `stsToken` every 60 minutes and call `update` to update the relevant parameters in `storageConfig`</li></ul></Admonition>
+
+- `fileNamePrefix`: (Optional) JSONArray. An array of strings. Sets the path of the recorded files in the third-party cloud storage. For example, if `fileNamePrefix` = `["directory1","directory2"]`, Agora Cloud Recording will add the prefix "`directory1/directory2/`" before the name of the recorded file, that is, `directory1/directory2/xxx.m3u8`. The prefix's length, including the slashes, should not exceed 128 characters. The string itself should not contain symbols such as slash, underscore, or parenthesis. The supported characters are as follows:
+  - The 26 lowercase English letters: a to z
+  - The 26 uppercase English letters: A to Z
+  - The 10 numbers: 0 to 9
+
+- `extensionParams`: (Optional) JSON Object. The third-party cloud storage service encrypts and labels the uploaded recording files according to `extensionParams`, which contains the following fields:
+  - `sse`：Encryption mode. The third-party cloud storage service encrypts the uploaded recording file according to the encryption mode. This field is only applicable to Amazon S3. See [official Amazon S3 documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingEncryption) for details. It can be set to:
+    - `kms`: KMS encryption.
+    - `aes256`: AES256 encryption.
+  - `tag`: Tag content. The third-party cloud storage service tags the uploaded recording file according to the tag content. This field is only applicable to Alibaba Cloud and Amazon S3. See [Alibaba Cloud official documentation](https://www.alibabacloud.com/help/en/doc-detail/106678) and [Amazon S3 official documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-tagging) for details.
 
 
 ### Request example

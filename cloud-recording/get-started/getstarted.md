@@ -26,7 +26,7 @@ Call the [`query`](#query) method to check the recording status during the recor
 Call the [`stop`](#stop) method to stop the cloud recording.
 
 **5. Upload the recording file**
-After the recording is over, the cloud recording service uploads the recording file to the [third-party cloud storage](../reference/rest-api/start#cloud-storage-configuration) you specify.
+After the recording is over, the cloud recording service uploads the recording file to the [third-party cloud storage](../reference/restful-api#storageconfig) you specify.
 
 ## Prerequisites
 
@@ -73,7 +73,7 @@ The RESTful APIs require basic HTTP authentication. You need to set the `Authori
 <a name="acquire"></a>
 ### acquire: Get a resource ID
 
-Call the [`acquire`](../reference/rest-api/acquire) method to request a resource ID for cloud recording.
+Call the [`acquire`](../reference/restful-api#acquire) method to request a resource ID for cloud recording.
 
 After calling this method successfully, you can get a resource ID in the response body. The resource ID is valid for five minutes, so you need to start recording with this resource ID within five minutes. One resource ID can only be used for one recording session.
 
@@ -103,7 +103,7 @@ curl --location --request POST 'https://api.agora.io/v1/apps/<appid>/cloud_recor
 <a name="start"></a>
 ### Start recording
 
-Call the [`start`](../reference/rest-api/start) method within five minutes after getting the resource ID to join a channel and start the recording. You can choose either [individual recording](../develop/individual-mode) or [composite recording](../develop/composite-mode) as the recording mode.
+Call the [`start`](../reference/restful-api#start) method within five minutes after getting the resource ID to join a channel and start the recording. You can choose either [individual recording](../develop/individual-mode) or [composite recording](../develop/composite-mode) as the recording mode.
 
 If this method call succeeds, you get a recording ID (sid) from the HTTP response body. This ID is the unique identification of the current recording.
 
@@ -148,7 +148,7 @@ curl --location --request POST  'https://api.agora.io/v1/apps/<appid>/cloud_reco
 <a name="query"></a>
 ### query: Query recording status
 
-During the recording, you can call the [`query`](../reference/rest-api/query) method to query the recording status multiple times.
+During the recording, you can call the [`query`](../reference/restful-api#query) method to query the recording status multiple times.
 
 After calling this method successfully, you can get the current recording status and related information about the recording file from the response body. See *Best Practices in Integrating Cloud Recording* for details about how to [Monitor service status during a recording](../develop/integration-best-practices#monitor-service-status-during-a-recording) and[ Obtain the M3U8 file name](../develop/integration-best-practices#obtain-the-m3u8-file-name).
 
@@ -170,7 +170,7 @@ curl --location --request GET 'https://api.agora.io/v1/apps/<appid>/cloud_record
 <a name="stop"></a>
 ### stop: Stop recording
 
-Call the [`stop`](../reference/rest-api/stop) the recording.
+Call the [`stop`](../reference/restful-api#stop) the recording.
 
 After calling this method successfully, you can get the status of the recording file upload and information about the recording file from the response body.
 
@@ -227,12 +227,12 @@ To ensure communication security, in a formal production environment, you need t
 <a name="update"></a>
 ### Update subscription lists
 
-During the recording, you can call [`update`](../reference/rest-api/update) to update the subscription lists multiple times. See [Set up subscription lists](../develop/subscription) for details.
+During the recording, you can call [`update`](../reference/restful-api#update) to update the subscription lists multiple times. See [Set up subscription lists](../develop/subscription) for details.
 
 <a name="updateLayout"></a>
 ### Update video layout
 
-During the recording, you can call the [`updateLayout`](../reference/rest-api/update#updatelayout-update-the-video-mixing-layout) method to set or update the video layout. See [Set Video Layout](../develop/layout) for details.
+During the recording, you can call the [`updateLayout`](../reference/restful-api#updatelayout) method to set or update the video layout. See [Set Video Layout](../develop/layout) for details.
 
 ### Sample project
 
@@ -250,7 +250,7 @@ You can also use Postman to generate code snippets written in various programmin
 
 - [Common errors in cloud recording](../reference/common-errors) lists common error codes and error messages in the response body.
 
-- [Agora Cloud Recording RESTful API Callback Service](../reference/rest-api/rest-api-overview) lists all the callback events of cloud recording.
+- [Agora Cloud Recording RESTful API Callback Service](../reference/rest-api-overview) lists all the callback events of cloud recording.
 - To learn more about the implementation steps and details of basic functions, you can refer to the following documents:
   - [Individual recording](../develop/individual-mode)
   - [Composite recording](../develop/composite-mode)

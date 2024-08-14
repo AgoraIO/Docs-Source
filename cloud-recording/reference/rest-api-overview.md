@@ -1,6 +1,6 @@
 ---
 title: "Cloud Recording API callback service"
-sidebar_position: 1
+sidebar_position: 5
 type: docs
 platform_selector: false
 description: >
@@ -630,3 +630,30 @@ eventType 43 indicates that the state of the audio stream has changed, and `deta
 | 8           | The recording is ready to exit.                              |
 | 20          | The recording exits abnormally.                              |
 
+
+### What are the differences between the Message Notification Service and the query Method?
+
+You can monitor the status of the cloud recording service either through the `query` method or by the Message Notification Service, to take action when required. Both options have pros and cons.
+
+#### The query method
+
+You can periodically call the `query` method to monitor the status of a cloud recording.
+
+- Pros: Reliable, as the status is queried proactively.
+- Cons:
+  - Provides limited status information.
+  - Requires an active query. You cannot query too often because of the Queries Per Second (QPS) limit, and thus it is not as real-time as the Message Notification Service.
+
+If the reliability of the status of a cloud recording is a high priority, Agora strongly recommends using the `query` method.
+
+#### Message Notification Service
+
+You can use the Message Notification Service as a complementary option to monitor the recording service status. You need to configure an HTTP/HTTPS server to receive event notifications. 
+
+- Pros: Real-time
+- Cons:
+  - The server passively receives messages, and the messages may get lost.
+  - The confirmation message of the message delivery may get lost, causing the message to be resent. In such a case, you need to deduplicate the notifications.
+  - The messages may not arrive in the correct order.
+
+Best practice is that core apps do not rely on <Vg k="NCS_LONG" /> (<Vg k="NCS" />). If your apps already rely heavily on the Message Notification Service, Agora recommends that you contact [support@agora.io](mailto:support@agora.io) to enable the redundant message notification function, which doubles the received notifications and reduces the probability of message loss. Redundant message notification still cannot guarantee a 100% arrival rate.

@@ -21,110 +21,86 @@ This section introduces basic measures to safeguard the security of your client 
 
 ### Use the latest SDK version
 
-To take advantage of the latest security updates, best practice is to upgrade to the latest version of the <Vg k="VSDK" />. Visit the [SDKs](/sdks) page and download the latest version of the <Vpl k="NAME" /> <Vg k="VSDK" />.
+To ensure you have the latest security updates, best practice is to upgrade to the latest version of the <Vg k="VSDK" />. Visit the [SDKs](/sdks) page and download the latest version of the <Vpl k="NAME" /> <Vg k="VSDK" />.
 
 ### Use token authentication
 
-To ensure communication security, <Vg k="COMPANY" /> strongly recommends use of token authentication in your <Vpl k="CLIENT" />. Token authentication not only ensures that only authorized users can join a channel, but also controls the user's streaming privileges.
+To ensure communication security, <Vg k="COMPANY" /> strongly recommends use of token authentication in your <Vpl k="CLIENT" />. Token authentication not only ensures that only authorized users can join a channel, but also controls the user's streaming privileges. To use token authentication, integrate token generation into your business server, and enable token verification on the Agora server. Refer to [Secure authentication with tokens](../get-started/authentication-workflow) for details.
 
-Choose the method of token authentication according to your project:
+#### Set an appropriate validity period for tokens and permissions
 
-- New Project: When creating a project in the console, select **App ID + Token** as the authentication mechanism.
+To prevent unauthorized users from joining a channel by taking advantage of long token validity, use the following token generation parameters to set a suitable validity period:
 
-- Existing project: If you chose **App ID** as the authentication mechanism when creating the project, upgrade to **App ID + Token** authentication.
+- `tokenExpirationInSeconds`：Sets the validity timestamp of the token. The default and maximum validity period of a token is 24 hours. Best practice is to set the validity period of a token as short as possible while meeting business needs.
 
-When using token authentication:
+- `privilegeExpirationInSeconds`: Sets the effective timestamp of the permission. After the permission expires, the user is removed from the channel, and illegal users cannot use the token to log in to the channel again.
 
-- Ensure the secrecy of your **App ID** and **App certificate**. <Vg k="COMPANY" /> recommends storing the App ID and App certificate on the app server and not making them public. If leakage is suspected, replace the primary certificate.
+#### Update tokens regularly
 
-- Best practice is to update the App certificate when the number of online users is at a minimum to avoid large-scale user login failure.
+When a token is about to expire, the SDK triggers the `onTokenPrivilegeWillExpire` callback. When you receive this callback, obtain a fresh token from the token server, and call `renewToken` to pass the newly generated token to the SDK.
 
-In order to prevent users from frequently joining a channel by taking advantage of the long token validity period, strengthen the security of token authentication as follows:
+<Admonition>
+- <Vg k="COMPANY" /> recommends setting the validity period of `tokenExpirationInSeconds` and `privilegeExpirationInSeconds` to be the same.
+ 
+- Ensure the secrecy of your app ID and app certificate. <Vg k="COMPANY" /> recommends storing the app ID and app certificate securely on the app server. If you suspect leakage, [Switch to a new primary certificate](../get-started/manage-agora-account#switch-to-a-new-primary-certificate).
 
-- Set a reasonable token privileges validity period: The default token validity is 24 hours. Set the expiration time of all privileges using the `privilegeExpire` parameter according to the average online time of users in the channel. After the privilege expires, users are removed from the channel, and illegal users will not be able to join the channel repeatedly using the same token.
-
-- Update the token in a timely manner: When the token is about to expire, the SDK triggers the `onTokenPrivilegeWillExpire` callback. When you receive this callback, you obtain a fresh token from the app server, and then call `renewToken` to pass the newly generated token to the SDK.
+-  When updating the app certificate, best practice is to choose a time when the number of online users is at a minimum to avoid large-scale user login failure.
+</Admonition>
 
 ### Use Co-host token authentication
 
-Typically, using token authentication and strengthening the security performance of token authentication is sufficient to meet the needs of most real-time interaction scenarios.
-
-Additionally, <Vg k="COMPANY" /> supports the authentication of users' for publishing streams in the channel which is known as Co-host token authentication. This feature is especially suitable for scenarios where the audience needs to frequently go on and off the microphone.
+Typically, using token authentication and strengthening the security performance of token authentication is sufficient to meet the needs of most real-time interaction scenarios. For scenarios where the audience needs to frequently go on and off the microphone, <Vg k="COMPANY" /> provides authentication of users for publishing streams in a channel. This is known as Co-host token authentication. 
 
 <Admonition type="caution" title="Note">
-Before using this feature, make sure you have enabled **Co-host token authentication**.
+Before using this feature, make sure you have enabled **Co-host token authentication** in <Vg k="CONSOLE" />.
 </Admonition>
 
-<Vg k="COMPANY" /> offers the following two Co-host token authentication solutions:
+To use co-host token authentication, set the user role using the `role` parameter when generating a token, and set the expiration time of all privileges using `privilegeExpirationInSeconds`. For different scenarios and user roles, refer to the following table to implement your authentication logic:
 
-- Unified setting of streaming privileges: When generating a token, set user role using the `role` parameter, and set the effective time of all privileges using `privilegeExpire`. If a user wants to publish a stream in the channel, they first apply for a token with the role of host (`role` is set to `kRolePublisher`), and then call `setClientRole` to switch the role to host.
+| Characters and scenarios  | Authentication steps  |
+|:--------------------------|:---------------------------------------------|
+| Host joins the channel to send streams | <ol><li>Request a token with the `role` set to `kRolePublisher`. This token gives the host permission to send streams. </li><li>Call `setClientRole` to set the role as the host.</li><li>Call `joinChannel` to pass in a token with streaming privileges to join the channel.</li></ol>           |
+| Audience members join the channel	  | <ol><li>Request a token with the `role` set to `kRoleSubscriber`. This token does not permit the user to send streams</li><li>Since a user's role when joining a channel is by default audience, it is sufficient to call `joinChannel` directly and pass in a token to join the channel.</li></ol>         |
+| Audience gets the mic after joining the channel | <ol><li>Request a token with the `role` set to `kRolePublisher` to give the user permission to send streams.</li><li>Call `renewToken` to update the new token on the <Vg k="COMPANY" /> server.</li><li>Call `setClientRole` to switch the role to host.</li></ol> |
 
-- Set streaming permissions separately: When generating a token, set the effective time for users to send audio streams, video streams, and data streams using the `pubAudioPrivilegeExpire`, `pubVideoPrivilegeExpire`, and `pubDataStreamPrivilegeExpire` parameters respectively.
+<Admonition>
+If your business scenario requires more refined streaming permission control, refer to the [Co-host token authentication](../get-started/authentication-workflow#co-host-token-authentication) guide.
+</Admonition>
 
-### Query and synchronize user status
+After implementing co-host authentication, use it together with your business logic to verify that the user's ID is legitimate and that they are authorized to broadcast streams.
 
-When a user joins, leaves, or switches roles within the channel, your app server and <Vg k="COMPANY" /> server need to synchronize information in a timely manner to avoid illegal users from taking advantage of the situation.
-
-To ensure timely synchronization of important events in your channel, use the following channel management functions:
-
-* In scenarios where real-time synchronization requirements are not high: Call APIs such as **query user status**, **query user list**, and **query channel list** to query and synchronize the user list and status of the channel.
-
-* In scenarios that require high synchronization in real time: Enable the **<Vg k="COMPANY" /> message notification service** and receive **channel event callbacks (Webhook)** to listen to remote users joining or leaving the channel in real time, and user role switching events in live broadcasting scenarios.
-
-In addition, listen to the `onRejoinChannelSuccess` callback when reconnecting from a network outage to get the ID of the user who has rejoined the channel. This ensures that the channel user list on the app server side is consistent with the list of channel users on the <Vg k="COMPANY" /> server side.
-
-## Advanced response plan
+## Response plan
 
 This section describes the response measures after a room bombing and disruption occurs. <Vg k="COMPANY" /> recommends that you implement the preventive measures in the basic security plan before taking the following steps.
 
 ### Locate illegal users
 
-Use one of the following methods to find illegal users in a channel:
-
-- Method 1 (recommended):
-
-    Enable <Vg k="COMPANY" /> **message notification service** and receive channel event callbacks (Webhook). When you receive a **host joining the channel** or **user role switching to host** event, query the list of users on the app server to determine whether the newly joined host is legitimate.
-
-- Method 2:
-
-    Regularly call the <Vg k="COMPANY" /> RESTful API `http://api.sd-rtn.com/dev/v1/channel/user/{appid}/{channelName}/{hosts_only}` on the app server to query the <Vg k="COMPANY" /> server's online channel user list, and compare it with the list of users maintained on the app server to find illegal users.
-    The API call frequency is capped at 20 times per second.
-
-- Method 3:
-
-    Call `enableAudioVolumeIndication` on the client app to enable speaker volume indication. Once enabled, the SDK periodically returns the `onAudioVolumeIndication` callback to the app, which contains a list of remote users who are publishing audio streams. Compare the returned list with the list of users maintained by the app server to find illegal users.
+Regularly call the <Vg k="COMPANY" /> [RESTful API](../channel-management-api/endpoint/query-channel-information/query-user-list?platform=android) `http://api.sd-rtn.com/dev/v1/channel/user/{appid}/{channelName}/{hosts_only}` on the app server to query the <Vg k="COMPANY" /> server's online channel user list, and compare it with the list of users maintained on the app server to find illegal users. The API call frequency is capped at 20 times per second.
 
 ### Handle illegal users
 
-After you find an illegal user, stop their room bombing and disruptive behavior to restore order to the room. Use one or more of the following methods to stop the disruptive activity:
+After you identify an illegal user, stop their room bombing and disruptive behavior to restore order to the room. Use one or more of the following methods to stop the disruptive activity:
 
-- Method 1: Ban illegal users from posting streams
+#### Ban illegal users from posting streams
 
-    Use the following methods to achieve this:
+Use the following methods to achieve this:
 
-    - The app server sends a message to the user's client requesting the client to call `setClientRole` to set the user's role as **audience**, and cancel his streaming privileges.
+- The app server sends a message to the user's client asking the client to call `muteLocalAudioStream` and set `muted` to `true` to cancel publishing the audio stream.
+
+- The app server sends a message to the user's client requesting the client to call `setClientRole` to set the user's role as audience, and cancel their streaming privileges.
     
-    - The app server calls the <Vg k="COMPANY" /> RESTful API `http://api.sd-rtn.com/dev/v1/kicking-rule` and sets the privileges parameter to **publish_audio** and **publish_video** in the request packet body to prohibit illegal users from sending audio and video streams.
+#### Kick illegal users out of the channel 
 
-- Method 2: Stop receiving audio streams from illegal users
+The app server calls `http://api.sd-rtn.com/dev/v1/kicking-rule`. For the `privileges` parameter in the `join_channel` request packet body, set the `cname`, and `uid` fields to kick illegal users out of the channel.
 
-    If an illegal user hijacks the messages sent to them, the app server can send a ban message to all relevant clients to have them call `muteRemoteAudioStream` to stop receiving audio streams from the illegal user.
+The <Vg k="COMPANY" /> server kicks the illegal users based on the values in the `cname` and `uid` fields as follows:
 
-- Method 3: Kick illegal users out of the channel or ban their IP addresses
-
-    When the app server calls `http://api.sd-rtn.com/dev/v1/kicking-rule`, for the **privileges** parameter in the `join_channel` request packet body, the three fields **cname**, **uid**, and **ip** fields are set to kick illegal users out of the channel or block their IP addresses.
-
-    The <Vg k="COMPANY" /> server kicks the illegal users based on the content in **cname**, **uid**, and **ip** fields. The specific rules are as follows:
-
-    - If you fill in **cname** without **uid** and **ip**, no one can join to the channel corresponding to that **cname** in the app.
-    - If you fill in **uid** without **cname** and **ip**, the **uid** cannot join any channel in the app.
-    - If you fill in **ip** without **cname** and **uid**, the **ip** cannot join any channel in the app.
-    - If you fill in **cname** and **uid** without **ip**, the **uid** cannot join the channel corresponding to the **cname** in the app.
+- If you fill in `cname` without `uid`, no one can join the channel corresponding to that `cname` in the app.
+- If you fill in `uid` without `cname`, the `uid` cannot join any channel in the app.
+- If you fill in `cname` and `uid`, the `uid` cannot join the channel corresponding to the `cname` in the app.
 
 ## Reference
 This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
-
-### See Also
 
 * [Channel Management RESTful API](../channel-management-api/overview)
 

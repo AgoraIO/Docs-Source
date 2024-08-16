@@ -105,7 +105,7 @@ The usage duration is calculated in minutes.
 
 #### Per volume
 
-<Vg k="COMPANY" /> calculates the number of files converted to images/web pages per month and applies the unit prices specified in the table below. In this model, only 1 conversion task can be running while the rest are queued. 
+<Vg k="COMPANY" /> calculates the number of files converted to images/web pages per month and applies the unit prices specified in the table below. This model has a hard cap of one Peak Concurrent Worker (PCW) (running conversion task) for each conversion mode running in a server region under a single project. In other words, if you have 1 project with 1 server region, you can run 2 conversion tasks simultaneously - 1 static and 1 dynamic - while the rest are queued. If you have 3 projects, each with servers in 2 regions, you can run 6 (3 x 2) dynamic and 6 (3 x 2) static conversions simultaneously.
 
 <Vg k="COMPANY" /> does not charge for a failed file conversion task. 
 You can call the [Query file conversion progress](../reference/whiteboard-api/file-conversion#query-the-progress-of-a-file-conversion-task) 
@@ -113,11 +113,9 @@ API to get the result of a file conversion task.
 
 #### Per Peak Concurrent Workers
 
-**Peak Concurrent Workers (PCW)** are the maximum number of file conversion tasks that Interactive Whiteboard servers can process simultaneously for each project. The unit pricing is per PCW per month, with an unlimited number of files that can be converted to images or web pages. If you set PCW to 2 or 3, this means you will be able to run up to 2 or 3 conversion tasks at the same time, respectively. The hard cap on the PCW used in this model is set to 5 per project, with the ability to adjust it in the <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>. 
+**Peak Concurrent Workers (PCW)** are the maximum number of file conversion tasks that Interactive Whiteboard servers can process simultaneously per project per server region per file conversation mode (dynamic or static). The unit pricing is per PCW per month, with an unlimited number of files that can be converted to images or web pages. If you set PCW to 2 or 3, this means you will be able to run up to 2 or 3 conversion tasks at the same time, respectively. The hard cap on the PCW used in this model is set to 5 per project, with the ability to adjust it in the <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>. 
 
 At that, if you use less PCW during the month, <Vg k="COMPANY" /> will bill only for the actual PCW usage. Your PCW usage depends on the frequency of requests submitted to our servers and the file size. It increases when the service is processing existing file conversion tasks and a new task is submitted.
-
-
 
 ## Examples
 

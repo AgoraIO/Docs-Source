@@ -1,0 +1,134 @@
+<PlatformWrapper platform="windows">
+
+### Custom video capture
+
+The following figure shows the workflow you implement to capture and stream a custom video source in your <Vpl k="CLIENT"/>.
+
+![API call sequence](/images/video-sdk/custom-video-capture.svg)
+
+Take the following steps to implement this workflow:
+
+1. Create a custom video track
+
+    To create a custom video track and obtain the video track ID, call `createCustomVideoTrack` after initializing an instance of `IRtcEngine`. To create multiple custom video tracks, call the method multiple times.
+
+    ```cpp
+    // For creating multiple custom video tracks, call createCustomVideoTrack multiple times
+    int videoTrackId = m_rtcEngine->createCustomVideoTrack();
+    m_trackVideoTrackIds[trackIndex] = videoTrackId;
+    ```
+
+2. Join a channel and publish the custom video track
+    
+    Call `joinChannel` to join a channel or `joinChannelEx` to join multiple channels. In the `ChannelMediaOptions` for each channel, set the `customVideoTrackId` to the video track ID you obtained. Set `publishCustomVideoTrack` to `true` to publish the specified custom video track in multiple channels.
+
+    1. Join the main channel:
+
+        ```cpp
+        ChannelMediaOptions mediaOptions;
+        mediaOptions.clientRoleType = CLIENT_ROLE_BROADCASTER;
+        // Publish the self-captured video stream
+        mediaOptions.publishCustomVideoTrack = true;
+        mediaOptions.autoSubscribeVideo = false;
+        mediaOptions.autoSubscribeAudio = false;
+        // Set the custom video track ID
+        mediaOptions.customVideoTrackId = videoTrackId;
+        // Join the channel
+        int ret = m_rtcEngine->joinChannel(APP_TOKEN, szChannelId.data(), 0, mediaOptions);
+        ```
+
+    1. To publish custom video in multiple channels, refer to the following code:
+        
+        ```cpp
+        int uid = 10001 + trackIndex;
+        m_trackUids[trackIndex] = uid;
+        m_trackConnections[trackIndex].channelId = m_strChannel.c_str();
+        m_trackConnections[trackIndex].localUid = uid;
+        m_trackEventHandlers[trackIndex].SetId(trackIndex + 1);
+        m_trackEventHandlers[trackIndex].SetMsgReceiver(m_hWnd);
+
+        // For publishing custom video tracks in multiple channels, set ChannelMediaOptions multiple times and call joinChannelEx multiple times
+        ChannelMediaOptions mediaOptions;
+        mediaOptions.clientRoleType = CLIENT_ROLE_BROADCASTER;
+        // Publish the self-captured video stream
+        mediaOptions.publishCustomVideoTrack = true;
+        mediaOptions.autoSubscribeVideo = false;
+        mediaOptions.autoSubscribeAudio = false;
+        // Set the custom video track ID
+        mediaOptions.customVideoTrackId = videoTrackId;
+        // Join multiple channels
+        int ret = m_rtcEngine->joinChannelEx(APP_TOKEN, m_trackConnections[trackIndex], mediaOptions, &m_trackEventHandlers[trackIndex]);
+        ```
+
+3. Implement self-capture module
+
+    <Vg k="COMPANY"/> provides the [YUVReader.cpp](https://github.com/AgoraIO/API-Examples/blob/main/windows/APIExample/APIExample/YUVReader.cpp) and [YUVReader.h](https://github.com/AgoraIO/API-Examples/blob/main/windows/APIExample/APIExample/YUVReader.h) demo projects that show you how to read `YUV` format video data from a local file. In a production environment, create a custom video module for your device using <Vg k= "VSDK"/> based on your business requirements.
+
+    ```cpp
+    // Use the custom YUVReader class to continuously read YUV-format video data in the YUVReader thread and pass the data to the OnYUVRead callback for further processing
+    m_yuvReaderHandlers[trackIndex].Setup(m_rtcEngine, m_mediaEngine.get(), videoTrackId);
+    m_yuvReaders[trackIndex].start(std::bind(&MultiVideoSourceTracksYUVReaderHander::OnYUVRead, m_yuvReaderHandlers[trackIndex], std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+    ```
+    
+4. Push video data to the SDK 
+        
+    Call `pushVideoFrame` to push the captured video frames through the video track to <Vg k= "VSDK"/>. Ensure that the `videoTrackId` matches the track ID you specified when joining the channel. Customize parameters like pixel format, data type, and timestamp in the `VideoFrame`.
+
+    <Admonition type="info" title="Information">
+    To ensure audio-video synchronization, set the timestamp parameter of `VideoFrame` to the system's Monotonic Time. Use `getCurrentMonotonicTimeInMs` to obtain the current Monotonic Time.
+    </Admonition>
+
+    ```cpp
+    void MultiVideoSourceTracksYUVReaderHander::OnYUVRead(int width, int height, 
+                                                          unsigned char* buffer, 
+                                                          int size) {
+        if (m_mediaEngine == nullptr || m_rtcEngine == nullptr) {
+            return;
+        }
+    
+        // Set the video pixel format to I420
+        m_videoFrame.format = agora::media::base::VIDEO_PIXEL_I420;
+        // Set the video data type to raw data
+        m_videoFrame.type = agora::media::base::ExternalVideoFrame::
+            VIDEO_BUFFER_TYPE::VIDEO_BUFFER_RAW_DATA;
+        // Pass the width, height, and buffer of the captured YUV video data to videoFrame
+        m_videoFrame.height = height;
+        m_videoFrame.stride = width;
+        m_videoFrame.buffer = buffer;
+        // Get the current Monotonic Time from the SDK and assign it to the timestamp parameter of videoFrame
+        m_videoFrame.timestamp = m_rtcEngine->getCurrentMonotonicTimeInMs();
+        // Push the video frame to the SDK
+        m_mediaEngine->pushVideoFrame(&m_videoFrame, m_videoTrackId);
+    }
+    ```
+    <Admonition type="info" title="Information">
+    The sample code demonstrates converting YUV format to raw video data in `I420` format. <Vg k="COMPANY"/> video self-capture supports pushing external video frames in other formats; refer to [`VIDEO_PIXEL_FORMAT`](https://api-ref.agora.io/en/video-sdk/cpp/4.x/API/enum_videopixelformat.html).
+    </Admonition>
+
+    <Admonition type="info" title="Information">
+    If the captured custom video format is Texture and remote users experience flickering or distortion in the locally captured video, it is recommended to first duplicate the video data and then send both the original and duplicated video data back to the <Vg k="VSDK"/>. This helps eliminate anomalies during internal data encoding processes.
+    </Admonition>
+
+
+5. Destroy custom video tracks
+        
+    To stop custom video capture and destroy the video track, call `destroyCustomVideoTrack`. To destroy multiple video tracks, call the method for each track.
+
+    ```cpp
+    // Stop self-captured video data
+    m_yuvReaders[trackIndex].stop();
+    m_yuvReaderHandlers[trackIndex].Release();
+    // Destroy the custom video track
+    m_rtcEngine->destroyCustomVideoTrack(m_trackVideoTrackIds[trackIndex]);
+    // Leave the channel
+    m_rtcEngine->leaveChannelEx(m_trackConnections[trackIndex]);
+    ```
+
+### Custom video rendering
+
+To implement custom video rendering in your <Vpl k="CLIENT" />, refer to the following steps:
+
+1. Set up `onCaptureVideoFrame` or `onRenderVideoFrame` callback to obtain the video data to be played.
+1. Implement video rendering and playback yourself.
+
+</PlatformWrapper>

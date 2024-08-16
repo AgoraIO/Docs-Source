@@ -1,6 +1,7 @@
 const data = {
     'video-calling': {
     NAME: 'Video Calling',
+    SDK_LITE: 'Lite SDK',
     PATH: 'video-calling',
     SDK: 'Video SDK',
     PRODUCT: 'Video Calling',
@@ -11,6 +12,7 @@ const data = {
 
   'voice-calling': {
     NAME: 'Voice Calling',
+    SDK_LITE: 'Lite SDK',
     PATH: 'voice-calling',
     SDK: 'Voice SDK',
     PRODUCT: 'Voice Calling',
@@ -19,6 +21,7 @@ const data = {
 
   'interactive-live-streaming': {
     NAME: 'Interactive Live Streaming',
+    SDK_LITE: 'Lite SDK',
     PATH: 'interactive-live-streaming',
     SDK: 'Video SDK',
     PRODUCT: 'Interactive Live Streaming',
@@ -70,6 +73,7 @@ const data = {
 
   'broadcast-streaming': {
     NAME: 'Broadcast Streaming',
+    SDK_LITE: 'Lite SDK',
     PATH: 'broadcast-streaming',
     SDK: 'Video SDK',
     PRODUCT: 'Broadcast Streaming',
@@ -97,13 +101,27 @@ const data = {
     PRODUCT: 'Media Push'
   },
 
+  'media-gateway': {
+    NAME: 'Media Gateway',
+    PATH: 'media-gateway',
+    SDK: 'Media Gateway',
+    PRODUCT: 'Media Gateway'
+  },
+
   'agora-chat': {
     NAME: 'Chat',
     PATH: 'agora-chat',
     SDK: 'Chat SDK',
     PRODUCT: 'Peer-to-Peer Messaging',
     IOS_PACKAGE_NAME: 'AgoraChat_iOS'
-}
+  },
+
+  'real-time-stt': {
+    NAME: 'Real-Time STT',
+    PATH: 'real-time-stt',
+    SDK: 'Real-Time STT',
+    PRODUCT: 'Real-Time STT'
+  }
 };
 
 export default data;

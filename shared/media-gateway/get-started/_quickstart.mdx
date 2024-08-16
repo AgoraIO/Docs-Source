@@ -1,0 +1,145 @@
+import * as data from '@site/data/variables';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+To push online media streams as live video source streams into <Vg k="COMPANY" /> channels using <Vpd k="NAME" />, you need to obtain a server domain name and streaming key. Taking the OBS streaming software as an example, you configure the server's domain name and streaming key in the following way:
+
+![Server settings](/images/media-gateway/obs-server-setting.png)
+
+This page explains how to obtain the server domain name and generate a streaming key.
+
+## Prerequisites
+
+In order to follow this procedure you must:
+
+- Have a project that implements an RTC product ([Interactive Live Streaming](../../interactive-live-streaming/overview/product-overview), [Broadcast Streaming](../../broadcast-streaming/overview/product-overview), [Video Calling](../../video-calling/overview/product-overview), [Voice Calling](../../voice-calling/overview/product-overview))
+- Generate app ID, app certificate, customer ID, and customer secret
+- Pass basic HTTP or HMAC authentication
+
+## Get server domain name
+
+You can use <Vg k="COMPANY" />’s unified domain name or your own one. The server appends the `/live` suffix to the domain name.
+
+- The <Vg k="COMPANY" />'s unified domain name is `rtls-ingress-prod-<region>.agoramdn.com`. Replace `<region>` with the code for your geographical region.
+
+     The supported regions and their codes are:
+
+            * `na`: North America
+            * `eu`: Europe
+            * `ap`: Asia, except Mainland China
+            * `cn`: Mainland China
+
+- To use your own domain name, [contact technical support](mailto:support@agora.io) for configuration.
+
+## Get streaming key
+
+The stream key generation method depends on whether you use the <Vg k="COMPANY" />'s domain name or a custom domain name.
+
+ - If you use <Vg k="COMPANY" />'s domain name, create a stream key using the <Vpd k="NAME" /> RESTful API.
+ - If you use your own domain name, you can either call the <Vpd k="NAME" /> RESTful API or generate the key locally.
+
+### Generate streaming key with RESTful API
+
+Create and publish the streaming key by calling the following endpoint:
+
+`PUT https://api.agora.io/:region/v1/projects/:appId/rtls/ingress/streamkeys`
+
+See [API reference](../reference/rest-api/endpoints/streaming-key/create-streaming-key) for details.
+
+### Generate streaming key locally
+
+<Admonition type="caution" title="Note">Before starting, please make sure you have contacted technical support and configured your domain name.</Admonition>
+
+To generate a stream key locally, you use the following information:
+
+* The app ID of the <Vg k="COMPANY" /> project from <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>.
+* The app certificate corresponding to your app ID.
+* The channel name (`channelName`).
+* The user ID (`uid`) of the host in the channel.
+* The effective duration of the stream key, in seconds (`expiresAfter`).
+* (Optional) The associated flow configuration template (`template`). See [API reference](../reference/rest-api/endpoints/streaming-key/create-streaming-key) for details.
+
+The following Node.js sample code demonstrates how to generate a stream key locally.
+
+<Admonition type="caution" title="Note">The following example code relies on the `msgpack-lite` module. If you haven't installed it yet, execute `npm install msgpack-lite` and run `node app.js` in the project root directory .</Admonition>
+
+```javascript
+const crypto = require('crypto');
+const msgpack = require('msgpack-lite');
+
+appcert = "" // Your app certificate from Agora
+channel = ""; // The Video SDK channel name
+uid = ""; // The UID of the host in the channel
+expiresAfter = 86400; // Valid duration of stream key (seconds)
+
+const expiresAt = Math.floor(Date.now() / 1000) + expiresAfter;
+
+const rtcInfo = {
+   C: channel,
+   U: uid,
+   E: expiresAt,
+   // If you are not sure whether to use the flow configuration template, keep the following line commented
+   // T: templateId,
+};
+
+// Serialize using msgpack
+const data = msgpack.encode(rtcInfo);
+
+// Randomly generate an initialization vector
+const iv = crypto.randomBytes(16);
+
+// Use app certificate as encryption key
+const key = Buffer.from(appcert, 'hex');
+
+// Create an AES-128 CTR encryptor
+const encrypter = crypto.createCipheriv('aes-128-ctr', key, iv);
+
+// Encrypt the data
+const encrypted = Buffer.concat([iv, encrypter.update(data), encrypter.final()]);
+
+// Base64 conversion
+const streamkey = encrypted.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/\=+$/, '');
+
+console.log(`streamkey is ${streamkey}`);
+```
+
+## Recommended config for web client communication
+
+In case of intercommunication with the web client, transcoding is not enabled by default. To ensure the best experience for web viewers,  make sure that the streaming software uses the following encoding parameters:
+
+- Key frame interval (GOP): `2s`
+- Video profile: `baseline`
+- x264 options: `threads=6`
+- Frame rate (FPS): At 1080 resolution, the frame rate must not exceed 30; for resolutions below that, the frame rate must not exceed 60 (if not necessary, 30 is sufficient).
+
+Taking the OBS streaming software as an example, configure it as shown below:
+
+1. On the **Settings > Output > Live** page, configure the video profile, keyframe interval, and x264 options.
+
+    ![Encoder settings](/images/media-gateway/obs-encoder-settings.png)
+
+1. On the **Settings > Video** page, configure common frame rates.
+
+    ![FPS settings](/images/media-gateway/obs-fps-setting.png)
+
+## Next steps
+
+After completing the configuration, you can push RTMP or SRT protocol streams to <Vg k="COMPANY" /> channels, and these streams will be published to the corresponding channels by the host.
+
+By default, after the <Vpd k="NAME" /> receives the pushed stream, it will not transcode it and will directly publish it to the <Vg k="COMPANY" /> channel. If you want to transcode the streams, use the stream configuration template API to implement related functions.
+
+### REST API middleware 
+
+[Agora Go Backend Middleware](https://github.com/AgoraIO-Community/agora-go-backend-middleware) is an open-source microservice that exposes a RESTful API designed to simplify <Vpd k="NAME" /> interactions with Agora. Written in Golang and powered by the Gin framework, this community project serves as a middleware to bridge front-end applications using Agora's <Vg k="VSDK" /> or <Vg k="ASDK" /> with Agora's RESTful APIs.
+
+
+
+
+
+
+
+
+
+
+
+

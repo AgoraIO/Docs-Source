@@ -16,6 +16,7 @@ export const API_ROOT = 'https://api-ref.agora.io/en';
 export const API_REF_ROOT = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VIDEO_SDK = `${API_ROOT}/video-sdk`;
 export const API_REF_ROOT_VOICE_SDK = `${API_ROOT}/voice-sdk`;
+export const API_REF_ROOT_LITE_SDK = `${API_ROOT}/lite-sdk`;
 export const API_REF_ANDROID_ROOT  = `${API_REF_ROOT}/android/${VSDK_RELEASE_API}/API`;
 export const API_REF_ANDROID_PREVIOUS_ROOT = `${API_REF_ROOT}/android/${VSDK_PREVIOUS_RELEASE_API}`;
 export const API_REF_ANDROID_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/android/${VSDK_RELEASE_API}/API`;
@@ -27,12 +28,14 @@ export const API_REF_IOS_PREVIOUS_ROOT = `${API_REF_ROOT}/ios/${VSDK_PREVIOUS_RE
 export const API_REF_IOS_ROOT_RTC_KIT = `${API_REF_IOS_ROOT}/agorartckit`;
 export const API_REF_IOS_ROOT_RTC_ENGINE_KIT = `${API_REF_IOS_ROOT_RTC_KIT}/agorartcenginekit`;
 export const API_REF_IOS_ROOT_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/ios/${VSDK_RELEASE_API}/documentation`;
+export const API_REF_IOS_ROOT_LITE_SDK = `${API_REF_ROOT_LITE_SDK}/ios/${VSDK_RELEASE_API}/documentation`;
 export const API_REF_IOS_ROOT_RTC_KIT_VOICE_SDK = `${API_REF_IOS_ROOT_VOICE_SDK}/agorartckit`;
 export const API_REF_IOS_ROOT_RTC_ENGINE_KIT_VOICE_SDK = `${API_REF_IOS_ROOT_RTC_KIT_VOICE_SDK}/agorartcenginekit`;
 export const API_REF_RNJS_ROOT  = `${API_REF_ROOT}/reactjs/2.x`;
 export const API_REF_RNJS_ROOT_VOICE = `${API_REF_ROOT_VOICE_SDK}/reactjs/2.x`;
 export const API_REF_RN_ROOT  = `${API_REF_ROOT}/react-native/${MAJOR_VERSION}/API`;
 export const API_REF_UE_ROOT  = `${API_REF_ROOT}/unreal-engine/${MAJOR_VERSION}/API`;
+export const API_REF_BLUEPRINT_ROOT  = `${API_REF_ROOT}/blueprint/${MAJOR_VERSION}/API`;
 export const API_REF_RN_PREVIOUS_ROOT  = `${API_REF_ROOT}/react-native/${VSDK_PREVIOUS_RELEASE_API}`;
 export const API_REF_RN_ROOT_VOICE = `${API_REF_ROOT_VOICE_SDK}/react-native/${MAJOR_VERSION}/API`;
 export const API_REF_MACOS_ROOT = `${API_REF_ROOT}/macos/${VSDK_RELEASE_API}/documentation`;
@@ -65,10 +68,11 @@ export const API_REF_FLUTTER_ROOT_PREV_SDK = `${API_REF_ROOT}/flutter/5.x/API`;
 export const API_REF_WINDOWS_ROOT_CPP  = `${API_REF_ROOT}/cpp/${VSDK_RELEASE_API}/API`;
 export const API_REF_UE_ROOT_VOICE_SDK  = `${API_REF_ROOT_VOICE_SDK}/unreal-engine/${VSDK_RELEASE_API}/API`;
 export const API_REF_WINDOWS_ROOT_CPP_VOICE_SDK = `${API_REF_ROOT_VOICE_SDK}/cpp/${VSDK_RELEASE_API}/API`;
+export const API_REF_UBP_ROOT  = `${API_REF_ROOT}/blueprint/${VSDK_RELEASE_API}/API`;
 
 export const API_REF_SIG_ANDROID = '../reference/api';
 export const API_REF_SIG_WEB = '../reference/api';
-export const API_REF_SIG_APPLE = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
+export const API_REF_SIG_APPLE = '../reference/api';
 export const API_REF_SIG_UNITY = '../reference/api';
 export const API_REF_SIG_LNX_CPP = '../reference/api';
 
@@ -110,6 +114,7 @@ export const VSDK_FLUTTER_RELEASE = '6.0.0-rc.2';
 export const VSDK_LATEST_RELEASE = '4.1.0';
 
 export const AV = 'Audio/Video';
+export const SCR_SHR = 'screen sharing';
 
 export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;
@@ -162,6 +167,8 @@ export const ACC = 'Acceleration';
 export const ACCM = 'Media Accelerator';
 export const ACCG = 'Global Accelerator';
 
+export const MG = 'Media Gateway';
+
 export const TEMPL = 'Templates';
 
 export const RTEE = 'Extensions';
@@ -171,6 +178,8 @@ export const RTEE_NS = 'AI Noise Suppression';
 export const RTEE_VB = 'Virtual Background';
 export const RTEE_FU = 'FaceUnity';
 export const RTEE_AF = 'ActiveFence';
+export const RTEE_MK = 'MetaKit';
+export const RTEE_CM = 'Camera Movement';
 export const RTEE_AF_D = `ActiveOS`;
 export const RTEE_HT3D = `HTEffect 3D Avatar`
 export const RTEE_LDCI = `LiveData Conversation Intelligence`

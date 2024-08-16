@@ -1,0 +1,160 @@
+<PlatformWrapper platform="android">
+
+Choose one of the following methods to implement the Alpha transparency effect based on your specific business scenario.
+
+### Custom video capture scenario
+
+The implementation process for this scenario is illustrated in the figure below:
+
+
+![Custom Video Capture Process 1](/images/video-sdk/alpha-transparency-scenario-1.svg)
+
+Take the following steps to implement this logic:
+
+1. Process the captured video frames and generate Alpha data. You can choose from the following methods:
+
+   - **Method 1**: Call the `pushExternalVideoFrame`[2/2] method and set the `alphaBuffer` parameter to specify Alpha channel data for the video frames. This data matches the size of the video frames, with each pixel value ranging from 0 to 255, where 0 represents the background and 255 represents the foreground.
+
+     ```java
+     JavaI420Buffer javaI420Buffer = JavaI420Buffer.wrap(width, height, dataY, width, dataU, strideUV, dataV, strideUV, null);
+     VideoFrame frame = new VideoFrame(javaI420Buffer, 0, timestamp);
+     ByteBuffer alphaBuffer = ByteBuffer.allocateDirect(width * height);
+     frame.fillAlphaData(alphaBuffer);
+     rtcEngine.pushExternalVideoFrame(frame);
+     ```
+
+   - **Method 2**: Call the `pushExternalVideoFrame` method and use the `setAlphaStitchMode` method in the `VideoFrame` class to set the Alpha stitching mode. Construct a `VideoFrame` with the stitched Alpha data.
+
+     ```java
+     JavaI420Buffer javaI420Buffer = JavaI420Buffer.wrap(width, height, dataY, width, dataU, strideUV, dataV, strideUV, null);
+     VideoFrame frame = new VideoFrame(javaI420Buffer, 0, timestamp);
+     // Set the Alpha stitching mode, in the example below, Alpha is set to be below the video image
+     frame.setAlphaStitchMode(Constants.VIDEO_ALPHA_STITCH_BELOW);
+     rtcEngine.pushExternalVideoFrame(frame);
+     ```
+
+2. Render the view and implement the Alpha transparency effect.
+
+    - Call the `setupLocalVideo` method to set up the local view and set the `enableAlphaMask` parameter to `true` to enable Alpha mask rendering.
+
+        ```java
+        // Set the view to TextureView
+        TextureView localView = new TextureView(context);
+        // Enable transparent mode, allowing transparent portions in the view background and content
+        localView.setOpaque(false);
+        VideoCanvas localCanvas = new VideoCanvas(localView, renderMode, uid);
+        localCanvas.enableAlphaMask = true;
+        rtcEngine.setupLocalVideo(localCanvas);
+        ```
+
+    - Call the `setupRemoteVideo` method to set the view for displaying the remote video stream locally, and set the `enableAlphaMask` parameter to `true` to enable Alpha mask rendering.
+
+        ```java
+        // The sender inputs Alpha data and enables Alpha transmission
+        VideoEncoderConfiguration videoEncoderConfiguration = new VideoEncoderConfiguration(...);
+        videoEncoderConfiguration.advanceOptions = new VideoEncoderConfiguration.AdvanceOptions(...);
+        // Enable Alpha transmission when setting encoding parameters
+        videoEncoderConfiguration.advanceOptions.encodeAlpha = true;
+        rtcEngine.setVideoEncoderConfiguration(videoEncoderConfiguration)
+        // Enable transparent mode at the receiving end
+        TextureView remoteView = new TextureView(context);
+        remoteView.setOpaque(false);
+        VideoCanvas remoteCanvas = new VideoCanvas(remoteView, renderMode, uid);
+        remoteCanvas.enableAlphaMask = true;
+        rtcEngine.setupRemoteVideo(remoteCanvas)
+        ```
+
+### SDK Capture Scenario
+
+The implementation process for this scenario is illustrated in the following figure:
+
+![Custom Video Capture Process 2](/images/video-sdk/alpha-transparency-scenario-2.svg)
+
+Take the following steps to implement this logic:
+
+1. On the broadcasting end, call the `enableVirtualBackground` [2/2] method to enable the background segmentation algorithm and obtain the Alpha data for the portrait area. Set the parameters as follows:
+
+    - `enabled`: Set to `true` to enable the virtual background.
+    - `backgroundSourceType`: Set to `BACKGROUND_NONE`(0), to segment the portrait and background, and process the background as Alpha data.
+
+    ```java
+    VirtualBackgroundSource virtualBackgroundSource = new VirtualBackgroundSource(...);
+    virtualBackgroundSource.backgroundSourceType = VirtualBackgroundSource.BACKGROUND_NONE; // Only generate alpha data, no background replacement
+    SegmentationProperty segmentationProperty = new SegmentationProperty(...);
+    rtcEngine.enableVirtualBackground(true, virtualBackgroundSource, segmentationProperty, sourceType)
+    ```
+
+2. Render the view and implement the Alpha transparency effect. See the steps in the [Custom Video Capture Scenario](#custom-video-capture-scenario) for details.
+
+### Raw video data scenario
+
+The implementation process for this scenario is illustrated in the following figure:
+
+![Custom Video Capture Process 3](/images/video-sdk/alpha-transparency-scenario-3.svg)
+
+Take the following steps to implement this logic:
+
+1. Call the `registerVideoFrameObserver` method to register a raw video frame observer and implement the corresponding callbacks as required.
+
+    ```java
+    // Register IVideoFrameObserver
+    public class MyVideoFrameObserver implements IVideoFrameObserver {
+        @Override
+        public boolean onRenderVideoFrame(String channelId, int uId, VideoFrame videoFrame) {
+            // ...
+            return false;
+        }
+
+        @Override
+        public boolean onCaptureVideoFrame(int type, VideoFrame videoFrame) {
+            // ...
+            return false;
+        }
+
+        @Override
+        public boolean onPreEncodeVideoFrame(int type, VideoFrame videoFrame) {
+            // ...
+            return false;
+        }
+    }
+    MyVideoFrameObserver observer = new MyVideoFrameObserver();
+    rtcEngine.registerVideoFrameObserver(observer);
+    ```
+
+2. Use the `onCaptureVideoFrame` callback to obtain the captured video data and pre-process it as needed. You can modify the Alpha data or directly add Alpha data.
+
+    ```java
+    public boolean onCaptureVideoFrame(int type, VideoFrame videoFrame) {
+        // Modify Alpha data or directly add Alpha data
+        ByteBuffer alphaBuffer = videoFrame.getAlphaBuffer();
+        // ...
+        videoFrame.fillAlphaData(byteBuffer);
+        return false;
+    }
+    ```
+
+3. Use the `onPreEncodeVideoFrame` callback to obtain the local video data before encoding, and modify or directly add Alpha data as needed.
+
+    ```java
+    public boolean onPreEncodeVideoFrame(int type, VideoFrame videoFrame) {
+        // Modify Alpha data or directly add Alpha data
+        ByteBuffer alphaBuffer = videoFrame.getAlphaBuffer();
+        // ...
+        videoFrame.fillAlphaData(byteBuffer);
+        return false;
+    }
+    ```
+
+4. Use the `onRenderVideoFrame` callback to obtain the remote video data before rendering it locally. Modify the Alpha data, add Alpha data directly, or render the video image yourself based on the obtained Alpha data.
+
+    ```java
+    public boolean onRenderVideoFrame(int type, VideoFrame videoFrame) {
+        // Modify Alpha data, directly add Alpha data, or render the video image yourself based on the obtained Alpha data
+        ByteBuffer alphaBuffer = videoFrame.getAlphaBuffer();
+        // ...
+        videoFrame.fillAlphaData(byteBuffer);
+        return false;
+    }
+    ```
+
+</PlatformWrapper>

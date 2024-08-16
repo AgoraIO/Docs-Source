@@ -8,7 +8,13 @@ const data = {
   'android': {
     NAME: 'Android',
     PATH: 'android',
-    CLIENT: 'app'
+    CLIENT: 'app',
+    RTC_EVENT_HANDLER_CLASS: 'IRtcEngineEventHandler',
+    RTC_CONNECTION: 'RtcConnection',
+    RTC_ENGINE: 'RtcEngine',
+    RTC_ENGINE_EX: 'RtcEngineEx',
+    RTC_JOIN_CHANNEL_EX: 'joinChannelEx',
+    RTC_EVENT_HANDLER_PARAMETER: 'eventHandler' // In joinChannel API
   },
 
   'ios': {
@@ -16,7 +22,13 @@ const data = {
     PATH: 'ios',
     CLIENT: 'app',
     PACKAGE_NAME: 'AgoraRtcEngine_iOS',
-    PACKAGE_PRODUCT_NAME: 'RtcBasic'
+    PACKAGE_PRODUCT_NAME: 'RtcBasic',
+    RTC_EVENT_HANDLER_CLASS: 'AgoraRtcEngineDelegate',
+    RTC_CONNECTION: 'AgoraRtcConnection',
+    RTC_ENGINE: 'AgoraRtcEngineKit',
+    RTC_ENGINE_EX: 'AgoraRtcEngineKit(Ex)',
+    RTC_JOIN_CHANNEL_EX: 'joinChannelExByToken',
+    RTC_EVENT_HANDLER_PARAMETER: 'delegate' // In joinChannel API
   },
 
   'macos': {
@@ -24,7 +36,13 @@ const data = {
     PATH: 'macos',
     CLIENT: 'app',
     PACKAGE_NAME: 'AgoraRtcEngine_macOS',
-    PACKAGE_PRODUCT_NAME: 'RtcBasic'
+    PACKAGE_PRODUCT_NAME: 'RtcBasic',
+    RTC_EVENT_HANDLER_CLASS: 'AgoraRtcEngineDelegate',
+    RTC_CONNECTION: 'AgoraRtcConnection',
+    RTC_ENGINE: 'AgoraRtcEngineKit',
+    RTC_ENGINE_EX: 'AgoraRtcEngineKit(Ex)',
+    RTC_JOIN_CHANNEL_EX: 'joinChannelExByToken',
+    RTC_EVENT_HANDLER_PARAMETER: 'delegate' // In joinChannel API
   },
 
   'react-native': {
@@ -53,7 +71,13 @@ const data = {
   'windows': {
     NAME: 'Windows',
     PATH: 'windows',
-    CLIENT: 'app'
+    CLIENT: 'app',
+    RTC_EVENT_HANDLER_CLASS: 'IRtcEngineEventHandler',
+    RTC_CONNECTION: 'RtcConnection',
+    RTC_ENGINE: 'IRtcEngine',
+    RTC_ENGINE_EX: 'IRtcEngineEx',
+    RTC_JOIN_CHANNEL_EX: 'joinChannelEx',
+    RTC_EVENT_HANDLER_PARAMETER: 'eventHandler' // In joinChannel API
   },
 
   'flutter': {
@@ -78,8 +102,14 @@ const data = {
     NAME: 'Unreal Engine',
     PATH: 'unreal',
     CLIENT: 'game'
+  },
+
+  'blueprint': {
+    NAME: 'Unreal (Blueprint)',
+    PATH: 'blueprint',
+    CLIENT: 'game'
   }
-  
+
 };
 
 export default data;

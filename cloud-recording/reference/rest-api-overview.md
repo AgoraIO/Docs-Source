@@ -46,7 +46,8 @@ The following is an example that shows the fields in the request body.
 
 <SignatureVerification />
 
-For details on setting up a <Vg k="NCS" /> webhook server, see [Create your webhook](../../../video-calling/core-functionality/receive-notifications#create-your-webhook).
+For details on setting up a <Vg k="NCS" /> webhook server, see [Create your 
+webhook](../develop/receive-notifications#create-your-webhook).
 
 ## <a name="event"></a>Callback events
 

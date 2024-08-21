@@ -38,7 +38,7 @@ Check that your Peak Concurrent Worker (PCW), Queries Per Second (QPS), and the 
 
 #### PCW
 
-The PCW limit is set to 200 for all regions and resolutions. If you need to extend the PCW limit, please contact support@agora.io.
+The PCW limit is set to 50 for all regions and resolutions. If you need to extend the PCW limit, please contact support@agora.io.
 
 #### QPS
 
@@ -55,7 +55,7 @@ The maximum number of supported streams is as follows:
 
 | Service type    | Mainland China        | Europe               | America               | Asia (excluding mainland China) |
 |:----------------|:----------------------|:---------------------|:----------------------|:--------------------------------|
-| Cloud recording | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 50</li> <li>HD 30</li> <li>FHD 10</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul>           |
+| Cloud recording | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 50</li> <li>HD 30</li> <li>FHD 10</li></ul> | <ul><li>SD 50</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 50</li> <li>HD 50</li> <li>FHD 30</li></ul>           |
 
 <Admonition type="caution" title="Note">If you need to record multiple streams of different resolutions at the same time, make sure you meet the following requirements:<ul><li>The number of streams per resolution cannot exceed the corresponding limit for that resolution.</li><li>The total number of streams cannot exceed the limit set for the higher resolution. For example, if you need to use cloud recording in Europe to record in both SD and HD, the total number of streams cannot exceed 50. If you record in both HD and FHD, the total number cannot exceed 30.</li></ul></Admonition>
 

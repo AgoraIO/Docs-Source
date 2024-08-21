@@ -1,0 +1,161 @@
+<PlatformWrapper platform="linux-cpp">
+
+### Join a topic
+
+Joining a topic is a prerequisite for sending messages in a topic. <Vg k="SIG" /> allows a single client to join up to 8 topics in a channel concurrently. 
+
+When joining a topic, set sending attributes using `options`. These parameters affect the sending behavior, such as whether the message order is preserved, the message priority, and synchronization of audio and video data transmitted on the same channel. For details, refer to the [API reference](../reference/api#topicjoinpropsag_platform).
+
+Use the following code to join a topic:
+
+```cpp
+JoinTopicOptions options;
+uint64_t requestId;
+streamChannel->joinTopic("topicName", options, requestId);
+```
+
+After you call this method, the SDK triggers the `onJoinTopicResult` callback and returns the call result.
+
+```cpp
+// Asynchronous callback
+class RtmEventHandler : public IRtmEventHandler {
+    void onJoinTopicResult(const uint64_t requestId, const char *channelName, const char *userId, const char *topic, const char *meta, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("JoinTopic failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("JoinTopic success\n");
+        }
+    }
+}
+```
+
+After a user successfully joins a topic, the SDK triggers an `onTopicEvent` of type `RTM_TOPIC_EVENT_TYPE_REMOTE_JOIN_TOPIC`. All users in the channel, who have enabled listening to topic events, receive this event notification.
+
+### Leave a topic
+
+When you no longer need to send messages to a topic, or the number of topics currently joined exceeds the limit, leave a topic to release resources. 
+
+Refer to the following code to leave a topic:
+
+```cpp
+uint64_t requestId;
+streamChannel->leaveTopic("topicName", requestId);
+```
+
+After you call this method, the SDK triggers the `onLeaveTopicResult` callback and returns the call result.
+
+```cpp
+// Asynchronous callback
+class RtmEventHandler : public IRtmEventHandler {
+    void onLeaveTopicResult(const uint64_t requestId, const char *channelName, const char *userId, const char *topic, const char *meta, RTM_ERROR_CODE errorCode) override
+    {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("LeaveTopic failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("LeaveTopic success\n");
+        }
+    }
+};
+```
+
+After a user successfully leaves a topic, the SDK triggers an `onTopicEvent` of type `RTM_TOPIC_EVENT_TYPE_REMOTE_LEAVE_TOPIC`. All users in the channel, who have enabled listening to topic events, receive this event notification.
+
+### Subscribe to a topic
+Joining a topic does not mean that you automatically start receiving messages sent to the topic. To receive messages, you subscribe to the topic and specify the message publishers to receive the messages from. In a single channel, you can subscribe to up to 50 topics concurrently, and in each topic, you can subscribe to up to 64 message publishers at the same time. The purpose of this limit is to balance end-side bandwidth and performance.
+
+To subscribe to message publishers in a topic, specify the message publishers list in the `users` parameter of the `TopicOptions` instance. 
+
+Refer to the following code to subscribe to a topic:
+
+```cpp
+std::vector<const char*> users;
+users.push_back("UserA");
+users.push_back("UserB");
+
+TopicOptions options;
+options.users = users.data();
+options.userCount = users.size();
+
+uint64_t requestId;
+streamChannel->subscribeTopic("topicName", options, requestId);
+```
+
+After you call this method, the SDK triggers the `onSubscribeTopicResult` callback and returns the call result.
+
+```cpp
+// Asynchronous callback
+class RtmEventHandler : public IRtmEventHandler {
+    void onSubscribeTopicResult(const uint64_t requestId, const char *channelName, const char *userId, const char *topic, UserList succeedUsers, UserList failedUsers, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("SubscribeTopic failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("SubscribeTopic success\n");
+        }
+    }
+};
+```
+
+<Admonition>
+* If you do not fill in the message publishers list when subscribing to a topic, up to 64 users are randomly subscribed by default. If there are less than 64 users in the topic, all users are subscribed. 
+
+* If you make multiple topic subscription calls, where the first subscription message publisher list is `[UserA, UserB]` and the second publisher list is `[UserB, UserC]`, then the final subscription list is `[UserA, UserB, UserC]`.
+</Admonition>
+
+### Unsubscribe from a topic
+
+To stop receiving messages from a particular message publisher in a topic, or to unfollow the entire topic, call `unsubscribeTopic`. If you do not fill in the message publishers list when unsubscribing from a topic, you are unsubscribed from the entire topic.
+
+Refer to the following code to unsubscribe:
+
+```cpp
+std::vector<const char*> users;
+users.push_back("UserA");
+users.push_back("UserB");
+TopicOptions options;
+options.users = users.data();
+options.userCount = users.size();
+
+uint64_t requestId;
+streamChannel->unsubscribeTopic("topicName", options, requestId);
+```
+
+After you call this method, the SDK triggers the `onUnsubscribeTopicResult` callback and returns the call result.
+```cpp
+// Asynchronous callback
+class RtmEventHandler : public IRtmEventHandler {
+    void onUnsubscribeTopicResult(const uint64_t requestId, const char* channelName, const char* topic, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("UnsubscribeTopic failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("UnsubscribeTopic success\n");
+        }
+    }
+};
+```
+
+### Add a topic event listener
+
+To set up an event listener for topic events, refer to [Add event listener](../get-started/add-event-listener). After successfully adding a topic event handler, you receive `onTopicEvent` notifications for all topics in all stream channels you join or subscribe to. The event returns the following data:
+
+| Attribute     | Description           |
+|---------------|-----------------------|
+| `type`        | Topic [event type](#topic-event-types) |
+| `channelName` | The name of the channel where the event occurred.  |
+| `publisher`   | The user ID that triggered this event.  |
+| `topicInfos`  | Topic detailed information array, including topic name, topic publisher, and other information. |
+| `topicInfoCount`   | The number of `topicInfos`. |
+| `timestamp`   | The timestamp of when the event occurred. |
+
+### Topic event types
+
+When a user in the channel joins or leaves a topic, <Vg k="SIG" /> triggers the `onTopicEvent` event notification. Users in the channel receive the event notification in real-time and use it to track changes to the status of the topic.
+
+When a user joins a channel for the first time, the SDK delivers a topic event notification of type `RTM_TOPIC_EVENT_TYPE_SNAPSHOT` to the joining user. The notification contains historical status information of the topic in the current channel. The following table explains the different topic event types:
+
+| Attribute     | Description           |
+|---------------|-----------------------|
+| `RTM_TOPIC_EVENT_TYPE_SNAPSHOT` | Triggered when a local user joins a stream channel for the first time. It notifies the user of details for all topics in the channel. This event notification is only triggered once when joining the channel. |
+| `RTM_TOPIC_EVENT_TYPE_REMOTE_JOIN_TOPIC` | Triggered when a remote user joins a topic and registers as a publisher for the topic. |
+| `RTM_TOPIC_EVENT_TYPE_REMOTE_LEAVE_TOPIC` | Triggered when a remote user leaves the topic and unregisters as a topic publisher. |
+
+</PlatformWrapper>

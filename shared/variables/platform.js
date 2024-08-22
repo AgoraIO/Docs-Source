@@ -113,19 +113,19 @@ const data = {
   'cpp': {
     NAME: 'C++',
     PATH: 'cpp',
-    CLIENT: 'game'
+    CLIENT: 'app'
   },
 
   'go': {
     NAME: 'Go',
     PATH: 'go',
-    CLIENT: 'game'
+    CLIENT: 'app'
   },
 
   'python': {
     NAME: 'Python',
     PATH: 'python',
-    CLIENT: 'game'
+    CLIENT: 'app'
   },
 
 };

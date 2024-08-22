@@ -321,5 +321,5 @@ export const AGORA_VIDEO_DOC_APP_REACTNATIVE = 'https://github.com/AgoraIO/video
 export const AGORA_VIDEO_DOC_APP_ELECTRON = 'https://github.com/AgoraIO/video-sdk-samples-electron'
 export const AGORA_VIDEO_DOC_APP_WINDOWS = 'https://github.com/AgoraIO/video-sdk-samples-windows'
 
-export const AI_FRAMEWORK = 'OneZero framework'
+export const AI_FRAMEWORK = 'TEN framework'
 export const AI_VOICE_AGENT = 'Astra voice agent'

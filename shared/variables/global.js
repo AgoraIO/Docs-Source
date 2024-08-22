@@ -322,4 +322,4 @@ export const AGORA_VIDEO_DOC_APP_ELECTRON = 'https://github.com/AgoraIO/video-sd
 export const AGORA_VIDEO_DOC_APP_WINDOWS = 'https://github.com/AgoraIO/video-sdk-samples-windows'
 
 export const AI_FRAMEWORK = 'TEN framework'
-export const AI_VOICE_AGENT = 'Astra Conversational AI'
+export const AI_VOICE_AGENT = 'Astra Conversational AI agent'

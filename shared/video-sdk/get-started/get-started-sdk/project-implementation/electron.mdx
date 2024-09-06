@@ -18,17 +18,18 @@ The complete code to implement basic real-time <Vpd k="PRODUCT"/> is presented b
 <CodeBlock language="js" showLineNumbers>
 {`const { app, BrowserWindow } = require("electron");
 const path = require("path");
-
+  
 // If using Electron 9.x or higher, set allowRendererProcessReuse to false
 app.allowRendererProcessReuse = false;
 
 function createWindow() {
+
     // Create a browser window
     const mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
         webPreferences: {
-            // preload: path.join(__dirname, "renderer.js"),
+            preload: path.join(__dirname, "renderer.js"),
             nodeIntegration: true,
             contextIsolation: false,
         },
@@ -36,13 +37,16 @@ function createWindow() {
 
     // Load the contents of the index.html file
     mainWindow.loadFile("./index.html");
+
     // Open developer tools
     mainWindow.webContents.openDevTools();
 }
 
 // Manage the browser window 
 app.whenReady().then(() => {
+
     createWindow();
+
     // If no window is currently open, create a new window (for macOS)
     app.on("activate", function () {
         if (BrowserWindow.getAllWindows().length === 0) {
@@ -110,64 +114,67 @@ app.on("window-all-closed", function () {
 <CodeBlock language="js" showLineNumbers>
 {`const {
     createAgoraRtcEngine,
-    VideoMirrorModeType,
-    VideoSourceType,
-    RenderModeType,
     ChannelProfileType,
     ClientRoleType,
-    AudienceLatencyLevelType,
+    VideoSourceType,
+    VideoViewSetupMode,
+    AudienceLatencyLevelType
     } = require("agora-electron-sdk");
 
 let rtcEngine;
 let localVideoContainer;
 let remoteVideoContainer;
-let isJoined = false;
-// Fill in your app ID
-const APPID = "<-- Insert app Id -->";
-// Fill in your temporary token
-let token = "<-- Insert token -->";
-// Fill in the channel name you used when generating the token
-const channel = "<-- Insert channel name -->";
-// User ID. Ensure that it's unique within the channel
+// Fill in your App ID
+const APPID = "<-- Insert App Id -->";
+// Fill in your temporary Token
+let token = "<-- Insert Token -->";
+// Fill in the channel name used when generating Token
+const channel = "<-- Insert Channel Name -->";
+// User ID, and ensure its uniqueness within the channel
 let uid = 123;
 
 const EventHandles = {
-    // Listen to local user joining channel events
+    // Listen for local users joining channel events
     onJoinChannelSuccess: ({ channelId, localUid }, elapsed) => {
         console.log('Successfully joined the channel: ' + channelId);
-        isJoined = true;
-        // After a local user join the channel, set the local video window
+        // After the local user joins the channel, set the local video window
         rtcEngine.setupLocalVideo({
-            sourceType: VideoSourceType.VideoSourceCameraPrimary,
-            view: localVideoContainer,
-            mirrorMode: VideoMirrorModeType.VideoMirrorModeDisabled,
-            renderMode: RenderModeType.RenderModeFit,
+             sourceType: VideoSourceType.VideoSourceCameraPrimary,
+             uid: uid,
+             view: localVideoContainer,
+             setupMode: VideoViewSetupMode.VideoViewSetupAdd,
         });
     },
 
-    // Listen to the event that a remote user left the channel
-    onLeaveChannel: ({ channelId, localUid }, stats) => {
-        console.log('Successfully exited the channel: ' + channelId);
-        isJoined = false;
-    },
-
-    // Listen to remote user joined event
+    // Listen for remote users joining the channel
     onUserJoined: ({ channelId, localUid }, remoteUid, elapsed) => {
-        console.log('Remote user ' + remoteUid + ' joined');
-        // After a remote user joins the channel, set the remote video window
-        rtcEngine.setupRemoteVideoEx(
+        console.log('remote user' + remoteUid + 'has joined');
+        // After the remote user joins the channel, set the remote video window
+        rtcEngine.setupRemoteVideo(
             {
                 sourceType: VideoSourceType.VideoSourceRemote,
                 uid: remoteUid,
                 view: remoteVideoContainer,
-                mirrorMode: VideoMirrorModeType.VideoMirrorModeDisabled,
-                renderMode: RenderModeType.RenderModeFit,
+                setupMode: VideoViewSetupMode.VideoViewSetupAdd,
             },
             { channelId },
         );
     },
-};
 
+    // Listen for events when a user leaves a channel
+    onUserOffline: ( { channelId, localUid }, remoteUid, reason ) => {
+        console.log('remote user' + remoteUid + 'left the channel');
+        // After the remote user leaves the channel, close the remote video window
+        rtcEngine.setupRemoteVideo(
+            {
+                sourceType: VideoSourceType.VideoSourceRemote,
+                uid: remoteUid,
+                view: remoteVideoContainer,
+                setupMode: VideoViewSetupMode.VideoViewSetupRemove,
+            },
+        );
+    },
+};
 
 window.onload = () => {
     const os = require("os");
@@ -176,35 +183,54 @@ window.onload = () => {
     remoteVideoContainer = document.getElementById("join-channel-remote-video");
     const sdkLogPath = path.resolve(os.homedir(), "./test.log");
 
-    // Create RtcEngine instance
+    // Create an RtcEngine instance
     rtcEngine = createAgoraRtcEngine();
 
-    // Initialize an RtcEngine instance
+    // Initialize the RtcEngine instance
     rtcEngine.initialize({
         appId: APPID,
         logConfig: { filePath: sdkLogPath }
     });
 
-    // Register event handler
+    // Register event callback
     rtcEngine.registerEventHandler(EventHandles);
 
-    // Set the channel profile
-    rtcEngine.setChannelProfile(ChannelProfileType.ChannelProfileLiveBroadcasting);
-
-    // Set the user role, for host use ClientRoleBroadcaster, for audience use ClientRoleAudience
-    rtcEngine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
-
-    // Video is disabled by default, you need to call enableVideo to enable video streaming
+    // Enable the video module
     rtcEngine.enableVideo();
 
-    // Enable camera preview
+    // Enable local video preview
     rtcEngine.startPreview();
 
-    // Use temporary token to join the channel
+    // Join the channel using a temporary Token
     rtcEngine.joinChannel(token, channel, uid, {
-      audienceLatencyLevelType: AudienceLatencyLevelType.AudienceLatencyLevelLowLatency
+        // Set the channel scene to live broadcast scene
+        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+        // Set the user role to anchor; if you want to set the user role to audience, keep the default value
+        clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+        // Publish the audio collected by the microphone
+        publishMicrophoneTrack: true,
+        // Publish the video captured by the camera
+        publishCameraTrack: true,
+        // Automatically subscribe to all audio streams
+        autoSubscribeAudio: true,
+        // Automatically subscribe to all video streams
+        autoSubscribeVideo: true,
+        // For live streaming scenario
+        audienceLatencyLevelType: AudienceLatencyLevelType.AudienceLatencyLevelLowLatency
     });
-};`}
+};
+
+// Clean up
+window.onabort = () => {
+
+    // Leave the channel
+    rtcEngine.leaveChannel();
+    // Unregister callback
+    rtcEngine.unregisterEventHandler(EventHandles);
+    // Destroy the engine
+    rtcEngine.release();
+
+}`}
 </CodeBlock>
 </ProductWrapper>
 
@@ -212,64 +238,67 @@ window.onload = () => {
 <CodeBlock language="js" showLineNumbers>
 {`const {
     createAgoraRtcEngine,
-    VideoMirrorModeType,
-    VideoSourceType,
-    RenderModeType,
     ChannelProfileType,
     ClientRoleType,
-    AudienceLatencyLevelType,
+    VideoSourceType,
+    VideoViewSetupMode,
+    AudienceLatencyLevelType
     } = require("agora-electron-sdk");
 
 let rtcEngine;
 let localVideoContainer;
 let remoteVideoContainer;
-let isJoined = false;
-// Fill in your app ID
-const APPID = "<-- Insert app Id -->";
-// Fill in your temporary token
-let token = "<-- Insert token -->";
-// Fill in the channel name you used when generating the token
-const channel = "<-- Insert channel name -->";
-// User ID. Ensure that it's unique within the channel
+// Fill in your App ID
+const APPID = "<-- Insert App Id -->";
+// Fill in your temporary Token
+let token = "<-- Insert Token -->";
+// Fill in the channel name used when generating Token
+const channel = "<-- Insert Channel Name -->";
+// User ID, and ensure its uniqueness within the channel
 let uid = 123;
 
 const EventHandles = {
-    // Listen to local user joining channel events
+    // Listen for local users joining channel events
     onJoinChannelSuccess: ({ channelId, localUid }, elapsed) => {
         console.log('Successfully joined the channel: ' + channelId);
-        isJoined = true;
-        // After a local user join the channel, set the local video window
+        // After the local user joins the channel, set the local video window
         rtcEngine.setupLocalVideo({
-            sourceType: VideoSourceType.VideoSourceCameraPrimary,
-            view: localVideoContainer,
-            mirrorMode: VideoMirrorModeType.VideoMirrorModeDisabled,
-            renderMode: RenderModeType.RenderModeFit,
+             sourceType: VideoSourceType.VideoSourceCameraPrimary,
+             uid: uid,
+             view: localVideoContainer,
+             setupMode: VideoViewSetupMode.VideoViewSetupAdd,
         });
     },
 
-    // Listen to the event that a remote user left the channel
-    onLeaveChannel: ({ channelId, localUid }, stats) => {
-        console.log('Successfully exited the channel: ' + channelId);
-        isJoined = false;
-    },
-
-    // Listen to remote user joined event
+    // Listen for remote users joining the channel
     onUserJoined: ({ channelId, localUid }, remoteUid, elapsed) => {
-        console.log('Remote user ' + remoteUid + ' joined');
-        // After a remote user joins the channel, set the remote video window
-        rtcEngine.setupRemoteVideoEx(
+        console.log('remote user' + remoteUid + 'has joined');
+        // After the remote user joins the channel, set the remote video window
+        rtcEngine.setupRemoteVideo(
             {
                 sourceType: VideoSourceType.VideoSourceRemote,
                 uid: remoteUid,
                 view: remoteVideoContainer,
-                mirrorMode: VideoMirrorModeType.VideoMirrorModeDisabled,
-                renderMode: RenderModeType.RenderModeFit,
+                setupMode: VideoViewSetupMode.VideoViewSetupAdd,
             },
             { channelId },
         );
     },
-};
 
+    // Listen for events when a user leaves a channel
+    onUserOffline: ( { channelId, localUid }, remoteUid, reason ) => {
+        console.log('remote user' + remoteUid + 'left the channel');
+        // After the remote user leaves the channel, close the remote video window
+        rtcEngine.setupRemoteVideo(
+            {
+                sourceType: VideoSourceType.VideoSourceRemote,
+                uid: remoteUid,
+                view: remoteVideoContainer,
+                setupMode: VideoViewSetupMode.VideoViewSetupRemove,
+            },
+        );
+    },
+};
 
 window.onload = () => {
     const os = require("os");
@@ -278,135 +307,181 @@ window.onload = () => {
     remoteVideoContainer = document.getElementById("join-channel-remote-video");
     const sdkLogPath = path.resolve(os.homedir(), "./test.log");
 
-    // Create RtcEngine instance
+    // Create an RtcEngine instance
     rtcEngine = createAgoraRtcEngine();
 
-    // Initialize an RtcEngine instance
+    // Initialize the RtcEngine instance
     rtcEngine.initialize({
         appId: APPID,
         logConfig: { filePath: sdkLogPath }
     });
 
-    // Register event handler
+    // Register event callback
     rtcEngine.registerEventHandler(EventHandles);
 
-    // Set the channel profile
-    rtcEngine.setChannelProfile(ChannelProfileType.ChannelProfileLiveBroadcasting);
-
-    // Set the user role, for host use ClientRoleBroadcaster, for audience use ClientRoleAudience
-    rtcEngine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
-
-    // Video is disabled by default, you need to call enableVideo to enable video streaming
+    // Enable the video module
     rtcEngine.enableVideo();
 
-    // Enable camera preview
+    // Enable local video preview
     rtcEngine.startPreview();
 
-    // Use temporary token to join the channel
+    // Join the channel using a temporary Token
     rtcEngine.joinChannel(token, channel, uid, {
-      audienceLatencyLevelType: AudienceLatencyLevelType.AudienceLatencyLevelUltraLowLatency
+        // Set the channel scene to live broadcast scene
+        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+        // Set the user role to anchor; if you want to set the user role to audience, keep the default value
+        clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+        // Publish the audio collected by the microphone
+        publishMicrophoneTrack: true,
+        // Publish the video captured by the camera
+        publishCameraTrack: true,
+        // Automatically subscribe to all audio streams
+        autoSubscribeAudio: true,
+        // Automatically subscribe to all video streams
+        autoSubscribeVideo: true,
+        // For live streaming scenario
+        audienceLatencyLevelType: AudienceLatencyLevelType.AudienceLatencyLevelUltraLowLatency
     });
-};`}
+};
+
+// Clean up
+window.onabort = () => {
+
+    // Leave the channel
+    rtcEngine.leaveChannel();
+    // Unregister callback
+    rtcEngine.unregisterEventHandler(EventHandles);
+    // Destroy the engine
+    rtcEngine.release();
+
+}`}
 </CodeBlock>
 </ProductWrapper>
 
 <ProductWrapper product="video-calling">
 <CodeBlock language="js" showLineNumbers>
-{`const {
+{`
+const {
     createAgoraRtcEngine,
-    VideoMirrorModeType,
-    VideoSourceType,
-    RenderModeType,
     ChannelProfileType,
     ClientRoleType,
-    AudienceLatencyLevelType,
+    VideoSourceType,
+    VideoViewSetupMode,
+    AudienceLatencyLevelType
     } = require("agora-electron-sdk");
 
 let rtcEngine;
 let localVideoContainer;
 let remoteVideoContainer;
-let isJoined = false;
-// Fill in your app ID
-const APPID = "<-- Insert app Id -->";
-// Fill in your temporary token
-let token = "<-- Insert token -->";
-// Fill in the channel name you used when generating the token
-const channel = "<-- Insert channel name -->";
-// User ID. Ensure that it's unique within the channel
+
+// Fill in your App ID
+const APPID = "<-- Insert App Id -->";
+// Fill in your temporary Token
+let token = "<-- Insert Token -->";
+// Fill in the channel name used when generating Token
+const channel = "<-- Insert Channel Name -->";
+// User ID, and ensure its uniqueness within the channel
 let uid = 123;
 
 const EventHandles = {
-    // Listen to local user joining channel events
+
+    // Listen for local users joining channel events
     onJoinChannelSuccess: ({ channelId, localUid }, elapsed) => {
         console.log('Successfully joined the channel: ' + channelId);
-        isJoined = true;
-        // After a local user join the channel, set the local video window
+        // After the local user joins the channel, set the local video window
         rtcEngine.setupLocalVideo({
-            sourceType: VideoSourceType.VideoSourceCameraPrimary,
-            view: localVideoContainer,
-            mirrorMode: VideoMirrorModeType.VideoMirrorModeDisabled,
-            renderMode: RenderModeType.RenderModeFit,
+             sourceType: VideoSourceType.VideoSourceCameraPrimary,
+             uid: uid,
+             view: localVideoContainer,
+             setupMode: VideoViewSetupMode.VideoViewSetupAdd,
         });
     },
 
-    // Listen to the event that a remote user left the channel
-    onLeaveChannel: ({ channelId, localUid }, stats) => {
-        console.log('Successfully exited the channel: ' + channelId);
-        isJoined = false;
-    },
-
-    // Listen to remote user joined event
+    // Listen for remote users joining the channel
     onUserJoined: ({ channelId, localUid }, remoteUid, elapsed) => {
-        console.log('Remote user ' + remoteUid + ' joined');
-        // After a remote user joins the channel, set the remote video window
-        rtcEngine.setupRemoteVideoEx(
+        console.log('remote user' + remoteUid + 'has joined');
+        // After the remote user joins the channel, set the remote video window
+        rtcEngine.setupRemoteVideo(
             {
                 sourceType: VideoSourceType.VideoSourceRemote,
                 uid: remoteUid,
                 view: remoteVideoContainer,
-                mirrorMode: VideoMirrorModeType.VideoMirrorModeDisabled,
-                renderMode: RenderModeType.RenderModeFit,
+                setupMode: VideoViewSetupMode.VideoViewSetupAdd,
             },
             { channelId },
         );
     },
+
+    // Listen for events when a user leaves a channel
+    onUserOffline: ( { channelId, localUid }, remoteUid, reason ) => {
+        console.log('remote user' + remoteUid + 'left the channel');
+        // After the remote user leaves the channel, close the remote video window
+        rtcEngine.setupRemoteVideo(
+            {
+                sourceType: VideoSourceType.VideoSourceRemote,
+                uid: remoteUid,
+                view: remoteVideoContainer,
+                setupMode: VideoViewSetupMode.VideoViewSetupRemove,
+            },
+        );
+    },
 };
 
-
 window.onload = () => {
+    
     const os = require("os");
     const path = require("path");
     localVideoContainer = document.getElementById("join-channel-local-video");
     remoteVideoContainer = document.getElementById("join-channel-remote-video");
     const sdkLogPath = path.resolve(os.homedir(), "./test.log");
 
-    // Create RtcEngine instance
+    // Create an RtcEngine instance
     rtcEngine = createAgoraRtcEngine();
 
-    // Initialize an RtcEngine instance
+    // Initialize the RtcEngine instance
     rtcEngine.initialize({
         appId: APPID,
         logConfig: { filePath: sdkLogPath }
     });
 
-    // Register event handler
+    // Register event callback
     rtcEngine.registerEventHandler(EventHandles);
 
-    // Set the channel profile
-    rtcEngine.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
-
-    // Set the user role, for host use ClientRoleBroadcaster, for audience use ClientRoleAudience
-    rtcEngine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
-
-    // Video is disabled by default, you need to call enableVideo to enable video streaming
+    // Enable the video module
     rtcEngine.enableVideo();
 
-    // Enable camera preview
+    // Enable local video preview
     rtcEngine.startPreview();
 
-    // Use temporary token to join the channel
-    rtcEngine.joinChannel(token, channel, uid, {});
-};`}
+    // Join the channel using a temporary Token
+    rtcEngine.joinChannel(token, channel, uid, {
+        // Set the channel scene to live broadcast scene
+        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+        // Set the user role to anchor; if you want to set the user role to audience, keep the default value
+        clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+        // Publish the audio collected by the microphone
+        publishMicrophoneTrack: true,
+        // Publish the video captured by the camera
+        publishCameraTrack: true,
+        // Automatically subscribe to all audio streams
+        autoSubscribeAudio: true,
+        // Automatically subscribe to all video streams
+        autoSubscribeVideo: true,
+    });
+};
+
+// Clean up
+window.onabort = () => {
+
+    // Leave the channel
+    rtcEngine.leaveChannel();
+    // Unregister callback
+    rtcEngine.unregisterEventHandler(EventHandles);
+    // Destroy the engine
+    rtcEngine.release();
+
+}
+`}
 </CodeBlock>
 </ProductWrapper>
 
@@ -419,32 +494,29 @@ window.onload = () => {
 } = require("agora-electron-sdk");
 
 let rtcEngine;
-let isJoined = false;
-// Insert your App ID
+// Fill in your App ID
 const APPID = "<-- Insert App Id -->";
-// Insert your temporary token
+// Fill in your temporary Token
 let token = "<-- Insert Token -->";
-// Insert the channel name used when generating the token
+// Fill in the channel name used when generating Token
 const channel = "<-- Insert Channel Name -->";
-// User ID, ensure its uniqueness within the channel
+// User ID, and ensure its uniqueness within the channel
 let uid = 123;
 
 const EventHandles = {
-    // Listen for the local user joining the channel event
+    // Listen for local users joining channel events
     onJoinChannelSuccess: ({ channelId, localUid }, elapsed) => {
         console.log('Successfully joined the channel: ' + channelId);
-        isJoined = true;
     },
 
-    // Listen for user leaving channel callback
-    onLeaveChannel: ({ channelId, localUid }, stats) => {
-        console.log('Successfully left the channel: ' + channelId);
-        isJoined = false;
-    },
-
-    // Listen for remote user joining channel event
+    // Listen for remote users joining the channel
     onUserJoined: ({ channelId, localUid }, remoteUid, elapsed) => {
-        console.log('Remote user ' + remoteUid + ' has joined');
+        console.log('remote user' + remoteUid + 'has joined');
+    },
+    
+        // Listen for events when a user leaves a channel
+    onUserOffline: ( { channelId, localUid }, remoteUid, reason ) => {
+        console.log('remote user' + remoteUid + 'left the channel');
     },
 };
 
@@ -454,29 +526,49 @@ window.onload = () => {
 
     const sdkLogPath = path.resolve(os.homedir(), "./test.log");
 
-    // Create RtcEngine instance
+    // Create an RtcEngine instance
     rtcEngine = createAgoraRtcEngine();
 
-    // Initialize RtcEngine instance
+    // Initialize the RtcEngine instance
     rtcEngine.initialize({
         appId: APPID,
         logConfig: { filePath: sdkLogPath }
     });
 
-    // Register event handlers
+    // Register event callback
     rtcEngine.registerEventHandler(EventHandles);
 
-    // Set channel profile to communication
-    rtcEngine.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
+    // Join the channel using a temporary Token
+    rtcEngine.joinChannel(token, channel, uid, {
+        // Set the channel scene to live broadcast scene
+        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+        // Set the user role to anchor; if you want to set the user role to audience, keep the default value
+        clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+        // Publish the audio collected by the microphone
+        publishMicrophoneTrack: true,
+        // Automatically subscribe to all audio streams
+        autoSubscribeAudio: true,
+    });
+};
 
-    // Set user role to broadcaster
-    rtcEngine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+// Clean up
+window.onabort = () => {
 
-    // Join channel with temporary Token
-    rtcEngine.joinChannel(token, channel, uid, {});
-};`}
+    // Leave the channel
+    rtcEngine.leaveChannel();
+    // Unregister callback
+    rtcEngine.unregisterEventHandler(EventHandles);
+    // Destroy the engine
+    rtcEngine.release();
+
+}
+`}
 </CodeBlock>
 </ProductWrapper>
+<Admonition type="info" title="Information">
+- In the `renderer.js` file, replace `<-- Insert App Id -->`, `<-- Insert Token -->`, and `<-- Insert Channel Name -->` with your App ID, the temporary token from the console, and the channel name you used to generate the token.
+- If you're targeting macOS v10.14 or later, add the device permission code to `main.js`. For more details, see [Get device permissions](#get-device-permissions).
+</Admonition>
 </details>
 
 Refer to the steps in the [Test the sample code](#test-the-sample-code) section to run the project. 
@@ -620,13 +712,13 @@ checkAndApplyDeviceAccessPrivilege();
 <ProductWrapper product="voice-calling">
 ```js
 async function checkAndApplyDeviceAccessPrivilege() {
-  // Check and obtain microphone permission
-  const micPrivilege = systemPreferences.getMediaAccessStatus('microphone');
-  console.log(`Microphone privilege before applying: ${micPrivilege}`);
-  if (micPrivilege !== 'granted') {
-    await systemPreferences.askForMediaAccess('microphone');
-    console.log('Requested microphone access from user');
-  }
+    // Check and obtain microphone permission
+    const micPrivilege = systemPreferences.getMediaAccessStatus('microphone');
+    console.log(`Microphone privilege before applying: ${micPrivilege}`);
+    if (micPrivilege !== 'granted') {
+        await systemPreferences.askForMediaAccess('microphone');
+        console.log('Requested microphone access from user');
+    }
 }
 
 checkAndApplyDeviceAccessPrivilege();
@@ -642,12 +734,12 @@ Import the modules and functions required to build the app using <Vpd k="SDK" />
 ```js
 const {
     createAgoraRtcEngine,
-    VideoMirrorModeType,
-    VideoSourceType,
-    RenderModeType,
     ChannelProfileType,
     ClientRoleType,
-} = require("agora-electron-sdk");
+    VideoSourceType,
+    VideoViewSetupMode,
+    AudienceLatencyLevelType
+    } = require("agora-electron-sdk");
 ```
 </ProductWrapper>
 <ProductWrapper product="voice-calling">
@@ -666,19 +758,23 @@ const {
 Pass in the app ID and the temporary token obtained from <Vg k="CONSOLE"/>, and the channel name you used to generate the temporary token. You use these parameters to initialize the engine and join a channel.
 
 ```js
-// Fill in your app ID
-const APPID = "<-- Insert app ID -->";
-// Fill in your temporary token
-let token = "<-- Insert token -->";
-// Fill in the channel name you used to generate the token
-const channel = "<-- Insert channel name -->";
-// Numeric user ID, ensure that the ID is unique within the channel
+// Fill in your App ID
+const APPID = "<-- Insert App Id -->";
+// Fill in your temporary Token
+let token = "<-- Insert Token -->";
+// Fill in the channel name used when generating Token
+const channel = "<-- Insert Channel Name -->";
+// User ID, and ensure its uniqueness within the channel
 let uid = 123;
 ```
 
 ### Initialize the engine
 
 Call `createAgoraRtcEngine` in `renderer.js` to create an `RtcEngine` instance, and then call `initialize`.
+
+<Admonition type="caution" title="Note">
+Before initializing the SDK, ensure that the user fully understands and agrees to the relevant privacy policy.
+</Admonition>
 
 ```js
 let rtcEngine;
@@ -689,16 +785,12 @@ const sdkLogPath = path.resolve(os.homedir(), "./test.log");
 // Create an RtcEngine instance
 rtcEngine = createAgoraRtcEngine();
 
-// Initialize RtcEngine instance
+// Initialize the RtcEngine instance
 rtcEngine.initialize({
     appId: APPID,
     logConfig: { filePath: sdkLogPath }
 });
 ```
-
-<Admonition type="caution" title="Note">
-Before initializing the SDK, ensure that the user fully understands and agrees to the relevant privacy policy.
-</Admonition>
 
 <ProductWrapper notAllowed="voice-calling">
 
@@ -729,38 +821,44 @@ Call `registerEventHandler` to register the following event callbacks.
 <ProductWrapper notAllowed="voice-calling">
 ```js
 const EventHandles = {
-    // Listen to local user joining channel events
+    // Listen for local users joining channel events
     onJoinChannelSuccess: ({ channelId, localUid }, elapsed) => {
-        console.log('Successfully joined the channel:' + channelId);
-        isJoined = true;
-        // After local users join the channel, set up the local video
+        console.log('Successfully joined the channel: ' + channelId);
+        // After the local user joins the channel, set the local video window
         rtcEngine.setupLocalVideo({
-            sourceType: VideoSourceType.VideoSourceCameraPrimary,
-            view: localVideoContainer,
-            mirrorMode: VideoMirrorModeType.VideoMirrorModeDisabled,
-            renderMode: RenderModeType.RenderModeFit,
+             sourceType: VideoSourceType.VideoSourceCameraPrimary,
+             uid: uid,
+             view: localVideoContainer,
+             setupMode: VideoViewSetupMode.VideoViewSetupAdd,
         });
     },
 
-    // User exits the channel 
-    onLeaveChannel: ({ channelId, localUid }, stats) => {
-        console.log('Successfully exited the channel: ' + channelId);
-        isJoined = false;
-    },
-
-    // Listen to remote user join event
+    // Listen for remote users joining the channel
     onUserJoined: ({ channelId, localUid }, remoteUid, elapsed) => {
-        console.log('Remote user ' + remoteUid + ' joined');
-        // After the remote user joins the channel, set up the remote video
-        rtcEngine.setupRemoteVideoEx(
+        console.log('remote user' + remoteUid + 'has joined');
+        // After the remote user joins the channel, set the remote video window
+        rtcEngine.setupRemoteVideo(
             {
                 sourceType: VideoSourceType.VideoSourceRemote,
                 uid: remoteUid,
                 view: remoteVideoContainer,
-                mirrorMode: VideoMirrorModeType.VideoMirrorModeDisabled,
-                renderMode: RenderModeType.RenderModeFit,
+                setupMode: VideoViewSetupMode.VideoViewSetupAdd,
             },
             { channelId },
+        );
+    },
+
+    // Listen for events when a user leaves a channel
+    onUserOffline: ( { channelId, localUid }, remoteUid, reason ) => {
+        console.log('remote user' + remoteUid + 'left the channel');
+        // After the remote user leaves the channel, close the remote video window
+        rtcEngine.setupRemoteVideo(
+            {
+                sourceType: VideoSourceType.VideoSourceRemote,
+                uid: remoteUid,
+                view: remoteVideoContainer,
+                setupMode: VideoViewSetupMode.VideoViewSetupRemove,
+            },
         );
     },
 };
@@ -772,66 +870,103 @@ rtcEngine.registerEventHandler(EventHandles);
 <ProductWrapper product="voice-calling">
 ```js
 const EventHandles = {
-    // Listen to the local user joining the channel event
+    // Listen for local users joining channel events
     onJoinChannelSuccess: ({ channelId, localUid }, elapsed) => {
         console.log('Successfully joined the channel: ' + channelId);
-        isJoined = true;
     },
 
-    // Listen to the user leaving the channel callback
-    onLeaveChannel: ({ channelId, localUid }, stats) => {
-        console.log('Successfully left the channel: ' + channelId);
-        isJoined = false;
-    },
-
-    // Listen to the remote user joining the channel event
+    // Listen for remote users joining the channel
     onUserJoined: ({ channelId, localUid }, remoteUid, elapsed) => {
-        console.log('Remote user ' + remoteUid + ' has joined');
+        console.log('remote user' + remoteUid + 'has joined');
+    },
+    
+        // Listen for events when a user leaves a channel
+    onUserOffline: ( { channelId, localUid }, remoteUid, reason ) => {
+        console.log('remote user' + remoteUid + 'left the channel');
     },
 };
-// Register event callbacks
+
+// Register event callback
 rtcEngine.registerEventHandler(EventHandles);
 ```
 </ProductWrapper>
 
 ### Join a channel 
-<ProductWrapper product="[video-calling, voice-calling]">
+
+<ProductWrapper product="voice-calling">
 Take the following steps to join a channel and start publishing audio and video steams:
 
-1. Call `setChannelProfile` to set the channel profile to `ChannelProfileCommunication`.
-1. Call `setClientRole` to set the user role as host or audience.
-1. Call `joinChannel` to join a channel.
+1. Set the channel profile to `ChannelProfileCommunication`.
+1. Set the user role as host or audience.
+1. Configure the media options in `ChannelMediaOptions`.
+1. Call `joinChannel` to join the channel.
 
 ```js
-// Set the channel profile as communication
-rtcEngine.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
+// Join the channel using a temporary Token
+rtcEngine.joinChannel(token, channel, uid, {
+    // Set the channel scene to live broadcast scene
+    channelProfile: ChannelProfileType.ChannelProfileCommunication,
+    // Set the user role to anchor; if you want to set the user role to audience, keep the default value
+    clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+    // Publish the audio collected by the microphone
+    publishMicrophoneTrack: true,
+    // Automatically subscribe to all audio streams
+    autoSubscribeAudio: true,
+});
+```
+</ProductWrapper>
 
-// Set the client role 
-// For host set it to ClientRoleBroadcaster, for audience set it to ClientRoleAudience
-rtcEngine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+<ProductWrapper product="video-calling">
+Take the following steps to join a channel and start publishing audio and video steams:
 
-// Use a temporary token to join the channel
-rtcEngine.joinChannel(token, channel, uid, {});
+1. Set the channel profile to `ChannelProfileCommunication`.
+1. Set the user role as host or audience.
+1. Configure the media options in `ChannelMediaOptions`.
+1. Call `joinChannel` to join the channel.
+
+```js
+// Join the channel using a temporary Token
+rtcEngine.joinChannel(token, channel, uid, {
+    // Set the channel scene to live broadcast scene
+    channelProfile: ChannelProfileType.ChannelProfileCommunication,
+    // Set the user role to anchor; if you want to set the user role to audience, keep the default value
+    clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+    // Publish the audio collected by the microphone
+    publishMicrophoneTrack: true,
+    // Publish the video captured by the camera
+    publishCameraTrack: true,
+    // Automatically subscribe to all audio streams
+    autoSubscribeAudio: true,
+    // Automatically subscribe to all video streams
+    autoSubscribeVideo: true,
+});
 ```
 </ProductWrapper>
 
 <ProductWrapper product="broadcast-streaming">
 Take the following steps to join a channel and start publishing the audio steam:
 
-1. Call `setChannelProfile` to set the channel profile to `ChannelProfileLiveBroadcasting`.
-1. Call `setClientRole` to set the user role as host or audience.
-1. Call `joinChannel` to join a channel.
+1. Set the channel profile to `ChannelProfileLiveBroadcasting`.
+1. Set the user role as `ClientRoleBroadcaster`.
+1. Configure the media options in `ChannelMediaOptions`.
+1. Call `joinChannel` to join the channel.
 
 ```js
-// Set the channel profile as live broadcasting
-rtcEngine.setChannelProfile(ChannelProfileType.ChannelProfileLiveBroadcasting);
-
-// Set the client role 
-// For host set it to ClientRoleBroadcaster, for audience set it to ClientRoleAudience
-rtcEngine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
-
-// Use temporary token to join the channel
+// Join the channel using a temporary Token
 rtcEngine.joinChannel(token, channel, uid, {
+    // Set the channel scene to live broadcast scene
+    channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+    // Set the user role to anchor; if you want to set the user role to audience, keep the default value
+    clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+    // Publish the audio collected by the microphone
+    publishMicrophoneTrack: true,
+    // Publish the video captured by the camera
+    publishCameraTrack: true,
+    // Automatically subscribe to all audio streams
+    autoSubscribeAudio: true,
+    // Automatically subscribe to all video streams
+    autoSubscribeVideo: true,
+    // For broadcast streaming scenario
     audienceLatencyLevelType: AudienceLatencyLevelType.AudienceLatencyLevelLowLatency
 });
 ```
@@ -840,22 +975,54 @@ rtcEngine.joinChannel(token, channel, uid, {
 <ProductWrapper product="interactive-live-streaming">
 Take the following steps to join a channel and start publishing the audio steam:
 
-1. Call `setChannelProfile` to set the channel profile to `ChannelProfileLiveBroadcasting`.
-1. Call `setClientRole` to set the user role as host or audience.
-1. Call `joinChannel` to join a channel.
+1. Set the channel profile to `ChannelProfileLiveBroadcasting`.
+1. Set the user role as `ClientRoleBroadcaster`.
+1. Configure the media options in `ChannelMediaOptions`.
+1. Call `joinChannel` to join the channel.
 
 ```js
-// Set the channel profile as live broadcasting
-rtcEngine.setChannelProfile(ChannelProfileType.ChannelProfileLiveBroadcasting);
-
-// Set the client role 
-// For host set it to ClientRoleBroadcaster, for audience set it to ClientRoleAudience
-rtcEngine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
-
-// Use temporary token to join the channel
+// Join the channel using a temporary Token
 rtcEngine.joinChannel(token, channel, uid, {
+    // Set the channel scene to live broadcast scene
+    channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+    // Set the user role to anchor; if you want to set the user role to audience, keep the default value
+    clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+    // Publish the audio collected by the microphone
+    publishMicrophoneTrack: true,
+    // Publish the video captured by the camera
+    publishCameraTrack: true,
+    // Automatically subscribe to all audio streams
+    autoSubscribeAudio: true,
+    // Automatically subscribe to all video streams
+    autoSubscribeVideo: true,
+    // For live streaming scenario
     audienceLatencyLevelType: AudienceLatencyLevelType.AudienceLatencyLevelUltraLowLatency
 });
 ```
 </ProductWrapper>
+
+### Leave the channel
+
+When <Vpd k="PRODUCT"/> ends, you call `leaveChannel` to exit the channel:
+
+```javascript
+// Leave the channel
+rtcEngine.leaveChannel();
+```
+
+
+### Clean up resources
+
+When you no longer need the `rtcEngine` instance, destroy it before closing the <Vpl k="CLIENT"/>:
+
+```javascript
+// Unregister callback
+rtcEngine.unregisterEventHandler(EventHandles);
+// Destroy the engine
+rtcEngine.release();
+```
+
+<Admonition type="caution" title="caution">After destroying the engine, you can no longer use SDK methods and callbacks. To use the real-time interaction functions again, create a new engine. See [Initialize the engine](#initialize-the-engine) for details.</Admonition>
+
+
 </PlatformWrapper>

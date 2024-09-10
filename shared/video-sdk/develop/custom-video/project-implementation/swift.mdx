@@ -1,194 +1,138 @@
-The figure below shows the workflow you need to implement to stream a custom video source in your <Vpl k="CLIENT"/>.
-
-![API call sequence](/images/video-sdk/custom-video-capture-apple.svg)
 
 ### Custom video capture
 
-Follow the steps below to implement custom video capture in your project:
+The figure below shows the workflow you need to implement to stream a custom video source in your <Vpl k="CLIENT"/>.
 
-1. Before joining s channel, call `setExternalVideoSource` to enable custom video capture. Once enabled, you cannot use the default SDK methods to capture video frames.
+![API call sequence](/images/video-sdk/custom-video-capture.svg)
 
-   ```swift
-   // Call setExternalVideoSource to notify the SDK that your app is using custom video capture
-   agoraKit.setExternalVideoSource(true, useTexture: true, encodedFrame: true)
-   ```
+Take the following steps to implement this workflow:
 
-1. After you enable custom video capture, call methods outside the SDK to implement the video capture process. For example, the [sample project](#sample-project) defines the `AgoraCameraSourcePush` class and uses native system methods to implement video capture.
+1.  Create a custom video track
+
+    To create a custom video track and obtain the video track ID, call `createCustomVideoTrack` after initializing an instance of `AgoraRtcEngineKit`. To create multiple custom video tracks, call the method multiple times.
 
     ```swift
-    class AgoraCameraSourcePush: NSObject {
+    customCamera?.trackId = agoraKit.createCustomVideoTrack()
+    ```
 
-        // Delegate to handle AgoraCameraSourcePush events
-        fileprivate var delegate: AgoraCameraSourcePushDelegate?
 
-        // View for previewing the custom video source
-        private var videoView: CustomVideoSourcePreview
+1. Join a channel and publish the custom video track
 
-        // Current camera used for video capture
-        private var currentCamera = Camera.defaultCamera()
+    Call `joinChannelByToken` to join a single channel, or `joinChannelExByToken` to join multiple channels. In `AgoraRtcChannelMediaOptions`, set `customVideoTrackId` to the video track ID from the previous step and set `publishCustomVideoTrack` to `true` to publish the custom video track.
 
-        // AVCaptureSession for managing the video capture session
-        private let captureSession: AVCaptureSession
+    - Join a single channel
 
-        // DispatchQueue for managing capture-related tasks
-        private let captureQueue: DispatchQueue
+        ```swift
+        let option = AgoraRtcChannelMediaOptions()
+        option.clientRoleType = .broadcaster
+        option.autoSubscribeAudio = true
+        option.autoSubscribeVideo = true
+        // highlight-start
+        // Publish the self-collected video stream
+        option.publishCustomVideoTrack = true
+        // Set custom video track ID
+        option.customVideoTrackId = Int(customCamera?.trackId ?? 0)
+        // highlight-end
+        NetworkManager.shared.generateToken(channelName: channel, success: { token in
+            // Join a single channel
+            let result = self.agoraKit.joinChannel(byToken: token, channelId: channel, uid: 0, mediaOptions: option)
+            if result != 0 {
+                self.isProcessing = false
+                self.showAlert(title: "Error", message: "joinChannel call failed: \(result), please check your params")
+            }
+        })
+        ```
+    - Publish custom video to multiple channels
 
-        // Current AVCaptureVideoDataOutput used for video data
-        private var currentOutput: AVCaptureVideoDataOutput? {
-            if let outputs = self.captureSession.outputs as? [AVCaptureVideoDataOutput] {
-                return outputs.first
-            } else {
-                return nil
+        ```swift
+        // To publish custom video tracks on multiple channels, set AgoraRtcChannelMediaOptions multiple times and call joinChannelEx multiple times.
+        let option = AgoraRtcChannelMediaOptions()
+        option.clientRoleType = .broadcaster
+        option.autoSubscribeAudio = true
+        option.autoSubscribeVideo = true
+        // highlight-start
+        // Publish the self-collected video stream
+        option.publishCustomVideoTrack = true
+        // Set custom video track ID
+        option.customVideoTrackId = Int(trackId)
+        // highlight-end
+        let connection = AgoraRtcConnection()
+        connection.localUid = uid
+        connection.channelId = channelName
+        NetworkManager.shared.generateToken(channelName: channelName, uid: uid) { token in
+            // Join multiple channels
+            let result = self.agoraKit.joinChannelEx(byToken: token,
+                                                connection: connection,
+                                                delegate: self,
+                                                mediaOptions: option,
+                                                joinSuccess: nil)
+            if result != 0 {
+                self.showAlert(title: "Error", message: "joinChannel call failed: \(result), please check your params")
             }
         }
+        ```
 
-        // Initialize custom video capture
-        init(delegate: AgoraCameraSourcePushDelegate?, videoView: CustomVideoSourcePreview) {
-            self.delegate = delegate
-            self.videoView = videoView
+1. Implement your self-capture module
 
-            // Initialize AVCaptureSession
-            captureSession = AVCaptureSession()
-            captureSession.usesApplicationAudioSession = false
+    <PlatformWrapper platform="ios">
+    <Vg k= "COMPANY"/> provides the [ 
+CustomVideoSourcePushMulti](https://github.com/AgoraIO/API-Examples/blob/main/iOS/APIExample/APIExample/Examples/Advanced/CustomVideoSourcePushMulti/CustomVideoSourcePushMulti.swift) demo project that shows you how to read `YUV` format video data from a local file. In a production environment, create a custom video module for your device using <Vg k= "VSDK"/> based on your business requirements.
+    </PlatformWrapper>
 
-            // Create AVCaptureVideoDataOutput for video data
-            let captureOutput = AVCaptureVideoDataOutput()
-            captureOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange]
-            if captureSession.canAddOutput(captureOutput) {
-                captureSession.addOutput(captureOutput)
-            }
+    <PlatformWrapper platform="macos">
+    <Vg k= "COMPANY"/> provides the [ 
+CustomVideoSourcePushMulti](https://github.com/AgoraIO/API-Examples/blob/main/macOS/APIExample/Examples/Advanced/CustomVideoSourcePushMulti/CustomVideoSourcePushMulti.swift) demo project that shows you how to read `YUV` format video data from a local file. In a production environment, create a custom video module for your device using <Vg k= "VSDK"/> based on your business requirements.
+    </PlatformWrapper>
 
-            // Initialize captureQueue for managing capture tasks
-            captureQueue = DispatchQueue(label: "MyCaptureQueue")
+1. Push video data to the SDK 
 
-            // Render the captured frames on the preview layer
-            let previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
-            videoView.insertCaptureVideoPreviewLayer(previewLayer: previewLayer)
-        }
+    Use `pushExternalVideoFrame` to send the captured video frame to the SDK through the video track. Ensure that the `videoTrackId` matches the video track ID specified when joining the channel. In `AgoraVideoFrame`, you can set the pixel format, data type, timestamp, and other parameters of the video frame.
 
-        // Deinitialize the class and stop the capture session
-        deinit {
-            captureSession.stopRunning()
-        }
+    <PlatformWrapper platform="ios">
+    The following code demonstrates how to push video data in the `CVPixelBufferRef` format. For other supported video frame formats, refer to the `format` field in <Link to="{{Global.API_REF_IOS_ROOT}}/agorartckit/agoravideoframe">AgoraVideoFrame</Link>. 
+    </PlatformWrapper>
 
-        // Start capturing video frames
-        func startCapture(ofCamera camera: Camera) {
-            guard let currentOutput = currentOutput else {
-                return
-            }
+    <PlatformWrapper platform="macos">
+    The following code demonstrates how to push video data in the `CVPixelBufferRef` format. For other supported video frame formats, refer to the `format` field in <Link to="{{Global.API_REF_MACOS_ROOT}}/agorartckit/agoravideoframe">AgoraVideoFrame</Link>. 
+    </PlatformWrapper>
 
-            // Set the capture device to the current camera
-            currentCamera = camera
-            currentOutput.setSampleBufferDelegate(self, queue: captureQueue)
+    ```swift
+    let videoFrame = AgoraVideoFrame()
+    videoFrame.format = 12
+    videoFrame.textureBuf = buffer
+    videoFrame.rotation = Int32(rotation)
+    agoraKit?.pushExternalVideoFrame(videoFrame, videoTrackId: trackId)
+    ```
 
-            // Asynchronously configure and start the capture session
-            captureQueue.async { [weak self] in
-                guard let strongSelf = self else {
-                    return
-                }
-                strongSelf.changeCaptureDevice(toIndex: camera.rawValue, ofSession: strongSelf.captureSession)
-                strongSelf.captureSession.beginConfiguration()
-                if strongSelf.captureSession.canSetSessionPreset(AVCaptureSession.Preset.vga640x480) {
-                    strongSelf.captureSession.sessionPreset = AVCaptureSession.Preset.vga640x480
-                }
-                strongSelf.captureSession.commitConfiguration()
-                strongSelf.captureSession.startRunning()
-            }
-        }
+    <Admonition type="info" title="Information">
+    To ensure audio and video synchronization, <Vg k="COMPANY"/> recommends setting the `time` (timestamp) of `AgoraVideoFrame` to the system monotonic time. To retrieve the current monotonic time, call `getCurrentMonotonicTimeInMs`.
+    </Admonition>
 
-        // Stop capturing video frames
-        func stopCapture() {
-            currentOutput?.setSampleBufferDelegate(nil, queue: nil)
-            captureQueue.async { [weak self] in
-                self?.captureSession.stopRunning()
-            }
-        }
+    <Admonition type="info" title="Information">
+    If the captured custom video format is Texture and remote users experience flickering or distortion in the captured video, it is recommended to first duplicate the video data and then send both the original and duplicated video data back to the <Vg k="VSDK"/>. This helps eliminate anomalies during internal data encoding processes.
+    </Admonition>
 
-        // Switch to the next available capture camera
-        func switchCamera() {
-            stopCapture()
-            currentCamera = currentCamera.next()
-            startCapture(ofCamera: currentCamera)
-        }
+1. Destroy custom video track
+
+    To stop publishing the custom video track, call `destroyCustomVideoTrack`. To destroy multiple video tracks, call `destroyCustomVideoTrack` multiple times.
+
+    ```swift
+    // Destroy the custom video track
+    agoraKit.destroyCustomVideoTrack(UInt(userModel?.trackId ?? 0))
+    // Leave the channel
+    agoraKit.leaveChannelEx(connection) { state in
+        LogUtils.log(message: "warning: \(state.description)", level: .info)
     }
     ```
 
-    This example uses the `AgoraCameraSourcePushDelegate` class to receive the captured video frames.
-
-    ```swift
-    protocol AgoraCameraSourcePushDelegate {
-        func myVideoCapture(_ capture: AgoraCameraSourcePush, didOutputSampleBuffer pixelBuffer: CVPixelBuffer, rotation: Int, timeStamp: CMTime)
-    }
-    ```
-
-1. Push the captured video frames to the SDK. Call the `pushExternalVideoFrame` method to push the captured video frames to the SDK.
-
-    ```swift
-    extension CustomVideoSourcePushMain: AgoraCameraSourcePushDelegate {
-
-        // Delegate method called when a video frame is captured
-        func myVideoCapture(_ capture: AgoraCameraSourcePush, didOutputSampleBuffer pixelBuffer: CVPixelBuffer, rotation: Int, timeStamp: CMTime) {
-        
-            // Create an AgoraVideoFrame to store the captured video frame information
-            let videoFrame = AgoraVideoFrame()
-            videoFrame.format = 12
-            videoFrame.textureBuf = pixelBuffer
-            videoFrame.time = timeStamp
-            videoFrame.rotation = Int32(rotation)
-
-            // Push the captured video frame to the Agora SDK
-            agoraKit?.pushExternalVideoFrame(videoFrame)
-        }
-    }
-    ```
-    
 ### Custom video rendering
 
 To implement custom video rendering in your <Vpl k="CLIENT" />, refer to the following steps:
 
-1. Set up `onCapture` or `onRenderVideoFrame` callback to obtain the video data to be played.
+1. Set up `onCaptureVideoFrame` or `onRenderVideoFrame` callback to obtain the video data to be played.
 1. Implement video rendering and playback yourself.
 
-<Admonition>
-In `renderPixelBuffer` or `renderRawData`, the `rotation` parameter of the video frame may not be 0 due to the video capture terminal settings. Ensure that you have set the `rotation` parameter.
+<Admonition type="info">
+In `renderPixelBuffer` or `renderRawData`, the `rotation` parameter of the video frame may not be 0. You need to set the rotation parameters yourself.
 </Admonition>
 
-In push mode, <Vg k= "VSDK"/> does not support rendering the captured video. You call external SDK methods to implement custom video rendering.
-
-1. Implement custom video rendering
-
-    The sample project defines a `CustomVideoSourcePreview` class based on the native `AVCaptureVideoPreviewLayer` class.
-
-    ```swift
-    var localVideo = CustomVideoSourcePreview(frame: CGRect.zero)
-
-    class CustomVideoSourcePreview : UIView {
-
-        private var previewLayer: AVCaptureVideoPreviewLayer?
-        func insertCaptureVideoPreviewLayer(previewLayer: AVCaptureVideoPreviewLayer) {
-            self.previewLayer?.removeFromSuperlayer()
-
-            previewLayer.frame = bounds
-            layer.insertSublayer(previewLayer, below: layer.sublayers?.first)
-            self.previewLayer = previewLayer
-        }
-
-        override func layoutSublayers(of layer: CALayer) {
-            super.layoutSublayers(of: layer)
-            previewLayer?.frame = bounds
-        }
-    }
-    ```
-
-1. Start capturing and rendering video frames
-
-    The sample project creates an instance of the `AgoraCameraSourcePush` class based on the `customCamera` instance and then calls `startCapture` to begin capturing and rendering.
-
-    ```swift
-    // Initialize the AgoraCameraSourcePush class and set the camera as the capture device
-    customCamera = AgoraCameraSourcePush(delegate: self, videoView: localVideo)
-
-    // Call the startCapture method in the AgoraCameraSourcePush class to start capturing video frames
-    customCamera?.startCapture(ofCamera: .defaultCamera())
-    ```
-    

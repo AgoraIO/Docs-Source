@@ -1,178 +1,202 @@
 <PlatformWrapper platform="android">
 
-### Spatial audio effects for users
+### Initialize the spatial audio engine
 
-To implement this workflow, take the following steps:
-
-1.  Initialize an `RtcEngine` instance by calling its `create` method with your app ID.
-1.  To initialize an instance of the `ILocalSpatialAudioEngine` class, call its `create` and `initialize` methods.
-1.  To configure audio settings, call `setAudioProfile` and set the `profile` to `AUDIO_PROFILE_DEFAULT` and the scenario to `AUDIO_SCENARIO_GAME_STREAMING`.
-1.  Join a channel using an RTC token by calling `joinChannel`. Configure `options` to set the `channelProfile` to `CHANNEL_PROFILE_LIVE_BROADCASTING` and the `clientRoleType` to `CLIENT_ROLE_BROADCASTER`.
-1.  By default, <Vpd k="SDK" /> automatically subscribes to all remote audio streams. Unsubscribe from all streams by calling `muteAllRemoteAudioStreams(true)` on the `RtcEngine` instance. This is necessary to set the audio receiving range in the next step or the changes won't apply.
-1.  Adjust the audio receiving range as follows:
-
-    1. Use `setMaxAudioRecvCount` to limit the number of receivable audio streams.
-    1. Call `setAudioRecvRange` to define the range in meters.
-    1. Call `setDistanceUnit` to specify the game engine's unit distance in meters.
-
-1. To experience spatial audio, update local and remote user spatial positions using `updateSelfPosition` and `updateRemotePosition` respectively.
-1. To stop using spatial audio, remove all remote spatial positions by calling`clearRemotePositions`. This method renders remote users inaudible to the local user.
-1. Finalize the `ILocalSpatialAudioEngine` instance by calling its `destroy` method.
-    <Admonition type="caution" title="Note">
-    You must destroy the `ILocalSpatialAudioEngine` object before you `destroy` the `RtcEngine` instance.
-    </Admonition>
-1. Exit the channel using `leaveChannel` and `destroy` the `RtcEngine` instance.
-
-### Spatial audio effects for media player
-
-To set up a spatial audio effect for media player:
-
-1. Follow the procedure to set up an instance of `RtcEngine` and `ILocalSpatialAudioEngine` as for the users implementation described in the previous section. 
-
-1. Update the local user and media player spatial positions using `updateSelfPosition` and `updatePlayerPositionInfo` to experience spatial audio.
-
-To implement spatial audio effects for media player using a local Cartesian coordinate system calculation scheme, refer to the following example:
+Call the `create` method of the `ILocalSpatialAudioEngine` class to create an instance of the spatial audio engine. Then, call `initialize` to enable spatial audio.
 
 ```java
-import static io.agora.api.example.common.model.Examples.ADVANCED;
-import static io.agora.mediaplayer.Constants.MediaPlayerState.PLAYER_STATE_IDLE;
-import static io.agora.mediaplayer.Constants.MediaPlayerState.PLAYER_STATE_OPEN_COMPLETED;
-import static io.agora.mediaplayer.Constants.MediaPlayerState.PLAYER_STATE_PLAYBACK_COMPLETED;
-import static io.agora.mediaplayer.Constants.MediaPlayerState.PLAYER_STATE_STOPPED;
+localSpatial = ILocalSpatialAudioEngine.create();
+LocalSpatialAudioConfig localSpatialAudioConfig = new LocalSpatialAudioConfig();
+localSpatialAudioConfig.mRtcEngine = engine;
+localSpatial.initialize(localSpatialAudioConfig);
+```
 
-import io.agora.api.example.common.Constant;
-import io.agora.mediaplayer.Constants;
-import io.agora.mediaplayer.IMediaPlayer;
-import io.agora.mediaplayer.IMediaPlayerObserver;
-import io.agora.mediaplayer.data.PlayerUpdatedInfo;
-import io.agora.mediaplayer.data.SrcInfo;
-import io.agora.rtc2.IRtcEngineEventHandler;
-import io.agora.rtc2.RtcEngine;
-import io.agora.rtc2.SpatialAudioParams;
-import io.agora.spatialaudio.ILocalSpatialAudioEngine;
-import io.agora.spatialaudio.LocalSpatialAudioConfig;
-import io.agora.spatialaudio.RemoteVoicePositionInfo;
+### Set the audio profile and scenario
 
-public class SpatialSound extends BaseFragment {
-    private RtcEngine engine;
-    private IMediaPlayer mediaPlayer;
-    private ILocalSpatialAudioEngine localSpatial;
-    private RemoteVoicePositionInfo positionInfo = new RemoteVoicePositionInfo();
-    private int speakerUid;
+To set the desired audio encoding properties, call `setAudioProfile`.
 
-    @Nullable
-    @Override
+Call `setAudioScenario` to set the scenario to `AUDIO_SCENARIO_GAME_STREAMING` for the best sound quality effect.
 
-    private void startRecord() {
-        startTv.setVisibility(View.GONE);
-        // Open media resources
-        mediaPlayer.open(Constant.URL_PLAY_AUDIO_FILES, 0);
+```java
+engine.setAudioProfile(io.agora.rtc2.Constants.AUDIO_PROFILE_MUSIC_STANDARD);
+engine.setAudioScenario(io.agora.rtc2.Constants.AUDIO_SCENARIO_GAME_STREAMING);
+```
 
-        LocalSpatialAudioConfig localSpatialAudioConfig = new LocalSpatialAudioConfig();
-        localSpatialAudioConfig.mRtcEngine = engine;
-        // Create ILocalSpatialAudioEngine
-        localSpatial = ILocalSpatialAudioEngine.create();
-        // Initialize ILocalSpatialAudioEngine
-        localSpatial.initialize(localSpatialAudioConfig);
-        // Set the audio receiving range (in meters)
-        localSpatial.setAudioRecvRange(50);
-        // Set the length of the game engine unit distance (in meters)
-        localSpatial.setDistanceUnit(1);
-        // Update the spatial position of the local user
-        float[] pos = new float[]{0.0F, 0.0F, 0.0F};
-        float[] forward = new float[]{1.0F, 0.0F, 0.0F};
-        float[] right = new float[]{0.0F, 1.0F, 0.0F};
-        float[] up = new float[]{0.0F, 0.0F, 1.0F};
-        localSpatial.updateSelfPosition(pos, forward, right, up);
-    }
+### Set the audio reception range
 
-    private void updateSpatialSoundParam() {
-        float transX = speakerIv.getTranslationX();
-        float transY = speakerIv.getTranslationY();
-        double viewDistance = Math.sqrt(Math.pow(transX, 2) + Math.pow(transY, 2));
-        double viewMaxDistance = Math.sqrt(Math.pow((rootView.getWidth() - speakerIv.getWidth()) / 2.0f, 2) + Math.pow((rootView.getHeight() - speakerIv.getHeight()) / 2.0f, 2));
-        double spkMaxDistance = 3;
-        double spkMinDistance = 1;
+To set the maximum number of audio streams that can be received within the audio receiving range, call `setMaxAudioRecvCount`. The recommended `maxCount` value is ≤ 16.
 
-        double spkDistance = spkMaxDistance * (viewDistance / viewMaxDistance);
-        if (spkDistance < spkMinDistance) {
-            spkDistance = spkMinDistance;
-        }
-        if (spkDistance > spkMaxDistance) {
-            spkDistance = spkMaxDistance;
-        }
-        double degree = getDegree((int) transX, (int) transY);
-        if (transX > 0) {
-            degree = 360 - degree;
-        }
+To set the maximum range of receivable audio, in meters, call `setAudioRecvRange`. The recommended value range is ＞ 0.
 
-        double posForward = spkDistance * Math.cos(degree);
-        double posRight = spkDistance * Math.sin(degree);
+```java
+localSpatial.setMaxAudioRecvCount(2);
+localSpatial.setAudioRecvRange(AXIS_MAX_DISTANCE);
+```
 
-        // Update the spatial position of the media player
-        RemoteVoicePositionInfo positionInfo = new RemoteVoicePositionInfo();
-        positionInfo.forward = new float[]{1.0F, 0.0F, 0.0F};
-        positionInfo.position = new float[]{(float) posForward, (float) posRight, 0.0F};
-        localSpatial.updatePlayerPositionInfo(mediaPlayer.getMediaPlayerId(), positionInfo);
-    }
+### Update spatial position
+In the user space audio scenario, call the `updateSelfPosition` and `updateRemotePosition` methods to update the positions of the local user and remote users respectively.
 
-    private int getDegree(int point1X, int point1Y) {
-        int vertexPointX = 0, vertexPointY = 0, point0X = 0;
-        int point0Y = -10;
-        int vector = (point0X - vertexPointX) * (point1X - vertexPointX) + (point0Y - vertexPointY) * (point1Y - vertexPointY);
-        double sqrt = Math.sqrt(
-                (Math.abs((point0X - vertexPointX) * (point0X - vertexPointX)) + Math.abs((point0Y - vertexPointY) * (point0Y - vertexPointY)))
-                        * (Math.abs((point1X - vertexPointX) * (point1X - vertexPointX)) + Math.abs((point1Y - vertexPointY) * (point1Y - vertexPointY)))
-        );
-        double radian = Math.acos(vector / sqrt);
-        return (int) (180 * radian / Math.PI);
-    }
+In the media player spatial audio scenario, call the `updateSelfPosition` and `updatePlayerPositionInfo` methods to update the position of the local user and the media player, respectively.
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        // Stop playing media resources
-        mediaPlayer.stop();
-        handler.removeCallbacksAndMessages(null);
-        handler.post(RtcEngine::destroy);
-        engine = null;
-    }
+Typically, you call these methods when:
 
-    @Override
-    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-        Context context = getContext();
-        if (context == null) {
-            return;
-        }
-        try {
-            String appId = getString(R.string.agora_app_id);
-            // Create and initialize RtcEngine
-            engine = RtcEngine.create(getContext().getApplicationContext(), appId, iRtcEngineEventHandler);
-            // Create IMediaPlayer
-            mediaPlayer = engine.createMediaPlayer();
-            // Register a playback observer
-            mediaPlayer.registerPlayerObserver(iMediaPlayerObserver);
-        } catch (Exception e) {
-            e.printStackTrace();
-            getActivity().onBackPressed();
-        }
-    }
+- A new user joins the channel.
+- The relative positions of the local user, a remote user, or the media player changes.
+- There are other changes in your specific scenario.
 
-    private IMediaPlayerObserver iMediaPlayerObserver = new IMediaPlayerObserver() {
-        @Override
-        // Reports player state changes
-        public void onPlayerStateChanged(io.agora.mediaplayer.Constants.MediaPlayerState mediaPlayerState, io.agora.mediaplayer.Constants.MediaPlayerError mediaPlayerError) {
-            Log.e(TAG, "onPlayerStateChanged mediaPlayerState " + mediaPlayerState);
-            if (mediaPlayerState.equals(PLAYER_STATE_OPEN_COMPLETED)) {
-                // Set media resources to loop
-                mediaPlayer.setLoopCount(-1);
-                // Play media resources
-                mediaPlayer.play();
-            }
-        }
-    };
-}
+```java
+// Update local user position
+float[] pos = getVoicePosition(localIv);
+float[] forward = new float[]{1.0F, 0.0F, 0.0F};
+float[] right = new float[]{0.0F, 1.0F, 0.0F};
+float[] up = new float[]{0.0F, 0.0F, 1.0F};
+localSpatial.updateSelfPosition(pos, forward, right, up);
+
+// Update the remote user's position
+if (remoteLeftTv.getTag() == null) {
+    remoteLeftTv.setTag(uid);
+    remoteLeftTv.setVisibility(View.VISIBLE);
+    remoteLeftTv.setText(uid + "");
+    RemoteVoicePositionInfo info = getVoicePositionInfo(remoteLeftTv);
+    Log.d(TAG, "left remote user >> pos=" + Arrays.toString(info.position));
+    localSpatial.updateRemotePosition(uid, info);
+    remoteLeftTv.setOnClickListener(v -> showRemoteUserSettingDialog(uid));
+} else if (remoteRightTv.getTag() == null) {
+    remoteRightTv.setTag(uid);
+    remoteRightTv.setVisibility(View.VISIBLE);
+    remoteRightTv.setText(uid + "");
+    localSpatial.updateRemotePosition(uid, getVoicePositionInfo(remoteRightTv));
+    remoteRightTv.setOnClickListener(v -> showRemoteUserSettingDialog(uid));
+}    
+```
+
+### Set spatial audio parameters
+
+To set spatial audio parameters for the remote user or media player, call `setRemoteUserSpatialAudioParams` or `setSpatialAudioParams`. To implement specific sound effects, refer to the following parameter settings:
+
+- Air attenuation effect
+
+    Set `enable_air_absorb` to `true` and set `speaker_attenuation` to the desired sound attenuation coefficient.
+
+- Sound blur effect
+
+    Set `enable_blur` to `true`
+
+```java
+// Enable air absorption effect
+spatialAudioParams.enable_air_absorb = true;
+
+// Enable sound blur effect
+spatialAudioParams.enable_blur = true;
+
+// Set spatial audio parameters for the media player
+engine.setRemoteUserSpatialAudioParams(uid, spatialAudioParams);
+```
+
+### Set up sound isolation (optional)
+
+To define a sound isolation zone and set a sound attenuation coefficient call `setZones`. This feature simulates the real-world effect of sound attenuation when the sound source is inside a sound isolation zone while the receiver is outside or vice versa. It mimics how sound behaves when encountering obstacles like building partitions.
+
+Optionally, call `setRemoteAudioAttenuation` or `setPlayerAttenuation` to set the sound attenuation properties for the user and media player, respectively, and specify whether to use this setting to forcefully override the sound attenuation factor in `setZones`.
+
+```java
+SpatialAudioZone mediaPlayerLeftZone = new SpatialAudioZone();
+mediaPlayerLeftZone.zoneSetId = 1;
+mediaPlayerLeftZone.audioAttenuation = 1f;
+float[] voicePosition = getVoicePosition(zoneTv);
+float[] viewRelativeSizeInAxis = getViewRelativeSizeInAxis(zoneTv);
+mediaPlayerLeftZone.position = new float[]{voicePosition[0], voicePosition[1], 0};
+mediaPlayerLeftZone.forward = new float[]{1.f, 0, 0};
+mediaPlayerLeftZone.right = new float[]{0, 1.f, 0};
+mediaPlayerLeftZone.up = new float[]{0, 0, 1.f};
+mediaPlayerLeftZone.forwardLength = viewRelativeSizeInAxis[1];
+mediaPlayerLeftZone.rightLength = viewRelativeSizeInAxis[0];
+mediaPlayerLeftZone.upLength = AXIS_MAX_DISTANCE;
+localSpatial.setZones(new SpatialAudioZone[]{mediaPlayerLeftZone});
+
+localSpatial.setRemoteAudioAttenuation(uid, 0.5f, false);
+localSpatial.setPlayerAttenuation(mediaPlayer.getMediaPlayerId(), 0.5f, false);
+```
+
+### Set headphone equalization (optional)
+
+To optimize the audio experience, call `setHeadphoneEQPreset` to choose a preset headphone equalizer.
+
+If the preset values do not provide the desired effect, call `setHeadphoneEQParameters` to self-adjust headphone equalization. After you execute this method, the preset values set by `setHeadphoneEQPreset` are overwritten.
+
+```java
+engine.setHeadphoneEQPreset(io.agora.rtc2.Constants.HEADPHONE_EQUALIZER_OVEREAR);
+engine.setHeadphoneEQParameters(10, 10);
+```
+
+### Pause or turn off spatial audio
+
+During a session, pause or turn off spatial audio as follows.
+
+#### Pause spatial audio for a remote user
+To disable a remote user's spatial audio, or to remove a remote user who has exited the channel, call `removeRemotePosition` to delete the user's spatial position information amd save computing resources.
+
+<Admonition type="caution">
+When a remote user leaves the channel, call `removeRemotePosition` to delete the user's spatial position information. Otherwise, the local user may not be able to hear the spatial audio from other remote users.
+</Admonition>
+
+To restore the user's spatial audio, call `updateRemotePosition` to reset the remote user's position information.
+
+```java
+// Pause spatial audio for a specific remote user locally
+localSpatial.removeRemotePosition(uid);
+
+// Resume spatial audio for a specific remote user locally
+localSpatial.updateRemotePosition(uid, getVoicePositionInfo(remoteLeftTv));
+```
+
+#### Pause spatial audio for all remote users
+
+If you do not want to continue to experience local spatial audio, call `clearRemotePositions` to delete the spatial position information of all remote users.
+
+<Admonition type="caution">
+Calling this method prevents the local user from hearing the audio of all remote users. Agora recommends using this method with caution.
+</Admonition>
+
+To resume hearing the remote user's audio later, call `muteAllRemoteAudioStreams(false)` to subscribe to the remote audio streams again.
+
+```java
+// Remove all remote users' spatial positions
+localSpatial.clearRemotePositions();
+
+// Resume subscribing to remote users' audio streams
+localSpatial.muteAllRemoteAudioStreams(false);
+```
+
+#### Pause the local user's spatial audio
+
+To unpublish the local audio stream, call `muteLocalAudioStream(true)`.
+
+To enable spatial audio again, call the same method with the parameter set to `false`.
+
+
+```java
+// Mute the local audio stream
+localSpatial.muteLocalAudioStream(true);
+
+// Unmute the local audio stream
+localSpatial.muteLocalAudioStream(false);
+```
+
+#### Turn off spatial audio
+
+To turn off spatial audio, call the `enableSpatialAudio` method of the `RtcEngine` instance and set the parameter to `false`. This resets all settings related to spatial audio.
+
+To enable spatial audio again, call this method again and set the parameter to `true`, and then call the relevant APIs again to set the spatial audio effect.
+
+Call the `destroy` method of the `ILocalSpatialAudioEngine` class to free up resources.
+
+```java
+// Disable spatial audio
+engine.enableSpatialAudio(false);
+
+// Destroy the ILocalSpatialAudioEngine object
+ILocalSpatialAudioEngine.destroy();
 ```
 
 </PlatformWrapper>

@@ -311,7 +311,7 @@ The macOS and iOS API reference builds are automated but there’s one manual st
 
 The whole process from adding the releases to the PRs being created takes approximately 30 mins. 
 
-To summarise:
+To summarize:
 - Create releases on iOS and macOS swift package repos, this will create the API ref archives
 - Trigger build from Api-reference repo
 - Merge the 3 PRs it creates
@@ -401,84 +401,6 @@ Notes:
 6. Commit and push the updated docs submodule to the Docs `beta` branch to publish.
 7. For subsequent updates, make your changes in the milestone branches and pull to the two `beta` branches.
 8. At the time of GA release pull from the milestone branches to staging.
-
-### Samples for the docs
-
-Each product and each platform has its own repository that stores the runnable code used in the docs. For example:
-
-- https://github.com/AgoraIO/video-sdk-samples-ios
-- https://github.com/AgoraIO/video-sdk-samples-android
-
-All repositories must have the same directory and folder structure. In the repository root, you have one folder, 
-`agora_manager` that holds the base code necessary to create an app, and one folder for each document published in 
-the docs repository. The folder names and file names must be written in snake case. An example repository would look like:
-
-- agora_manager
-- ai_noise_suppression
-- audio_and_voice_effects
-- authentication_workflow
-- cloud_proxy
-- custom_video_and_audio
-- ensure_channel_quality
-- geofencing
-- get_started_sdk
-- integrate_token_generation
-- magic_leap
-- media_stream_encryption
-- migration_guide
-- play_media
-- product_workflow
-- spatial_audio
-- stream_raw_audio_and_video
-- use_an_extension
-- virtual_background
-- Readme.md
-
-The code in the repository is runnable from the product root, you choose to run the code from each folder. 
-
-`agora_manager` contains:
-
-- The base implementation for a product and contains the same variables and methods for the SDK. For example:
-  - appId = "<Your app Id>";
-  - channelName = "Your channel name";
-  - token = "<your access token>";
-  - uid = 0;
-  - isJoined = false;
-  - RtcEngine agoraEngine;
-  - currentProduct - one of Video Calling, Voice Calling, ILS, Broadcast Streaming, Voice Calling. There must be a method, `setCurrentProduct` to, set the current product.  
-
-- The base UI implementation for an app. 
-
-`Readme.md` contains:
-- An explanation of the purpose of the document
-- A procedure on how to run the project
-- A list of the folders and a one line explanation of the business logic coded in them
-
-Each document folder contains at least:
-- `<folder-name>.<file-extension>` - an extension of agoraManager that implements the features discussed in the doc. 
-  Each feature must be encapsulated in a method. The top of the class holds the agora methods, lower down holds the UI extension. 
-- `Readme.md` - A brief explanation of the implementation in the folder containing:
-  - The intro section from the doc
-  - A Link to the document for this page for each product. 
-  - A small list of the main methods in the code. 
-
-   
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

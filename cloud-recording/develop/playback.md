@@ -17,7 +17,7 @@ In individual recording mode, Agora Cloud Recording records the audio and video 
 
 ## Get the timestamp
 
-You can use the [Agora Cloud Recording RESTful API Callback Service](../reference/rest-api/rest-api-overview) to acquire the start timestamp of the recording. The `startUtcMs` parameter in the `recorder_slice_start` event indicates the time when Agora Cloud Recording starts to record a user ID, or the start time of the first slice file for the user ID. `startUtcMs` is the time (ms) in UTC.
+You can use the [Agora Cloud Recording RESTful API Callback Service](../reference/rest-api-overview) to acquire the start timestamp of the recording. The `startUtcMs` parameter in the `recorder_slice_start` event indicates the time when Agora Cloud Recording starts to record a user ID, or the start time of the first slice file for the user ID. `startUtcMs` is the time (ms) in UTC.
 
 > Contact [support@agora.io](http://support@agora.io) to enable the callback service. 
 

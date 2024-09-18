@@ -1,3 +1,196 @@
 <PlatformWrapper platform="unity">
-The <Vpl k="NAME" /> implementation of this feature is not yet available. Please refer to the [API Reference](../../api-reference).
+
+### Initialize the spatial audio engine
+
+Call the `GetLocalSpatialAudioEngine` method of the `RtcEngine` class to create an instance of the spatial audio engine. Then, call `Initialize` to enable spatial audio.
+
+```csharp
+SpatialAudioEngine = RtcEngine.GetLocalSpatialAudioEngine();
+var ret = SpatialAudioEngine.Initialize();
+```
+
+### Set the audio profile and scenario
+
+To set the desired audio encoding properties, call `SetAudioProfile`.
+
+Call `SetAudioScenario` to set the scenario to `AUDIO_SCENARIO_GAME_STREAMING` for the best sound quality effect.
+
+```csharp            
+RtcEngine.SetAudioProfile(AUDIO_PROFILE_TYPE.AUDIO_PROFILE_MUSIC_STANDARD);
+RtcEngine.SetAudioScenario(AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING);
+```
+
+### Set the audio reception range
+
+To set the maximum number of audio streams that can be received within the audio receiving range, call `SetMaxAudioRecvCount`. The recommended `maxCount` value is ≤ 16.
+
+To set the maximum range of receivable audio, in meters, call `SetAudioRecvRange`. The recommended value range is ＞ 0.
+
+```csharp
+SpatialAudioEngine.SetMaxAudioRecvCount(10);
+SpatialAudioEngine.SetAudioRecvRange(30);
+```
+
+### Update spatial position
+In the user space audio scenario, call the `UpdateSelfPositionEx` and `UpdateRemotePositionEx` methods to update the positions of the local user and remote users respectively.
+
+In the media player spatial audio scenario, call the `UpdateSelfPositionEx` and `UpdatePlayerPositionInfo` methods to update the position of the local user and the media player, respectively.
+
+Typically, you call these methods when:
+
+- A new user joins the channel.
+- The relative positions of the local user, a remote user, or the media player changes.
+- There are other changes in your specific scenario.
+
+```csharp
+// Update local user position
+float[] localUserPosition = new float[] { 0.0f, 0.0f, 0.0f };
+float[] forward = new float[] { 1.0f, 0.0f, 0.0f };
+float[] right = new float[] { 0.0f, 1.0f, 0.0f };
+float[] up = new float[] { 0.0f, 0.0f, 1.0f };
+var ret = SpatialAudioEngine.UpdateSelfPosition(localUserPosition, forward, right, up);
+Debug.Log("UpdateSelfPosition return: " + ret);
+
+// Update the remote user's position
+float[] positionRemote = { 0.0f, 1.0f, 0.0f };
+float[] forwardRemote = { 0, 0, 0 };
+RemoteVoicePositionInfo remoteVoicePositionInfo = new RemoteVoicePositionInfo(positionRemote, forwardRemote);
+var ret = SpatialAudioEngine.UpdateRemotePosition(UidUseInMPK, remoteVoicePositionInfo);
+Debug.Log("_spatialAudio.UpdateRemotePosition returns: " + ret);
+```
+
+### Set spatial audio parameters
+
+To set spatial audio parameters for the remote user or media player, call `SetRemoteUserSpatialAudioParams` or `SetSpatialAudioParams`. If you want to achieve specific sound effects, refer to the following parameter settings:
+
+- Air attenuation effect
+
+  Set `enable_air_absorb` to `true` and set `speaker_attenuation` to the desired sound attenuation coefficient.
+
+- Sound blur effect
+
+  Set `enable_blur` to true
+
+```csharp
+SpatialAudioParams audioParams = new SpatialAudioParams();
+// Enable air absorption effect
+audioParams.enable_air_absorb.SetValue(true);
+
+// Enable sound blur effect
+audioParams.enable_blur.SetValue(true);
+
+// Set spatial audio parameters for the media player
+RtcEngine.SetRemoteUserSpatialAudioParams(uid, audioParams);
+```
+
+### Set up sound isolation (optional)
+
+To define a sound isolation zone and set a sound attenuation coefficient call `setZones`. This feature simulates the real-world effect of sound attenuation when the sound source is inside a sound isolation zone while the receiver is outside or vice versa. It mimics how sound behaves when encountering obstacles like building partitions.
+
+Optionally, call `SetRemoteAudioAttenuation` or `SetPlayerAttenuation` to set the sound attenuation properties for the user and media player, respectively, and specify whether to use this setting to forcefully override the sound attenuation factor in `setZones`.
+
+```csharp
+SpatialAudioZone mediaPlayerLeftZone = new SpatialAudioZone();
+mediaPlayerLeftZone.zoneSetId = 1;
+mediaPlayerLeftZone.audioAttenuation = 1.0f;
+float[] voicePosition = { 0.0f, 0.0f, 0.0f };
+float[] viewRelativeSizeInAxis = { 1.0f, 1.0f, 1.0f };
+mediaPlayerLeftZone.position = new float[] { voicePosition[0], voicePosition[1], 0 };
+mediaPlayerLeftZone.forward = new float[] { 1.0f, 0, 0 };
+mediaPlayerLeftZone.right = new float[] { 0, 1.0f, 0 };
+mediaPlayerLeftZone.up = new float[] { 0, 0, 1.0f };
+mediaPlayerLeftZone.forwardLength = viewRelativeSizeInAxis[1];
+mediaPlayerLeftZone.rightLength = viewRelativeSizeInAxis[0];
+mediaPlayerLeftZone.upLength = viewRelativeSizeInAxis[2];
+SpatialAudioEngine.SetZones(new SpatialAudioZone[] { mediaPlayerLeftZone },1);
+// Set audio attenuation property for the user
+SpatialAudioEngine.SetRemoteAudioAttenuation(uid, 0.5f, false);
+// Set audio attenuation property for the media player
+SpatialAudioEngine.SetPlayerAttenuation(MediaPlayer.GetId(), 0.5f, false);
+```
+
+### Set headphone equalization (optional)
+
+To optimize the audio experience, call `SetHeadphoneEQPreset` to choose a preset headphone equalizer.
+
+If the preset values do not provide the desired effect,, call `SetHeadphoneEQParameters` to self-adjust headphone equalization. After you execute this method, the preset values set by `SetHeadphoneEQPreset` are overwritten.
+
+```csharp
+RtcEngine.SetHeadphoneEQPreset(HEADPHONE_EQUALIZER_PRESET.HEADPHONE_EQUALIZER_OVEREAR);
+RtcEngine.SetHeadphoneEQParameters(10, 10);
+```
+
+### Pause or turn off spatial audio
+
+During a session, pause or turn off spatial audio as follows.
+
+#### Pause spatial audio for a remote user
+To disable a remote user's spatial audio, or to remove a remote user who has exited the channel, call `RemoveRemotePosition` to delete the user's spatial position information amd save computing resources.
+
+<Admonition type="caution">
+When a remote user leaves the channel, call `removeRemotePosition` to delete the user's spatial position information. Otherwise, the local user may not be able to hear the spatial audio from other remote users.
+</Admonition>
+
+To restore the user's spatial audio, call `UpdateRemotePosition` to reset the remote user's position information.
+
+```csharp
+// Suspend local spatial audio for a specified remote user
+SpatialAudioEngine.RemoveRemotePosition(uid);
+
+// Restore the coordinates and orientation of the specified remote user under the local spatial audio system.
+float[] position = new float[] { 1.0f, 1.0f, 1.0f };
+float[] forward = new float[] { 1.0f, 1.0f, 1.0f };
+RemoteVoicePositionInfo positionInfo = new RemoteVoicePositionInfo(position, forward);
+SpatialAudioEngine.UpdateRemotePosition(uid, positionInfo);
+```
+
+#### Pause spatial audio for all remote users
+
+If you do not want to continue to experience local spatial audio, call `ClearRemotePositions` to delete the spatial position information of all remote users.
+
+<Admonition type="caution">
+Calling this method prevents the local user from hearing the audio of all remote users. Agora recommends using this method with caution.
+</Admonition>
+
+To resume hearing the remote user's audio later, call `MuteAllRemoteAudioStreams(false)` to subscribe to the remote audio streams again.
+
+```csharp
+// Delete spatial location information for all remote users
+SpatialAudioEngine.ClearRemotePositions();
+
+// Resume subscribing to the remote user's audio stream
+SpatialAudioEngine.MuteAllRemoteAudioStreams(false);
+```
+
+#### Pause the local user's spatial audio
+
+To unpublish the local audio stream, call `MuteLocalAudioStream(true)`.
+
+To enable spatial audio again, call the same method with the parameter set to `false`.
+
+
+```csharp
+// Mute the local audio stream
+SpatialAudioEngine.MuteLocalAudioStream(true);
+
+// Unmute the local audio stream
+SpatialAudioEngine.MuteLocalAudioStream(false);
+```
+
+#### Turn off spatial audio
+
+To turn off spatial audio, call the `EnableSpatialAudio` method of the `IRtcEngine` instance and set the parameter to `false`. This resets all settings related to spatial audio.
+
+To enable spatial audio again, call this method again and set the parameter to `true`, and then call the relevant APIs again to set the spatial audio effect.
+
+Call the `Dispose` method of the `ILocalSpatialAudioEngine` class to free up resources.
+
+```csharp
+// Disable spatial audio
+RtcEngine.EnableSpatialAudio(false);
+
+// Destroy the ILocalSpatialAudioEngine object
+SpatialAudioEngine.Dispose();
+```
+
 </PlatformWrapper>

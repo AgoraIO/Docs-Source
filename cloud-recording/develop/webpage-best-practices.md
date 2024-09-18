@@ -27,19 +27,7 @@ Check that your Peak Concurrent Worker (PCW), Queries Per Second (QPS), and the 
 
 #### PCW
 
-The PCW limit depends on your video stream resolution and region.
-
-Resolutions:
-
-- SD: Standard definition video, resolution ≤ 640 × 360
-- HD: High definition video, resolution ≤ 1280 × 720 and > 640 × 360
-- FHD: Full HD video, resolution ≤ 1920 × 1080 and > 1280 × 720
-
-| Service type         | Mainland China    | Europe      | America      | Asia (excluding mainland China) |
-|:---------------------|:------------------------|:-------------------|:--------------------------------|:------------|
-| Web page recording   | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 50</li> <li>HD 30</li> <li>FHD 10</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> | <ul><li>SD 100</li> <li>HD 50</li> <li>FHD 30</li></ul> |
-
-If you need to extend the PCW limit, contact support@agora.io.
+The PCW limit is set to 200 for all regions and resolutions. If you need to extend the PCW limit, please contact support@agora.io.
 
 #### QPS
 
@@ -76,7 +64,7 @@ Take the following steps to ensure that the recording service starts successfull
 
 Before starting web page recording, you need to complete the page detection logic of the JavaScript of the web page to be recorded to implement the following solutions:
 
-1. When calling [`start`](../reference/rest-api/start) to start web page recording, the web page recording browser accesses and loads the web page to be recorded.
+1. When calling [`start`](../reference/restful-api#start) to start web page recording, the web page recording browser accesses and loads the web page to be recorded.
 2. The web page recording service executes the page detection logic of the JavaScript of the web page to be recorded. When a web page element is loaded in line with your expectations, the recording ID (`sid`) associated with the web page recording service callback informs the business server that the recording service has started successfully.
 3. The web page server reports its status at regular intervals to notify the business server of any content changes.
 
@@ -90,4 +78,4 @@ Agora recommends that you use the detection logic of the page to be recorded to 
 
 ### Use the web_recorder_stopped callback to detect abnormal recording stoppages 
 
-Open the message notification service, and subscribe to the [`71 web_recorder_stopped`](../reference/rest-api/rest-api-overview#71-web_recorder_stopped-web_recorder_stopped) callback event. When the business server receives the `web_recorder_stopped` callback and the code is not `0`, it means that the web page recording has stopped abnormally. Agora recommends that you restart the recording process and create a new recording.
+Open the message notification service, and subscribe to the [`71 web_recorder_stopped`](../reference/rest-api-overview#71-web_recorder_stopped-web_recorder_stopped) callback event. When the business server receives the `web_recorder_stopped` callback and the code is not `0`, it means that the web page recording has stopped abnormally. Agora recommends that you restart the recording process and create a new recording.

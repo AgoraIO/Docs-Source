@@ -41,7 +41,7 @@ In web page recording mode, you can also convert the content and audio of the pa
 
 ### Get a resource ID
 
-Before recording, call the [`acquire`](../reference/rest-api/acquire) method to apply for a resource ID. Note that you must set `scene` as `1`.
+Before recording, call the [`acquire`](../reference/restful-api#acquire) method to apply for a resource ID. Note that you must set `scene` as `1`.
 
 #### An HTTP request example of `acquire`
 
@@ -68,7 +68,7 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
 
 ### Start recording
 
-To enable [web page recording mode](../develop/webpage-mode), set `mode` to `web` when calling  [`start`](../reference/rest-api/start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
+To enable [web page recording mode](../develop/webpage-mode), set `mode` to `web` when calling  [`start`](../reference/restful-api#start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
 
 You cannot switch to a different recording mode once you start recording.
 
@@ -139,7 +139,7 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>
 
 The charging will continue until the web page recording stops. You should set a reasonable `maxRecordingHour` based on the actual business scenario or actively stop the web page recording.
 
-When a recording finishes, call [`stop`](../reference/rest-api/stop) to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the [`acquire`](../reference/rest-api/acquire) method for a new resource ID.
+When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the [`acquire`](../reference/restful-api#acquire) method for a new resource ID.
 
 #### An HTTP request example of `stop`
 
@@ -166,7 +166,7 @@ When a recording finishes, call [`stop`](../reference/rest-api/stop) to leave th
 
 ### Get a resource ID
 
-Before starting the process, call the [`acquire`](../reference/rest-api/acquire) method to apply for a resource ID. Note that you must set `scene` as `1`.
+Before starting the process, call the [`acquire`](../reference/restful-api#acquire) method to apply for a resource ID. Note that you must set `scene` as `1`.
 
 #### An HTTP request example of `acquire`
 
@@ -193,7 +193,7 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
 
 ### Start a process
 
-To enable [web page recording mode](../develop/webpage-mode), set `mode` to `web` when calling  [`start`](../reference/rest-api/start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
+To enable [web page recording mode](../develop/webpage-mode), set `mode` to `web` when calling  [`start`](../reference/restful-api#start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
 
 You cannot switch to a different recording mode once you start recording.
 
@@ -273,7 +273,7 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>
 
 ### Stop the process    
 
-When a recording and stream pushing finishes, call [`stop`](../reference/rest-api/stop) to leave the channel and stop recording. To use Agora Cloud Web Page Recording again, you need to call the [`acquire`](../reference/rest-api/acquire) method for a new resource ID.
+When a recording and stream pushing finishes, call [`stop`](../reference/restful-api#stop) to leave the channel and stop recording. To use Agora Cloud Web Page Recording again, you need to call the [`acquire`](../reference/restful-api#acquire) method for a new resource ID.
 
 #### An HTTP request example of `stop`
 

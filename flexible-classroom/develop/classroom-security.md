@@ -28,8 +28,8 @@ Agora Flexible Classroom uses the <Vg k="SIG"/> token for end user authenticatio
 
 The app developer can enable token authentication (App Certificate) in <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>. When enabled, all user’s request to join a classroom must be done with a valid <Vg k="SIG"/> token.
 
-- For more information on how to enable <Vg k="SIG"/> token authentication, see [Use an <Vg k="SIG"/> token for authentication](/signaling/develop/authentication-workflow).
-- For how to generate an <Vg k="SIG"/> token on the app backend, see [Generate an <Vg k="SIG"/> token](/signaling/develop/authentication-workflow).
+- For more information on how to enable <Vg k="SIG"/> token authentication, see [Secure authentication with tokens](authentication-workflow).
+- For how to generate a <Vg k="SIG"/> token on the app backend, see [Secure authentication with tokens](authentication-workflow#token-generator-libraries).
 
 ## Data encryption and storage
 

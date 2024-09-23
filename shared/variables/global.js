@@ -185,6 +185,7 @@ export const RTEE_FU = 'FaceUnity';
 export const RTEE_AF = 'ActiveFence';
 export const RTEE_CLARITY = `Super Clarity`;
 export const RTEE_MK = 'MetaKit';
+export const RTEE_FC = 'Facial Capture';
 export const RTEE_CM = 'Camera Movement';
 export const RTEE_AF_D = `ActiveOS`;
 export const RTEE_HT3D = `HTEffect 3D Avatar`

@@ -22,6 +22,7 @@ from agora.rtc.local_user import LocalUser
 from agora.rtc.local_user_observer import IRTCLocalUserObserver
 from agora.rtc.rtc_connection import RTCConnection, RTCConnInfo
 from agora.rtc.rtc_connection_observer import IRTCConnectionObserver
+from pyee.asyncio import AsyncIOEventEmitter
 ```
 
 ### Initialize the engine
@@ -107,16 +108,16 @@ async def connect(self, channelId: str, uid: str) -> Channel:
     future = loop.create_future()
 
     def callback(agora_rtc_conn: RTCConnection, conn_info: RTCConnInfo, reason):
+        channel.off("connection_state_changed", callback)
         if conn_info.state == 3:
-            loop.call_soon_threadsafe(future.set_result, None)
+            future.set_result(channel)
         else:
-            loop.call_soon_threadsafe(
-                future.set_exception,
+            future.set_exception(
                 Exception(f"connection state:{conn_info.state}"),
             )
 
     channel = Channel(self, channelId, uid)
-    channel.once("connection_state_changed", callback)
+    channel.on("connection_state_changed", callback)
 
     await future
     return channel
@@ -134,37 +135,37 @@ class ChannelEventObserver(IRTCConnectionObserver, IRTCLocalUserObserver, IAudio
         self.audio_stream = AudioStream()
 
     def emit_event(self, event_name: str, *args):
-        """Helper function to emit events."""
+        # Helper function to emit events
         self.emitter.emit(event_name, *args)
 
     def on_connected(
         self, agora_rtc_conn: RTCConnection, conn_info: RTCConnInfo, reason
     ):
-        print("CCC Connected:", agora_rtc_conn, conn_info, reason)
+        logger.info(f"Connected to RTC: {agora_rtc_conn} {conn_info} {reason}")        
         self.emit_event("connection_state_changed", agora_rtc_conn, conn_info, reason)
 
     def on_disconnected(
         self, agora_rtc_conn: RTCConnection, conn_info: RTCConnInfo, reason
     ):
-        print("CCC Disconnected:", agora_rtc_conn, conn_info, reason)
+        logger.info(f"Disconnected from RTC: {agora_rtc_conn} {conn_info} {reason}")
         self.emit_event("connection_state_changed", agora_rtc_conn, conn_info, reason)
 
     def on_connecting(
         self, agora_rtc_conn: RTCConnection, conn_info: RTCConnInfo, reason
     ):
-        print("CCC Connecting:", agora_rtc_conn, conn_info, reason)
+        logger.info(f"Connecting to RTC: {agora_rtc_conn} {conn_info} {reason}")
         self.emit_event("connection_state_changed", agora_rtc_conn, conn_info, reason)
 
     def on_connection_failure(self, agora_rtc_conn, conn_info, reason):
-        print("CCC Connection failure:", agora_rtc_conn, conn_info, reason)
+        logger.error("Connection failure: {agora_rtc_conn} {conn_info} {reason}")
         self.emit_event("connection_state_changed", agora_rtc_conn, conn_info, reason)
 
     def on_user_joined(self, agora_rtc_conn: RTCConnection, user_id):
-        print("CCC on_user_joined:", agora_rtc_conn, user_id)
+        logger.info(f"User joined: {agora_rtc_conn} {user_id}")
         self.emit_event("user_joined", agora_rtc_conn, user_id)
 
     def on_user_left(self, agora_rtc_conn: RTCConnection, user_id, reason):
-        print("CCC on_user_left:", agora_rtc_conn, user_id, reason)
+        logger.info(f"User left: {agora_rtc_conn} {user_id} {reason}")
         self.emit_event("user_left", agora_rtc_conn, user_id, reason)
 
     def on_audio_subscribe_state_changed(
@@ -176,9 +177,7 @@ class ChannelEventObserver(IRTCConnectionObserver, IRTCLocalUserObserver, IAudio
         new_state,
         elapse_since_last_state,
     ):
-        print(
-            "on_audio_subscribe_state_changed:", channel, user_id, old_state, new_state
-        )
+        logger.info(f'on_audio_subscribe_state_changed: {channel} {user_id} {old_state} {new_state} {elapse_since_last_state}')
         self.emit_event("audio_subscribe_state_changed", channel, user_id, old_state, new_state)
 
     def on_playback_audio_frame_before_mixing(
@@ -201,9 +200,7 @@ To asynchronously subscribe to audio streams for a specific user identified by t
 
 ```python
 async def subscribe_audio(self, uid: int) -> None:
-    loop = asyncio.get_event_loop()
-    future = loop.create_future()
-
+    # Subscribes to the audio of a user.
     def callback(
         agora_local_user,
         channel,
@@ -238,16 +235,24 @@ self.local_user.unsubscribe_audio(uid)
 
 ### Disconnect from the service
 
-To disconnect from Agora SD-RTN and release resources, refer to he following code.
+To leave a channel, disconnect from Agora SD-RTN™ and release resources, refer to he following code.
 
 ```python
 async def disconnect(self) -> None:
-    self.agora_service.release()
+    # Disconnects the channel.
+    disconnected_future = asyncio.Future[None]()
+    def callback(agora_rtc_conn: RTCConnection, conn_info: RTCConnInfo, reason):
+        self.off("connection_state_changed", callback)
+        if conn_info.state == 1:
+            disconnected_future.set_result(None)
+    self.on("connection_state_changed", callback)
+    self.connection.disconnect()
+    await disconnected_future
 ```
 
 ### Complete code
 
-The rtc.py script integrates the code components presented in this section into reusable Python classes that you can extend for your own applications.
+The `rtc.py` script integrates the code components presented in this section into reusable Python classes that you can extend for your own applications.
 
 <details>
 <summary>Complete code for `rtc.py`</summary>
@@ -276,7 +281,7 @@ from agora.rtc.rtc_connection import RTCConnection, RTCConnInfo
 from agora.rtc.rtc_connection_observer import IRTCConnectionObserver
 from pyee.asyncio import AsyncIOEventEmitter
 
-from realtimeapi.util import CHANNELS, SAMPLE_RATE
+from ..realtimeapi.util import CHANNELS, SAMPLE_RATE
 
 logger = logging.getLogger(__name__)
 
@@ -300,6 +305,8 @@ class ChannelEventObserver(IRTCConnectionObserver, IRTCLocalUserObserver, IAudio
         self.emitter = event_emitter
         self.audio_stream = AudioStream()
 
+
+
     def emit_event(self, event_name: str, *args):
         """Helper function to emit events."""
         self.emitter.emit(event_name, *args)
@@ -307,64 +314,65 @@ class ChannelEventObserver(IRTCConnectionObserver, IRTCLocalUserObserver, IAudio
     def on_connected(
         self, agora_rtc_conn: RTCConnection, conn_info: RTCConnInfo, reason
     ):
-        print("CCC Connected:", agora_rtc_conn, conn_info, reason)
+        logger.info(f"Connected to RTC: {agora_rtc_conn} {conn_info} {reason}")        
         self.emit_event("connection_state_changed", agora_rtc_conn, conn_info, reason)
 
     def on_disconnected(
         self, agora_rtc_conn: RTCConnection, conn_info: RTCConnInfo, reason
     ):
-        print("CCC Disconnected:", agora_rtc_conn, conn_info, reason)
+        logger.info(f"Disconnected from RTC: {agora_rtc_conn} {conn_info} {reason}")
         self.emit_event("connection_state_changed", agora_rtc_conn, conn_info, reason)
 
     def on_connecting(
         self, agora_rtc_conn: RTCConnection, conn_info: RTCConnInfo, reason
     ):
-        print("CCC Connecting:", agora_rtc_conn, conn_info, reason)
+        logger.info(f"Connecting to RTC: {agora_rtc_conn} {conn_info} {reason}")
         self.emit_event("connection_state_changed", agora_rtc_conn, conn_info, reason)
 
     def on_connection_failure(self, agora_rtc_conn, conn_info, reason):
-        print("CCC Connection failure:", agora_rtc_conn, conn_info, reason)
+        logger.error("Connection failure: {agora_rtc_conn} {conn_info} {reason}")
         self.emit_event("connection_state_changed", agora_rtc_conn, conn_info, reason)
 
     def on_user_joined(self, agora_rtc_conn: RTCConnection, user_id):
-        print("CCC on_user_joined:", agora_rtc_conn, user_id)
+        logger.info(f"User joined: {agora_rtc_conn} {user_id}")
         self.emit_event("user_joined", agora_rtc_conn, user_id)
 
     def on_user_left(self, agora_rtc_conn: RTCConnection, user_id, reason):
-        print("CCC on_user_left:", agora_rtc_conn, user_id, reason)
+        logger.info(f"User left: {agora_rtc_conn} {user_id} {reason}")
         self.emit_event("user_left", agora_rtc_conn, user_id, reason)
+
+
+    def handle_received_chunk(self, json_chunk):
+        chunk = json.loads(json_chunk)
+        msg_id = chunk["msg_id"]
+        part_idx = chunk["part_idx"]
+        total_parts = chunk["total_parts"]
+        if msg_id not in self.received_chunks:
+            self.received_chunks[msg_id] = {"parts": {}, "total_parts": total_parts}
+        if (
+            part_idx not in self.received_chunks[msg_id]["parts"]
+            and 0 <= part_idx < total_parts
+        ):
+            self.received_chunks[msg_id]["parts"][part_idx] = chunk
+            if len(self.received_chunks[msg_id]["parts"]) == total_parts:
+                # all parts received, now recomposing original message and get rid it from dict
+                sorted_parts = sorted(
+                    self.received_chunks[msg_id]["parts"].values(),
+                    key=lambda c: c["part_idx"],
+                )
+                full_message = "".join(part["content"] for part in sorted_parts)
+                del self.received_chunks[msg_id]
+                return full_message, msg_id
+        return (None, None)
 
     def on_stream_message(
         self, agora_local_user: LocalUser, user_id, stream_id, data, length
     ):
-        print("on_stream_message:", user_id, stream_id, length)
-
-        def handle_received_chunk(json_chunk):
-            chunk = json.loads(json_chunk)
-            msg_id = chunk["msg_id"]
-            part_idx = chunk["part_idx"]
-            total_parts = chunk["total_parts"]
-            if msg_id not in self.received_chunks:
-                self.received_chunks[msg_id] = {"parts": {}, "total_parts": total_parts}
-            if (
-                part_idx not in self.received_chunks[msg_id]["parts"]
-                and 0 <= part_idx < total_parts
-            ):
-                self.received_chunks[msg_id]["parts"][part_idx] = chunk
-                if len(self.received_chunks[msg_id]["parts"]) == total_parts:
-                    # all parts received, now recomposing original message and get rid it from dict
-                    sorted_parts = sorted(
-                        self.received_chunks[msg_id]["parts"].values(),
-                        key=lambda c: c["part_idx"],
-                    )
-                    full_message = "".join(part["content"] for part in sorted_parts)
-                    del self.received_chunks[msg_id]
-                    return full_message, msg_id
-            return (None, None)
-
-        (reassembled_message, msg_id) = handle_received_chunk(data.decode("utf-8"))
+        # logger.info(f"Stream message", agora_local_user, user_id, stream_id, length)
+        (reassembled_message, msg_id) = self.handle_received_chunk(data.decode("utf-8"))
         if reassembled_message is not None:
-            print("Reassembled message:", msg_id, reassembled_message)
+            logger.info(f"Reassembled message: {msg_id} {reassembled_message}")
+
 
     def on_audio_subscribe_state_changed(
         self,
@@ -375,9 +383,7 @@ class ChannelEventObserver(IRTCConnectionObserver, IRTCLocalUserObserver, IAudio
         new_state,
         elapse_since_last_state,
     ):
-        print(
-            "on_audio_subscribe_state_changed:", channel, user_id, old_state, new_state
-        )
+        logger.info(f'on_audio_subscribe_state_changed: {channel} {user_id} {old_state} {new_state} {elapse_since_last_state}')
         self.emit_event("audio_subscribe_state_changed", channel, user_id, old_state, new_state)
 
     def on_playback_audio_frame_before_mixing(
@@ -390,14 +396,6 @@ class ChannelEventObserver(IRTCConnectionObserver, IRTCLocalUserObserver, IAudio
         audio_frame.sample_rate = SAMPLE_RATE
         audio_frame.data = frame.buffer
 
-        # print(
-        #     "on_playback_audio_frame_before_mixing",
-        #     audio_frame.samples_per_channel,
-        #     audio_frame.bytes_per_sample,
-        #     audio_frame.number_of_channels,
-        #     audio_frame.sample_rate,
-        #     len(audio_frame.data),
-        # )
         self.loop.call_soon_threadsafe(self.audio_stream.queue.put_nowait, audio_frame)
         return 0
 
@@ -448,10 +446,35 @@ class Channel():
         self.msg_id = ""
         self.msg_index = ""
 
+    async def disconnect(self) -> None:
+        """
+        Disconnects the channel.
+        """
+        disconnected_future = asyncio.Future[None]()
+        def callback(agora_rtc_conn: RTCConnection, conn_info: RTCConnInfo, reason):
+            self.off("connection_state_changed", callback)
+            if conn_info.state == 1:
+                disconnected_future.set_result(None)
+        self.on("connection_state_changed", callback)
+        self.connection.disconnect()
+        await disconnected_future
+
     def get_audio_frames(self) -> AudioStream:
+        """
+        Returns the audio frames from the channel.
+
+        Returns:
+            AudioStream: The audio stream.
+        """
         return self.channel_event_observer.audio_stream
 
     async def push_audio_frame(self, frame: bytes) -> None:
+        """
+        Pushes an audio frame to the channel.
+        
+        Parameters:
+            frame: The audio frame to push.
+        """
         audio_frame = PcmAudioFrame()
         audio_frame.data = bytearray(frame)
         audio_frame.timestamp = 0
@@ -465,6 +488,12 @@ class Channel():
         self.audio_pcm_data_sender.send_audio_pcm_data(audio_frame)
 
     async def subscribe_audio(self, uid: int) -> None:
+        """
+        Subscribes to the audio of a user.
+
+        Parameters:
+            uid: The user ID to subscribe to.
+        """
         loop = asyncio.get_event_loop()
         future = loop.create_future()
 
@@ -492,6 +521,12 @@ class Channel():
         await future
 
     async def unsubscribe_audio(self, uid: int) -> None:
+        """
+        Unsubscribes from the audio of a user.
+
+        Parameters:
+            uid: The user ID to unsubscribe from.
+        """
         loop = asyncio.get_event_loop()
         future = loop.create_future()
 
@@ -518,37 +553,76 @@ class Channel():
 
         await future
 
-    async def send_stream_message(self, data: str, msg_id: str) -> None:
-        async def split_string_into_chunks(long_string, msg_id, chunk_size=300):
-            total_parts = (len(long_string) + chunk_size - 1) // chunk_size
-            json_chunks = []
-            for idx in range(total_parts):
-                start = idx * chunk_size
-                end = min(start + chunk_size, len(long_string))
-                chunk = {
-                    'msg_id': msg_id,
-                    'part_idx': idx,
-                    'total_parts': total_parts,
-                    'content': long_string[start:end]
-                }
-                json_chunk = json.dumps(chunk, ensure_ascii=False)
-                json_chunks.append(json_chunk)    
-            return json_chunks
+    def _split_string_into_chunks(self, long_string, msg_id, chunk_size=300) -> list[dict[str: Any]]:
+        """
+        Splits a long string into chunks of a given size.
         
-        chunks = await split_string_into_chunks(data, msg_id)    
+        Parameters:
+            long_string: The string to split.
+            msg_id: The message ID.
+            chunk_size: The size of each chunk.
+
+        Returns:
+            list[dict[str: Any]]: The list of chunks.
+        
+        """
+        total_parts = (len(long_string) + chunk_size - 1) // chunk_size
+        json_chunks = []
+        for idx in range(total_parts):
+            start = idx * chunk_size
+            end = min(start + chunk_size, len(long_string))
+            chunk = {
+                'msg_id': msg_id,
+                'part_idx': idx,
+                'total_parts': total_parts,
+                'content': long_string[start:end]
+            }
+            json_chunk = json.dumps(chunk, ensure_ascii=False)
+            json_chunks.append(json_chunk)    
+        return json_chunks
+
+    async def send_stream_message(self, data: str, msg_id: str) -> None: 
+        """
+        Sends a stream message to the channel.
+
+        Parameters:
+            data: The data to send.
+            msg_id: The message ID.
+        """
+
+        chunks = self._split_string_into_chunks(data, msg_id)    
         for chunk in chunks:
             self.connection.send_stream_message(self.stream_id, chunk)
 
     def on(self, event_name: str, callback):
-        """Allows external components to subscribe to events."""
+        """
+        Allows external components to subscribe to events.
+        
+        Parameters:
+            event_name: The name of the event to subscribe to.
+            callback: The callback to call when the event is emitted.
+
+        """
         self.emitter.on(event_name, callback)
 
     def once(self, event_name: str, callback):
-        """Allows external components to subscribe to events."""
+        """
+        Allows external components to subscribe to events once.
+        
+        Parameters:
+            event_name: The name of the event to subscribe to.
+            callback: The callback to call when the event is emitted.
+        """
         self.emitter.once(event_name, callback)
 
     def off(self, event_name: str, callback):
-        """Allows external components to unsubscribe from events."""
+        """
+        Allows external components to unsubscribe from events.
+
+        Parameters:
+            event_name: The name of the event to unsubscribe from.
+            callback: The callback to remove from the event.
+        """
         self.emitter.remove_listener(event_name, callback)
 
 class ChatMessage():
@@ -572,13 +646,25 @@ class Chat():
         asyncio.create_task(self._process_message()).add_done_callback(log_exception)
 
     async def send_message(self, item: ChatMessage) -> None:
+        """
+        Sends a message to the channel.
+
+        Parameters:
+            item: The message to send.
+        """
         await self.queue.put(item)
+        # await self.queue.put_nowait(item)
 
     async def _process_message(self) -> None:
+        """
+        Processes messages in the queue.
+        """
+
         while True:
             item: ChatMessage = await self.queue.get()
             await self.channel.send_stream_message(item.message, item.msg_id)
             self.queue.task_done()
+            # await asyncio.sleep(0)
 
 class RtcEngine:
     def __init__(self, appid: str):
@@ -597,25 +683,39 @@ class RtcEngine:
         self.agora_service.initialize(config)
 
     async def connect(self, channelId: str, uid: str) -> Channel:
+        """
+        Connects to a channel.
+
+        Parameters:
+            channelId: The channel ID.
+            uid: The user ID.
+
+        Returns:
+            Channel: The channel.
+        """
+
         loop = asyncio.get_event_loop()
         future = loop.create_future()
 
         def callback(agora_rtc_conn: RTCConnection, conn_info: RTCConnInfo, reason):
+            channel.off("connection_state_changed", callback)
             if conn_info.state == 3:
-                loop.call_soon_threadsafe(future.set_result, None)
+                future.set_result(channel)
             else:
-                loop.call_soon_threadsafe(
-                    future.set_exception,
+                future.set_exception(
                     Exception(f"connection state:{conn_info.state}"),
                 )
 
         channel = Channel(self, channelId, uid)
-        channel.once("connection_state_changed", callback)
+        channel.on("connection_state_changed", callback)
 
         await future
         return channel
 
-    async def disconnect(self) -> None:
+    def destroy(self) -> None:
+        """
+        Destroys the RTC engine.
+        """
         self.agora_service.release()`}
 </CodeBlock>
 </details>

@@ -1,0 +1,666 @@
+import CodeBlock from '@theme/CodeBlock';
+import CodeRtcPy from '@docs/assets/code/open-ai-integration/rtc-py.mdx'
+import Prerequisites from '@docs/shared/common/prerequisites/index.mdx';
+
+Integrating Agora's real-time audio communication capabilities with OpenAI's language models enables dynamic, conversational AI experiences. This guide shows you how to set up a Python project that combines Agora's voice SDK with OpenAI's API, creating an interactive, voice-driven assistant.
+
+## Understand the tech
+
+The `RealtimeKitAgent` class manages the integration by connecting to an Agora channel for real-time audio streaming and to OpenAI's API for processing audio input and generating AI-driven responses. Audio frames captured from an Agora channel are streamed to OpenAI's API where the AI processes the input. The API responses, which include transcribed text and synthesized voice output, are then delivered back to the Agora channel.
+
+The code sets up tools that can be executed locally or passed through the API. This allows the AI to perform specific tasks, such as retrieving data from external sources. The agent processes various message types from OpenAI, such as audio responses, transcription updates, and error messages, and sends them to users through the Agora audio channel, facilitating continuous interaction.
+
+## Prerequisites
+
+<Prerequisites />
+
+## Set up your project
+
+Follow these steps to set up your Python integration project:
+
+1. Download the OpenAI [`realtimeapi-examples`](https://openai.com/api/) package and unzip it.
+
+1. Create the following folder structure for your project:
+
+    ```
+    /realtime-agent
+    │
+    ├── agent.py
+    ├── .env
+    ├── requirements.txt
+    │
+    ├── agora/
+    │   ├── __init__.py
+    │   ├── rtc.py
+    │
+    ├── realtimekit/
+    │   ├── __init__.py
+    │   ├── realtimeapi/
+    │       ├── __init__.py
+    │       ├── client.py
+    │       ├── messages.py
+    │       └── util.py
+    ```
+
+    - `agent.py`: This is he main script that runs the `RealtimeKitAgent`. 
+        
+        It imports Agora functionality from the `agora/rtc.py` module and the OpenAI capabilities from the `realtimekit/realtimeapi` package.
+    - `agora/rtc.py`: Contains the wrapper around the Agora Python SDK.
+    - `realtimekit/realtimeapi/`: Contains the classes and methods that interact with OpenAI’s Realtime API.
+
+    The [Complete code](#complete-integration-code) code for `agent.py` and `rtc.py` is provided on this page. The files in the `realtimekit/realtimeapi` folder are copied from the downloaded OpenAI package.
+
+1. Add the following keys to your `.env` file:
+
+    ```python
+    # Agora RTC app ID
+    AGORA_APP_ID=your_agora_app_id
+
+    # OpenAI API key for authentication
+    OPENAI_API_KEY=your_openai_api_key_here
+
+    # API base URI for the Realtime API
+    REALTIME_API_BASE_URI=wss://api.openai.com
+    ```
+
+1. Install the dependencies:
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+## Implementation
+
+The `RealtimeKitAgent` class integrates Agora's audio communication capabilities with OpenAI's AI services. This class manages audio streams, handles communication with the OpenAI API, and processes AI-generated responses, providing a seamless conversational AI experience. 
+
+### Connect to Agora and OpenAI
+
+The `setup_and_run_agent` method sets up the `RealtimeKitAgent` by connecting to an Agora channel and initializing a session with the OpenAI Realtime API client. It sends configuration messages to set up the session and conversation parameters before starting the agent's operations. The method ensures the connection is properly handled and cleaned up after use.
+
+``` python
+@classmethod
+async def setup_and_run_agent(
+    cls,
+    *,
+    engine: RtcEngine,
+    inference_config: InferenceConfig,
+    tools: ToolContext | None,
+) -> None:
+    channel = await engine.connect(channelId="realtimekit_agora", uid="123")
+
+    try:
+        async with RealtimeApiClient(
+            base_uri=os.getenv("REALTIME_API_BASE_URI", "wss://api.openai.com"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+            verbose=False,
+        ) as client:
+            await client.send_message(
+                messages.UpdateSessionConfig(
+                    session=messages.SessionResource(),
+                    # turn_detection=inference_config.turn_detection,
+                    # transcribe_input=False,
+                    # input_audio_format=messages.AudioFormats.PCM16,
+                    # vads=messages.VADConfig(),
+                )
+            )
+
+            [start_session_message, _] = await asyncio.gather(
+                *[
+                    anext(client.listen()),
+                    client.send_message(
+                        messages.UpdateConversationConfig(
+                            system_message=inference_config.system_message,
+                            output_audio_format=messages.AudioFormats.PCM16,
+                            voice=inference_config.voice,
+                            tools=tools.model_description() if tools else None,
+                            transcribe_input=False,
+                        )
+                    ),
+                ]
+            )
+            assert isinstance(start_session_message, messages.StartSession)
+            print(
+                f"Session started: {start_session_message.session.id} model: {start_session_message.session.model}"
+            )
+
+            agent = cls(
+                client=client,
+                tools=tools,
+                channel=channel,
+            )
+            await agent.run()
+
+    finally:
+        await engine.disconnect()
+        await shutdown(asyncio.get_event_loop())
+```
+
+### Initialize the RealtimeKitAgent
+
+The `RealtimeKitAgent` class constructor accepts an OpenAI `RealtimeApiClient`, an optional `ToolContext` for function registration, and an Agora Channel for audio communication. This setup prepares the agent for processing audio streams and interacting with the AI model.
+
+```python
+def __init__(
+    self,
+    *,
+    client: RealtimeApiClient,
+    tools: ToolContext | None,
+    channel: Channel,
+) -> None:
+    self.client = client
+    self.tools = tools
+    self._client_tool_futures = {}
+    self.channel = channel
+```
+
+### Launch the agent
+
+The `entry_point` method is the primary entry point for launching the agent. It invokes `setup_and_run_agent` with the relevant parameters, initializing the agent and triggering its functionalities. 
+
+```python
+@classmethod
+async def entry_point(
+    cls,
+    *,
+    engine: RtcEngine,
+    inference_config: InferenceConfig,
+    tools: ToolContext | None = None,
+) -> None:
+    await cls.setup_and_run_agent(
+        engine=engine, inference_config=inference_config, tools=tools
+    )
+```
+
+The asynchronous `run` method orchestrates the main operations of the `RealtimeKitAgent`. It handles audio streaming, manages tasks for processing audio input, output, and model messages, and sets up exception handling. 
+
+```python
+async def run(self) -> None:
+    def log_exception(t: asyncio.Task[Any]) -> None:
+        if not t.cancelled() and t.exception():
+            logger.error(
+                "unhandled exception",
+                exc_info=t.exception(),
+            )
+
+    disconnected_future = asyncio.Future[None]()
+
+    def _on_disconnected() -> None:
+        if not disconnected_future.done():
+            disconnected_future.set_result(None)
+
+    # self.room.on("disconnected", _on_disconnected)
+
+    asyncio.create_task(self._stream_input_audio_to_model()).add_done_callback(
+        log_exception
+    )
+    asyncio.create_task(
+        self._stream_audio_queue_to_audio_output()
+    ).add_done_callback(log_exception)
+
+    asyncio.create_task(self._process_model_messages()).add_done_callback(
+        log_exception
+    )
+
+    await disconnected_future
+    logger.info("Agent finished running")
+```
+
+### Stream input audio to the AI model
+
+The asynchronous method `_stream_input_audio_to_model` captures audio frames from the Agora channel and sends them to the OpenAI API client for processing. It listens for incoming audio frames and forwards them for real-time audio analysis by the AI model.
+
+```python
+async def _stream_input_audio_to_model(self) -> None:
+    audio_frames = self.channel.get_audio_frames()
+    async for audio_frame in audio_frames:
+        # send the frame to the model via the API client
+        await self.client.send_audio_data(audio_frame.data)
+```
+
+### Stream audio from the AI model to the user
+
+The asynchronous method `_stream_audio_queue_to_audio_output` manages the transmission of processed audio data from the AI model back to the end-user. It retrieves audio frames from a queue and sends them to the Agora channel, allowing users to hear the AI-generated responses in real-time.
+
+```python
+async def _stream_audio_queue_to_audio_output(self) -> None:
+    while True:
+        # audio queue contains audio data from the model, send it the end-user via our local audio source
+        frame = await self.audio_queue.get()
+        await self.channel.push_audio_frame(frame)
+        await asyncio.sleep(0)  # allow other tasks to run  
+```
+
+The `_process_model_messages` asynchronous method listens for incoming messages from the OpenAI API client and processes them based on their type. It handles various message types, such as audio deltas, transcriptions, and errors, ensuring appropriate actions for each. This includes updating the user chat with transcribed text and managing audio playback.
+
+```python
+async def _process_model_messages(self) -> None:
+    async for message in self.client.listen():
+        match message:
+            case messages.ResonseAudioDelta():
+                # logger.info("Received audio message")
+                await self.audio_queue.put(base64.b64decode(message.delta))
+
+            case messages.ResonseAudioTranscriptionDelta():
+                logger.info(f"Received text message {message=}")
+                await self.channel.chat.send_message(ChatMessage(message=message.delta, msg_id=message.output_item_id))
+
+            case messages.ResonseAudioTranscriptionDone():
+                logger.info(f"Text message done: {message=}")
+                await self.channel.chat.send_message(ChatMessage(message=message.value, msg_id=message.output_item_id, done=True))
+
+            case messages.MessageAdded():
+                pass
+            case messages.ServerAddMessage():
+                pass
+
+            case messages.VADSpeechStarted():
+                pass
+            case messages.VADSpeechStopped():
+                pass
+
+            case messages.GenerationCanceled():
+                logger.info(f"Server turn canceled: {message=}")
+
+            case messages.GenerationFinished():
+                # TODO this is where we mark no longer appending text
+                logger.info(f"Server turn finished: {message=}")
+                # await self.channel.generation_finished()
+
+            case messages.AddContent(type=messages.AddContentType.TOOL_CALL):
+                # TODO implement streaming tool calls
+                logger.info(f"Received tool call buffer add {message=}")
+
+            case messages.RealtimeError(error=error):
+                # TODO do we have to stop the session here?
+                logger.error(f"Received error message {error=}")
+
+            case _:
+                logger.warning(f"Unhandled message {message=}")
+```
+
+
+### Complete integration code
+
+The `agent.py` script integrates the code components presented in this section into reusable Python classes that you can extend for your own applications.
+
+<details>
+<summary>Complete code for `agent.py`</summary>
+<CodeBlock showLineNumbers language="python">
+{`import abc
+import asyncio
+import base64
+import json
+import logging
+import os
+from builtins import anext
+from typing import Any, Callable, assert_never
+
+from attr import dataclass
+from dotenv import load_dotenv
+from pydantic import BaseModel
+
+from realtimekit.realtimeapi import messages
+from realtimekit.realtimeapi.client import RealtimeApiClient
+
+from .agora.rtc import Channel, Chat, ChatMessage, RtcEngine
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, kw_only=True)
+class InferenceConfig:
+    system_message: str | None = None
+    turn_detection: messages.TurnDetectionTypes | None = None
+    voice: messages.Voices | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class LocalFunctionToolDeclaration:
+    """Declaration of a tool that can be called by the model, and runs a function locally on the tool context."""
+
+    name: str
+    description: str
+    parameters: dict[str, Any]
+    function: Callable[..., Any]
+
+    def model_description(self) -> dict[str, Any]:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.parameters,
+            },
+        }
+
+
+@dataclass(frozen=True, kw_only=True)
+class PassThroughFunctionToolDeclaration:
+    """Declaration of a tool that can be called by the model, and is passed through the LiveKit client."""
+
+    name: str
+    description: str
+    parameters: dict[str, Any]
+
+    def model_description(self) -> dict[str, Any]:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.parameters,
+            },
+        }
+
+
+ToolDeclaration = LocalFunctionToolDeclaration | PassThroughFunctionToolDeclaration
+
+
+@dataclass(frozen=True, kw_only=True)
+class LocalToolCallExecuted:
+    json_encoded_output: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class ShouldPassThroughToolCall:
+    decoded_function_args: dict[str, Any]
+
+
+ExecuteToolCallResult = LocalToolCallExecuted | ShouldPassThroughToolCall
+
+
+class ToolContext(abc.ABC):
+    _tool_declarations: dict[str, ToolDeclaration]
+
+    def __init__(self) -> None:
+        # TODO should be an ordered dict
+        self._tool_declarations = {}
+
+    def register_function(
+        self,
+        *,
+        name: str,
+        description: str = "",
+        parameters: dict[str, Any],
+        fn: Callable[..., Any],
+    ) -> None:
+        self._tool_declarations[name] = LocalFunctionToolDeclaration(
+            name=name, description=description, parameters=parameters, function=fn
+        )
+
+    def register_client_function(
+        self,
+        *,
+        name: str,
+        description: str = "",
+        parameters: dict[str, Any],
+    ) -> None:
+        self._tool_declarations[name] = PassThroughFunctionToolDeclaration(
+            name=name, description=description, parameters=parameters
+        )
+
+    async def execute_tool(
+        self, tool_name: str, encoded_function_args: str
+    ) -> ExecuteToolCallResult | None:
+        tool = self._tool_declarations.get(tool_name)
+        if not tool:
+            return None
+
+        args = json.loads(encoded_function_args)
+        assert isinstance(args, dict)
+
+        if isinstance(tool, LocalFunctionToolDeclaration):
+            logger.info(f"Executing tool {tool_name} with args {args}")
+            result = await tool.function(**args)
+            logger.info(f"Tool {tool_name} executed with result {result}")
+            return LocalToolCallExecuted(json_encoded_output=json.dumps(result))
+
+        if isinstance(tool, PassThroughFunctionToolDeclaration):
+            return ShouldPassThroughToolCall(decoded_function_args=args)
+
+        assert_never(tool)
+
+    def model_description(self) -> list[dict[str, Any]]:
+        return [v.model_description() for v in self._tool_declarations.values()]
+
+
+class ClientToolCallResponse(BaseModel):
+    tool_call_id: str
+    result: dict[str, Any] | str | float | int | bool | None = None
+
+
+class RealtimeKitAgent:
+    engine: RtcEngine
+    channel: Channel
+    client: RealtimeApiClient
+    audio_queue: asyncio.Queue[bytes] = asyncio.Queue()
+    message_queue: asyncio.Queue[messages.ResonseAudioTranscriptionDelta] = asyncio.Queue()
+    message_done_queue: asyncio.Queue[messages.ResonseAudioTranscriptionDone] = asyncio.Queue()
+    tools: ToolContext | None = None
+
+    _client_tool_futures: dict[str, asyncio.Future[ClientToolCallResponse]]
+
+    @classmethod
+    async def setup_and_run_agent(
+        cls,
+        *,
+        engine: RtcEngine,
+        inference_config: InferenceConfig,
+        tools: ToolContext | None,
+    ) -> None:
+        channel = await engine.connect(channelId="realtimekit_agora", uid="123")
+
+        try:
+            async with RealtimeApiClient(
+                base_uri=os.getenv("REALTIME_API_BASE_URI", "wss://api.openai.com"),
+                api_key=os.getenv("OPENAI_API_KEY"),
+                verbose=False,
+            ) as client:
+                await client.send_message(
+                    messages.UpdateSessionConfig(
+                        session=messages.SessionResource(),
+                        # turn_detection=inference_config.turn_detection,
+                        # transcribe_input=False,
+                        # input_audio_format=messages.AudioFormats.PCM16,
+                        # vads=messages.VADConfig(),
+                    )
+                )
+
+                [start_session_message, _] = await asyncio.gather(
+                    *[
+                        anext(client.listen()),
+                        client.send_message(
+                            messages.UpdateConversationConfig(
+                                system_message=inference_config.system_message,
+                                output_audio_format=messages.AudioFormats.PCM16,
+                                voice=inference_config.voice,
+                                tools=tools.model_description() if tools else None,
+                                transcribe_input=False,
+                            )
+                        ),
+                    ]
+                )
+                assert isinstance(start_session_message, messages.StartSession)
+                print(
+                    f"Session started: {start_session_message.session.id} model: {start_session_message.session.model}"
+                )
+
+                agent = cls(
+                    client=client,
+                    tools=tools,
+                    channel=channel,
+                )
+                await agent.run()
+
+        finally:
+            await engine.disconnect()
+            await shutdown(asyncio.get_event_loop())
+
+    @classmethod
+    async def entry_point(
+        cls,
+        *,
+        engine: RtcEngine,
+        inference_config: InferenceConfig,
+        tools: ToolContext | None = None,
+    ) -> None:
+        await cls.setup_and_run_agent(
+            engine=engine, inference_config=inference_config, tools=tools
+        )
+
+    def __init__(
+        self,
+        *,
+        client: RealtimeApiClient,
+        tools: ToolContext | None,
+        channel: Channel,
+    ) -> None:
+        self.client = client
+        self.tools = tools
+        self._client_tool_futures = {}
+        self.channel = channel
+
+    async def run(self) -> None:
+        def log_exception(t: asyncio.Task[Any]) -> None:
+            if not t.cancelled() and t.exception():
+                logger.error(
+                    "unhandled exception",
+                    exc_info=t.exception(),
+                )
+
+        disconnected_future = asyncio.Future[None]()
+
+        def _on_disconnected() -> None:
+            if not disconnected_future.done():
+                disconnected_future.set_result(None)
+
+        # self.room.on("disconnected", _on_disconnected)
+
+        asyncio.create_task(self._stream_input_audio_to_model()).add_done_callback(
+            log_exception
+        )
+        asyncio.create_task(
+            self._stream_audio_queue_to_audio_output()
+        ).add_done_callback(log_exception)
+
+        asyncio.create_task(self._process_model_messages()).add_done_callback(
+            log_exception
+        )
+
+        await disconnected_future
+        logger.info("Agent finished running")
+
+    async def _stream_input_audio_to_model(self) -> None:
+        audio_frames = self.channel.get_audio_frames()
+        async for audio_frame in audio_frames:
+            # send the frame to the model via the API client
+            await self.client.send_audio_data(audio_frame.data)
+
+    async def _stream_audio_queue_to_audio_output(self) -> None:
+        while True:
+            # audio queue contains audio data from the model, send it the end-user via our local audio source
+            frame = await self.audio_queue.get()
+            await self.channel.push_audio_frame(frame)
+            await asyncio.sleep(0)  # allow other tasks to run         
+        
+
+    async def _process_model_messages(self) -> None:
+        async for message in self.client.listen():
+            match message:
+                case messages.ResonseAudioDelta():
+                    # logger.info("Received audio message")
+                    await self.audio_queue.put(base64.b64decode(message.delta))
+
+                case messages.ResonseAudioTranscriptionDelta():
+                    logger.info(f"Received text message {message=}")
+                    await self.channel.chat.send_message(ChatMessage(message=message.delta, msg_id=message.output_item_id))
+
+                case messages.ResonseAudioTranscriptionDone():
+                    logger.info(f"Text message done: {message=}")
+                    await self.channel.chat.send_message(ChatMessage(message=message.value, msg_id=message.output_item_id, done=True))
+
+                case messages.MessageAdded():
+                    pass
+                case messages.ServerAddMessage():
+                    pass
+
+                case messages.VADSpeechStarted():
+                    pass
+                case messages.VADSpeechStopped():
+                    pass
+
+                case messages.GenerationCanceled():
+                    logger.info(f"Server turn canceled: {message=}")
+
+                case messages.GenerationFinished():
+                    # TODO this is where we mark no longer appending text
+                    logger.info(f"Server turn finished: {message=}")
+                    # await self.channel.generation_finished()
+
+                case messages.AddContent(type=messages.AddContentType.TOOL_CALL):
+                    # TODO implement streaming tool calls
+                    logger.info(f"Received tool call buffer add {message=}")
+
+                case messages.RealtimeError(error=error):
+                    # TODO do we have to stop the session here?
+                    logger.error(f"Received error message {error=}")
+
+                case _:
+                    logger.warning(f"Unhandled message {message=}")
+
+async def shutdown(loop, signal=None):
+    """Gracefully shut down the application."""
+    if signal:
+        print(f"Received exit signal {signal.name}...")
+    
+    tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+    
+    print(f"Cancelling {len(tasks)} outstanding tasks")
+    for task in tasks:
+        task.cancel()
+
+    await asyncio.gather(*tasks, return_exceptions=True)
+    loop.stop()
+
+if __name__ == "__main__":
+    load_dotenv()
+    asyncio.run(
+        RealtimeKitAgent.entry_point(
+            engine=RtcEngine(appid="aab8b8f5a8cd4469a63042fcfafe7063"),
+            inference_config=InferenceConfig(
+                system_message="""\
+You are a helpful assistant. If asked about the weather make sure to use the provided tool to get that information. \
+If you are asked a question that requires a tool, say something like "working on that" and dont provide a concrete response \
+until you have received the response to the tool call.\
+""",
+                voice=messages.Voices.Alloy,
+                turn_detection=messages.TurnDetectionTypes.SERVER_VAD,
+            ),
+        )
+    )`}
+</CodeBlock>
+</details>
+
+The `agent.py` imports key classes from `rtc.py`, a wrapper around the Agora Python Voice SDK. For SDK setup and dependencies, refer to [Voice calling quickstart](/voice-calling/get-started/get-started-sdk?platform=python).
+Following is the complete code for `rtc.py`.
+
+<details>
+<summary>Complete code for `rtc.py`</summary>
+<CodeRtcPy />
+</details>
+
+## Test your code
+
+1. Update the values for `AGORA_APP_ID` and `    OPENAI_API_KEY` in the project's `.env` file.
+
+2. Execute the following command to run your app:
+
+    ```bash
+    python3 agent.py
+    ```
+
+## Reference
+
+This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
+
+- [Voice calling quickstart (Python)](/voice-calling/get-started/get-started-sdk?platform=python)

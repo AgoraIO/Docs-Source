@@ -48,8 +48,6 @@ class ChannelEventObserver(IRTCConnectionObserver, IRTCLocalUserObserver, IAudio
         self.emitter = event_emitter
         self.audio_stream = AudioStream()
 
-
-
     def emit_event(self, event_name: str, *args):
         """Helper function to emit events."""
         self.emitter.emit(event_name, *args)
@@ -57,7 +55,7 @@ class ChannelEventObserver(IRTCConnectionObserver, IRTCLocalUserObserver, IAudio
     def on_connected(
         self, agora_rtc_conn: RTCConnection, conn_info: RTCConnInfo, reason
     ):
-        logger.info(f"Connected to RTC: {agora_rtc_conn} {conn_info} {reason}")        
+        logger.info(f"Connected to RTC: {agora_rtc_conn} {conn_info} {reason}")
         self.emit_event("connection_state_changed", agora_rtc_conn, conn_info, reason)
 
     def on_disconnected(
@@ -132,6 +130,7 @@ class ChannelEventObserver(IRTCConnectionObserver, IRTCLocalUserObserver, IAudio
     def on_playback_audio_frame_before_mixing(
         self, agora_local_user: LocalUser, channelId, uid, frame: AudioFrame
     ):
+        # Convert the received audio frame to PcmAudioFrame
         audio_frame = PcmAudioFrame()
         audio_frame.samples_per_channel = frame.samples_per_channel
         audio_frame.bytes_per_sample = frame.bytes_per_sample
@@ -139,6 +138,7 @@ class ChannelEventObserver(IRTCConnectionObserver, IRTCLocalUserObserver, IAudio
         audio_frame.sample_rate = SAMPLE_RATE
         audio_frame.data = frame.buffer
 
+        # Add the audio frame to the queue
         self.loop.call_soon_threadsafe(self.audio_stream.queue.put_nowait, audio_frame)
         return 0
 
@@ -155,16 +155,20 @@ class Channel():
         self.chat = Chat(self)
         self.channelId = channelId
         self.uid = uid
+        
+        # Configure RTC connection
         conn_config = RTCConnConfig(
             client_role_type=ClientRoleType.CLIENT_ROLE_BROADCASTER,
             channel_profile=ChannelProfileType.CHANNEL_PROFILE_LIVE_BROADCASTING,
         )
         self.connection = self.rtc.agora_service.create_rtc_connection(conn_config)
 
-        self.channel_event_observer = ChannelEventObserver(self.emitter)    
+        # Set up channel event observer
+        self.channel_event_observer = ChannelEventObserver(self.emitter)
         self.connection.register_observer(self.channel_event_observer)
         self.connection.connect("", self.channelId, self.uid)
 
+        # Configure local user
         self.local_user = self.connection.get_local_user()
         self.local_user.set_playback_audio_frame_before_mixing_parameters(
             CHANNELS, SAMPLE_RATE
@@ -173,6 +177,7 @@ class Channel():
         self.local_user.register_audio_frame_observer(self.channel_event_observer)
         self.local_user.subscribe_all_audio()
 
+        # Set up audio track for publishing
         self.media_node_factory = self.rtc.agora_service.create_media_node_factory()
         self.audio_pcm_data_sender = (
             self.media_node_factory.create_audio_pcm_data_sender()
@@ -183,6 +188,7 @@ class Channel():
         self.audio_track.set_enabled(1)
         self.local_user.publish_audio(self.audio_track)
 
+        # Create data stream for messaging
         self.stream_id = self.connection.create_data_stream(False, False)
         self.received_chunks = {}
         self.waiting_message = None
@@ -214,10 +220,11 @@ class Channel():
     async def push_audio_frame(self, frame: bytes) -> None:
         """
         Pushes an audio frame to the channel.
-        
+
         Parameters:
             frame: The audio frame to push.
         """
+        # Create a PcmAudioFrame from the input bytes
         audio_frame = PcmAudioFrame()
         audio_frame.data = bytearray(frame)
         audio_frame.timestamp = 0
@@ -228,6 +235,7 @@ class Channel():
             len(frame) / audio_frame.bytes_per_sample / audio_frame.number_of_channels
         )
 
+        # Send the audio frame
         self.audio_pcm_data_sender.send_audio_pcm_data(audio_frame)
 
     async def subscribe_audio(self, uid: int) -> None:
@@ -299,7 +307,7 @@ class Channel():
     def _split_string_into_chunks(self, long_string, msg_id, chunk_size=300) -> list[dict[str: Any]]:
         """
         Splits a long string into chunks of a given size.
-        
+
         Parameters:
             long_string: The string to split.
             msg_id: The message ID.
@@ -307,7 +315,7 @@ class Channel():
 
         Returns:
             list[dict[str: Any]]: The list of chunks.
-        
+
         """
         total_parts = (len(long_string) + chunk_size - 1) // chunk_size
         json_chunks = []
@@ -321,10 +329,10 @@ class Channel():
                 'content': long_string[start:end]
             }
             json_chunk = json.dumps(chunk, ensure_ascii=False)
-            json_chunks.append(json_chunk)    
+            json_chunks.append(json_chunk)
         return json_chunks
 
-    async def send_stream_message(self, data: str, msg_id: str) -> None: 
+    async def send_stream_message(self, data: str, msg_id: str) -> None:
         """
         Sends a stream message to the channel.
 
@@ -333,14 +341,14 @@ class Channel():
             msg_id: The message ID.
         """
 
-        chunks = self._split_string_into_chunks(data, msg_id)    
+        chunks = self._split_string_into_chunks(data, msg_id)
         for chunk in chunks:
             self.connection.send_stream_message(self.stream_id, chunk)
 
     def on(self, event_name: str, callback):
         """
         Allows external components to subscribe to events.
-        
+
         Parameters:
             event_name: The name of the event to subscribe to.
             callback: The callback to call when the event is emitted.
@@ -351,7 +359,7 @@ class Channel():
     def once(self, event_name: str, callback):
         """
         Allows external components to subscribe to events once.
-        
+
         Parameters:
             event_name: The name of the event to subscribe to.
             callback: The callback to call when the event is emitted.
@@ -386,6 +394,7 @@ class Chat():
                     "unhandled exception",
                     exc_info=t.exception(),
                 )
+        # Start processing messages
         asyncio.create_task(self._process_message()).add_done_callback(log_exception)
 
     async def send_message(self, item: ChatMessage) -> None:
@@ -402,7 +411,6 @@ class Chat():
         """
         Processes messages in the queue.
         """
-
         while True:
             item: ChatMessage = await self.queue.get()
             await self.channel.send_stream_message(item.message, item.msg_id)
@@ -436,13 +444,12 @@ class RtcEngine:
         Returns:
             Channel: The channel.
         """
-
         loop = asyncio.get_event_loop()
         future = loop.create_future()
 
         def callback(agora_rtc_conn: RTCConnection, conn_info: RTCConnInfo, reason):
             channel.off("connection_state_changed", callback)
-            if conn_info.state == 3:
+            if conn_info.state == 3:  # 3 indicates a successful connection
                 future.set_result(channel)
             else:
                 future.set_exception(
@@ -460,4 +467,5 @@ class RtcEngine:
         Destroys the RTC engine.
         """
         self.agora_service.release()`}
+
 </CodeBlock>

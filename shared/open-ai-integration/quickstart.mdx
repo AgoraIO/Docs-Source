@@ -381,78 +381,91 @@ The `RealtimeKitAgent` class integrates Agora's real-time audio communication wi
 The `setup_and_run_agent` method connects to an Agora channel using `RtcEngine`, and sets up a session with OpenAI’s Realtime API. It configures the session parameters (e.g., system messages, voice settings) and uses asynchronous tasks to concurrently listen for the session to start and update the conversation configuration.
 
 ```python
-@classmethod
-async def setup_and_run_agent(
-    cls,
-    *,
-    engine: RtcEngine,
-    options: RtcOptions,
-    inference_config: InferenceConfig,
-    tools: ToolContext | None,
-) -> None:
-    channel = engine.create_channel(options)
-    await channel.connect()
+    @classmethod
+    async def setup_and_run_agent(
+        cls,
+        *,
+        engine: RtcEngine,
+        options: RtcOptions,
+        inference_config: InferenceConfig,
+        tools: ToolContext | None,
+    ) -> None:
+        channel = engine.create_channel(options)
+        await channel.connect()
 
-    try:
-        async with RealtimeApiClient(
-            base_uri="wss://api.openai.com",
-            api_key=os.getenv("OPENAI_API_KEY"),
-            verbose=False,
-        ) as client:
-            await client.send_message(
-                messages.SessionUpdate(
-                    session=messages.SessionUpdateParams(
-                        turn_detection=inference_config.turn_detection,
-                        tools=tools.model_description() if tools else None,
-                        tool_choice="auto",
-                        instructions=inference_config.system_message,
+        try:
+            async with RealtimeApiClient(
+                base_uri="wss://api.openai.com",
+                api_key=os.getenv("OPENAI_API_KEY"),
+                verbose=False,
+            ) as client:
+                await client.send_message(
+                    messages.SessionUpdate(
+                        session=messages.SessionUpdateParams(
+                            turn_detection=inference_config.turn_detection,
+                            tools=tools.model_description() if tools else None,
+                            tool_choice="auto",
+                            instructions=inference_config.system_message,
+                        )
                     )
                 )
-            )
 
-            [start_session_message, _] = await asyncio.gather(
-                anext(client.listen()),
-                client.send_message(
-                    messages.UpdateConversationConfig(
-                        system_message=inference_config.system_message,
-                        output_audio_format=messages.AudioFormats.PCM16,
-                        voice=inference_config.voice,
-                        tools=tools.model_description() if tools else None,
-                        transcribe_input=False,
+                [start_session_message, _] = await asyncio.gather(
+                    anext(client.listen()),
+                    client.send_message(
+                        messages.UpdateConversationConfig(
+                            system_message=inference_config.system_message,
+                            output_audio_format=messages.AudioFormats.PCM16,
+                            voice=inference_config.voice,
+                            tools=tools.model_description() if tools else None,
+                            transcribe_input=False,
+                        )
                     )
                 )
-            )
-            logger.info(
-                f"Session started: {start_session_message.session.id} model: {start_session_message.session.model}"
-            )
+                logger.info(
+                    f"Session started: {start_session_message.session.id} model: {start_session_message.session.model}"
+                )
 
-            agent = cls(
-                client=client,
-                tools=tools,
-                channel=channel,
-            )
-            await agent.run()
-    finally:
-        engine.destroy()
+                agent = cls(
+                    client=client,
+                    tools=tools,
+                    channel=channel,
+                )
+                await agent.run()
+        finally:
+            engine.destroy()
 ```
 
 ### Initialize the RealtimeKitAgent
 
-The constructor for `RealtimeKitAgent` sets up the OpenAI client, optional tools, and Agora channel to manage real-time audio communication.
+The constructor for `RealtimeKitAgent` sets up the OpenAI client, optional tools, and Agora channel to manage real-time audio communication. Just below the `setup_and_run_agent`, add:
 
 ```python
-def __init__(
-    self,
-    *,
-    client: RealtimeApiClient,
-    tools: ToolContext | None,
-    channel: Channel,
-) -> None:
-    self.client = client
-    self.tools = tools
-    self._client_tool_futures = {}
-    self.channel = channel
-    self.subscribe_user = None
+@classmethod
+    async def entry_point(
+        cls,
+        *,
+        engine: RtcEngine,
+        options: RtcOptions,
+        inference_config: InferenceConfig,
+        tools: ToolContext | None = None,
+    ) -> None:
+        await cls.setup_and_run_agent(
+            engine=engine, options=options, inference_config=inference_config, tools=tools
+        )
+
+    def __init__(
+        self,
+        *,
+        client: RealtimeApiClient,
+        tools: ToolContext | None,
+        channel: Channel,
+    ) -> None:
+        self.client = client
+        self.tools = tools
+        self._client_tool_futures = {}
+        self.channel = channel
+        self.subscribe_user = None
 ```
 
 ## Launch the Agent
@@ -464,8 +477,10 @@ The `run` method is the core of the `RealtimeKitAgent`. It manages the agent’s
 - **Task Management**: The agent initiates tasks for audio input, audio output, and processing messages from OpenAI, ensuring they run concurrently.
 - **Connection State Handling**: It monitors changes in connection state and handles user disconnections, ensuring the agent shuts down gracefully.
 
+After the `def __init__`, add in the `run` method:   
+
 ```python
-async def run(self) -> None:
+    async def run(self) -> None:
     try:
         # Helper function to log unhandled exceptions in tasks
         def log_exception(t: asyncio.Task[Any]) -> None:
@@ -542,21 +557,23 @@ The `_stream_input_audio_to_model` method captures audio frames from the Agora c
 - **Audio Frame Processing**: Sends each audio frame from the Agora channel to OpenAI’s model.
 - **Error Handling**: Logs any errors that occur during the audio streaming process.
 
+Just below the the `run` method, add in the `_stream_input_audio_to_model` method:
+
 ```python
-async def _stream_input_audio_to_model(self) -> None:
-    # Wait until a remote user is subscribed before capturing audio
-    while self.subscribe_user is None:
-        await asyncio.sleep(0.1)
-    
-    # Capture audio frames from the Agora channel for the subscribed user
-    audio_frames = self.channel.get_audio_frames(self.subscribe_user)
-    
-    async for audio_frame in audio_frames:
-        try:
-            # Stream the audio frame to OpenAI’s model via the API client
-            await self.client.send_audio_data(audio_frame.data)
-        except Exception as e:
-            logger.error(f"Error sending audio data to model: {e}")
+    async def _stream_input_audio_to_model(self) -> None:
+        # Wait until a remote user is subscribed before capturing audio
+        while self.subscribe_user is None:
+            await asyncio.sleep(0.1)
+        
+        # Capture audio frames from the Agora channel for the subscribed user
+        audio_frames = self.channel.get_audio_frames(self.subscribe_user)
+        
+        async for audio_frame in audio_frames:
+            try:
+                # Stream the audio frame to OpenAI’s model via the API client
+                await self.client.send_audio_data(audio_frame.data)
+            except Exception as e:
+                logger.error(f"Error sending audio data to model: {e}")  
 ```
 
 ### 2. _stream_audio_queue_to_audio_output
@@ -568,15 +585,17 @@ The `_stream_audio_queue_to_audio_output` method is responsible for streaming au
 - **Efficient Task Management**: After processing each audio frame, the method yields control to ensure other tasks can run concurrently.
 - **Real-time Playback**: Audio data is pushed to the Agora channel for immediate playback to the user.
 
+After the `_stream_input_audio_to_model` method, add in the `_stream_audio_queue_to_audio_output` method:
+
 ```python
-async def _stream_audio_queue_to_audio_output(self) -> None:
-    while True:
-        # Retrieve audio data from the queue and send it to the Agora channel
-        frame = await self.audio_queue.get()
-        await self.channel.push_audio_frame(frame)
-        
-        # Yield control to allow other tasks to execute efficiently
-        await asyncio.sleep(0)
+    async def _stream_audio_queue_to_audio_output(self) -> None:
+        while True:
+            # Retrieve audio data from the queue and send it to the Agora channel
+            frame = await self.audio_queue.get()
+            await self.channel.push_audio_frame(frame)
+            
+            # Yield control to allow other tasks to execute efficiently
+            await asyncio.sleep(0)
 ```
 
 ### 3. _process_model_messages
@@ -588,32 +607,34 @@ In addition to handling audio streaming, the agent must process messages receive
 - **Queue Management**: For audio messages, the data is decoded and placed in the audio queue for playback.
 - **Real-time Response**: Text messages and other outputs are immediately sent back to the Agora chat.
 
+Below the `_stream_audio_queue_to_audio_output` method, add `_process_model_messages`:
+
 ```python
-async def _process_model_messages(self) -> None:
-    async for message in self.client.listen():
-        # Handle different message types
-        match message:
-            case messages.ResponseAudioDelta():
-                # Handle audio response, add to the audio queue for playback
-                await self.audio_queue.put(base64.b64decode(message.delta))
+    async def _process_model_messages(self) -> None:
+        async for message in self.client.listen():
+            # Handle different message types
+            match message:
+                case messages.ResponseAudioDelta():
+                    # Handle audio response, add to the audio queue for playback
+                    await self.audio_queue.put(base64.b64decode(message.delta))
 
-            case messages.ResponseAudioTranscriptDelta():
-                # Handle partial text transcript, send to Agora chat
-                logger.info(f"Received transcript delta: {message=}")
-                await self.channel.chat.send_message(
-                    ChatMessage(message=message.model_dump_json(), msg_id=message.item_id)
-                )
+                case messages.ResponseAudioTranscriptDelta():
+                    # Handle partial text transcript, send to Agora chat
+                    logger.info(f"Received transcript delta: {message=}")
+                    await self.channel.chat.send_message(
+                        ChatMessage(message=message.model_dump_json(), msg_id=message.item_id)
+                    )
 
-            case messages.ResponseAudioTranscriptDone():
-                # Handle completed transcript, send final message to Agora chat
-                logger.info(f"Transcript completed: {message=}")
-                await self.channel.chat.send_message(
-                    ChatMessage(message=message.model_dump_json(), msg_id=message.item_id)
-                )
-            
-            # Handle other cases as needed
-            case _:
-                logger.warning(f"Unhandled message type: {message=}")
+                case messages.ResponseAudioTranscriptDone():
+                    # Handle completed transcript, send final message to Agora chat
+                    logger.info(f"Transcript completed: {message=}")
+                    await self.channel.chat.send_message(
+                        ChatMessage(message=message.model_dump_json(), msg_id=message.item_id)
+                    )
+                
+                # Handle other cases as needed
+                case _:
+                    logger.warning(f"Unhandled message type: {message=}")
 ```
 
 ### Audio and Message Flow

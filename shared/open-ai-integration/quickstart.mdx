@@ -113,6 +113,7 @@ This guide walks you through the core elements of the [Agora Conversational AI D
 
    # OpenAI API key for authentication
    OPENAI_API_KEY=
+   OPENAI_MODEL=gpt-4o-realtime-preview-2024-10-1
    ```
 
 1. Create a virtual environment and activate it:
@@ -349,6 +350,15 @@ if __name__ == "__main__":
     if not os.environ.get("AGORA_APP_ID"):
         raise ValueError("Need to set environment variable AGORA_APP_ID")
 
+    if not os.environ.get("AGORA_APP_CERT"):
+        raise ValueError("Need to set environment variable AGORA_APP_CERT")
+
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise ValueError("Need to set environment variable OPENAI_API_KEY")
+
+    if not os.environ.get("OPENAI_MODEL"):
+        raise ValueError("Need to set environment variable OPENAI_MODEL")
+
     asyncio.run(
         RealtimeKitAgent.entry_point(
             engine=RtcEngine(appid=os.environ.get("AGORA_APP_ID"), appcert=os.environ.get("AGORA_APP_CERT")),
@@ -396,6 +406,7 @@ The `setup_and_run_agent` method connects to an Agora channel using `RtcEngine`,
         try:
             async with RealtimeApiClient(
                 base_uri="wss://api.openai.com",
+                model = os.environ.get("OPENAI_MODEL")
                 api_key=os.getenv("OPENAI_API_KEY"),
                 verbose=False,
             ) as client:
@@ -481,60 +492,53 @@ After the `def __init__`, add in the `run` method:
 
 ```python
     async def run(self) -> None:
-    try:
-        # Helper function to log unhandled exceptions in tasks
-        def log_exception(t: asyncio.Task[Any]) -> None:
-            if not t.cancelled() and t.exception():
-                logger.error(
-                    "unhandled exception",
-                    exc_info=t.exception(),
-                )
-        
-        logger.info("Waiting for remote user to join")
-        # Wait for a remote user to join the channel
-        self.subscribe_user = await wait_for_remote_user(self.channel)
-        logger.info(f"Subscribing to user {self.subscribe_user}")
-        # Subscribe to the audio of the joined user
-        await self.channel.subscribe_audio(self.subscribe_user)
+        try:
+            def log_exception(t: asyncio.Task[Any]) -> None:
+                if not t.cancelled() and t.exception():
+                    logger.error(
+                        "unhandled exception",
+                        exc_info=t.exception(),
+                    )
+            
+            logger.info("Waiting for remote user to join")
+            self.subscribe_user = await wait_for_remote_user(self.channel)
+            logger.info(f"Subscribing to user {self.subscribe_user}")
+            await self.channel.subscribe_audio(self.subscribe_user)
 
-        # Handle user leaving the channel
-        async def on_user_left(agora_rtc_conn: RTCConnection, user_id: int, reason: int):
-            logger.info(f"User left: {user_id}")
-            if self.subscribe_user == user_id:
-                self.subscribe_user = None
-                logger.info("Subscribed user left, disconnecting")
-                await self.channel.disconnect()
-                
-        self.channel.on("user_left", on_user_left)
+            async def on_user_left(agora_rtc_conn: RTCConnection, user_id: int, reason: int):
+                logger.info(f"User left: {user_id}")
+                if self.subscribe_user == user_id:
+                    self.subscribe_user = None
+                    logger.info("Subscribed user left, disconnecting")
+                    await self.channel.disconnect()
+                    
+            self.channel.on("user_left", on_user_left)
 
-        # Set up a future to track when the agent should disconnect
-        disconnected_future = asyncio.Future[None]()
+            disconnected_future = asyncio.Future[None]()
 
-        # Handle connection state changes
-        def callback(agora_rtc_conn: RTCConnection, conn_info: RTCConnInfo, reason):
-            logger.info(f"Connection state changed: {conn_info.state}")
-            if conn_info.state == 1:  # Disconnected state
-                if not disconnected_future.done():
-                    disconnected_future.set_result(None)
+            def callback(agora_rtc_conn: RTCConnection, conn_info: RTCConnInfo, reason):
+                logger.info(f"Connection state changed: {conn_info.state}")
+                if conn_info.state == 1:
+                    if not disconnected_future.done():
+                        disconnected_future.set_result(None)
 
-        self.channel.on("connection_state_changed", callback)
+            self.channel.on("connection_state_changed", callback)
 
-        # Start tasks for streaming audio and processing messages
-        asyncio.create_task(self._stream_input_audio_to_model()).add_done_callback(
-            log_exception
-        )
-        asyncio.create_task(
-            self._stream_audio_queue_to_audio_output()
-        ).add_done_callback(log_exception)
-        asyncio.create_task(self._process_model_messages()).add_done_callback(
-            log_exception
-        )
+            asyncio.create_task(self._stream_input_audio_to_model()).add_done_callback(
+                log_exception
+            )
+            asyncio.create_task(
+                self._stream_audio_queue_to_audio_output()
+            ).add_done_callback(log_exception)
 
-        # Wait until the agent is disconnected
-        await disconnected_future
-        logger.info("Agent finished running")
-    except asyncio.CancelledError:
-        logger.info("Agent cancelled")
+            asyncio.create_task(self._process_model_messages()).add_done_callback(
+                log_exception
+            )
+
+            await disconnected_future
+            logger.info("Agent finished running")
+        except asyncio.CancelledError:
+            logger.info("Agent cancelled")
 ```
 
 ### Audio Streaming to the AI model
@@ -610,31 +614,11 @@ In addition to handling audio streaming, the agent must process messages receive
 Below the `_stream_audio_queue_to_audio_output` method, add `_process_model_messages`:
 
 ```python
-    async def _process_model_messages(self) -> None:
-        async for message in self.client.listen():
+async def _process_model_messages(self) -> None:
+    # Continuously listen for incoming messages from OpenAI
+    async for message in self.client.listen():
+        match message:        
             # Handle different message types
-            match message:
-                case messages.ResponseAudioDelta():
-                    # Handle audio response, add to the audio queue for playback
-                    await self.audio_queue.put(base64.b64decode(message.delta))
-
-                case messages.ResponseAudioTranscriptDelta():
-                    # Handle partial text transcript, send to Agora chat
-                    logger.info(f"Received transcript delta: {message=}")
-                    await self.channel.chat.send_message(
-                        ChatMessage(message=message.model_dump_json(), msg_id=message.item_id)
-                    )
-
-                case messages.ResponseAudioTranscriptDone():
-                    # Handle completed transcript, send final message to Agora chat
-                    logger.info(f"Transcript completed: {message=}")
-                    await self.channel.chat.send_message(
-                        ChatMessage(message=message.model_dump_json(), msg_id=message.item_id)
-                    )
-                
-                # Handle other cases as needed
-                case _:
-                    logger.warning(f"Unhandled message type: {message=}")
 ```
 
 ### Audio and Message Flow
@@ -644,8 +628,6 @@ With these three methods in place, the agent manages real-time audio and message
 1. **_stream_input_audio_to_model** continuously captures audio from the Agora channel and streams it to OpenAI.
 2. **_stream_audio_queue_to_audio_output** retrieves audio responses from OpenAI and plays them back in real-time.
 3. **_process_model_messages** listens for and processes various message types (e.g., audio, transcripts) and ensures timely delivery to the Agora channel.
-
-Together, these methods enable smooth real-time communication, ensuring that audio data flows seamlessly between Agora and OpenAI, while also handling text transcripts and other outputs.
 
 ## Message Processing in RealtimeKitAgent
 
@@ -659,30 +641,7 @@ The `_process_model_messages` method listens for these messages and handles them
 3. **Handling Transcripts**: If the message contains text transcripts (partial or final), these are processed and sent to the Agora chat.
 4. **Handling Other Responses**: Additional message types (e.g., tool invocations or other outputs) are processed as needed.
 
----
-
-### 1. Listening for Messages
-
-The `_process_model_messages` method uses the OpenAI Realtime API client to continuously listen for incoming messages. This is done asynchronously, allowing the agent to handle multiple types of messages concurrently with other tasks, such as streaming audio.
-
-```python
-async def _process_model_messages(self) -> None:
-    # Continuously listen for incoming messages from OpenAI
-    async for message in self.client.listen():
-```
-
-### 2. Handling Audio Data
-
-If the incoming message contains audio data (`ResponseAudioDelta`), it is base64-encoded and needs to be decoded. Once decoded, the audio data is placed into the `audio_queue`, which the agent later processes and plays back to the user via the Agora channel.
-
-```python
-match message:
-    case messages.ResponseAudioDelta():
-        # Handle audio response and add it to the audio queue for playback
-        await self.audio_queue.put(base64.b64decode(message.delta))
-```
-
-### 3. Handling Text Transcripts
+### Handling Text Transcripts
 
 The agent can also receive partial or completed text transcripts. These are handled by two message types:
 - **`ResponseAudioTranscriptDelta`**: Represents partial transcripts.
@@ -691,19 +650,19 @@ The agent can also receive partial or completed text transcripts. These are hand
 For both types, the agent sends the transcript to the Agora chat as a message.
 
 ```python
-    case messages.ResponseAudioTranscriptDelta():
-        # Handle partial text transcript, log it and send to Agora chat
-        logger.info(f"Received transcript delta: {message=}")
-        await self.channel.chat.send_message(
-            ChatMessage(message=message.model_dump_json(), msg_id=message.item_id)
-        )
+case messages.ResponseAudioTranscriptDelta():
+    # Handle partial text transcript, log it and send to Agora chat
+    logger.info(f"Received transcript delta: {message=}")
+    await self.channel.chat.send_message(
+        ChatMessage(message=message.model_dump_json(), msg_id=message.item_id)
+    )
 
-    case messages.ResponseAudioTranscriptDone():
-        # Handle completed transcript and send final message to Agora chat
-        logger.info(f"Transcript completed: {message=}")
-        await self.channel.chat.send_message(
-            ChatMessage(message=message.model_dump_json(), msg_id=message.item_id)
-        )
+case messages.ResponseAudioTranscriptDone():
+    # Handle completed transcript and send final message to Agora chat
+    logger.info(f"Transcript completed: {message=}")
+    await self.channel.chat.send_message(
+        ChatMessage(message=message.model_dump_json(), msg_id=message.item_id)
+    )
 ```
 
 ### 4. Handling Other Responses
@@ -711,39 +670,42 @@ For both types, the agent sends the transcript to the Agora chat as a message.
 The agent is designed to handle a variety of other message types from OpenAI’s model. These could include tool calls, errors, or other output from the model. In the event of an unhandled message type, the agent logs a warning for further investigation.
 
 ```python
-    case _:
-        # Handle other types of messages or unrecognized types
-        logger.warning(f"Unhandled message type: {message=}")
+case _:
+    # Handle other types of messages or unrecognized types
+    logger.warning(f"Unhandled message type: {message=}")
 ```
 
 ### Complete `_process_model_messages` Method:
 
 ```python
-async def _process_model_messages(self) -> None:
-    # Continuously listen for messages from OpenAI's model
-    async for message in self.client.listen():
-        match message:
-            case messages.ResponseAudioDelta():
-                # Handle audio response and add it to the audio queue for playback
-                await self.audio_queue.put(base64.b64decode(message.delta))
+    async def _process_model_messages(self) -> None:
+        # Continuously listen for messages from OpenAI's model
+        async for message in self.client.listen():
+            match message:
+                case messages.ResponseAudioDelta():
+                    # Handle audio response and add it to the audio queue for playback
+                    await self.audio_queue.put(base64.b64decode(message.delta))
 
-            case messages.ResponseAudioTranscriptDelta():
-                # Handle partial text transcript, log it and send to Agora chat
-                logger.info(f"Received transcript delta: {message=}")
-                await self.channel.chat.send_message(
-                    ChatMessage(message=message.model_dump_json(), msg_id=message.item_id)
-                )
+                case messages.ResponseAudioTranscriptDelta():
+                    # Handle partial text transcript, log it and send to Agora chat
+                    logger.info(f"Received transcript delta: {message=}")
+                    await self.channel.chat.send_message(
+                        ChatMessage(message=message.model_dump_json(), msg_id=message.item_id)
+                    )
 
-            case messages.ResponseAudioTranscriptDone():
-                # Handle completed transcript and send final message to Agora chat
-                logger.info(f"Transcript completed: {message=}")
-                await self.channel.chat.send_message(
-                    ChatMessage(message=message.model_dump_json(), msg_id=message.item_id)
-                )
+                case messages.ResponseAudioTranscriptDone():
+                    # Handle completed transcript and send final message to Agora chat
+                    logger.info(f"Transcript completed: {message=}")
+                    await self.channel.chat.send_message(
+                        ChatMessage(message=message.model_dump_json(), msg_id=message.item_id)
+                    )
+                # Other messages that can be handled
+                case messages.InputAudioBufferSpeechStarted() | messages.InputAudioBufferSpeechStopped() | messages.InputAudioBufferCommitted() | messages.ItemCreated() | messages.ResponseCreated() | messages.ResponseOutputItemAdded() | messages.ResponseContenPartAdded() | messages.ResponseAudioDone() | messages.ResponseContentPartDone() | messages.ResponseOutputItemDone():
+                    pass    
 
-            # Handle other types of messages or unrecognized message types
-            case _:
-                logger.warning(f"Unhandled message type: {message=}")
+                # Handle other types of messages or unrecognized message types
+                case _:
+                    logger.warning(f"Unhandled message type: {message=}")
 ```
 
 ---
@@ -769,6 +731,10 @@ The agent registers these tools during its setup process, making them available 
 
 ```python
 class ToolContext(abc.ABC):
+    """Represents the tool context for registering and executing tools.
+    - Implement logic for registering both local and pass-through tools.
+    - Provide methods for executing tools and returning results.
+    """
     _tool_declarations: dict[str, ToolDeclaration]
 
     def __init__(self) -> None:
@@ -799,29 +765,29 @@ Once tools are registered, the agent can execute them in response to messages fr
 The `execute_tool` method retrieves the tool by name and runs it with the provided arguments. If it's a local function tool, the agent executes the function and returns the result. If it's a pass-through tool, it simply returns the decoded arguments to the model for further processing.
 
 ```python
-async def execute_tool(self, tool_name: str, encoded_function_args: str) -> ExecuteToolCallResult | None:
-    # Retrieve the tool by its name
-    tool = self._tool_declarations.get(tool_name)
-    if not tool:
-        return None
+    async def execute_tool(self, tool_name: str, encoded_function_args: str) -> ExecuteToolCallResult | None:
+        # Retrieve the tool by its name
+        tool = self._tool_declarations.get(tool_name)
+        if not tool:
+            return None
 
-    # Decode the function arguments
-    args = json.loads(encoded_function_args)
-    assert isinstance(args, dict)
+        # Decode the function arguments
+        args = json.loads(encoded_function_args)
+        assert isinstance(args, dict)
 
-    # Check if the tool is a locally-executed function
-    if isinstance(tool, LocalFunctionToolDeclaration):
-        logger.info(f"Executing tool {tool_name} with args {args}")
-        result = await tool.function(**args)
-        logger.info(f"Tool {tool_name} executed with result {result}")
-        return LocalToolCallExecuted(json_encoded_output=json.dumps(result))
+        # Check if the tool is a locally-executed function
+        if isinstance(tool, LocalFunctionToolDeclaration):
+            logger.info(f"Executing tool {tool_name} with args {args}")
+            result = await tool.function(**args)
+            logger.info(f"Tool {tool_name} executed with result {result}")
+            return LocalToolCallExecuted(json_encoded_output=json.dumps(result))
 
-    # If the tool is pass-through, return the decoded arguments to the model
-    if isinstance(tool, PassThroughFunctionToolDeclaration):
-        return ShouldPassThroughToolCall(decoded_function_args=args)
+        # If the tool is pass-through, return the decoded arguments to the model
+        if isinstance(tool, PassThroughFunctionToolDeclaration):
+            return ShouldPassThroughToolCall(decoded_function_args=args)
 
-    # If the tool type is unrecognized, raise an assertion error
-    assert_never(tool)
+        # If the tool type is unrecognized, raise an assertion error
+        assert_never(tool)
 ```
 
 ### 3. Tool Context
@@ -831,11 +797,10 @@ The `ToolContext` class is responsible for managing all available tools. It prov
 The `model_description` method generates a description of all registered tools, which is passed back to the model so it knows what tools are available for invocation.
 
 ```python
-def model_description(self) -> list[dict[str, Any]]:
-    # Returns a description of all registered tools, making them available for the model
-    return [v.model_description() for v in self._tool_declarations.values()]
+    def model_description(self) -> list[dict[str, Any]]:
+        # Returns a description of all registered tools, making them available for the model
+        return [v.model_description() for v in self._tool_declarations.values()]
 ```
-
 ### Tool Invocation in Message Processing
 
 Now that we understand tool registration and execution, it’s important to highlight how these tools are invoked. During message processing (as we covered earlier), certain messages may trigger tool invocations, prompting the agent to execute the relevant tool.
@@ -847,8 +812,39 @@ Here’s a simple flow for how this might work:
 
 This integration between **message processing** and **tool management** ensures that the agent can extend its capabilities dynamically, performing tasks or calculations in real-time based on incoming requests.
 
-With these pieces in place, the agent can effectively manage tool registration and execution, ensuring that it can handle a variety of tasks as directed by the OpenAI model.
+With these pieces in place, the agent can effectively manage tool registration and execution, ensuring that it can handle a variety of tasks as directed by the OpenAI model. This structure allows the agent to either execute functions locally or pass them to the model for further handling.
 
+## Waiting for a Remote User
+
+Now that the RealtimeKitAgent is set up and able to execute commands, we need to implementat the `wait_for_remote_user` function. A key part of the agent's functionality. It listens for an event where a remote user joins the Agora channel. This function will block until a user joins or until it times out after 60 seconds. 
+
+### Explanation:
+- **Event Listener**: The function listens for the `user_joined` event from the Agora SDK. When a user joins the channel, it captures the user ID and signals that a user has joined using `remote_user_joined.set()`.
+- **Timeout Handling**: If no user joins within 60 seconds, a `TimeoutError` is raised, which is logged as an error.
+- **Cleanup**: After either successfully getting a user ID or timing out, the event listener is removed using `channel.off("user_joined", on_user_joined)`.
+
+
+Replace the placeholder code with: 
+
+```python
+async def wait_for_remote_user(channel: Channel) -> int:
+    """Waits for a remote user to join the channel."""
+    remote_users = list(channel.remote_users.keys())
+    if len(remote_users) > 0:
+        return remote_users[0]
+    
+    future = asyncio.Future[int]()
+    
+    channel.once("user_joined", lambda conn, user_id: future.set_result(user_id))
+    
+    try:
+        remote_user = await future
+        return remote_user
+    except Exception as e:
+        logger.error(f"Error waiting for remote user: {e}")
+        raise
+        
+```
 ## Graceful Shutdown in RealtimeKitAgent
 
 To ensure the agent shuts down cleanly, the `shutdown` function is responsible for gracefully cancelling running tasks and stopping the event loop. This prevents tasks from hanging and ensures resources are properly released.
@@ -1106,7 +1102,8 @@ class RealtimeKitAgent:
 
         try:
             async with RealtimeApiClient(
-                base_uri=os.getenv("REALTIME_API_BASE_URI", "wss://api.openai.com"),
+                base_uri="wss://api.openai.com",
+                model = os.environ.get("OPENAI_MODEL")
                 api_key=os.getenv("OPENAI_API_KEY"),
                 verbose=False,
             ) as client:
@@ -1318,8 +1315,17 @@ if __name__ == "__main__":
     options = parse_args_realtimekit()
     logger.info(f"app_id: channel_id: {options['channel_name']}, uid: {options['uid']}")
     
-    if not os.environ.get("AGORA_APP_ID") :
+    if not os.environ.get("AGORA_APP_ID"):
         raise ValueError("Need to set environment variable AGORA_APP_ID")
+
+    if not os.environ.get("AGORA_APP_CERT"):
+        raise ValueError("Need to set environment variable AGORA_APP_CERT")        
+
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise ValueError("Need to set environment variable OPENAI_API_KEY")
+
+    if not os.environ.get("OPENAI_MODEL"):
+        raise ValueError("Need to set environment variable OPENAI_MODEL")
     
     asyncio.run(
         RealtimeKitAgent.entry_point(
@@ -1328,7 +1334,7 @@ if __name__ == "__main__":
                 channel_name=options['channel_name'],
                 uid=options['uid'],
                 sample_rate=SAMPLE_RATE,
-                channels=CHANNELS
+                channels=CHANNELS,
             ),
             inference_config=InferenceConfig(
                 system_message="""\

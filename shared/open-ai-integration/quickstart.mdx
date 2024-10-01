@@ -528,9 +528,9 @@ The agent manages real-time audio and message flow between Agora and OpenAI as f
 - `model_to_rtc`: Retrieves audio responses from OpenAI and plays them back in real-time.
 - `_process_model_messages`: Listens for and processes various message types, such as audio and transcripts and ensures timely delivery to the Agora channel.
 
-### Message processing in `RealtimeKitAgent`
+### Message processing 
 
-The message processing logic is central to how the agent interacts with OpenAI’s model and the Agora channel. Messages received from the model can include audio data, text transcripts, or other responses, and the agent needs to process these accordingly to ensure smooth real-time communication.
+The message processing logic in `RealtimeKitAgent` is central to how the agent interacts with OpenAI’s model and the Agora channel. Messages received from the model can include audio data, text transcripts, or other responses, and the agent needs to process these accordingly to ensure smooth real-time communication.
 
 The `_process_model_messages` method listens for incoming messages and handles them according to their type, ensuring the appropriate action is taken, such as playing back audio, sending text transcripts, or invoking tools.
 
@@ -639,142 +639,6 @@ Replace the `_process_model_messages` placeholder with the following implementat
 
 Using these components, the agent handles audio, transcripts, and other messages in real-time, ensuring that it responds appropriately to OpenAI model’s output and maintain seamless communication with the Agora channel.
 
-### Tool Management
-
-The tool management system extends the agents functionality by allowing OpenAI’s model to invoke specific tools. These tools can either run locally or pass data back to the model for further processing. By registering tools and executing them based on incoming messages, the agent adds the capability and flexibility to handling a variety of tasks.
-
-Tool management implements the following key features:
-
-- **Tool registration**: Register both local function tools and pass-through tools, making them available for execution.
-- **Tool execution**: Execute tools in response to requests from the OpenAI model, running them locally or passing data back to the model.
-- **Tool context**: The `ToolContext` class manages the tools, providing methods to register and execute them as needed.
-
-#### Tool Registration
-
-The agent allows tools to be registered under two categories:
-
-- **Local function tools**: Executed directly by the agent on the local context.
-- **Pass-through tools**: These tools send data back to OpenAI’s model without it being executed locally.
-
-The agent registers these tools during its setup process, making them available for the model to call.
-
-```python
-class ToolContext(abc.ABC):
-    """Represents the tool context for registering and executing tools.
-    - Implement logic for registering both local and pass-through tools.
-    - Provide methods for executing tools and returning results.
-    """
-    _tool_declarations: dict[str, ToolDeclaration]
-
-    def __init__(self) -> None:
-        # TODO should be an ordered dict
-        self._tool_declarations = {}
-
-    def register_function(
-        self,
-        *,
-        name: str,
-        description: str = "",
-        parameters: dict[str, Any],
-        fn: Callable[..., Any],
-    ) -> None:
-        self._tool_declarations[name] = LocalFunctionToolDeclaration(
-            name=name, description=description, parameters=parameters, function=fn
-        )
-
-    def register_client_function(
-        self,
-        *,
-        name: str,
-        description: str = "",
-        parameters: dict[str, Any],
-    ) -> None:
-        self._tool_declarations[name] = PassThroughFunctionToolDeclaration(
-            name=name, description=description, parameters=parameters
-        )
-
-    async def execute_tool(
-        self, tool_name: str, encoded_function_args: str
-    ) -> ExecuteToolCallResult | None:
-        tool = self._tool_declarations.get(tool_name)
-        if not tool:
-            return None
-
-        args = json.loads(encoded_function_args)
-        assert isinstance(args, dict)
-
-        if isinstance(tool, LocalFunctionToolDeclaration):
-            logger.info(f"Executing tool {tool_name} with args {args}")
-            result = await tool.function(**args)
-            logger.info(f"Tool {tool_name} executed with result {result}")
-            return LocalToolCallExecuted(json_encoded_output=json.dumps(result))
-
-        if isinstance(tool, PassThroughFunctionToolDeclaration):
-            return ShouldPassThroughToolCall(decoded_function_args=args)
-
-        assert_never(tool)
-
-    def model_description(self) -> list[dict[str, Any]]:
-        return [v.model_description() for v in self._tool_declarations.values()]
-```
-
-#### Tool Execution
-
-Once tools are registered, the agent can execute them in response to messages from OpenAI’s model. The agent listens for tool call requests and either executes the tool locally or passes data back to the model.
-
-The `execute_tool` method retrieves the tool by name and runs it with the provided arguments. If it is a local function tool, the agent executes the function and returns the result. If it is a pass-through tool, it simply returns the decoded arguments to the model for further processing.
-
-```python
-    async def execute_tool(
-        self, tool_name: str, encoded_function_args: str
-    ) -> ExecuteToolCallResult | None:
-        tool = self._tool_declarations.get(tool_name)
-        if not tool:
-            return None
-
-        args = json.loads(encoded_function_args)
-        assert isinstance(args, dict)
-
-        if isinstance(tool, LocalFunctionToolDeclaration):
-            logger.info(f"Executing tool {tool_name} with args {args}")
-            result = await tool.function(**args)
-            logger.info(f"Tool {tool_name} executed with result {result}")
-            return LocalToolCallExecuted(json_encoded_output=json.dumps(result))
-
-        if isinstance(tool, PassThroughFunctionToolDeclaration):
-            return ShouldPassThroughToolCall(decoded_function_args=args)
-
-        assert_never(tool)
-
-    def model_description(self) -> list[dict[str, Any]]:
-        return [v.model_description() for v in self._tool_declarations.values()]
-```
-
-#### Tool context
-
-The `ToolContext` class manages all available tools. It provides the logic for both registering tools and executing them when requested by the OpenAI model.
-
-The `model_description` method generates a description of all registered tools, which is passed back to the model so it knows what tools are available for invocation.
-
-```python
-    def model_description(self) -> list[dict[str, Any]]:
-        # Returns a description of all registered tools, making them available for the model
-        return [v.model_description() for v in self._tool_declarations.values()]
-```
-### Tool invocation in message processing
-
-It is important to highlight how tools are invoked. During message processing, certain messages may trigger tool invocations, prompting the agent to execute the relevant tool.
-
-The following flow illustrates how this works:
-
-1. The OpenAI model sends a message that includes a tool call.
-2. The `_process_model_messages` method identifies the tool call request.
-3. The agent retrieves the relevant tool from the `ToolContext` and executes it, either locally or by passing data back to the model.
-
-This integration between **message processing** and **tool management** ensures that the agent can extend its capabilities dynamically, performing tasks or calculations in real-time based on incoming requests.
-
-With these pieces in place, the agent can effectively manage tool registration and execution, ensuring that it can handle a variety of tasks as directed by the OpenAI model. This structure allows the agent to either execute functions locally or pass them to the model for further handling.
-
 ### Wait for a remote user
 
 The `wait_for_remote_user` function is a key component of the agent's functionality. It listens for an event where a remote user joins the Agora channel. This function will block until a user joins or until it times out after 60 seconds.
@@ -820,6 +684,113 @@ self.url = f"{base_uri}{path}?model={os.environ.get('OPENAI_MODEL')}"
 ```
 
 This adjustment ensures that the model specified in your environment variables `OPENAI_MODEL` is included in the API requests made by the `RealtimeApiClient`.
+
+### Tool Management
+
+The tool management system extends the agents functionality by allowing OpenAI’s model to invoke specific tools. These tools can either run locally or pass data back to the model for further processing. By registering tools and executing them based on incoming messages, the agent adds the capability and flexibility to handling a variety of tasks.
+
+Tool management implements the following key features:
+
+- **Tool registration**: Register both local function tools and pass-through tools, making them available for execution.
+- **Tool execution**: Execute tools in response to requests from the OpenAI model, running them locally or passing data back to the model.
+- **Tool context**: The `ToolContext` class manages the tools, providing methods to register and execute them as needed.
+
+#### Tool Registration
+
+Registering tools during the setup process makes them available for the model to call. The `tools.py` file defines classes that allow tools to be registered under two categories:
+
+- **Local function tools**: Executed directly by the agent on the local context.
+- **Pass-through tools**: These tools send data back to OpenAI’s model without it being executed locally.
+
+The `ToolContext` class manages all available tools. It provides the logic for both registering tools and executing them when requested by the OpenAI model.
+
+```python
+class ToolContext(abc.ABC):
+    """Represents the tool context for registering and executing tools.
+    - Implement logic for registering both local and pass-through tools.
+    - Provide methods for executing tools and returning results.
+    """
+    _tool_declarations: dict[str, ToolDeclaration]
+
+    def __init__(self) -> None:
+        # TODO should be an ordered dict
+        self._tool_declarations = {}
+
+    def register_function(
+        self,
+        *,
+        name: str,
+        description: str = "",
+        parameters: dict[str, Any],
+        fn: Callable[..., Any],
+    ) -> None:
+        self._tool_declarations[name] = LocalFunctionToolDeclaration(
+            name=name, description=description, parameters=parameters, function=fn
+        )
+
+    def register_client_function(
+        self,
+        *,
+        name: str,
+        description: str = "",
+        parameters: dict[str, Any],
+    ) -> None:
+        self._tool_declarations[name] = PassThroughFunctionToolDeclaration(
+            name=name, description=description, parameters=parameters
+        )
+```
+
+#### Tool Execution
+
+Once tools are registered, the agent can execute them in response to messages from OpenAI’s model. The agent listens for tool call requests and either executes the tool locally or passes data back to the model.
+
+The `execute_tool` method of the `ToolContext` class retrieves the tool by name and runs it with the provided arguments. If it is a local function tool, the agent executes the function and returns the result. If it is a pass-through tool, it simply returns the decoded arguments to the model for further processing.
+
+```python
+    async def execute_tool(
+        self, tool_name: str, encoded_function_args: str
+    ) -> ExecuteToolCallResult | None:
+        tool = self._tool_declarations.get(tool_name)
+        if not tool:
+            return None
+
+        args = json.loads(encoded_function_args)
+        assert isinstance(args, dict)
+
+        if isinstance(tool, LocalFunctionToolDeclaration):
+            logger.info(f"Executing tool {tool_name} with args {args}")
+            result = await tool.function(**args)
+            logger.info(f"Tool {tool_name} executed with result {result}")
+            return LocalToolCallExecuted(json_encoded_output=json.dumps(result))
+
+        if isinstance(tool, PassThroughFunctionToolDeclaration):
+            return ShouldPassThroughToolCall(decoded_function_args=args)
+
+        assert_never(tool)
+```
+
+#### Tool description
+
+The `model_description` method of the `ToolContext` class generates a description of all registered tools, which is passed back to the model so it knows what tools are available for invocation.
+
+```python
+    def model_description(self) -> list[dict[str, Any]]:
+        # Returns a description of all registered tools, making them available for the model
+        return [v.model_description() for v in self._tool_declarations.values()]
+```
+#### Tool invocation in message processing
+
+It is important to highlight how tools are invoked. During message processing, certain messages may trigger tool invocations, prompting the agent to execute the relevant tool.
+
+The following flow illustrates how this works:
+
+1. The OpenAI model sends a message that includes a tool call.
+2. The `_process_model_messages` method identifies the tool call request.
+3. The agent retrieves the relevant tool from the `ToolContext` and executes it, either locally or by passing data back to the model.
+
+This integration between **message processing** and **tool management** ensures that the agent can extend its capabilities dynamically, performing tasks or calculations in real-time based on incoming requests.
+
+With these pieces in place, the agent can effectively manage tool registration and execution, ensuring that it can handle a variety of tasks as directed by the OpenAI model. This structure allows the agent to either execute functions locally or pass them to the model for further handling.
 
 ## Set up a server
 

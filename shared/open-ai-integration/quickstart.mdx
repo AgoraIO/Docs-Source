@@ -723,63 +723,95 @@ Tool management implements the following key features:
 - **Tool execution**: Execute tools in response to requests from the OpenAI model, running them locally or passing data back to the model.
 - **Tool context**: The `ToolContext` class manages the tools, providing methods to register and execute them as needed.
 
-#### Tool Registration
+Open the `tools.py` and import the required packages.
 
-Registering tools during the setup process makes them available for the model to call. The `tools.py` file defines classes that allow tools to be registered under two categories:
+```python
+import abc
+import json
+import logging
+from typing import Any, Callable, assert_never
+
+from attr import dataclass
+from pydantic import BaseModel
+
+from .logger import setup_logger
+
+# Set up the logger with color and timestamp support
+logger = setup_logger(name=__name__, log_level=logging.INFO)
+```
+
+#### Defining Local and Passthrough tools
+
+When setting up tools, we need to define if the tool is executed directly by the agent on the local context, or if it's a tool that sends data back to OpenAI’s model.
 
 - **Local function tools**: Executed directly by the agent on the local context.
-
-    ```python
-    @dataclass(frozen=True, kw_only=True)
-    class LocalFunctionToolDeclaration:
-        """Declaration of a tool that can be called by the model, and runs a function locally on the tool context."""
-
-        name: str
-        description: str
-        parameters: dict[str, Any]
-        function: Callable[..., Any]
-
-        def model_description(self) -> dict[str, Any]:
-            return {
-                "type": "function",
-                "function": {
-                    "name": self.name,
-                    "description": self.description,
-                    "parameters": self.parameters,
-                },
-            }
-    ```
-
 - **Pass-through tools**: These tools send data back to OpenAI’s model without it being executed locally.
 
-    ```python
-    @dataclass(frozen=True, kw_only=True)
-    class PassThroughFunctionToolDeclaration:
-        """Declaration of a tool that can be called by the model."""
+```python
+@dataclass(frozen=True, kw_only=True)
+class LocalFunctionToolDeclaration:
+    """Declaration of a tool that can be called by the model, and runs a function locally on the tool context."""
 
-        name: str
-        description: str
-        parameters: dict[str, Any]
+    name: str
+    description: str
+    parameters: dict[str, Any]
+    function: Callable[..., Any]
 
-        def model_description(self) -> dict[str, Any]:
-            return {
-                "type": "function",
-                "function": {
-                    "name": self.name,
-                    "description": self.description,
-                    "parameters": self.parameters,
-                },
-            }
-    ```
+    def model_description(self) -> dict[str, Any]:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.parameters,
+            },
+        }
 
-The `ToolContext` class manages all available tools. It provides the logic for both registering tools and executing them when requested by the OpenAI model.
+@dataclass(frozen=True, kw_only=True)
+class PassThroughFunctionToolDeclaration:
+    """Declaration of a tool that can be called by the model."""
+
+    name: str
+    description: str
+    parameters: dict[str, Any]
+
+    def model_description(self) -> dict[str, Any]:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.parameters,
+            },
+        }
+
+ToolDeclaration = LocalFunctionToolDeclaration | PassThroughFunctionToolDeclaration        
+```
+
+The `ToolContext` class manages all available tools. It provides the logic for both registering tools and executing them when requested by the OpenAI model. Once tools are registered, the agent can execute them in response to messages from OpenAI’s model. The agent listens for tool call requests and either executes the tool locally or passes data back to the model.
+
+In the `ToolContext` class, the `execute_tool` method retrieves the tool by name and runs it with the provided arguments. If it is a local function tool, the agent executes the function and returns the result. If it is a pass-through tool, it simply returns the decoded arguments to the model for further processing.
+
+```python
+@dataclass(frozen=True, kw_only=True)
+class LocalToolCallExecuted:
+    json_encoded_output: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class ShouldPassThroughToolCall:
+    decoded_function_args: dict[str, Any]
+
+
+ExecuteToolCallResult = LocalToolCallExecuted | ShouldPassThroughToolCall
+```
+
+#### Tool Registration and Invocation
+
+Registering tools during the setup process makes them available for the model to call.
 
 ```python
 class ToolContext(abc.ABC):
-    """Represents the tool context for registering and executing tools.
-    - Implement logic for registering both local and pass-through tools.
-    - Provide methods for executing tools and returning results.
-    """
     _tool_declarations: dict[str, ToolDeclaration]
 
     def __init__(self) -> None:
@@ -808,15 +840,7 @@ class ToolContext(abc.ABC):
         self._tool_declarations[name] = PassThroughFunctionToolDeclaration(
             name=name, description=description, parameters=parameters
         )
-```
 
-#### Tool Execution
-
-Once tools are registered, the agent can execute them in response to messages from OpenAI’s model. The agent listens for tool call requests and either executes the tool locally or passes data back to the model.
-
-The `execute_tool` method of the `ToolContext` class retrieves the tool by name and runs it with the provided arguments. If it is a local function tool, the agent executes the function and returns the result. If it is a pass-through tool, it simply returns the decoded arguments to the model for further processing.
-
-```python
     async def execute_tool(
         self, tool_name: str, encoded_function_args: str
     ) -> ExecuteToolCallResult | None:
@@ -837,17 +861,12 @@ The `execute_tool` method of the `ToolContext` class retrieves the tool by name 
             return ShouldPassThroughToolCall(decoded_function_args=args)
 
         assert_never(tool)
-```
 
-#### Tool description
-
-The `model_description` method of the `ToolContext` class generates a description of all registered tools, which is passed back to the model so it knows what tools are available for invocation.
-
-```python
     def model_description(self) -> list[dict[str, Any]]:
-        # Returns a description of all registered tools, making them available for the model
         return [v.model_description() for v in self._tool_declarations.values()]
+
 ```
+
 #### Tool invocation in message processing
 
 It is important to highlight how tools are invoked. During message processing, certain messages may trigger tool invocations, prompting the agent to execute the relevant tool.
@@ -858,7 +877,15 @@ The following flow illustrates how this works:
 2. The `_process_model_messages` method identifies the tool call request.
 3. The agent retrieves the relevant tool from the `ToolContext` and executes it, either locally or by passing data back to the model.
 
-This integration between **message processing** and **tool management** ensures that the agent can extend its capabilities dynamically, performing tasks or calculations in real-time based on incoming requests.
+This integration between **message processing** and **tool management** ensures that the agent can extend its capabilities dynamically, performing tasks or calculations in real-time based on incoming requests. 
+
+The `ClientToolCallResponse` model represents the response after a tool is invoked and processed. This class is designed to represent the response of a client-side tool call, where the tool_call_id uniquely identifies the tool call, and the result can take on multiple data types, representing the output of that call. The flexibility in the result field allows for a wide variety of responses.
+
+```python
+class ClientToolCallResponse(BaseModel):
+    tool_call_id: str
+    result: dict[str, Any] | str | float | int | bool | None = None
+```
 
 With these pieces in place, the agent can effectively manage tool registration and execution, ensuring that it can handle a variety of tasks as directed by the OpenAI model. This structure allows the agent to either execute functions locally or pass them to the model for further handling.
 

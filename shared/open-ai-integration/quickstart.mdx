@@ -769,6 +769,158 @@ class PCMWriter:
 
 ```
 
+## OpenAI Connection
+
+The connection.py file manages the real-time communication between the Agent and OpenAI’s API. It handles the connection setup, sending and receiving messages, and managing audio data streaming. The RealtimeApiConnection class encapsulates all the connection logic, making it easier to integrate real-time AI responses.
+
+Open `realtimeapi/connection.py` and add the imports and the `smart_str` function, used to parse JSON data, truncate fields (like delta or audio) to a maximum length for logging purposes, and then reserialize the modified data.
+
+```python
+import asyncio
+import base64
+import json
+import logging
+import os
+import aiohttp
+from typing import Any, AsyncGenerator
+from .struct import InputAudioBufferAppend, ClientToServerMessage, ServerToClientMessage, parse_server_message, to_json
+from ..logger import setup_logger
+
+logger = setup_logger(name=__name__, log_level=logging.INFO)
+
+def smart_str(s: str, max_field_len: int = 128) -> str:
+    """parse string as json, truncate data field to 128 characters, reserialize"""
+    try:
+        data = json.loads(s)
+        if "delta" in data:
+            key = "delta"
+        elif "audio" in data:
+            key = "audio"
+        else:
+            return s
+
+        if len(data[key]) > max_field_len:
+            data[key] = data[key][:max_field_len] + "..."
+        return json.dumps(data)
+    except json.JSONDecodeError:
+        return s
+```
+
+### RealtimeApiConnection Class
+
+The `RealtimeApiConnection` class manages the real-time API connection. During initialization the OpenAI key, API URL (includes model), and authentication token are passed to the client and the WebSocket session is initialized. The connect method establishes a WebSocket connection to the specified URL using authentication headers. The close method ensures that the WebSocket connection is closed gracefully, preventing resource leaks. This connection lifecycle management is crucial for handling long-running WebSocket sessions in real-time applications.
+
+```python
+class RealtimeApiConnection:
+    def __init__(
+        self,
+        base_uri: str,
+        api_key: str | None = None,
+        path: str = "/v1/realtime",
+        verbose: bool = False,
+        model: str = "gpt-4o-realtime-preview", #DEFAULT_MODEL
+    ):
+
+        self.url = f"{base_uri}{path}"
+        if "model=" not in self.url:
+            self.url += f"?model={model}"
+
+        self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
+        self.websocket: aiohttp.ClientWebSocketResponse | None = None
+        self.verbose = verbose
+        self.session = aiohttp.ClientSession()
+
+    # Establish connection
+    async def connect(self):
+        auth = aiohttp.BasicAuth("", self.api_key) if self.api_key else None
+
+        headers = {"OpenAI-Beta": "realtime=v1"}
+
+        self.websocket = await self.session.ws_connect(
+            url=self.url,
+            auth=auth,
+            headers=headers,
+        )
+    # Close Connection
+    async def close(self):
+        # Close the websocket connection if it exists
+        if self.websocket:
+            await self.websocket.close()
+            self.websocket = None
+```
+
+#### Context Manager for Connection Lifecycle
+
+These methods allow the RealtimeApiConnection class to be used as an asynchronous context manager, ensuring that the connection is opened when entering the context and properly closed when exiting. This pattern simplifies resource management, especially for long-lived connections in asynchronous workflows.
+
+```python
+async def __aenter__(self) -> "RealtimeApiConnection":
+    await self.connect()
+    return self
+
+async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> bool:
+    await self.close()
+    return False
+```
+
+#### Sending Audio Data and Messages
+
+The send_audio_data method sends audio data (encoded in base64) over the WebSocket. It packages the audio data into a ClientToServerMessage and calls send_request to transmit it. The send_request method logs the outgoing message (if verbose logging is enabled) and sends it through the WebSocket connection.
+
+```python
+async def send_audio_data(self, audio_data: bytes):
+    base64_audio_data = base64.b64encode(audio_data).decode("utf-8")
+    message = InputAudioBufferAppend(audio=base64_audio_data)
+    await self.send_request(message)
+
+async def send_request(self, message: ClientToServerMessage):
+    assert self.websocket is not None
+    message_str = to_json(message)
+    if self.verbose:
+        logger.info(f"-> {smart_str(message_str)}")
+    await self.websocket.send_str(message_str)
+
+```
+
+### Listening for Incoming Messages
+
+The listen method listens for incoming messages from the WebSocket. It uses an asynchronous generator to handle incoming messages in a non-blocking way. Depending on the message type (text or error), it processes the message and passes it to handle_server_message. If verbose logging is enabled, incoming messages are logged for easier debugging.
+
+```python
+async def listen(self) -> AsyncGenerator[ServerToClientMessage, None]:
+    assert self.websocket is not None
+    if self.verbose:
+        logger.info("Listening for realtimeapi messages")
+    try:
+        async for msg in self.websocket:
+            if msg.type == aiohttp.WSMsgType.TEXT:
+                if self.verbose:
+                    logger.info(f"<- {smart_str(msg.data)}")
+                yield self.handle_server_message(msg.data)
+            elif msg.type == aiohttp.WSMsgType.ERROR:
+                logger.error("Error during receive: %s", self.websocket.exception())
+                break
+    except asyncio.CancelledError:
+        logger.info("Receive messages task cancelled")
+```
+
+### Handling Server Messages
+
+The handle_server_message method parses the server’s message and handles any exceptions that occur during parsing. This method ensures that malformed messages are logged as errors, helping to track down issues with the server response format.
+
+```python
+def handle_server_message(self, message: str) -> ServerToClientMessage:
+    try:
+        return parse_server_message(message)
+    except Exception as e:
+        logger.error("Error handling message: " + str(e))
+        raise e
+```
+
+#### Structs.py
+
+The `connection` class and `agent` utilize various classes and structures defined in `realtimeapi/structs.py`. While the specifics of this file are outside the scope of this guide, the complete code is provided below for reference.
+
 ### Tool Management
 
 Every agent needs a tool management system to extend the agent's functionality by allowing OpenAI’s model to invoke specific tools. These tools can either run locally or pass data back to the model for further processing. By registering tools and executing them based on incoming messages, the agent adds the capability and flexibility to handle a variety of tasks.
@@ -1255,118 +1407,7 @@ Your knowledge cutoff is 2023-10. You are a helpful, witty, and friendly AI. Act
 
 ## Parse Args and Logger
 
-This project implements a few helper functions to support in parsing command line arguments and to handle logging. The setup of these components is beyond the scope of this guide, but for the purposes of providing a complete working codebase, the code for each is included below.
-
-### Parse Args
-
-```python
-import argparse
-import logging
-from typing import TypedDict
-
-from .logger import setup_logger
-
-# Set up the logger with color and timestamp support
-logger = setup_logger(name=__name__, log_level=logging.INFO)
-
-
-class RealtimeKitOptions(TypedDict):
-    channel_name: str
-    uid: int
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="Manage server and agent actions.")
-
-    # Create a subparser for actions (server and agent)
-    subparsers = parser.add_subparsers(dest="action", required=True)
-
-    # Subparser for the 'server' action (no additional arguments)
-    subparsers.add_parser("server", help="Start the server")
-
-    # Subparser for the 'agent' action (with required arguments)
-    agent_parser = subparsers.add_parser("agent", help="Run an agent")
-    agent_parser.add_argument("--channel_name", required=True, help="Channel Id / must")
-    agent_parser.add_argument("--uid", type=int, default=0, help="User Id / default is 0")
-
-    return parser.parse_args()
-
-
-def parse_args_realtimekit() -> RealtimeKitOptions:
-    args = parse_args()
-    logger.info(f"Parsed arguments: {args}")
-
-    if args.action == "agent":
-        options: RealtimeKitOptions = {"channel_name": args.channel_name, "uid": args.uid}
-        return options
-
-    return None
-```
-
-### Logger
-
-```python
-import logging
-from datetime import datetime
-
-import colorlog
-
-
-def setup_logger(
-    name: str,
-    log_level: int = logging.INFO,
-    log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    use_color: bool = True
-) -> logging.Logger:
-    """Sets up and returns a logger with color and timestamp support, including milliseconds."""
-
-    # Create or get a logger with the given name
-    logger = logging.getLogger(name)
-
-    # Prevent the logger from propagating to the root logger (disable extra output)
-    logger.propagate = False
-
-    # Clear existing handlers to avoid duplicate messages
-    if logger.hasHandlers():
-        logger.handlers.clear()
-
-    # Set the log level
-    logger.setLevel(log_level)
-
-    # Create console handler
-    handler = logging.StreamHandler()
-
-    # Custom formatter for adding milliseconds
-    class CustomFormatter(colorlog.ColoredFormatter):
-        def formatTime(self, record, datefmt=None):
-            record_time = datetime.fromtimestamp(record.created)
-            if datefmt:
-                return record_time.strftime(datefmt) + f",{int(record.msecs):03d}"
-            else:
-                return record_time.strftime("%Y-%m-%d %H:%M:%S") + f",{int(record.msecs):03d}"
-
-    # Use custom formatter that includes milliseconds
-    if use_color:
-        formatter = CustomFormatter(
-            "%(log_color)s" + log_format,
-            datefmt="%Y-%m-%d %H:%M:%S",  # Milliseconds will be appended manually
-            log_colors={
-                "DEBUG": "cyan",
-                "INFO": "green",
-                "WARNING": "yellow",
-                "ERROR": "red",
-                "CRITICAL": "bold_red",
-            },
-        )
-    else:
-        formatter = CustomFormatter(log_format, datefmt="%Y-%m-%d %H:%M:%S")
-
-    handler.setFormatter(formatter)
-
-    # Add the handler to the logger
-    logger.addHandler(handler)
-
-    return logger
-```
+This project implements a few helper functions to support in parsing command line arguments and to handle logging. While the specifics of these files are outside the scope of this guide, the complete code is provided below for reference.
 
 <CompleteCode />
 

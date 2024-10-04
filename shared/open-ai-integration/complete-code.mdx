@@ -1,0 +1,1763 @@
+import CodeBlock from '@theme/CodeBlock';
+
+## Complete integration code
+
+This section provides the complete code you need to implement and test integrating Agora's real-time audio streaming and OpenAI's API for processing audio input and generating AI-driven responses.
+
+<details>
+<summary>`agent.py`</summary>
+<CodeBlock showLineNumbers language="python">
+{`import asyncio
+import base64
+import logging
+import os
+from builtins import anext
+from typing import Any
+
+from agora.rtc.rtc_connection import RTCConnection, RTCConnInfo
+from attr import dataclass
+
+from agora_realtime_ai_api.rtc import Channel, ChatMessage, RtcEngine, RtcOptions
+
+from logger import setup_logger
+from realtime.struct import InputAudioBufferCommitted, InputAudioBufferSpeechStarted, InputAudioBufferSpeechStopped, ItemCreated, RateLimitsUpdated, ResponseAudioDelta, ResponseAudioDone, ResponseAudioTranscriptDelta, ResponseAudioTranscriptDone, ResponseContentPartAdded, ResponseContentPartDone, ResponseCreated, ResponseDone, ResponseOutputItemAdded, ResponseOutputItemDone, ServerVADUpdateParams, SessionUpdate, SessionUpdateParams, SessionUpdated, Voices, to_json
+from realtime.connection import RealtimeApiConnection
+from tools import ClientToolCallResponse, ToolContext
+from utils import PCMWriter
+
+# Set up the logger 
+logger = setup_logger(name=__name__, log_level=logging.INFO)
+
+def _monitor_queue_size(queue: asyncio.Queue, queue_name: str, threshold: int = 5) -> None:
+    queue_size = queue.qsize()
+    if queue_size > threshold:
+        logger.warning(f"Queue {queue_name} size exceeded {threshold}: current size {queue_size}")
+
+
+async def wait_for_remote_user(channel: Channel) -> int:
+    remote_users = list(channel.remote_users.keys())
+    if len(remote_users) > 0:
+        return remote_users[0]
+
+    future = asyncio.Future[int]()
+
+    channel.once("user_joined", lambda conn, user_id: future.set_result(user_id))
+
+    try:
+        # Wait for the remote user with a timeout of 30 seconds
+        remote_user = await asyncio.wait_for(future, timeout=30.0)
+        return remote_user
+    except KeyboardInterrupt:
+        future.cancel()
+        
+    except Exception as e:
+        logger.error(f"Error waiting for remote user: {e}")
+        raise
+
+@dataclass(frozen=True, kw_only=True)
+class InferenceConfig:
+    system_message: str | None = None
+    turn_detection: ServerVADUpdateParams | None = None  # MARK: CHECK!
+    voice: Voices | None = None
+
+
+class RealtimeKitAgent:
+    engine: RtcEngine
+    channel: Channel
+    connection: RealtimeApiConnection
+    audio_queue: asyncio.Queue[bytes] = asyncio.Queue()
+
+    message_queue: asyncio.Queue[ResponseAudioTranscriptDelta] = (
+        asyncio.Queue()
+    )
+    message_done_queue: asyncio.Queue[ResponseAudioTranscriptDone] = (
+        asyncio.Queue()
+    )
+    tools: ToolContext | None = None
+
+    _client_tool_futures: dict[str, asyncio.Future[ClientToolCallResponse]]
+
+    @classmethod
+    async def setup_and_run_agent(
+        cls,
+        *,
+        engine: RtcEngine,
+        options: RtcOptions,
+        inference_config: InferenceConfig,
+        tools: ToolContext | None,
+    ) -> None:
+        channel = engine.create_channel(options)
+        await channel.connect()
+
+        try:
+            async with RealtimeApiConnection(
+                base_uri=os.getenv("REALTIME_API_BASE_URI", "wss://api.openai.com"),
+                api_key=os.getenv("OPENAI_API_KEY"),
+                verbose=False,
+            ) as connection:
+                await connection.send_request(
+                    SessionUpdate(
+                        session=SessionUpdateParams(
+                            # MARK: check this
+                            turn_detection=inference_config.turn_detection,
+                            tools=tools.model_description() if tools else [],
+                            tool_choice="auto",
+                            input_audio_format="pcm16",
+                            output_audio_format="pcm16",
+                            instructions=inference_config.system_message,
+                            voice=inference_config.voice,
+                            model=os.environ.get("OPENAI_MODEL", "gpt-4o-realtime-preview"),
+                            modalities=["text", "audio"],
+                            temperature=0.8,
+                            max_response_output_tokens="inf",
+                        )
+                    )
+                )
+
+                start_session_message = await anext(connection.listen())
+                # assert isinstance(start_session_message, messages.StartSession)
+                logger.info(
+                    f"Session started: {start_session_message.session.id} model: {start_session_message.session.model}"
+                )
+
+                agent = cls(
+                    connection=connection,
+                    tools=tools,
+                    channel=channel,
+                )
+                await agent.run()
+
+        finally:
+            await channel.disconnect()
+            await connection.close()
+
+    def __init__(
+        self,
+        *,
+        connection: RealtimeApiConnection,
+        tools: ToolContext | None,
+        channel: Channel,
+    ) -> None:
+        self.connection = connection
+        self.tools = tools
+        self._client_tool_futures = {}
+        self.channel = channel
+        self.subscribe_user = None
+        self.write_pcm = os.environ.get("WRITE_AGENT_PCM", "false") == "true"
+        logger.info(f"Write PCM: {self.write_pcm}")
+
+    async def run(self) -> None:
+        try:
+
+            def log_exception(t: asyncio.Task[Any]) -> None:
+                if not t.cancelled() and t.exception():
+                    logger.error(
+                        "unhandled exception",
+                        exc_info=t.exception(),
+                    )
+
+            logger.info("Waiting for remote user to join")
+            self.subscribe_user = await wait_for_remote_user(self.channel)
+            logger.info(f"Subscribing to user {self.subscribe_user}")
+            await self.channel.subscribe_audio(self.subscribe_user)
+
+            async def on_user_left(
+                agora_rtc_conn: RTCConnection, user_id: int, reason: int
+            ):
+                logger.info(f"User left: {user_id}")
+                if self.subscribe_user == user_id:
+                    self.subscribe_user = None
+                    logger.info("Subscribed user left, disconnecting")
+                    await self.channel.disconnect()
+
+            self.channel.on("user_left", on_user_left)
+
+            disconnected_future = asyncio.Future[None]()
+
+            def callback(agora_rtc_conn: RTCConnection, conn_info: RTCConnInfo, reason):
+                logger.info(f"Connection state changed: {conn_info.state}")
+                if conn_info.state == 1:
+                    if not disconnected_future.done():
+                        disconnected_future.set_result(None)
+
+            self.channel.on("connection_state_changed", callback)
+
+            asyncio.create_task(self.rtc_to_model()).add_done_callback(log_exception)
+            asyncio.create_task(self.model_to_rtc()).add_done_callback(log_exception)
+
+            asyncio.create_task(self._process_model_messages()).add_done_callback(
+                log_exception
+            )
+
+            await disconnected_future
+            logger.info("Agent finished running")
+        except asyncio.CancelledError:
+            logger.info("Agent cancelled")
+        except Exception as e:
+            logger.error(f"Error running agent: {e}")
+            raise
+
+    async def rtc_to_model(self) -> None:
+        if self.subscribe_user is None:
+            await asyncio.sleep(0.1)
+
+        audio_frames = self.channel.get_audio_frames(self.subscribe_user)
+
+        # Initialize PCMWriter for receiving audio
+        pcm_writer = PCMWriter(prefix="rtc_to_model", write_pcm=self.write_pcm)
+
+        try:
+            async for audio_frame in audio_frames:
+                # Process received audio (send to model)
+                _monitor_queue_size(self.audio_queue, "audio_queue")
+                await self.connection.send_audio_data(audio_frame.data)
+
+                # Write PCM data if enabled
+                await pcm_writer.write(audio_frame.data)
+
+                await asyncio.sleep(0)  # Yield control to allow other tasks to run
+
+        except asyncio.CancelledError:
+            # Write any remaining PCM data before exiting
+            await pcm_writer.flush()
+            raise  # Re-raise the exception to propagate cancellation
+
+    async def model_to_rtc(self) -> None:
+        # Initialize PCMWriter for sending audio
+        pcm_writer = PCMWriter(prefix="model_to_rtc", write_pcm=self.write_pcm)
+
+        try:
+            while True:
+                # Get audio frame from the model output
+                frame = await self.audio_queue.get()
+
+                # Process sending audio (to RTC)
+                await self.channel.push_audio_frame(frame)
+
+                # Write PCM data if enabled
+                await pcm_writer.write(frame)
+
+        except asyncio.CancelledError:
+            # Write any remaining PCM data before exiting
+            await pcm_writer.flush()
+            raise  # Re-raise the cancelled exception to properly exit the task
+
+    async def _process_model_messages(self) -> None:
+        async for message in self.connection.listen():
+            # logger.info(f"Received message {message=}")
+            match message:
+                case InputAudioBufferSpeechStarted():
+                    await self.channel.clear_sender_audio_buffer()
+                    # clear the audio queue so audio stops playing
+                    while not self.audio_queue.empty():
+                        self.audio_queue.get_nowait()
+                    logger.info(f"TMS:InputAudioBufferSpeechStarted: item_id: {message.item_id}")
+                
+                case InputAudioBufferSpeechStopped():
+                    logger.info(f"TMS:InputAudioBufferSpeechStopped: item_id: {message.item_id}")
+                    pass
+                
+                case ResponseAudioDelta():
+                    # logger.info("Received audio message")
+                    self.audio_queue.put_nowait(base64.b64decode(message.delta))
+                    # loop.call_soon_threadsafe(self.audio_queue.put_nowait, base64.b64decode(message.delta))
+                    logger.info(f"TMS:ResponseAudioDelta: response_id:{message.response_id},item_id: {message.item_id}")
+                
+                case ResponseAudioTranscriptDelta():
+                    # logger.info(f"Received text message {message=}")
+                    asyncio.create_task(self.channel.chat.send_message(
+                        ChatMessage(
+                            message=to_json(message), msg_id=message.item_id
+                        )
+                    ))
+
+                case ResponseAudioTranscriptDone():
+                    logger.info(f"Text message done: {message=}")
+                    asyncio.create_task(self.channel.chat.send_message(
+                        ChatMessage(
+                            message=to_json(message), msg_id=message.item_id
+                        )
+                    ))
+
+                #  InputAudioBufferCommitted
+                case InputAudioBufferCommitted():
+                    pass
+                case ItemCreated():
+                    pass
+                # ResponseCreated
+                case ResponseCreated():
+                    pass
+                # ResponseDone
+                case ResponseDone():
+                    pass
+                # ResponseOutputItemAdded
+                case ResponseOutputItemAdded():
+                    pass
+                # ResponseContenPartAdded
+                case ResponseContentPartAdded():
+                    pass
+                # ResponseAudioDone
+                case ResponseAudioDone():
+                    pass
+                # ResponseContentPartDone
+                case ResponseContentPartDone():
+                    pass
+                # ResponseOutputItemDone
+                case ResponseOutputItemDone():
+                    pass
+                case SessionUpdated():
+                    pass
+                case RateLimitsUpdated():
+                    pass
+                case _:
+                    logger.warning(f"Unhandled message {message=}")
+`}
+</CodeBlock>
+</details>
+
+<details>
+<summary>`main.py`</summary>
+<CodeBlock showLineNumbers language="python">
+{`import asyncio
+import logging
+import os
+import signal
+from multiprocessing import Process
+
+from aiohttp import web
+from dotenv import load_dotenv
+from pydantic import BaseModel, Field, ValidationError
+
+from realtime.struct import PCM_CHANNELS, PCM_SAMPLE_RATE, ServerVADUpdateParams, Voices
+
+from agent import InferenceConfig, RealtimeKitAgent
+from agora_realtime_ai_api.rtc import RtcEngine, RtcOptions
+from logger import setup_logger
+from parse_args import parse_args, parse_args_realtimekit
+
+# Set up the logger with color and timestamp support
+logger = setup_logger(name=__name__, log_level=logging.INFO)
+
+load_dotenv(override=True)
+app_id = os.environ.get("AGORA_APP_ID")
+app_cert = os.environ.get("AGORA_APP_CERT")
+
+if not app_id:
+    raise ValueError("AGORA_APP_ID must be set in the environment.")
+
+
+class StartAgentRequestBody(BaseModel):
+    channel_name: str = Field(..., description="The name of the channel")
+    uid: int = Field(..., description="The UID of the user")
+    language: str = Field("en", description="The language of the agent")
+
+
+class StopAgentRequestBody(BaseModel):
+    channel_name: str = Field(..., description="The name of the channel")
+
+
+# Function to monitor the process and perform extra work when it finishes
+async def monitor_process(channel_name: str, process: Process):
+    # Wait for the process to finish in a non-blocking way
+    await asyncio.to_thread(process.join)
+
+    logger.info(f"Process for channel {channel_name} has finished")
+
+    # Perform additional work after the process finishes
+    # For example, removing the process from the active_processes dictionary
+    if channel_name in active_processes:
+        active_processes.pop(channel_name)
+
+    # Perform any other cleanup or additional actions you need here
+    logger.info(f"Cleanup for channel {channel_name} completed")
+
+    logger.info(f"Remaining active processes: {len(active_processes.keys())}")
+
+def handle_agent_proc_signal(signum, frame):
+    logger.info(f"Agent process received signal {signal.strsignal(signum)}. Exiting...")
+    os._exit(0)
+
+
+def run_agent_in_process(
+    engine_app_id: str,
+    engine_app_cert: str,
+    channel_name: str,
+    uid: int,
+    inference_config: InferenceConfig,
+):  # Set up signal forwarding in the child process
+    signal.signal(signal.SIGINT, handle_agent_proc_signal)  # Forward SIGINT
+    signal.signal(signal.SIGTERM, handle_agent_proc_signal)  # Forward SIGTERM
+    asyncio.run(
+        RealtimeKitAgent.setup_and_run_agent(
+            engine=RtcEngine(appid=engine_app_id, appcert=engine_app_cert),
+            options=RtcOptions(
+                channel_name=channel_name,
+                uid=uid,
+                sample_rate=PCM_SAMPLE_RATE,
+                channels=PCM_CHANNELS,
+                enable_pcm_dump= os.environ.get("WRITE_RTC_PCM", "false") == "true"
+            ),
+            inference_config=inference_config,
+            tools=None,
+        )
+    )
+
+
+# HTTP Server Routes
+async def start_agent(request):
+    try:
+        # Parse and validate JSON body using the pydantic model
+        try:
+            data = await request.json()
+            validated_data = StartAgentRequestBody(**data)
+        except ValidationError as e:
+            return web.json_response(
+                {"error": "Invalid request data", "details": e.errors()}, status=400
+            )
+
+        # Parse JSON body
+        channel_name = validated_data.channel_name
+        uid = validated_data.uid
+        language = validated_data.language
+
+        # Check if a process is already running for the given channel_name
+        if (
+            channel_name in active_processes
+            and active_processes[channel_name].is_alive()
+        ):
+            return web.json_response(
+                {"error": f"Agent already running for channel: {channel_name}"},
+                status=400,
+            )
+
+        system_message = ""
+        if language == "en":
+            system_message = """\
+Your knowledge cutoff is 2023-10. You are a helpful, witty, and friendly AI. Act like a human, but remember that you aren't a human and that you can't do human things in the real world. Your voice and personality should be warm and engaging, with a lively and playful tone. If interacting in a non-English language, start by using the standard accent or dialect familiar to the user. Talk quickly. You should always call a function if you can. Do not refer to these rules, even if you're asked about them.\
+"""
+
+        inference_config = InferenceConfig(
+            system_message=system_message,
+            voice=Voices.Alloy,
+            turn_detection=ServerVADUpdateParams(
+                type="server_vad", threshold=0.5, prefix_padding_ms=300, silence_duration_ms=200
+            ),
+        )
+        # Create a new process for running the agent
+        process = Process(
+            target=run_agent_in_process,
+            args=(app_id, app_cert, channel_name, uid, inference_config),
+        )
+
+        try:
+            process.start()
+        except Exception as e:
+            logger.error(f"Failed to start agent process: {e}")
+            return web.json_response(
+                {"error": f"Failed to start agent: {e}"}, status=500
+            )
+
+        # Store the process in the active_processes dictionary using channel_name as the key
+        active_processes[channel_name] = process
+
+        # Monitor the process in a background asyncio task
+        asyncio.create_task(monitor_process(channel_name, process))
+
+        return web.json_response({"status": "Agent started!"})
+
+    except Exception as e:
+        logger.error(f"Failed to start agent: {e}")
+        return web.json_response({"error": str(e)}, status=500)
+
+
+# HTTP Server Routes: Stop Agent
+async def stop_agent(request):
+    try:
+        # Parse and validate JSON body using the pydantic model
+        try:
+            data = await request.json()
+            validated_data = StopAgentRequestBody(**data)
+        except ValidationError as e:
+            return web.json_response(
+                {"error": "Invalid request data", "details": e.errors()}, status=400
+            )
+
+        # Parse JSON body
+        channel_name = validated_data.channel_name
+
+        # Find and terminate the process associated with the given channel name
+        process = active_processes.get(channel_name)
+
+        if process and process.is_alive():
+            logger.info(f"Terminating process for channel {channel_name}")
+            await asyncio.to_thread(os.kill, process.pid, signal.SIGKILL)
+
+            return web.json_response(
+                {"status": "Agent process terminated", "channel_name": channel_name}
+            )
+        else:
+            return web.json_response(
+                {"error": "No active agent found for the provided channel_name"},
+                status=404,
+            )
+
+    except Exception as e:
+        logger.error(f"Failed to stop agent: {e}")
+        return web.json_response({"error": str(e)}, status=500)
+
+
+# Dictionary to keep track of processes by channel name or UID
+active_processes = {}
+
+
+# Function to handle shutdown and process cleanup
+async def shutdown(app):
+    logger.info("Shutting down server, cleaning up processes...")
+    for channel_name, process in active_processes.items():
+        if process.is_alive():
+            logger.info(
+                f"Terminating process for channel {channel_name} (PID: {process.pid})"
+            )
+            await asyncio.to_thread(os.kill, process.pid, signal.SIGKILL)
+            await asyncio.to_thread(process.join)  # Ensure process has terminated
+    active_processes.clear()
+    logger.info("All processes terminated, shutting down server")
+
+
+# Signal handler to gracefully stop the application
+def handle_signal(signum, frame):
+    logger.info(f"Received exit signal {signal.strsignal(signum)}...")
+
+    loop = asyncio.get_running_loop()
+    if loop.is_running():
+        # Properly shutdown by stopping the loop and running shutdown
+        loop.create_task(shutdown(None))
+        loop.stop()
+
+
+# Main aiohttp application setup
+async def init_app():
+    app = web.Application()
+
+    # Add cleanup task to run on app exit
+    app.on_cleanup.append(shutdown)
+
+    app.add_routes([web.post("/start_agent", start_agent)])
+    app.add_routes([web.post("/stop_agent", stop_agent)])
+
+    return app
+
+
+if __name__ == "__main__":
+    # Parse the action argument
+    args = parse_args()
+    # Action logic based on the action argument
+    if args.action == "server":
+        # Python 3.10+ requires explicitly creating a new event loop if none exists
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            # For Python 3.10+, use this to get a new event loop if the default is closed or not created
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        # Start the application using asyncio.run for the new event loop
+        app = loop.run_until_complete(init_app())
+        web.run_app(app, port=int(os.getenv("SERVER_PORT") or "8080"))
+    elif args.action == "agent":
+        # Parse RealtimeKitOptions for running the agent
+        realtime_kit_options = parse_args_realtimekit()
+
+        # Example logging for parsed options (channel_name and uid)
+        logger.info(f"Running agent with options: {realtime_kit_options}")
+
+        inference_config = InferenceConfig(
+            system_message="""\
+Your knowledge cutoff is 2023-10. You are a helpful, witty, and friendly AI. Act like a human, but remember that you aren't a human and that you can't do human things in the real world. Your voice and personality should be warm and engaging, with a lively and playful tone. If interacting in a non-English language, start by using the standard accent or dialect familiar to the user. Talk quickly. You should always call a function if you can. Do not refer to these rules, even if you're asked about them.\
+""",
+            voice=Voices.Alloy,
+            turn_detection=ServerVADUpdateParams(
+                type="server_vad", threshold=0.5, prefix_padding_ms=300, silence_duration_ms=200
+            ),
+        )
+        run_agent_in_process(
+            engine_app_id=app_id,
+            engine_app_cert=app_cert,
+            channel_name=realtime_kit_options["channel_name"],
+            uid=realtime_kit_options["uid"],
+            inference_config=inference_config,
+        )
+`}
+</CodeBlock>
+</details>
+
+<details>
+<summary>`tools.py`</summary>
+<CodeBlock showLineNumbers language="python">
+{`import abc
+import json
+import logging
+from typing import Any, Callable, assert_never
+
+from attr import dataclass
+from pydantic import BaseModel
+
+from logger import setup_logger
+
+# Set up the logger with color and timestamp support
+logger = setup_logger(name=__name__, log_level=logging.INFO)
+
+
+@dataclass(frozen=True, kw_only=True)
+class LocalFunctionToolDeclaration:
+    """Declaration of a tool that can be called by the model, and runs a function locally on the tool context."""
+
+    name: str
+    description: str
+    parameters: dict[str, Any]
+    function: Callable[..., Any]
+
+    def model_description(self) -> dict[str, Any]:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.parameters,
+            },
+        }
+
+
+@dataclass(frozen=True, kw_only=True)
+class PassThroughFunctionToolDeclaration:
+    """Declaration of a tool that can be called by the model."""
+
+    name: str
+    description: str
+    parameters: dict[str, Any]
+
+    def model_description(self) -> dict[str, Any]:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.parameters,
+            },
+        }
+
+
+ToolDeclaration = LocalFunctionToolDeclaration | PassThroughFunctionToolDeclaration
+
+
+@dataclass(frozen=True, kw_only=True)
+class LocalToolCallExecuted:
+    json_encoded_output: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class ShouldPassThroughToolCall:
+    decoded_function_args: dict[str, Any]
+
+
+ExecuteToolCallResult = LocalToolCallExecuted | ShouldPassThroughToolCall
+
+
+class ToolContext(abc.ABC):
+    _tool_declarations: dict[str, ToolDeclaration]
+
+    def __init__(self) -> None:
+        # TODO should be an ordered dict
+        self._tool_declarations = {}
+
+    def register_function(
+        self,
+        *,
+        name: str,
+        description: str = "",
+        parameters: dict[str, Any],
+        fn: Callable[..., Any],
+    ) -> None:
+        self._tool_declarations[name] = LocalFunctionToolDeclaration(
+            name=name, description=description, parameters=parameters, function=fn
+        )
+
+    def register_client_function(
+        self,
+        *,
+        name: str,
+        description: str = "",
+        parameters: dict[str, Any],
+    ) -> None:
+        self._tool_declarations[name] = PassThroughFunctionToolDeclaration(
+            name=name, description=description, parameters=parameters
+        )
+
+    async def execute_tool(
+        self, tool_name: str, encoded_function_args: str
+    ) -> ExecuteToolCallResult | None:
+        tool = self._tool_declarations.get(tool_name)
+        if not tool:
+            return None
+
+        args = json.loads(encoded_function_args)
+        assert isinstance(args, dict)
+
+        if isinstance(tool, LocalFunctionToolDeclaration):
+            logger.info(f"Executing tool {tool_name} with args {args}")
+            result = await tool.function(**args)
+            logger.info(f"Tool {tool_name} executed with result {result}")
+            return LocalToolCallExecuted(json_encoded_output=json.dumps(result))
+
+        if isinstance(tool, PassThroughFunctionToolDeclaration):
+            return ShouldPassThroughToolCall(decoded_function_args=args)
+
+        assert_never(tool)
+
+    def model_description(self) -> list[dict[str, Any]]:
+        return [v.model_description() for v in self._tool_declarations.values()]
+
+
+class ClientToolCallResponse(BaseModel):
+    tool_call_id: str
+    result: dict[str, Any] | str | float | int | bool | None = None
+`}
+</CodeBlock>
+</details>
+
+<details>
+<summary>`logger.py`</summary>
+<CodeBlock showLineNumbers language="python">
+{`import logging
+from datetime import datetime
+
+import colorlog
+
+
+def setup_logger(
+    name: str,
+    log_level: int = logging.INFO,
+    log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    use_color: bool = True
+) -> logging.Logger:
+    """Sets up and returns a logger with color and timestamp support, including milliseconds."""
+
+    # Create or get a logger with the given name
+    logger = logging.getLogger(name)
+
+    # Prevent the logger from propagating to the root logger (disable extra output)
+    logger.propagate = False
+    
+    # Clear existing handlers to avoid duplicate messages
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    # Set the log level
+    logger.setLevel(log_level)
+
+    # Create console handler
+    handler = logging.StreamHandler()
+
+    # Custom formatter for adding milliseconds
+    class CustomFormatter(colorlog.ColoredFormatter):
+        def formatTime(self, record, datefmt=None):
+            record_time = datetime.fromtimestamp(record.created)
+            if datefmt:
+                return record_time.strftime(datefmt) + f",{int(record.msecs):03d}"
+            else:
+                return record_time.strftime("%Y-%m-%d %H:%M:%S") + f",{int(record.msecs):03d}"
+
+    # Use custom formatter that includes milliseconds
+    if use_color:
+        formatter = CustomFormatter(
+            "%(log_color)s" + log_format,
+            datefmt="%Y-%m-%d %H:%M:%S",  # Milliseconds will be appended manually
+            log_colors={
+                "DEBUG": "cyan",
+                "INFO": "green",
+                "WARNING": "yellow",
+                "ERROR": "red",
+                "CRITICAL": "bold_red",
+            },
+        )
+    else:
+        formatter = CustomFormatter(log_format, datefmt="%Y-%m-%d %H:%M:%S")
+
+    handler.setFormatter(formatter)
+
+    # Add the handler to the logger
+    logger.addHandler(handler)
+
+    return logger
+`}
+</CodeBlock>
+</details>
+
+<details>
+<summary>`utils.py`</summary>
+<CodeBlock showLineNumbers language="python">
+{`import asyncio
+import functools
+from datetime import datetime
+
+
+def write_pcm_to_file(buffer: bytearray, file_name: str) -> None:
+    """Helper function to write PCM data to a file."""
+    with open(file_name, "ab") as f:  # append to file
+        f.write(buffer)
+
+
+def generate_file_name(prefix: str) -> str:
+    # Create a timestamp for the file name
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return f"{prefix}_{timestamp}.pcm"
+
+
+class PCMWriter:
+    def __init__(self, prefix: str, write_pcm: bool, buffer_size: int = 1024 * 64):
+        self.write_pcm = write_pcm
+        self.buffer = bytearray()
+        self.buffer_size = buffer_size
+        self.file_name = generate_file_name(prefix) if write_pcm else None
+        self.loop = asyncio.get_event_loop()
+
+    async def write(self, data: bytes) -> None:
+        """Accumulate data into the buffer and write to file when necessary."""
+        if not self.write_pcm:
+            return
+
+        self.buffer.extend(data)
+
+        # Write to file if buffer is full
+        if len(self.buffer) >= self.buffer_size:
+            await self._flush()
+
+    async def flush(self) -> None:
+        """Write any remaining data in the buffer to the file."""
+        if self.write_pcm and self.buffer:
+            await self._flush()
+
+    async def _flush(self) -> None:
+        """Helper method to write the buffer to the file."""
+        if self.file_name:
+            await self.loop.run_in_executor(
+                None,
+                functools.partial(write_pcm_to_file, self.buffer[:], self.file_name),
+            )
+        self.buffer.clear()
+`}
+</CodeBlock>
+</details>
+
+<details>
+<summary>`parse_args.py`</summary>
+<CodeBlock showLineNumbers language="python">
+{`import argparse
+import logging
+from typing import TypedDict
+
+from logger import setup_logger
+
+# Set up the logger with color and timestamp support
+logger = setup_logger(name=__name__, log_level=logging.INFO)
+
+
+class RealtimeKitOptions(TypedDict):
+    channel_name: str
+    uid: int
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Manage server and agent actions.")
+    
+    # Create a subparser for actions (server and agent)
+    subparsers = parser.add_subparsers(dest="action", required=True)
+
+    # Subparser for the 'server' action (no additional arguments)
+    subparsers.add_parser("server", help="Start the server")
+
+    # Subparser for the 'agent' action (with required arguments)
+    agent_parser = subparsers.add_parser("agent", help="Run an agent")
+    agent_parser.add_argument("--channel_name", required=True, help="Channel Id / must")
+    agent_parser.add_argument("--uid", type=int, default=0, help="User Id / default is 0")
+
+    return parser.parse_args()
+
+
+def parse_args_realtimekit() -> RealtimeKitOptions:
+    args = parse_args()
+    logger.info(f"Parsed arguments: {args}")
+
+    if args.action == "agent":
+        options: RealtimeKitOptions = {"channel_name": args.channel_name, "uid": args.uid}
+        return options
+
+    return None
+`}
+</CodeBlock>
+</details>
+
+
+<details>
+<summary>`realtime/connection.py`</summary>
+<CodeBlock showLineNumbers language="python">
+{`import asyncio
+import base64
+import json
+import logging
+import os
+import aiohttp
+
+from typing import Any, AsyncGenerator
+from .struct import InputAudioBufferAppend, ClientToServerMessage, ServerToClientMessage, parse_server_message, to_json
+from logger import setup_logger
+
+# Set up the logger with color and timestamp support
+logger = setup_logger(name=__name__, log_level=logging.INFO)
+
+
+DEFAULT_VIRTUAL_MODEL = "gpt-4o-realtime-preview"
+
+def smart_str(s: str, max_field_len: int = 128) -> str:
+    """parse string as json, truncate data field to 128 characters, reserialize"""
+    try:
+        data = json.loads(s)
+        if "delta" in data:
+            key = "delta"
+        elif "audio" in data:
+            key = "audio"
+        else:
+            return s
+
+        if len(data[key]) > max_field_len:
+            data[key] = data[key][:max_field_len] + "..."
+        return json.dumps(data)
+    except json.JSONDecodeError:
+        return s
+
+
+class RealtimeApiConnection:
+    def __init__(
+        self,
+        base_uri: str,
+        api_key: str | None = None,
+        path: str = "/v1/realtime",
+        verbose: bool = False,
+        model: str = DEFAULT_VIRTUAL_MODEL,
+    ):
+        
+        self.url = f"{base_uri}{path}"
+        if "model=" not in self.url:
+            self.url += f"?model={model}"
+
+        self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
+        self.websocket: aiohttp.ClientWebSocketResponse | None = None
+        self.verbose = verbose
+        self.session = aiohttp.ClientSession()
+
+    async def __aenter__(self) -> "RealtimeApiConnection":
+        await self.connect()
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> bool:
+        await self.close()
+        return False
+
+    async def connect(self):
+        auth = aiohttp.BasicAuth("", self.api_key) if self.api_key else None
+
+        headers = {"OpenAI-Beta": "realtime=v1"}
+
+        self.websocket = await self.session.ws_connect(
+            url=self.url,
+            auth=auth,
+            headers=headers,
+        )
+
+    async def send_audio_data(self, audio_data: bytes):
+        """audio_data is assumed to be pcm16 24kHz mono little-endian"""
+        base64_audio_data = base64.b64encode(audio_data).decode("utf-8")
+        message = InputAudioBufferAppend(audio=base64_audio_data)
+        await self.send_request(message)
+
+    async def send_request(self, message: ClientToServerMessage):
+        assert self.websocket is not None
+        message_str = to_json(message)
+        if self.verbose:
+            logger.info(f"-> {smart_str(message_str)}")
+        await self.websocket.send_str(message_str)
+
+    
+
+    async def listen(self) -> AsyncGenerator[ServerToClientMessage, None]:
+        assert self.websocket is not None
+        if self.verbose:
+            logger.info("Listening for realtime messages")
+        try:
+            async for msg in self.websocket:
+                if msg.type == aiohttp.WSMsgType.TEXT:
+                    if self.verbose:
+                        logger.info(f"<- {smart_str(msg.data)}")
+                    yield self.handle_server_message(msg.data)
+                elif msg.type == aiohttp.WSMsgType.ERROR:
+                    logger.error("Error during receive: %s", self.websocket.exception())
+                    break
+        except asyncio.CancelledError:
+            logger.info("Receive messages task cancelled")
+
+    def handle_server_message(self, message: str) -> ServerToClientMessage:
+        try:
+            return parse_server_message(message)
+        except Exception as e:
+            logger.error("Error handling message: " + str(e))
+            raise e
+
+    async def close(self):
+        # Close the websocket connection if it exists
+        if self.websocket:
+            await self.websocket.close()
+            self.websocket = None
+`}
+</CodeBlock>
+</details>
+
+<details>
+<summary>`realtime/struct.py`</summary>
+<CodeBlock showLineNumbers language="python">
+{`import json
+
+from dataclasses import dataclass, asdict, field, is_dataclass
+from typing import Any, Dict, Literal, Optional, List, Set, Union
+from enum import Enum
+import uuid
+
+PCM_SAMPLE_RATE = 24000
+PCM_CHANNELS = 1
+
+def generate_event_id() -> str:
+    return str(uuid.uuid4())
+
+# Enums
+class Voices(str, Enum):
+    Alloy = "alloy"
+    Echo = "echo"
+    Fable = "fable"
+    Nova = "nova"
+    Nova_2 = "nova_2"
+    Nova_3 = "nova_3"
+    Nova_4 = "nova_4"
+    Nova_5 = "nova_5"
+    Onyx = "onyx"
+    Shimmer = "shimmer"
+
+class AudioFormats(str, Enum):
+    PCM16 = "pcm16"
+    G711_ULAW = "g711_ulaw"
+    G711_ALAW = "g711_alaw"
+
+class ItemType(str, Enum):
+    Message = "message"
+    FunctionCall = "function_call"
+    FunctionCallOutput = "function_call_output"
+
+class MessageRole(str, Enum):
+    System = "system"
+    User = "user"
+    Assistant = "assistant"
+
+class ContentType(str, Enum):
+    InputText = "input_text"
+    InputAudio = "input_audio"
+    Text = "text"
+    Audio = "audio"
+
+@dataclass
+class FunctionToolChoice:
+    name: str  # Name of the function
+    type: str = "function"  # Fixed value for type
+
+# ToolChoice can be either a literal string or FunctionToolChoice
+ToolChoice = Union[str, FunctionToolChoice]  # "none", "auto", "required", or FunctionToolChoice
+
+@dataclass
+class RealtimeError:
+    type: str  # The type of the error
+    message: str  # The error message
+    code: Optional[str] = None  # Optional error code
+    param: Optional[str] = None  # Optional parameter related to the error
+    event_id: Optional[str] = None  # Optional event ID for tracing
+
+@dataclass
+class InputAudioTranscription:
+    model: str = "whisper-1"  # Default transcription model is "whisper-1"
+
+@dataclass
+class ServerVADUpdateParams:
+    threshold: Optional[float] = None  # Threshold for voice activity detection
+    prefix_padding_ms: Optional[int] = None  # Amount of padding before the voice starts (in milliseconds)
+    silence_duration_ms: Optional[int] = None  # Duration of silence before considering speech stopped (in milliseconds)
+    type: str = "server_vad"  # Fixed value for VAD type
+@dataclass
+class Session:
+    id: str  # The unique identifier for the session
+    model: str  # The model associated with the session (e.g., "gpt-3")
+    expires_at: int  # Expiration time of the session in seconds since the epoch (UNIX timestamp)
+    object: str = "realtime.session"  # Fixed value indicating the object type
+    modalities: Set[str] = field(default_factory=lambda: {"text", "audio"})  # Set of allowed modalities (e.g., "text", "audio")
+    instructions: Optional[str] = None  # Instructions or guidance for the session
+    voice: Voices = Voices.Alloy  # Voice configuration for audio responses, defaulting to "Alloy"
+    turn_detection: Optional[ServerVADUpdateParams] = None  # Voice activity detection (VAD) settings
+    input_audio_format: AudioFormats = AudioFormats.PCM16  # Audio format for input (e.g., "pcm16")
+    output_audio_format: AudioFormats = AudioFormats.PCM16  # Audio format for output (e.g., "pcm16")
+    input_audio_transcription: Optional[InputAudioTranscription] = None  # Audio transcription model settings (e.g., "whisper-1")
+    tools: List[Dict[str, Union[str, Any]]] = field(default_factory=list)  # List of tools available during the session
+    tool_choice: Literal["auto", "none", "required"] = "auto"  # How tools should be used in the session
+    temperature: float = 0.8  # Temperature setting for model creativity
+    max_response_output_tokens: Union[int, Literal["inf"]] = "inf"  # Maximum number of tokens in the response, or "inf" for unlimited
+    
+
+@dataclass
+class SessionUpdateParams:
+    model: Optional[str] = None  # Optional string to specify the model
+    modalities: Optional[Set[str]] = None  # Set of allowed modalities (e.g., "text", "audio")
+    instructions: Optional[str] = None  # Optional instructions string
+    voice: Optional[Voices] = None  # Voice selection, can be \`None\` or from \`Voices\` Enum
+    turn_detection: Optional[ServerVADUpdateParams] = None  # Server VAD update params
+    input_audio_format: Optional[AudioFormats] = None  # Input audio format from \`AudioFormats\` Enum
+    output_audio_format: Optional[AudioFormats] = None  # Output audio format from \`AudioFormats\` Enum
+    input_audio_transcription: Optional[InputAudioTranscription] = None  # Optional transcription model
+    tools: Optional[List[Dict[str, Union[str, any]]]] = None  # List of tools (e.g., dictionaries)
+    tool_choice: Optional[ToolChoice] = None  # ToolChoice, either string or \`FunctionToolChoice\`
+    temperature: Optional[float] = None  # Optional temperature for response generation
+    max_response_output_tokens: Optional[Union[int, str]] = None  # Max response tokens, "inf" for infinite
+
+
+# Define individual message item param types
+@dataclass
+class SystemMessageItemParam:
+    content: List[dict]  # This can be more specific based on content structure
+    id: Optional[str] = None
+    status: Optional[str] = None
+    type: str = "message"
+    role: str = "system"
+
+@dataclass
+class UserMessageItemParam:
+    content: List[dict]  # Similarly, content can be more specific
+    id: Optional[str] = None
+    status: Optional[str] = None
+    type: str = "message"
+    role: str = "user"
+
+@dataclass
+class AssistantMessageItemParam:
+    content: List[dict]  # Content structure here depends on your schema
+    id: Optional[str] = None
+    status: Optional[str] = None
+    type: str = "message"
+    role: str = "assistant"
+
+@dataclass
+class FunctionCallItemParam:
+    name: str
+    call_id: str
+    arguments: str
+    type: str = "function_call"
+    id: Optional[str] = None
+    status: Optional[str] = None
+
+@dataclass
+class FunctionCallOutputItemParam:
+    call_id: str
+    output: str
+    id: Optional[str] = None
+    type: str = "function_call_output"
+
+# Union of all possible item types
+ItemParam = Union[
+    SystemMessageItemParam,
+    UserMessageItemParam,
+    AssistantMessageItemParam,
+    FunctionCallItemParam,
+    FunctionCallOutputItemParam
+]
+
+
+# Assuming the EventType and other enums are already defined
+# For reference:
+class EventType(str, Enum):
+    SESSION_UPDATE = "session.update"
+    INPUT_AUDIO_BUFFER_APPEND = "input_audio_buffer.append"
+    INPUT_AUDIO_BUFFER_COMMIT = "input_audio_buffer.commit"
+    INPUT_AUDIO_BUFFER_CLEAR = "input_audio_buffer.clear"
+    UPDATE_CONVERSATION_CONFIG = "update_conversation_config"
+    ITEM_CREATE = "conversation.item.create"
+    ITEM_TRUNCATE = "conversation.item.truncate"
+    ITEM_DELETE = "conversation.item.delete"
+    RESPONSE_CREATE = "response.create"
+    RESPONSE_CANCEL = "response.cancel"
+
+    ERROR = "error"
+    SESSION_CREATED = "session.created"
+    SESSION_UPDATED = "session.updated"
+
+    INPUT_AUDIO_BUFFER_COMMITTED = "input_audio_buffer.committed"
+    INPUT_AUDIO_BUFFER_CLEARED = "input_audio_buffer.cleared"
+    INPUT_AUDIO_BUFFER_SPEECH_STARTED = "input_audio_buffer.speech_started"
+    INPUT_AUDIO_BUFFER_SPEECH_STOPPED = "input_audio_buffer.speech_stopped"
+
+    ITEM_CREATED = "conversation.item.created"
+    ITEM_DELETED = "conversation.item.deleted"
+    ITEM_TRUNCATED = "conversation.item.truncated"
+    ITEM_INPUT_AUDIO_TRANSCRIPTION_COMPLETED = "conversation.item.input_audio_transcription.completed"
+    ITEM_INPUT_AUDIO_TRANSCRIPTION_FAILED = "conversation.item.input_audio_transcription.failed"
+
+    RESPONSE_CREATED = "response.created"
+    RESPONSE_CANCELLED = "response.cancelled"
+    RESPONSE_DONE = "response.done"
+    RESPONSE_OUTPUT_ITEM_ADDED = "response.output_item.added"
+    RESPONSE_OUTPUT_ITEM_DONE = "response.output_item.done"
+    RESPONSE_CONTENT_PART_ADDED = "response.content_part.added"
+    RESPONSE_CONTENT_PART_DONE = "response.content_part.done"
+    RESPONSE_TEXT_DELTA = "response.text.delta"
+    RESPONSE_TEXT_DONE = "response.text.done"
+    RESPONSE_AUDIO_TRANSCRIPT_DELTA = "response.audio_transcript.delta"
+    RESPONSE_AUDIO_TRANSCRIPT_DONE = "response.audio_transcript.done"
+    RESPONSE_AUDIO_DELTA = "response.audio.delta"
+    RESPONSE_AUDIO_DONE = "response.audio.done"
+    RESPONSE_FUNCTION_CALL_ARGUMENTS_DELTA = "response.function_call_arguments.delta"
+    RESPONSE_FUNCTION_CALL_ARGUMENTS_DONE = "response.function_call_arguments.done"
+    RATE_LIMITS_UPDATED = "rate_limits.updated"
+
+# Base class for all ServerToClientMessages
+@dataclass
+class ServerToClientMessage:
+    event_id: str
+
+
+@dataclass
+class ErrorMessage(ServerToClientMessage):
+    error: RealtimeError
+    type: str = EventType.ERROR
+
+
+@dataclass
+class SessionCreated(ServerToClientMessage):
+    session: Session
+    type: str = EventType.SESSION_CREATED
+
+
+@dataclass
+class SessionUpdated(ServerToClientMessage):
+    session: Session
+    type: str = EventType.SESSION_UPDATED
+
+
+@dataclass
+class InputAudioBufferCommitted(ServerToClientMessage):
+    item_id: str
+    type: str = EventType.INPUT_AUDIO_BUFFER_COMMITTED
+    previous_item_id: Optional[str] = None
+
+
+@dataclass
+class InputAudioBufferCleared(ServerToClientMessage):
+    type: str = EventType.INPUT_AUDIO_BUFFER_CLEARED
+
+
+@dataclass
+class InputAudioBufferSpeechStarted(ServerToClientMessage):
+    audio_start_ms: int
+    item_id: str
+    type: str = EventType.INPUT_AUDIO_BUFFER_SPEECH_STARTED
+
+
+@dataclass
+class InputAudioBufferSpeechStopped(ServerToClientMessage):
+    audio_end_ms: int
+    type: str = EventType.INPUT_AUDIO_BUFFER_SPEECH_STOPPED
+    item_id: Optional[str] = None
+
+
+@dataclass
+class ItemCreated(ServerToClientMessage):
+    item: ItemParam
+    type: str = EventType.ITEM_CREATED
+    previous_item_id: Optional[str] = None
+
+
+@dataclass
+class ItemTruncated(ServerToClientMessage):
+    item_id: str
+    content_index: int
+    audio_end_ms: int
+    type: str = EventType.ITEM_TRUNCATED
+
+
+@dataclass
+class ItemDeleted(ServerToClientMessage):
+    item_id: str
+    type: str = EventType.ITEM_DELETED
+
+
+# Assuming the necessary enums, ItemParam, and other classes are defined above
+# ResponseStatus could be a string or an enum, depending on your schema
+
+# Enum or Literal for ResponseStatus (could be more extensive)
+ResponseStatus = Union[str, Literal["in_progress", "completed", "cancelled", "incomplete", "failed"]]
+
+# Define status detail classes
+@dataclass
+class ResponseCancelledDetails:
+    reason: str  # e.g., "turn_detected", "client_cancelled"
+    type: str = "cancelled"
+
+@dataclass
+class ResponseIncompleteDetails:
+    reason: str  # e.g., "max_output_tokens", "content_filter"
+    type: str = "incomplete"
+
+@dataclass
+class ResponseError:
+    type: str  # The type of the error, e.g., "validation_error", "server_error"
+    message: str  # The error message describing what went wrong
+    code: Optional[str] = None  # Optional error code, e.g., HTTP status code, API error code
+
+@dataclass
+class ResponseFailedDetails:
+    error: ResponseError  # Assuming ResponseError is already defined
+    type: str = "failed"
+
+# Union of possible status details
+ResponseStatusDetails = Union[ResponseCancelledDetails, ResponseIncompleteDetails, ResponseFailedDetails]
+
+# Define Usage class to handle token usage
+@dataclass
+class InputTokenDetails:
+    cached_tokens: int
+    text_tokens: int
+    audio_tokens: int
+
+@dataclass
+class OutputTokenDetails:
+    text_tokens: int
+    audio_tokens: int
+
+@dataclass
+class Usage:
+    total_tokens: int
+    input_tokens: int
+    output_tokens: int
+    input_token_details: InputTokenDetails
+    output_token_details: OutputTokenDetails
+
+# The Response dataclass definition
+@dataclass
+class Response:
+    id: str  # Unique ID for the response
+    output: List[ItemParam] = field(default_factory=list)  # List of items in the response
+    object: str = "realtime.response"  # Fixed value for object type
+    status: ResponseStatus = "in_progress"  # Status of the response
+    status_details: Optional[ResponseStatusDetails] = None  # Additional details based on status
+    usage: Optional[Usage] = None  # Token usage information
+
+
+
+@dataclass
+class ResponseCreated(ServerToClientMessage):
+    response: Response
+    type: str = EventType.RESPONSE_CREATED
+
+
+@dataclass
+class ResponseDone(ServerToClientMessage):
+    response: Response
+    type: str = EventType.RESPONSE_DONE
+
+
+@dataclass
+class ResponseTextDelta(ServerToClientMessage):
+    response_id: str
+    item_id: str
+    output_index: int
+    content_index: int
+    delta: str
+    type: str = EventType.RESPONSE_TEXT_DELTA
+
+
+@dataclass
+class ResponseTextDone(ServerToClientMessage):
+    response_id: str
+    item_id: str
+    output_index: int
+    content_index: int
+    text: str
+    type: str = EventType.RESPONSE_TEXT_DONE
+
+
+@dataclass
+class ResponseAudioTranscriptDelta(ServerToClientMessage):
+    response_id: str
+    item_id: str
+    output_index: int
+    content_index: int
+    delta: str
+    type: str = EventType.RESPONSE_AUDIO_TRANSCRIPT_DELTA
+
+
+@dataclass
+class ResponseAudioTranscriptDone(ServerToClientMessage):
+    response_id: str
+    item_id: str
+    output_index: int
+    content_index: int
+    transcript: str
+    type: str = EventType.RESPONSE_AUDIO_TRANSCRIPT_DONE
+
+
+@dataclass
+class ResponseAudioDelta(ServerToClientMessage):
+    response_id: str
+    item_id: str
+    output_index: int
+    content_index: int
+    delta: str
+    type: str = EventType.RESPONSE_AUDIO_DELTA
+
+
+@dataclass
+class ResponseAudioDone(ServerToClientMessage):
+    response_id: str
+    item_id: str
+    output_index: int
+    content_index: int
+    type: str = EventType.RESPONSE_AUDIO_DONE
+
+
+@dataclass
+class ResponseFunctionCallArgumentsDelta(ServerToClientMessage):
+    response_id: str
+    item_id: str
+    output_index: int
+    call_id: str
+    delta: str
+    type: str = EventType.RESPONSE_FUNCTION_CALL_ARGUMENTS_DELTA
+
+
+@dataclass
+class ResponseFunctionCallArgumentsDone(ServerToClientMessage):
+    response_id: str
+    item_id: str
+    output_index: int
+    call_id: str
+    name: str
+    arguments: str
+    type: str = EventType.RESPONSE_FUNCTION_CALL_ARGUMENTS_DONE
+
+
+@dataclass
+class RateLimitDetails:
+    name: str  # Name of the rate limit, e.g., "api_requests", "message_generation"
+    limit: int  # The maximum number of allowed requests in the current time window
+    remaining: int  # The number of requests remaining in the current time window
+    reset_seconds: float  # The number of seconds until the rate limit resets
+
+@dataclass
+class RateLimitsUpdated(ServerToClientMessage):
+    rate_limits: List[RateLimitDetails]
+    type: str = EventType.RATE_LIMITS_UPDATED
+
+
+@dataclass
+class ResponseOutputItemAdded(ServerToClientMessage):
+    response_id: str  # The ID of the response
+    output_index: int  # Index of the output item in the response
+    item: Union[ItemParam, None]  # The added item (can be a message, function call, etc.)
+    type: str = EventType.RESPONSE_OUTPUT_ITEM_ADDED  # Fixed event type
+
+@dataclass
+class ResponseContentPartAdded(ServerToClientMessage):
+    response_id: str  # The ID of the response
+    item_id: str  # The ID of the item to which the content part was added
+    output_index: int  # Index of the output item in the response
+    content_index: int  # Index of the content part in the output
+    part: Union[ItemParam, None]  # The added content part
+    type: str = EventType.RESPONSE_CONTENT_PART_ADDED  # Fixed event type
+
+@dataclass
+class ResponseContentPartDone(ServerToClientMessage):
+    response_id: str  # The ID of the response
+    item_id: str  # The ID of the item to which the content part belongs
+    output_index: int  # Index of the output item in the response
+    content_index: int  # Index of the content part in the output
+    part: Union[ItemParam, None]  # The content part that was completed
+    type: str = EventType.RESPONSE_CONTENT_PART_ADDED  # Fixed event type
+
+@dataclass
+class ResponseOutputItemDone(ServerToClientMessage):
+    response_id: str  # The ID of the response
+    output_index: int  # Index of the output item in the response
+    item: Union[ItemParam, None]  # The output item that was completed
+    type: str = EventType.RESPONSE_OUTPUT_ITEM_DONE  # Fixed event type
+
+@dataclass
+class ItemInputAudioTranscriptionCompleted(ServerToClientMessage):
+    item_id: str  # The ID of the item for which transcription was completed
+    content_index: int  # Index of the content part that was transcribed
+    transcript: str  # The transcribed text
+    type: str = EventType.ITEM_INPUT_AUDIO_TRANSCRIPTION_COMPLETED  # Fixed event type
+
+@dataclass
+class ItemInputAudioTranscriptionFailed(ServerToClientMessage):
+    item_id: str  # The ID of the item for which transcription failed
+    content_index: int  # Index of the content part that failed to transcribe
+    error: ResponseError  # Error details explaining the failure
+    type: str = EventType.ITEM_INPUT_AUDIO_TRANSCRIPTION_FAILED  # Fixed event type
+
+# Union of all server-to-client message types
+ServerToClientMessages = Union[
+    ErrorMessage,
+    SessionCreated,
+    SessionUpdated,
+    InputAudioBufferCommitted,
+    InputAudioBufferCleared,
+    InputAudioBufferSpeechStarted,
+    InputAudioBufferSpeechStopped,
+    ItemCreated,
+    ItemTruncated,
+    ItemDeleted,
+    ResponseCreated,
+    ResponseDone,
+    ResponseTextDelta,
+    ResponseTextDone,
+    ResponseAudioTranscriptDelta,
+    ResponseAudioTranscriptDone,
+    ResponseAudioDelta,
+    ResponseAudioDone,
+    ResponseFunctionCallArgumentsDelta,
+    ResponseFunctionCallArgumentsDone,
+    RateLimitsUpdated,
+    ResponseOutputItemAdded,
+    ResponseContentPartAdded,
+    ResponseContentPartDone,
+    ResponseOutputItemDone,
+    ItemInputAudioTranscriptionCompleted,
+    ItemInputAudioTranscriptionFailed
+]
+
+
+
+# Base class for all ClientToServerMessages
+@dataclass
+class ClientToServerMessage:
+    event_id: str = field(default_factory=generate_event_id)
+
+
+@dataclass
+class InputAudioBufferAppend(ClientToServerMessage):
+    audio: Optional[str] = field(default=None)
+    type: str = EventType.INPUT_AUDIO_BUFFER_APPEND  # Default argument (has a default value)
+
+@dataclass
+class InputAudioBufferCommit(ClientToServerMessage):
+    type: str = EventType.INPUT_AUDIO_BUFFER_COMMIT
+
+
+@dataclass
+class InputAudioBufferClear(ClientToServerMessage):
+    type: str = EventType.INPUT_AUDIO_BUFFER_CLEAR
+
+
+@dataclass
+class ItemCreate(ClientToServerMessage):
+    item: Optional[ItemParam] = field(default=None)  # Assuming \`ItemParam\` is already defined
+    type: str = EventType.ITEM_CREATE
+    previous_item_id: Optional[str] = None
+
+
+@dataclass
+class ItemTruncate(ClientToServerMessage):
+    item_id: Optional[str] = field(default=None)
+    content_index: Optional[int] = field(default=None)
+    audio_end_ms: Optional[int] = field(default=None)
+    type: str = EventType.ITEM_TRUNCATE
+
+
+@dataclass
+class ItemDelete(ClientToServerMessage):
+    item_id: Optional[str] = field(default=None)
+    type: str = EventType.ITEM_DELETE
+    
+@dataclass
+class ResponseCreateParams:
+    commit: bool = True  # Whether the generated messages should be appended to the conversation
+    cancel_previous: bool = True  # Whether to cancel the previous pending generation
+    append_input_items: Optional[List[ItemParam]] = None  # Messages to append before response generation
+    input_items: Optional[List[ItemParam]] = None  # Initial messages to use for generation
+    modalities: Optional[Set[str]] = None  # Allowed modalities (e.g., "text", "audio")
+    instructions: Optional[str] = None  # Instructions or guidance for the model
+    voice: Optional[Voices] = None  # Voice setting for audio output
+    output_audio_format: Optional[AudioFormats] = None  # Format for the audio output
+    tools: Optional[List[Dict[str, Any]]] = None  # Tools available for this response
+    tool_choice: Optional[ToolChoice] = None  # How to choose the tool ("auto", "required", etc.)
+    temperature: Optional[float] = None  # The randomness of the model's responses
+    max_response_output_tokens: Optional[Union[int, str]] = None  # Max number of tokens for the output, "inf" for infinite
+
+
+@dataclass
+class ResponseCreate(ClientToServerMessage):
+    type: str = EventType.RESPONSE_CREATE
+    response: Optional[ResponseCreateParams] = None  # Assuming \`ResponseCreateParams\` is defined
+
+
+@dataclass
+class ResponseCancel(ClientToServerMessage):
+    type: str = EventType.RESPONSE_CANCEL
+
+DEFAULT_CONVERSATION = "default"
+
+@dataclass
+class UpdateConversationConfig(ClientToServerMessage):
+    type: str = EventType.UPDATE_CONVERSATION_CONFIG
+    label: str = DEFAULT_CONVERSATION
+    subscribe_to_user_audio: Optional[bool] = None
+    voice: Optional[Voices] = None
+    system_message: Optional[str] = None
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    tools: Optional[List[dict]] = None
+    tool_choice: Optional[ToolChoice] = None
+    disable_audio: Optional[bool] = None
+    output_audio_format: Optional[AudioFormats] = None
+
+
+@dataclass
+class SessionUpdate(ClientToServerMessage):
+    session: Optional[SessionUpdateParams] = field(default=None)  # Assuming \`SessionUpdateParams\` is defined
+    type: str = EventType.SESSION_UPDATE
+
+
+# Union of all client-to-server message types
+ClientToServerMessages = Union[
+    InputAudioBufferAppend,
+    InputAudioBufferCommit,
+    InputAudioBufferClear,
+    ItemCreate,
+    ItemTruncate,
+    ItemDelete,
+    ResponseCreate,
+    ResponseCancel,
+    UpdateConversationConfig,
+    SessionUpdate
+]
+
+def from_dict(data_class, data):
+    """Recursively convert a dictionary to a dataclass instance."""
+    if is_dataclass(data_class):  # Check if the target class is a dataclass
+        fieldtypes = {f.name: f.type for f in data_class.__dataclass_fields__.values()}
+        return data_class(**{f: from_dict(fieldtypes[f], data[f]) for f in data})
+    elif isinstance(data, list):  # Handle lists of nested dataclass objects
+        return [from_dict(data_class.__args__[0], item) for item in data]
+    else:  # For primitive types (str, int, float, etc.), return the value as-is
+        return data
+
+def parse_client_message(unparsed_string: str) -> ClientToServerMessage:
+    data = json.loads(unparsed_string)
+    
+    # Dynamically select the correct message class based on the \`type\` field, using from_dict
+    if data["type"] == EventType.INPUT_AUDIO_BUFFER_APPEND:
+        return from_dict(InputAudioBufferAppend, data)
+    elif data["type"] == EventType.INPUT_AUDIO_BUFFER_COMMIT:
+        return from_dict(InputAudioBufferCommit, data)
+    elif data["type"] == EventType.INPUT_AUDIO_BUFFER_CLEAR:
+        return from_dict(InputAudioBufferClear, data)
+    elif data["type"] == EventType.ITEM_CREATE:
+        return from_dict(ItemCreate, data)
+    elif data["type"] == EventType.ITEM_TRUNCATE:
+        return from_dict(ItemTruncate, data)
+    elif data["type"] == EventType.ITEM_DELETE:
+        return from_dict(ItemDelete, data)
+    elif data["type"] == EventType.RESPONSE_CREATE:
+        return from_dict(ResponseCreate, data)
+    elif data["type"] == EventType.RESPONSE_CANCEL:
+        return from_dict(ResponseCancel, data)
+    elif data["type"] == EventType.UPDATE_CONVERSATION_CONFIG:
+        return from_dict(UpdateConversationConfig, data)
+    elif data["type"] == EventType.SESSION_UPDATE:
+        return from_dict(SessionUpdate, data)
+    
+    raise ValueError(f"Unknown message type: {data['type']}")
+
+
+# Assuming all necessary classes and enums (EventType, ServerToClientMessages, etc.) are imported
+# Here’s how you can dynamically parse a server-to-client message based on the \`type\` field:
+
+def parse_server_message(unparsed_string: str) -> ServerToClientMessage:
+    data = json.loads(unparsed_string)
+
+    # Dynamically select the correct message class based on the \`type\` field, using from_dict
+    if data["type"] == EventType.ERROR:
+        return from_dict(ErrorMessage, data)
+    elif data["type"] == EventType.SESSION_CREATED:
+        return from_dict(SessionCreated, data)
+    elif data["type"] == EventType.SESSION_UPDATED:
+        return from_dict(SessionUpdated, data)
+    elif data["type"] == EventType.INPUT_AUDIO_BUFFER_COMMITTED:
+        return from_dict(InputAudioBufferCommitted, data)
+    elif data["type"] == EventType.INPUT_AUDIO_BUFFER_CLEARED:
+        return from_dict(InputAudioBufferCleared, data)
+    elif data["type"] == EventType.INPUT_AUDIO_BUFFER_SPEECH_STARTED:
+        return from_dict(InputAudioBufferSpeechStarted, data)
+    elif data["type"] == EventType.INPUT_AUDIO_BUFFER_SPEECH_STOPPED:
+        return from_dict(InputAudioBufferSpeechStopped, data)
+    elif data["type"] == EventType.ITEM_CREATED:
+        return from_dict(ItemCreated, data)
+    elif data["type"] == EventType.ITEM_TRUNCATED:
+        return from_dict(ItemTruncated, data)
+    elif data["type"] == EventType.ITEM_DELETED:
+        return from_dict(ItemDeleted, data)
+    elif data["type"] == EventType.RESPONSE_CREATED:
+        return from_dict(ResponseCreated, data)
+    elif data["type"] == EventType.RESPONSE_DONE:
+        return from_dict(ResponseDone, data)
+    elif data["type"] == EventType.RESPONSE_TEXT_DELTA:
+        return from_dict(ResponseTextDelta, data)
+    elif data["type"] == EventType.RESPONSE_TEXT_DONE:
+        return from_dict(ResponseTextDone, data)
+    elif data["type"] == EventType.RESPONSE_AUDIO_TRANSCRIPT_DELTA:
+        return from_dict(ResponseAudioTranscriptDelta, data)
+    elif data["type"] == EventType.RESPONSE_AUDIO_TRANSCRIPT_DONE:
+        return from_dict(ResponseAudioTranscriptDone, data)
+    elif data["type"] == EventType.RESPONSE_AUDIO_DELTA:
+        return from_dict(ResponseAudioDelta, data)
+    elif data["type"] == EventType.RESPONSE_AUDIO_DONE:
+        return from_dict(ResponseAudioDone, data)
+    elif data["type"] == EventType.RESPONSE_FUNCTION_CALL_ARGUMENTS_DELTA:
+        return from_dict(ResponseFunctionCallArgumentsDelta, data)
+    elif data["type"] == EventType.RESPONSE_FUNCTION_CALL_ARGUMENTS_DONE:
+        return from_dict(ResponseFunctionCallArgumentsDone, data)
+    elif data["type"] == EventType.RATE_LIMITS_UPDATED:
+        return from_dict(RateLimitsUpdated, data)
+    elif data["type"] == EventType.RESPONSE_OUTPUT_ITEM_ADDED:
+        return from_dict(ResponseOutputItemAdded, data)
+    elif data["type"] == EventType.RESPONSE_CONTENT_PART_ADDED:
+        return from_dict(ResponseContentPartAdded, data)
+    elif data["type"] == EventType.RESPONSE_CONTENT_PART_DONE:
+        return from_dict(ResponseContentPartDone, data)
+    elif data["type"] == EventType.RESPONSE_OUTPUT_ITEM_DONE:
+        return from_dict(ResponseOutputItemDone, data)
+    elif data["type"] == EventType.ITEM_INPUT_AUDIO_TRANSCRIPTION_COMPLETED:
+        return from_dict(ItemInputAudioTranscriptionCompleted, data)
+    elif data["type"] == EventType.ITEM_INPUT_AUDIO_TRANSCRIPTION_FAILED:
+        return from_dict(ItemInputAudioTranscriptionFailed, data)
+
+    raise ValueError(f"Unknown message type: {data['type']}")
+    
+def to_json(obj: Union[ClientToServerMessage, ServerToClientMessage]) -> str:
+    return json.dumps(asdict(obj))
+`}
+</CodeBlock>
+</details>
+
+<Admonition type="info">
+The `agent.py` imports key classes from `rtc.py`, which implements the server-side Agora Python Voice SDK, facilitating communication and managing audio streams.
+</Admonition>

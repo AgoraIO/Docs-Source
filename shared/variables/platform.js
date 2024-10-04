@@ -108,6 +108,12 @@ const data = {
     NAME: 'Unreal (Blueprint)',
     PATH: 'blueprint',
     CLIENT: 'game'
+  },
+
+  'python': {
+    NAME: 'Python',
+    PATH: 'python',
+    CLIENT: 'app'
   }
 
 };

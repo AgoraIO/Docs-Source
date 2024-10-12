@@ -44,6 +44,7 @@ const data = {
     RTC_JOIN_CHANNEL_EX: 'joinChannelExByToken',
     RTC_EVENT_HANDLER_PARAMETER: 'delegate' // In joinChannel API
   },
+  
 
   'react-native': {
     NAME: 'React Native',
@@ -65,7 +66,12 @@ const data = {
   'unity': {
     NAME: 'Unity',
     PATH: 'unity',
-    CLIENT: 'game'
+    CLIENT: 'game',
+    RTC_EVENT_HANDLER_CLASS: 'IRtcEngineEventHandler',
+    RTC_CONNECTION: 'RtcConnection',
+    RTC_ENGINE: 'RtcEngine',
+    RTC_ENGINE_EX: 'IRtcEngineEx',
+    RTC_JOIN_CHANNEL_EX: 'JoinChannelEx',
   },
 
   'windows': {

@@ -121,6 +121,13 @@ const data = {
     PATH: 'real-time-stt',
     SDK: 'Real-Time STT',
     PRODUCT: 'Real-Time STT'
+  },
+
+  'interactive-whiteboard': {
+    NAME: 'Interactive Whiteboard',
+    PATH: 'interactive-whiteboard',
+    SDK: 'Whiteboard SDK',
+    PRODUCT: 'Interactive Whiteboard',
   }
 };
 

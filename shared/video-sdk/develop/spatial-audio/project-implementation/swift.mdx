@@ -1,99 +1,203 @@
-### Spatial audio effects for users
+### Initialize the spatial audio engine
 
-To implement this workflow, take the following steps:
-
-1.  Initialize an instance of `AgoraRtcEngineKit` by calling its `sharedEngineWithAppId` method with your app ID.
-1.  To initialize an instance of the `AgoraLocalSpatialAudioKit` class, call its `sharedLocalSpatialAudioWithConfig` method.
-1.  To configure audio settings, use `setAudioProfile` and set the `profile` to `AgoraAudioProfileDefault` and the `scenario` to `AgoraAudioScenarioGameStreaming`.
-1.  Join a channel by calling `joinChannelByToken`. Configure `mediaOptions` to set the `channelProfile` to `AgoraChannelProfileLiveBroadcasting` and `clientRoleType` to `AgoraClientRoleBroadcaster`. 
-1.  By default, <Vg k="COMPANY" /> automatically subscribes to all remote audio streams. Unsubscribe from all streams by calling `muteAllRemoteAudioStreams(true)` on `AgoraRtcEngineKit`. This is necessary to set the audio receiving range in the next step or the changes won't apply.
-1.  Adjust the audio receiving range using these methods:
-
-    1. Use `setMaxAudioRecvCount` to limit the number of receivable audio streams.
-    1. Call `setAudioRecvRange` to define the range in meters.
-    1. Call `setDistanceUnit` to specify the game engine's unit distance in meters.
-
-1. To experience spatial audio, update local and remote user spatial positions using `updateSelfPosition` and `updateRemotePosition` respectively.
-1. To stop using spatial audio, remove all remote spatial positions by calling`clearRemotePositions`. This method renders remote users inaudible to the local user.
-1. Finalize the `AgoraLocalSpatialAudioKit` instance by calling its `destroy` method.
-    <Admonition type="caution" title="Note" >
-    You must destroy the `AgoraLocalSpatialAudioKit` object before you `destroy` the `AgoraRtcEngineKit` instance.
-    </Admonition>
-1. Exit the channel using `leaveChannel` and `destroy` the `AgoraRtcEngineKit` instance.
-
-### Spatial audio effects for media player
-
-To set up a spatial audio effect for media player:
-
-1. Follow the procedure to set up an instance of `AgoraRtcEngineKit` and `AgoraLocalSpatialAudioKit` as for the users implementation described in the previous section. 
-
-1. Update the local user and media player spatial positions using `updateSelfPosition` and `updatePlayerPositionInfo` to experience spatial audio.
-
-To implement spatial audio effects for media player using a local Cartesian coordinate system calculation scheme, refer to the following example:
+Call the `sharedLocalSpatialAudioWithConfig` method of the `AgoraLocalSpatialAudioKit` class to initialize spatial audio.
 
 ```swift
-class SpatialAudioMain: BaseViewController {
-    var agoraKit: AgoraRtcEngineKit!
-    var mediaPlayer: AgoraRtcMediaPlayerProtocol!
-    var localSpatial: AgoraLocalSpatialAudioKit!
+agoraKit = AgoraRtcEngineKit.sharedEngine(withAppId: KeyCenter.AppId, delegate: self)
+let localSpatialConfig = AgoraLocalSpatialAudioConfig()
+localSpatialConfig.rtcEngine = agoraKit
+localSpatial = AgoraLocalSpatialAudioKit.sharedLocalSpatialAudio(with: localSpatialConfig)
+```
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        // Initialize AgoraRtcEngineKit
-        agoraKit = AgoraRtcEngineKit.sharedEngine(withAppId: KeyCenter.AppId, delegate: self)
-        // Set channel profile to live broadcasting
-        agoraKit.setChannelProfile(.liveBroadcasting)
-        // Set user role to broadcaster
-        agoraKit.setClientRole(.broadcaster)
-        // Set audio encoding properties and application scenario
-        agoraKit.setAudioProfile(.default, scenario: .gameStreaming)
-        guard let filePath = Bundle.main.path(forResource: "audiomixing", ofType: "mp3") else { return }
-        // Create media player
-        mediaPlayer = agoraKit.createMediaPlayer(with: self)
-        // Open media resource
-        mediaPlayer.open(filePath, startPos: 0)
+### Set the audio profile and scenario
 
-        // Initialize AgoraLocalSpatialAudioKit
-        let localSpatialConfig = AgoraLocalSpatialAudioConfig()
-        localSpatialConfig.rtcEngine = agoraKit
-        localSpatial = AgoraLocalSpatialAudioKit.sharedLocalSpatialAudio(with: localSpatialConfig)
-        // Set audio reception range
-        localSpatial.setAudioRecvRange(50)
-        // Set the length of the distance unit for the game engine
-        localSpatial.setDistanceUnit(1)
-        // Update the spatial position of the local user
-        let pos = [NSNumber(value: 0.0), NSNumber(value: 0), NSNumber(value: 0.0)]
-        let forward = [NSNumber(value: 1.0), NSNumber(value: 0.0), NSNumber(value: 0.0)]
-        let right = [NSNumber(value: 0.0), NSNumber(value: 1.0), NSNumber(value: 0.0)]
-        let up = [NSNumber(value: 0.0), NSNumber(value: 0.0), NSNumber(value: 1.0)]
-        localSpatial.updateSelfPosition(pos, axisForward: forward, axisRight: right, axisUp: up)
-    }
 
-    override func willMove(toParent parent: UIViewController?) {
-        super.willMove(toParent: parent)
-        if parent == nil {
-            // Destroy AgoraLocalSpatialAudioKit
-            AgoraLocalSpatialAudioKit.destroy()
-            // Destroy AgoraRtcEngineKit
-            AgoraRtcEngineKit.destroy()
-        }
-    }
+To set the desired audio encoding properties, call `setAudioProfile`.
 
-    // Update the spatial position of the media player
-    func updateRemoteUserSpatialAudioPosition() {
-        let maxR = UIScreen.main.bounds.height / 2.0
-        let maxSpatialDistance = 30.0
-        let spatialDistance = currentDistance * maxSpatialDistance / maxR
+Call `setAudioScenario` to set the scenario to `AgoraAudioScenario.gameStreaming` for the best sound quality effect.
 
-        let posForward = spatialDistance * cos(currentAngle)
-        let posRight = spatialDistance * sin(currentAngle)
-        let position = [NSNumber(value: posForward), NSNumber(value: posRight), NSNumber(value: 0.0)]
-        let forward = [NSNumber(value: 1.0), NSNumber(value: 0.0), NSNumber(value: 0.0)]
+```swift
+agoraKit.setAudioProfile(.musicStandard)
+agoraKit.setAudioScenario(.gameStreaming)
+```
 
-        let positionInfo = AgoraRemoteVoicePositionInfo()
-        positionInfo.position = position
-        positionInfo.forward = forward
-        localSpatial.updatePlayerPositionInfo(Int(mediaPlayer.getMediaPlayerId()), positionInfo: positionInfo)
-    }
+### Set the audio reception range
+
+To set the maximum number of audio streams that can be received within the audio receiving range, call `setMaxAudioRecvCount`. The recommended `maxCount` value is ≤ 16.
+
+To set the maximum range of receivable audio, in meters, call `setAudioRecvRange`. The recommended value range is ＞ 0.
+
+```swift
+localSpatial.setMaxAudioRecvCount(2)
+localSpatial.setAudioRecvRange(Float(SCREENSIZE.height))
+```
+
+### Update spatial position
+In the user space audio scenario, call the `updateSelfPosition` and `updateRemotePosition` methods to update the positions of the local user and remote users respectively.
+
+In the media player spatial audio scenario, call the `updateSelfPosition` and `updatePlayerPositionInfo` methods to update the position of the local user and the media player, respectively.
+
+Typically, you call these methods when:
+
+- A new user joins the channel.
+- The relative positions of the local user, a remote user, or the media player changes.
+- There are other changes in your specific scenario.
+
+```swift
+// Update the local user's position
+let pos = getViewCenterPostion(view: selfPostionView)
+localSpatial.updateSelfPosition(pos, axisForward: forward, axisRight: right, axisUp: up)
+
+// Update the remote user's position
+if remoteUserButton1.tag <= 0 {
+    remoteUserButton1.setTitle("\(uid)", for: .normal)
+    remoteUserButton1.tag = Int(uid)
+    remoteUserButton1.isHidden = false
+    localSpatial.updateRemotePosition(uid, positionInfo: getPlayerPostion(view: remoteUserButton1))
+} else if remoteUserButton2.tag <= 0 {
+    remoteUserButton2.setTitle("\(uid)", for: .normal)
+    remoteUserButton2.tag = Int(uid)
+    remoteUserButton2.isHidden = false
+    localSpatial.updateRemotePosition(uid, positionInfo: getPlayerPostion(view: remoteUserButton2))
 }
+```
+
+### Set spatial audio parameters
+
+To set spatial audio parameters for the remote user or media player, call `setRemoteUserSpatialAudioParams` or `setSpatialAudioParams`. To implement specific sound effects, refer to the following parameter settings:
+
+- Air attenuation effect
+
+  Set `enable_air_absorb` to `true` and set `speaker_attenuation` to the desired sound attenuation coefficient.
+
+- Sound blur effect
+
+  Set `enable_blur` to `true`
+
+```swift
+// Enable air absorption effect
+let params = AgoraSpatialAudioParams()
+params.enable_air_absorb = true
+
+// Enable sound blur effect
+params.enable_blur = true
+
+// Set spatial audio parameters for the media player as an example
+mediaPlayer.setSpatialAudioParams(params)
+```
+
+### Set up sound isolation (optional)
+
+To define a sound isolation zone and set a sound attenuation coefficient call `setZones`. This feature simulates the real-world effect of sound attenuation when the sound source is inside a sound isolation zone while the receiver is outside or vice versa. It mimics how sound behaves when encountering obstacles like building partitions.
+
+Optionally, call `setRemoteAudioAttenuation` or `setPlayerAttenuation` to set the sound attenuation properties for the user and media player, respectively, and specify whether to use this setting to forcefully override the sound attenuation factor in `setZones`.
+
+```swift
+let audioZone = AgoraSpatialAudioZone()
+// ID of the soundproof zone
+audioZone.zoneSetId = 1
+// Sound attenuation coefficient when the soundproof zone interacts with the external environment
+audioZone.audioAttenuation = 1
+// Forward unit vector from the position
+audioZone.forward = forward
+// Right unit vector from the position
+audioZone.right = right
+// Upward unit vector from the position
+audioZone.up = up
+// Spatial center point of the soundproof zone
+audioZone.position = getViewCenterPosition(view: voiceContainerView1)
+// Forward length of the soundproof zone
+audioZone.forwardLength = Float(voiceContainerView1.frame.width)
+// Rightward length of the soundproof zone
+audioZone.rightLength = Float(voiceContainerView1.frame.height)
+// Upward length of the soundproof zone
+audioZone.upLength = Float(maxDistance)
+localSpatial.setZones([audioZone])
+
+// Set sound attenuation for a remote user
+localSpatial.setRemoteAudioAttenuation(uid, attenuation: 0.5, forceSet: false)
+// Set sound attenuation for the media player
+localSpatial.setPlayerAttenuation(0.5, playerId: UInt(mediaPlayer.getMediaPlayerId()), forceSet: false)
+```
+
+### Set headphone equalization (optional)
+
+To optimize the audio experience, call `setHeadphoneEQPreset` to choose a preset headphone equalizer.
+
+If the preset values do not provide the desired effect, call `setHeadphoneEQParameters` to self-adjust headphone equalization. After you execute this method, the preset values set by `setHeadphoneEQPreset` are overwritten.
+
+```swift
+agoraKit.setHeadphoneEQPreset(.overEar)
+agoraKit.setHeadphoneEQParameters(10, gain: 10)
+```
+
+### Pause or turn off spatial audio
+
+During a session, pause or turn off spatial audio as follows.
+
+#### Pause spatial audio for a remote user
+To disable a remote user's spatial audio, or to remove a remote user who has exited the channel, call `removeRemotePosition` to delete the user's spatial position information amd save computing resources.
+
+<Admonition type="caution">
+When a remote user leaves the channel, call `removeRemotePosition` to delete the user's spatial position information. Otherwise, the local user may not be able to hear the spatial audio from other remote users.
+</Admonition>
+
+To restore the user's spatial audio, call `updateRemotePosition` to reset the remote user's position information.
+
+```swift
+// Pause spatial audio for the specified remote user locally
+localSpatial.removeRemotePosition(uid)
+
+// Resume spatial audio for the specified remote user locally
+localSpatial.updateRemotePosition(uid, positionInfo: getPlayerPostion(view: remoteLeftTv))
+
+```
+
+#### Pause spatial audio for all remote users
+
+If you do not want to continue to experience local spatial audio, call `clearRemotePositionsEx` to delete the spatial position information of all remote users.
+
+<Admonition type="caution">
+Calling this method prevents the local user from hearing the audio of all remote users. Agora recommends using this method with caution.
+</Admonition>
+
+To resume hearing the remote user's audio later, call `muteAllRemoteAudioStreams(false)` to subscribe to the remote audio streams again.
+
+```swift
+// Remove spatial position information for all remote users
+localSpatial.clearRemotePositions()
+
+// Resume subscribing to remote users' audio streams
+localSpatial.muteAllRemoteAudioStreams(false)
+```
+
+#### Pause the local user's spatial audio
+
+To unpublish the local audio stream, call `muteLocalAudioStream(true)`.
+
+To enable spatial audio again, call the same method with the parameter set to `false`.
+
+
+```swift
+// Mute the local audio stream
+localSpatial.muteLocalAudioStream(true)
+
+// Unmute the local audio stream
+localSpatial.muteLocalAudioStream(false)
+```
+
+#### Turn off spatial audio
+
+To turn off spatial audio, call the `enableSpatialAudio` method of the `AgoraRtcEngineKit` instance and set the parameter to `false`. This resets all settings related to spatial audio.
+
+To enable spatial audio again, call this method again and set the parameter to `true`, and then call the relevant APIs again to set the spatial audio effect.
+
+Call the `destroy` method of the `AgoraLocalSpatialAudioKit` class to free up resources.
+
+```swift
+// Disable spatial audio
+agoraKit.enableSpatialAudio(false)
+
+// Destroy the ILocalSpatialAudioEngine object
+AgoraLocalSpatialAudioKit.destroy()
 ```

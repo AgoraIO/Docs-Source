@@ -5,28 +5,66 @@ This section shows you how to implement custom audio capture and render audio fr
 
 Refer to the following call sequence diagram to implement custom audio capture in your app:
 
-![Custom audio capture](/images/video-sdk/custom-audio-capture.svg)
+![Custom audio capture](/images/video-sdk/custom-audio-capture-with-custom-track.svg)
 
 Follow these steps to implement custom audio capture in your project:
 
-1. Before calling `joinChannel`, use `setExternalAudioSource` to enable and configure your custom audio source.
+1. After initializing `RtcEngine`, call `createCustomAudioTrack` to create a custom audio track and obtain the audio track ID.
 
     ```java
-    // Specify the custom audio source
-    engine.setExternalAudioSource(true, DEFAULT_SAMPLE_RATE, DEFAULT_CHANNEL_COUNT, 1, true, true);
-    // Join the channel for the local user
+    AudioTrackConfig config = new AudioTrackConfig();
+    config.enableLocalPlayback = false;
+    customAudioTrack = engine.createCustomAudioTrack(Constants.AudioTrackType.AUDIO_TRACK_MIXABLE, config);
+    ```
+
+2. Call `joinChannel` to join the channel. In `ChannelMediaOptions`, set `publishCustomAudioTrackId` to the audio track ID obtained in step 1, and set `publishCustomAudioTrack` to `true` to publish the custom audio track.
+
+    <Admonition type="info" title="Information">
+    To use `enableCustomAudioLocalPlayback` for local playback of an external audio source, or to adjust the volume of a custom audio track with `adjustCustomAudioPlayoutVolume`, set `enableAudioRecordingOrPlayout` to `true` in `ChannelMediaOptions`.
+    </Admonition>
+
+    ```java
     ChannelMediaOptions option = new ChannelMediaOptions();
+    option.clientRoleType = Constants.CLIENT_ROLE_BROADCASTER;
     option.autoSubscribeAudio = true;
     option.autoSubscribeVideo = true;
+    // In the audio self-collection scenario, the audio collected by the microphone is not published
+    option.publishMicrophoneTrack = false;
+    // Publish the custom audio track
+    option.publishCustomAudioTrack = true;
+    // Set the custom audio track ID
+    option.publishCustomAudioTrackId = customAudioTrack;
+    // Join the channel
     int res = engine.joinChannel(accessToken, channelId, 0, option);
     ```
 
-2. Implement audio capture and processing using external SDK methods.
+3. <Vg k="COMPANY"/> provides the [AudioFileReader.java](https://github.com/AgoraIO/API-Examples/blob/main/Android/APIExample/app/src/main/java/io/agora/api/example/utils/AudioFileReader.java) sample to demonstrate how to read and publish PCM-format audio data from a local file. In a production environment, you create a custom audio acquisition module based on your business needs.
 
-3. Call `pushExternalAudioFrame` to send audio frames to the SDK.
+4. Call `pushExternalAudioFrame` to send the captured audio frame to the SDK through the custom audio track. Ensure that the `trackId` matches the audio track ID you obtained by calling `createCustomAudioTrack`. Set `sampleRate`, `channels`, and `bytesPerSample` to define the sampling rate, number of channels, and bytes per sample of the external audio frame.
+
+    <Admonition type="info" title="Information">
+    For audio and video synchronization, <Vg k="COMPANY"/> recommends calling `getCurrentMonotonicTimeInMs` to get the system’s current monotonic time and setting the `timestamp` accordingly.
+    </Admonition>
 
     ```java
-    engine.pushExternalAudioFrame(ByteBuffer.wrap(buffer), 0, 0);
+    audioPushingHelper = new AudioFileReader(requireContext(), (buffer, timestamp) -> {
+        if (joined && engine != null && customAudioTrack != -1) {
+            // Push external audio frames to SDK
+            int ret = engine.pushExternalAudioFrame(buffer, timestamp,
+                    AudioFileReader.SAMPLE_RATE,
+                    AudioFileReader.SAMPLE_NUM_OF_CHANNEL,
+                    Constants.BytesPerSample.TWO_BYTES_PER_SAMPLE,
+                    customAudioTrack);
+            Log.i(TAG, "pushExternalAudioFrame times:" + (++pushTimes) + ", ret=" + ret);
+        }
+    });
+    ```
+
+5. To stop publishing custom audio, call `destroyCustomAudioTrack` to destroy the custom audio track.
+
+    ```java
+    // Destroy the custom audio track
+    engine.destroyCustomAudioTrack(customAudioTrack);
     ```
 
 ### Custom audio rendering

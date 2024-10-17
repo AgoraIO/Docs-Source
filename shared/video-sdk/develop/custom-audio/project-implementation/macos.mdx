@@ -6,30 +6,70 @@ This section shows you how to implement custom audio capture and render audio fr
 
 Refer to the following call sequence diagram to implement custom audio capture in your app:
 
-![Custom audio capture](/images/video-sdk/custom-audio-capture.svg)
+![Custom audio capture](/images/video-sdk/custom-audio-capture-with-custom-track.svg)
 
 Follow these steps to implement custom audio capture in your project:
 
-1. Before calling `joinChannelByToken` [2/4] to join a channel, call `setExternalAudioSource` to enable and configure custom audio capture.
-
-   ```swift
-   // Enable and configure custom audio capture
-   agoraKit.setExternalAudioSource(true, sampleRate: Int(sampleRate), channels: Int(channel), sourceNumber: 1, localPlayback: true, publish: true)
-   ```
-
-2. Implement audio capture and processing using external SDK methods.
-
-3. Call `pushExternalAudioFrameSampleBuffer` or `pushExternalAudioFrameRawData` to send audio frames to the SDK for backup.
+1. After initializing `AgoraRtcEngineKit`, call `createCustomAudioTrack` to create a custom audio track and retrieve the audio track ID.
 
     ```swift
-    // Push audio frames to the SDK for backup
-    extension CustomPcmAudioSourceMain: AgoraPcmSourcePushDelegate {
-        func onAudioFrame(data: Data) {
-            agoraKit.pushExternalAudioFrameRawData(data, sourceId: 0, timestamp: 0)
+    let audioTrack = AgoraAudioTrackConfig()
+    audioTrack.enableLocalPlayback = true
+    trackId = agoraKit.createCustomAudioTrack(.mixable, config: audioTrack)
+    ```
+
+1. Use `joinChannelByToken` to join the channel. In `AgoraRtcChannelMediaOptions`, set the `publishCustomAudioTrackId` parameter to the audio track ID you obtained. Set `publishCustomAudioTrack` to `YES` to publish the custom audio track in the channel.
+
+    <Admonition type="caution" title="Caution"> To play an external audio source locally using `enableCustomAudioLocalPlayback`, or to adjust the local playback volume of a custom audio track using `adjustCustomAudioPlayoutVolume`, set `enableAudioRecordingOrPlayout` to `YES` in `AgoraRtcChannelMediaOptions`. </Admonition>
+
+    ```swift
+    let option = AgoraRtcChannelMediaOptions()
+    // Disable microphone track
+    option.publishMicrophoneTrack = false
+    // Enable the custom audio track
+    option.publishCustomAudioTrack = true
+    // Set the custom audio track ID
+    option.publishCustomAudioTrackId = Int(trackId)
+    option.clientRoleType = GlobalSettings.shared.getUserRole()
+    NetworkManager.shared.generateToken(channelName: channelName, success: { token in
+        // Join the channel
+        let result = self.agoraKit.joinChannel(byToken: token, channelId: channelName, uid: 0, mediaOptions: option)
+        if result != 0 {
+            self.showAlert(title: "Error", message: "Failed to join the channel: \(result). Check your parameters.")
+        }
+    })
+    ```
+
+3. Implement the custom audio acquisition module
+
+    <Vg k="COMPANY"/> provides a sample project [CustomAudioSource.swift](https://github.com/AgoraIO/API-Examples/tree/main/macOS/APIExample/Examples/Advanced/CustomAudioSource) to demonstrate how to read PCM audio data from a local file. In production, create a custom audio acquisition module tailored to your business needs.
+
+4. Call `pushExternalAudioFrameRawData` to send captured audio frames to the SDK via the custom audio track. Ensure `trackId` matches the one used when joining the channel in step 2. Set `sampleRate`, `channels`, and `samples` to configure the external audio frame.
+
+    <Admonition type="info" title="Information"> 
+    - For audio-video synchronization, <Vg k="COMPANY"/> recommends using `getCurrentMonotonicTimeInMs` to obtain the system’s monotonic time and set the `timestamp`. 
+    - To push audio frames in `CMSampleBuffer` format, use `pushExternalAudioFrameSampleBuffer`.
+    </Admonition>
+
+    ```swift
+    extension CustomAudioSource: AgoraPcmSourcePushDelegate {
+        func onAudioFrame(data: UnsafeMutablePointer<UInt8>) {
+            agoraKit.pushExternalAudioFrameRawData(data,
+                                                samples: samples,
+                                                sampleRate: Int(sampleRate),
+                                                channels: Int(audioChannel),
+                                                trackId: Int(trackId),
+                                                timestamp: 0)
         }
     }
     ```
 
+5. To stop publishing custom audio, call `destroyCustomAudioTrack` to remove the custom audio track.
+
+   ```swift
+   agoraKit.destroyCustomAudioTrack(Int(trackId))
+   ```
+   
 ### Custom audio rendering
 
 This section explains how to implement custom audio rendering.

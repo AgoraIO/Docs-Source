@@ -1,6 +1,6 @@
 ---
 title: "Integrate user system and course scheduling system"
-sidebar_position: 9
+sidebar_position: 5
 type: docs
 description: >
     Best practices to integrate user system and course scheduling system in Flexible Classroom

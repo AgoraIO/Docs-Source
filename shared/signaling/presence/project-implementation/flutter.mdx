@@ -1,0 +1,325 @@
+<PlatformWrapper platform="flutter">
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+
+### Get channel users
+
+To obtain a list of online users in a channel, call `getOnlineUsers`. Depending on your parameter settings, this method returns a list of online user IDs in a channel and their temporary status data, or just the number of online users in the channel. You do not need to join a channel to call this method. This method is applicable to both message channels and stream channels. Use the `channelType` parameter to specify the channel type.
+
+After obtaining the initial online users list, update it in real time through `presence` event notifications.
+
+Refer to the following sample code to query the list of online users in a channel and their current status:
+
+```dart
+final channelName = 'chat_room';
+try {
+    var (status,response) = await rtmClient.getPresence.getOnlineUsers(
+        channelName,
+        RtmChannelType.message,
+        includeUserId:true,
+        includeState:true );
+    if (status == true){
+        print('${status.operation} failed, errorCode: ${status.errorCode}, due to ${status.reason}');
+    } else {
+        // If a nextPage exists, the next time getOnlineUsers is called, the value of nextPage should be filled in the page field
+        var nextPage = response.nextPage;
+        var count = response.count;
+        var userStateList = response.userStateList;
+        userStateList.forEach((userState) {
+            print(`${userState.userId} has states: ${userState.states}`);
+        });
+    }
+} catch (e) {
+    print('something went wrong: $e');
+}
+```
+
+The `getOnlineUsers` method retrieves one page of data at a time. Each page contains up to 100 online users. If the channel has more than 100 users, the `nextPage` field in the returned `response` contains a bookmark for the next page. After each query, check if `response.getNextPage` is empty to determine if there is more data. To retrieve the next page, set the `page` parameter in `getOnlineUsers` to the value of `response.getNextPage`. Repeat this process until `response.getNextPage` is null. Refer to the following code:
+
+```dart
+final channelName = 'chat_room';
+try {
+    var (status,response) = await rtmClient.getPresence.getOnlineUsers(
+        channelName,
+        RtmChannelType.message,
+        includeUserId: true,
+        includeState: true
+        page: 'your_Next_Page_Bookmark'); // Next page bookmark from the previous call
+    if (status == true){
+        print('${status.operation} failed, errorCode: ${status.errorCode}, due to ${status.reason}');
+    } else {
+        // If a nextPage exists, the next time getOnlineUsers is called, the value of nextPage should be filled in the page field
+        var nextPage = response.nextPage;
+        var count = response.count;
+        var userStateList = response.userStateList;
+        userStateList.forEach((userState) {
+            print(`${userState.userId} has states: ${userState.states}`);
+        });
+    }
+} catch (e) {
+    print('something went wrong: $e');
+}
+```
+
+When there is a large number of users in a channel, you may only care about the total number of online users, and not their identities or temporary statuses. To get the total channel occupancy, set `includeState` and `includeUserId` in `getOnlineUsers` to `false`. 
+
+```dart
+final channelName = 'chat_room';
+try {
+    var (status,response) = await rtmClient.getPresence.getOnlineUsers(
+        channelName,
+        RtmChannelType.message,
+        includeUserId: false,
+        includeState: false);
+
+    if (status == true){
+        print('${status.operation} failed, errorCode: ${status.errorCode}, due to ${status.reason}');
+    } else {
+        var nextPage = response.nextPage;
+        var count = response.count;
+        print('There are $count occupants in $channelName channel');
+    }
+} catch (e) {
+    print('something went wrong: $e');
+}
+```
+
+In this case, only the `count` property in the response is valid while all other fields are empty. 
+
+<Admonition type="info">
+You cannot set `includeState` to `true` and `includeUserId` to `false` at the same time. To get the temporary status of users, you must also retrieve their user IDs. 
+</Admonition>
+
+### Get user channels
+
+The `getUserChannels` method enables you to query which channels a user is currently in. This includes the message channels a user has subscribed to and the stream channels they have joined. This method is particularly useful for tracking user paths. Refer to the following sample code:
+
+```dart
+try {
+    var (status,response) = await rtmClient.getPresence.getUserChannels("Tony");
+    if (status == true){
+        print('${status.operation} failed, errorCode: ${status.errorCode}, due to ${status.reason}');
+    } else {
+        var channels = response.channels;
+        var count = response.count;
+        channels.forEach((channelInfo) {
+            print('${channelInfo.channelName}:${channelInfo.channelType}')
+        });
+    }
+} catch (e) {
+    print('something went wrong: $e');
+}
+```
+
+The `getUserChannels` method returns complete query results about the channels and their types that the queried user is in, without pagination.
+
+## User status management
+
+<Vg k="SIG" /> enables you to set and delete user status messages for the local user in each channel. The SDK notifies other online users in the channel of these changes through event notifications. This feature is useful in scenarios where user status sharing is required, such as real-time synchronization of the user's microphone status, mood, personal signature, score, and message input status.
+
+<Vg k="SIG" /> does not permanently save the status data. When a user unsubscribes from a channel, times out, or exits a channel, the data is deleted. To save user data permanently, use the [Store user metadata](../core-functionality/store-user-data) feature.
+
+When a user's temporary status changes, <Vg k="SIG" /> triggers a `remoteStateChanged` event notification in real time. Users who set `withPresence = true` when joining the channel, receive the event notification.
+
+### Set status
+
+Using presence, you can set the temporary user status for the local user. When you set the status before subscribing to or joining a channel, the data is cached on the client and does not take effect immediately. The status is updated and corresponding event notifications are triggered when you subscribe to or join a channel. The `setState` method applies to both message and stream channels; use the `channelType` parameter to specify the channel type.
+
+```dart
+var states = {
+    'Mode': 'Happy',
+    'Mic': 'False',
+};
+final channelName = 'chat_room';
+try {
+    var (status,response) = await rtmClient.getPresence.setState(
+        channelName, 
+        RtmChannelType.message,
+        states);
+    if (status == true){
+        print('${status.operation} failed,errorCode: ${status.errorCode},due to ${status.reason}');
+    } else {
+        print('set states success!');
+    }
+} catch (e) {
+    print('something went wrong: $e');
+}
+```
+
+When using `setState` to set temporary user status, if the specified key already exists, its value is overwritten by the new value. If the specified key does not exist, a new key/value pair is added.
+
+### Get status
+
+To obtain the temporary user status set by a user in a specified channel, use the `getState` method:
+
+```dart
+final channelName = 'chat_room';
+try {
+    var (status,response) = await rtmClient.getPresence.getState(
+        channelName, 
+        RtmChannelType.message,
+        'Tony');
+    if (status == true){
+        print('${status.operation} failed,errorCode: ${status.errorCode},due to ${status.reason}');
+    } else {
+        var userState = response.state;
+        print('States for ${userState.userId}: ${userState.states}');
+    }
+} catch (e) {
+    print('something went wrong: $e');
+}
+```
+
+If the queried user is not present in the specified channel, a `presenceUserNotExist` error message is returned by the SDK.
+
+### Delete status
+
+Each user can set up to 32 key/value pairs in a channel. To remove items that are no longer needed, call `removeState` with a list of keys. The `removeState` method only deletes temporary user status data for the local user.
+
+```dart
+final channelName = 'chat_room';
+final states = ['Mode','Mic'];
+try {
+    var (status,response) = await rtmClient.getPresence.removeState(
+        channelName, 
+        RtmChannelType.message,
+        states: states);
+    if (status == true){
+        print('${status.operation} failed,errorCode: ${status.errorCode},due to ${status.reason}');
+    } else {
+        var userState = response.state;
+        print('remove states success!');
+    }
+} catch (e) {
+    print('something went wrong: $e');
+}
+```
+
+Both the `setState` and `removeState` methods trigger `remoteStateChanged` event notifications. Users who join the channel with `withPresence` set to `true` receive event notifications containing full data of the user's temporary status.
+
+## Receive presence event notifications
+
+A presence event notification returns the [PresenceEvent](../reference/api#configpresenceeventpropsag_platform) data structure, which includes the [RtmPresenceEventType](../reference/api?#enumvpresencetypepropsag_platform) parameter.
+
+To receive presence event notifications, implement an event listener. See [event listeners](../reference/api#event-listeners) for details. In addition, set the `withPresence` parameter to `true` when subscribing to or joining a channel. 
+
+### Event notification modes
+
+The presence event notification mode determines how subscribed users receive event notifications. There are two notification modes: 
+
+- `Announce`: Real-time notification mode  
+- `Interval`: Scheduled notification mode 
+
+You set the **Max number of instant event** value in <Vg k="CONSOLE" /> to specify the condition for switching between the two modes. The scheduled notification mode helps prevent event noise that results from a large number of online users in the channel. You can set **Max number of instant event** to a value between 8 and 128. The default value is 50. If your specific requirement is beyond this range, contact [technical support](mailto:support@agora.io).
+
+#### Real-time notification mode
+
+If the number of online users in the channel is less than the **Max number of instant event** value, presence event notifications operate in real-time notification mode. In this mode, `remoteJoinChannel`, `remoteLeaveChannel`, `remoteTimeout`, and `remoteStateChanged` notifications are sent to the client in real-time. 
+
+<Tabs>
+<TabItem value="join" label="Join" default>
+<CodeBlock language="js" showLineNumbers>
+{`{
+    type: RtmPresenceEventType.remoteJoinChannel,
+    channelType: RtmChannelType.message,
+    channelName: 'chat_room',
+    publisher: 'Tony',
+    stateItems: [],
+    interval: [],
+    snapshot: [],
+    timestamp: 1710487149497,
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="leave" label="Leave" default>
+<CodeBlock language="js" showLineNumbers>
+{`{
+    type: RtmPresenceEventType.remoteLeaveChannel,
+    channelType: RtmChannelType.message,
+    channelName: 'chat_room',
+    publisher: 'Tony',
+    stateItems: [],
+    interval: [],
+    snapshot: [],
+    timestamp: 1710487149497,
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="timeout" label="Timeout" default>
+<CodeBlock language="js" showLineNumbers>
+{`{
+    type: RtmPresenceEventType.remoteTimeout,
+    channelType: RtmChannelType.message,
+    channelName: 'chat_room',
+    publisher: 'Tony',
+    stateItems: [],
+    interval: [],
+    snapshot: [],
+    timestamp: 1710487149497,
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="snapshot" label="Snapshot" default>
+<CodeBlock language="js" showLineNumbers>
+{`{
+    type: RtmPresenceEventType.snapshot,
+    channelType: RtmChannelType.message,
+    channelName: 'chat_room',
+    publisher: 'Tony',
+    stateItems: [],
+    interval: [],
+    snapshot: {[
+        { userId: "user_a", states: []},
+        { userId: "user_b", states: [{ key: 'mic', value : 'on'}]},
+        { userId: "yourSelf", states: [{}]},
+    ]},
+    timestamp: 1710487149497
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="state-change" label="State change" default>
+<CodeBlock language="js" showLineNumbers>
+{`{
+    type: RtmPresenceEventType.remoteStateChanged,
+    channelType: RtmChannelType.message,
+    channelName: 'chat_room',
+    publisher: 'Tony',
+    stateItems: [{ key: 'mic', value : 'on'},{ key: 'mode', value : 'happy'}],
+    interval: [],
+    snapshot: [],
+    timestamp: 1710487149497
+}`}
+</CodeBlock>
+</TabItem>      
+</Tabs>
+
+#### Scheduled notification mode
+
+When the number of online users in the channel exceeds the **Max number of instant event** value, the channel switches to the scheduled notification mode. In this mode, `remoteJoinChannel`, `remoteLeaveChannel`, `remoteTimeout`, and `remoteStateChanged` events are replaced by `interval` events and sent to all users in the channel at specific time intervals. Users receive the following notification:
+
+<CodeBlock language="js" showLineNumbers>
+{`{
+    type : RtmPresenceEventType.interval,
+    channelTye : RtmChannelType.message,,
+    channelName : 'chat_room',
+    publisher : 'Tony',
+    interval : {
+        joinUserList : {users:['Tony','Lily']},
+        leaveUserList :{users:['Jason']},
+        timeoutUserList : {users:['Wang']},
+        userStateList : [
+            {
+                userId : 'Harvard',
+                states :  [{ key: 'mic', value : 'on'},{ key: 'mode', value : 'happy'}],
+            },
+            {
+                userId : 'Harvard',
+                states :  [{ key: 'mic', value : 'off'},{ key: 'mode', value : 'sad'}],
+            }
+        ]
+    }
+}`}
+</CodeBlock>
+
+</PlatformWrapper>

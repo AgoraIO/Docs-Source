@@ -18,8 +18,10 @@ For example, the path to a recorded MP4 file is `yyyymmdd/ChannelName_HHMMSS_MSU
 
 - `ChannelName_HHMMSS_MSUSNS`: The recording files are stored in the directory created on the same date as the recording. The directory name contains a channel name and a timestamp (hour, minute, second, millisecond, microsecond, and nanosecond). The timestamp is the time when the server starts recording, and the time zone is UTC+0.
 
-> - For versions earlier than v2.3.0, the directory of the recording files is `ChannelName_HHMMSS`, named after the channel name and timestamp (hour, minute, and second).
-> - For v2.3.0 or later, the directory of the recording files is `ChannelName_HHMMSS_MSUSNS`, named after the channel name and timestamp (hour, minute, second, millisecond, microsecond, and nanosecond).
+<Admonition type="info">
+- For versions earlier than v2.3.0, the directory of the recording files is `ChannelName_HHMMSS`, named after the channel name and timestamp (hour, minute, and second).
+- For v2.3.0 or later, the directory of the recording files is `ChannelName_HHMMSS_MSUSNS`, named after the channel name and timestamp (hour, minute, second, millisecond, microsecond, and nanosecond).
+</Admonition>
 
 ## Customize the directory structure
 
@@ -27,7 +29,9 @@ To customize the directory structure, you need to create a configuration file in
 
 Set the `Recording_Dir` parameter in the configuration file to customize the directory structure. For example: `{“Recording_Dir” : “<recording path>”}`. You cannot change the `Recording_Dir` parameter.
 
-> Agora does not recommend customizing the directory structure because if multiple recording instances use the same configuration parameter, the recording files of different recording instances are stored in the same directory and cannot be distinguished.
+<Admonition type="info">
+Agora does not recommend customizing the directory structure because if multiple recording instances use the same configuration parameter, the recording files of different recording instances are stored in the same directory and cannot be distinguished.
+</Admonition>
 
 ## The recording files
 

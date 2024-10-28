@@ -22,7 +22,6 @@ message.setChatType(ChatMessage.GroupChat);
      @Override
      public void onSuccess() {
          showToast("Message sending succeeds");
-          dialog.dismiss();
      }
      @Override
      public void onError(int code, String error) {
@@ -43,11 +42,13 @@ Even high-priorities messages can be dropped when the server load goes too high.
 You can set the priority for all types of messages in the chat room.
 
 ```java
+// Set `content` as the content of the text message.
+// Set `conversationId` to chat room ID in room chat.
 ChatMessage message = ChatMessage.createTextSendMessage(content, conversationId);
 message.setChatType(ChatMessage.ChatType.ChatRoom);
-// Set the message priority. The default value is `Normal`, indicating the normal priority.
+// Set the message priority. The default value is `PriorityNormal`, indicating the normal priority.
 message.setPriority(ChatMessage.ChatRoomMessagePriority.PriorityHigh);
-sendMessage(message);
+ChatClient.getInstance().chatManager().sendMessage(message);
 ```
 
 ### Receive a message
@@ -113,8 +114,9 @@ Refer to the following code example to create and send a voice message:
 // Set voiceUri as the local URI of the audio file, and duration as the length of the file in seconds.
 ChatMessage message = ChatMessage.createVoiceSendMessage(voiceUri, duration, conversationId);
 // Sets the chat type as one-to-one chat, group chat, or chatroom.
-if (chatType == CHATTYPE_GROUP)
+if (chatType == CHATTYPE_GROUP) {
     message.setChatType(ChatType.GroupChat);
+}
 ChatClient.getInstance().chatManager().sendMessage(message);
 ```
 
@@ -125,6 +127,9 @@ VoiceMessageBody voiceBody = (VoiceMessageBody) msg.getBody();
 // Retrieves the URL of the audio file on the server.
 String voiceRemoteUrl = voiceBody.getRemoteUrl();
 // Retrieves the URI if the audio file on the local device.
+//If 'ChatClient.getInstance().getOptions().setAutodownloadThumbnail' is set as `false` or the attachment has not been downloaded yet,
+//the file may not exist in 'voiceLocalUri' and you can manually call 'ChatClient.getInstance().chatManager().downloadAttachment(message)' to download the attachment,
+//and call the 'message. SetMessageStatusCallback (the callback)' to see if the download succeeds.
 Uri voiceLocalUri = voiceBody.getLocalUri();
 ```
 
@@ -159,7 +164,9 @@ Uri imgLocalUri = imgBody.getLocalUri();
 Uri thumbnailLocalUri = imgBody.thumbnailLocalUri();
 ```
 
-<div class="alert note">If <code>ChatClient.getInstance().getOptions().getAutodownloadThumbnail()</code> is set as <code>true</code> on the recipient's client, the SDK automatically downloads the thumbnail after receiving the message. If not, you need to call <code>ChatClient.getInstance().chatManager().downloadThumbnail(message)</code> to download the thumbnail and get the path from the <code>thumbnailLocalUri</code> member in <code>messageBody</code>.</div>
+<div class="alert note">If <code>ChatClient.getInstance().getOptions().getAutodownloadThumbnail()</code> is set as <code>true</code> on the recipient's client, the SDK automatically downloads the thumbnail after receiving the message. If not, you need to call <code>ChatClient.getInstance().chatManager().downloadThumbnail(message)</code> to download the thumbnail and get the path from the <code>thumbnailLocalUri</code> member in <code>messageBody</code>.
+If the file does not exist in <code>imgLocalUri</code>, you can manually call <code>ChatClient.getInstance().chatManager().downloadAttachment(message)</code> to download the attachment, and call the <code>message. SetMessageStatusCallback (the callback)</code>to see if the download succeeds.
+</div>
 
 #### Send and receive a video message
 
@@ -170,59 +177,45 @@ Refer to the following code example to create and send a video message:
 ```java
 String thumbPath = getThumbPath(videoUri);
 ChatMessage message = ChatMessage.createVideoSendMessage(videoUri, thumbPath, videoLength, conversationId);
-sendMessage(message);
+// Sets the chat type as one-to-one chat, group chat, or chatroom.
+if (chatType == CHATTYPE_GROUP) {
+    message.setChatType(ChatType.GroupChat);
+}
+ChatClient.getInstance().chatManager().sendMessage(message);
 ```
 
 By default, when the recipient receives the message, the SDK downloads the thumbnail of the video message.
 
 If you do not want the SDK to automatically download the video thumbnail, set `ChatClient.getInstance().getOptions().setAutodownloadThumbnail` as `false`, and to download the thumbnail, you need to call `ChatClient.getInstance().chatManager().downloadThumbnail(message)`, and get the path of the thumbnail from the `thumbnailLocalUri` member in `messageBody`.
 
-To download the actual video file, call `SChatClient.getInstance().chatManager().downloadAttachment(message)`, and get the path of the video file from the `getLocalUri` member in `messageBody`.
+To download the actual video file, call `ChatClient.getInstance().chatManager().downloadAttachment(message)`, and get the path of the video file from the `getLocalUri` member in `messageBody`.
 
 ```java
 // If you received a message with video attachment, you need download the attachment before you open it.
 if (message.getType() == ChatMessage.Type.VIDEO) {
   VideoMessageBody messageBody = (VideoMessageBody)message.getBody();
-  // Get the URL of the video on the server.
-  String videoRemoteUrl = messageBody.getRemoteUrl();
-  // Download the video.
-  ChatClient.getInstance().chatManager().downloadAttachment(message);
-      // Set Callback to know whether the download is finished.
-  		public void onError(final int error, String message) {
-			EMLog.e(TAG, "offline file transfer error:" + message);
-			runOnUiThread(new Runnable() {
-				@Override
-				public void run() {
-					if (EaseShowBigImageActivity.this.isFinishing() || EaseShowBigImageActivity.this.isDestroyed()) {
-					    return;
-					}
-                    image.setImageResource(default_res);
-                    pd.dismiss();
-                    if (error == Error.FILE_NOT_FOUND) {
-						Toast.makeText(getApplicationContext(), R.string.Image_expired, Toast.LENGTH_SHORT).show();
-					}
-				}
-			});
-		}
-		public void onProgress(final int progress, String status) {
-			EMLog.d(TAG, "Progress: " + progress);
-			final String str2 = getResources().getString(R.string.Download_the_pictures_new);
-			runOnUiThread(new Runnable() {
-				@Override
-				public void run() {
-                    if (EaseShowBigImageActivity.this.isFinishing() || EaseShowBigImageActivity.this.isDestroyed()) {
-                        return;
-                    }
-					pd.setMessage(str2 + progress + "%");
-				}
-			});
-		}
-	};
 
-	msg.setMessageStatusCallback(callback);
-	ChatClient.getInstance().chatManager().downloadAttachment(msg);
-  // After the download finishes, get the URI of the local file.
-  Uri videoLocalUri = messageBody.getLocalUri();
+  // Set Callback to know whether the download is finished.
+  final CallBack callback = new CallBack() {
+        public void onSuccess() {
+            EMLog.e(TAG, "onSuccess" );
+            // After the download finishes onSuccess, get the URI of the local file.
+            Uri videoLocalUri = messageBody.getLocalUri();
+
+        }
+
+        public void onError(final int error, String message) {
+            EMLog.e(TAG, "offline file transfer error:" + message);
+        }
+
+        public void onProgress(final int progress, String status) {
+            EMLog.d(TAG, "Progress: " + progress);
+        }
+   };
+
+	    message.setMessageStatusCallback(callback);
+
+        ChatClient.getInstance().chatManager().downloadAttachment(message);
 }
 ```
 
@@ -234,7 +227,10 @@ Refer to the following code example to create, send, and receive a file message:
 // Set fileLocalUri as the URI of the file message on the local device.
 ChatMessage message = ChatMessage.createFileSendMessage(fileLocalUri, conversationId);
 // Sets the chat type as one-to-one chat, group chat, or chatroom.
-if (chatType == CHATTYPE_GROUP)    message.setChatType(ChatType.GroupChat);ChatClient.getInstance().chatManager().sendMessage(message);
+if (chatType == CHATTYPE_GROUP){
+    message.setChatType(ChatType.GroupChat);
+}
+ChatClient.getInstance().chatManager().sendMessage(message);
 ```
 
 While sending a file message, refer to the following sample code to get the progress for uploading the attachment file:
@@ -245,7 +241,6 @@ message.setMessageStatusCallback(new CallBack() {
     @Override
     public void onSuccess() {
         showToast("Message sending succeeds");
-        dialog.dismiss();
     }
     @Override
     public void onError(int code, String error) {
@@ -270,6 +265,8 @@ String fileRemoteUrl = fileMessageBody.getRemoteUrl();
 // Retrieves the file from the local device.
 Uri fileLocalUri = fileMessageBody.getLocalUri();
 ```
+
+<div class="alert note">If the file does not exist in fileLocalUri, you can manually call <code>ChatClient.getInstance().chatManager().downloadAttachment(message)</code> to download the attachment, and call the <code>message. SetMessageStatusCallback (the callback)</code>to see if the download succeeds.</div>
 
 ### Send a location message
 

@@ -49,7 +49,10 @@ const data = {
   'react-native': {
     NAME: 'React Native',
     PATH: 'react-native',
-    CLIENT: 'app'
+    CLIENT: 'app',
+    RTC_CONNECTION: 'RtcConnection',
+    RTC_ENGINE_EX: 'IRtcEngineEx',
+    RTC_JOIN_CHANNEL_EX: 'joinChannelEx'
   },
   'react-js': {
     NAME: 'ReactJS',
@@ -59,7 +62,10 @@ const data = {
   'electron': {
     NAME: 'Electron',
     PATH: 'electron',
-    CLIENT: 'app'
+    CLIENT: 'app',
+    RTC_CONNECTION: 'RtcConnection',
+    RTC_ENGINE_EX: 'IRtcEngineEx',
+    RTC_JOIN_CHANNEL_EX: 'joinChannelEx'
   },
 
   

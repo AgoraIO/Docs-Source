@@ -1,186 +1,338 @@
+
 <PlatformWrapper platform="unity">
 
-The `PlayMediaManager` class manages media streaming logic within the channel:
+### Create a media player object
 
-1. **Import the required namespace**
+After initializing an `IRtcEngine` instance, call `createMediaPlayer` to create an `IMediaPlayer` object.
+
+```csharp
+MediaPlayer = RtcEngine.CreateMediaPlayer();
+if (MediaPlayer == null)
+{
+    this.Log.UpdateLog("Failed to create media player.");
+    return;
+}
+```
+
+<Admonition type="info" > 
+If you need multiple media player objects, call `createMediaPlayer` multiple times. 
+</Admonition>
+
+### Register callback events and implement callbacks
+
+Call `InitEventHandler` from the `IMediaPlayer` class to register media player callback events.
 
     ```csharp
-    using Agora.Rtc;
+    MpkEventHandler handler = new MpkEventHandler(this);
+    MediaPlayer.InitEventHandler(handler);
+    this.Log.UpdateLog("Player ID: " + MediaPlayer.GetId());
     ```
 
-1.  **Declare the variables you need**
-
-    ``` csharp
-    internal IMediaPlayer mediaPlayer; // Instance of the media player
-    internal bool isMediaPlaying = false;
-    internal long mediaDuration = 0;    
-    ```
-
-1.  **Open, play and pause media files**
-
-    When a user presses the button for the first time, you create an instance of the media player, set its `mediaPlayerObserver` to receive the callbacks, and open the media file. When the user presses the button again, you play the media file. On subsequent button presses, you pause or resume playing the media file alternately. To implement this workflow, in your script file, add the following method to `NewBehaviourScript`:
+Implement `IMediaPlayerSourceObserver` callbacks as needed.
 
     ```csharp
-    public void playMedia() {
-        // Initialize the mediaPlayer and open a media file
-        if (mediaPlayer == null) {
-        // Create an instance of the media player
-        mediaPlayer = agoraEngine.CreateMediaPlayer();
-        // Create an instance of mediaPlayerObserver class
-        PlayMediaEventHandler mediaPlayerObserver = new PlayMediaEventHandler(this);
-        // Set the mediaPlayerObserver to receive callbacks
-        mediaPlayer.InitEventHandler(mediaPlayerObserver);
-        // Open the media file
-        mediaPlayer.Open(configData.mediaURL, 0);
-        playMediaBtnText.text = "Opening Media File...";
-        return;
-        }
-        
-        // Set up the local video container to handle the media player output
-        // or the camera stream, alternately.
-        isMediaPlaying = !isMediaPlaying;
-        // Set the stream publishing options
-        updateChannelPublishOptions(isMediaPlaying);
-        // Display the stream locally
-        setupLocalVideo(isMediaPlaying);
-        
-        MEDIA_PLAYER_STATE state = mediaPlayer.GetState();
-        if (isMediaPlaying) { // Play or resume playing media
-            if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_OPEN_COMPLETED) {
-                mediaPlayer.Play();
-            } else if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_PAUSED) {
-                mediaPlayer.Resume();
-            }
-            playMediaBtnText.text = "Pause Playing Media";
-        } else {
-            if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_PLAYING) {
-                // Pause media.
-                mediaPlayer.Pause();
-                playMediaBtnText.text = "Resume Playing Media";
-            }
-        }
-    }
-    ```
-
-2.  **Manage media player callbacks**
-
-    ``` csharp
-    internal class PlayMediaEventHandler : IMediaPlayerSourceObserver
+    class MpkEventHandler : IMediaPlayerSourceObserver
     {
-        private PlayMediaManager playMedia;
-        internal PlayMediaEventHandler(PlayMediaManager refPlayMedia)
+        // Report player status changes
+        public override void OnPlayerSourceStateChanged(MEDIA_PLAYER_STATE state, MEDIA_PLAYER_REASON reason)
         {
-            playMedia = refPlayMedia;
+
         }
-        public override void OnPlayerSourceStateChanged(MEDIA_PLAYER_STATE state, MEDIA_PLAYER_ERROR error)
+
+        // Report player events
+        public override void OnPlayerEvent(MEDIA_PLAYER_EVENT @event, Int64 elapsedTime, string message)
         {
-            Debug.Log(state.ToString());
-            if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_OPEN_COMPLETED)
-            {
-                // Media file opened successfully. Get the duration of file to setup the progress bar.
-                playMedia.mediaPlayer.GetDuration(ref playMedia.mediaDuration);
-                Debug.Log("File duration is : " + playMedia.mediaDuration);
-                // Update the UI
-                Debug.Log("File opened successfully click `Play Media File` to play the file");
-                playMedia.playMediaBtnText.text = "Play Media File";
-                playMedia.mediaProgressBar.value = 0;
-                playMedia.mediaProgressBar.maxValue = playMedia.mediaDuration / 1000;
-            }
-            else if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_PLAYBACK_ALL_LOOPS_COMPLETED)
-            {
-                playMedia.isMediaPlaying = false;
-                // Media file finished playing
-                playMedia.playMediaBtnText.text = " Media File";
-                // Restore camera and microphone streams
-                playMedia.setupLocalVideo(false);
-                playMedia.updateChannelPublishOptions(false);
-                // Clean up
-                playMedia.mediaPlayer.Dispose();
-                playMedia.mediaPlayer = null;
-                playMedia.mediaProgressBar.value = 0;
-            }
-            else if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_FAILED)
-            {
-                playMedia.isMediaPlaying = false;
-                Debug.Log("Media player failed :" + error);
-                playMedia.playMediaBtnText.text = "Load Media File";
-            }
+            Debug.Log($"OnPlayerEvent state: {@event}");
         }
-        public override void OnPositionChanged(long position)
+
+        // Report preload events
+        public override void OnPreloadEvent(string src, PLAYER_PRELOAD_EVENT @event)
         {
-            if (playMedia.mediaDuration > 0)
-            {
-                int result = (int)((float)position / (float)playMedia.mediaDuration * 100);
-                // Update the ProgressBar
-                playMedia.mediaProgressBar.value = result;
-            }
+            Debug.Log($"OnPreloadEvent src: {src}, event: {@event}");
         }
-        public override void OnPlayerEvent(MEDIA_PLAYER_EVENT eventCode, long elapsedTime, string message)
+
+        // Report media resource playback progress
+        public override void OnPositionChanged(long positionMs, long timestampMs)
         {
-            // Required to implement IMediaPlayerObserver
-        }
-        public override void OnMetaData(byte[] type, int length)
-        {
-            // Required to implement IMediaPlayerObserver
+
         }
     }
     ```
 
-3.  **Configure <Vg k="ENGINE" /> to publish the media player stream**
+### Set the video rendering window
 
-    ``` csharp
-    public void updateChannelPublishOptions(bool publishMediaPlayer) {
-        ChannelMediaOptions channelOptions = new ChannelMediaOptions();
-        channelOptions.publishMediaPlayerAudioTrack.SetValue(publishMediaPlayer);
-        channelOptions.publishMediaPlayerVideoTrack.SetValue(publishMediaPlayer);
-        channelOptions.publishMicrophoneTrack.SetValue(!publishMediaPlayer);
-        channelOptions.publishCameraTrack.SetValue(!publishMediaPlayer);
-        if (publishMediaPlayer)
-        {
-            channelOptions.publishMediaPlayerId.SetValue(mediaPlayer.GetId());
-            agoraEngine.UpdateChannelMediaOptions(channelOptions);
-        }
-    }
-    ```
+To play a video, set the video renderer after opening the media resource. Destroy the video view when playback stops. Use `GetId` to retrieve the player ID and set `VIDEO_SOURCE_TYPE` to `VIDEO_SOURCE_MEDIA_PLAYER`.
 
-4.  **Display media player output locally**
-
-    ``` csharp
-    public void setupLocalVideo(bool forMediaPlayer)
+    ```csharp
+    // Handle player status changes
+    public override void OnPlayerSourceStateChanged(MEDIA_PLAYER_STATE state, MEDIA_PLAYER_REASON reason)
     {
-        if (forMediaPlayer)
+        Debug.Log($"State: {state}, Reason: {reason}, Player ID: {_sample.MediaPlayer.GetId()}");
+        if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_OPEN_COMPLETED)
         {
-            GameObject go = GameObject.Find("LocalView");
-            // Update the VideoSurface component of the local view object.
-            LocalView = go.AddComponent<VideoSurface>();
-            go.transform.Rotate(0.0f, 180.0f, 0.0f);
-            // Setup local view to display the media file.
-            LocalView.SetForUser((uint)mediaPlayer.GetId(), "", VIDEO_SOURCE_TYPE.VIDEO_SOURCE_MEDIA_PLAYER);
+            // Create a view to display the video stream when the media resource opens
+            MakeVideoView((uint)_sample.MediaPlayer.GetId(), "", VIDEO_SOURCE_TYPE.VIDEO_SOURCE_MEDIA_PLAYER);
+        }
+        else if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_STOPPED)
+        {
+            // Destroy the video view after playback stops
+            DestroyVideoView((uint)_sample.MediaPlayer.GetId());
+        }
+    }
+    ```
 
+To set the video display, call `SetForUser`, and start rendering with `SetEnable`.
+
+    ```csharp
+    // Create a video view
+    static void MakeVideoView(uint uid, string channelId = "", VIDEO_SOURCE_TYPE videoSourceType = VIDEO_SOURCE_TYPE.VIDEO_SOURCE_CAMERA)
+    {
+        var go = GameObject.Find(uid.ToString());
+        if (go != null) return;
+
+        // Create a GameObject for rendering video
+        var videoSurface = MakeImageSurface(uid.ToString());
+        if (videoSurface == null) return;
+
+        // Set up video display
+        videoSurface.SetForUser(uid, channelId, videoSourceType);
+        videoSurface.SetEnable(true);
+
+        // Adjust video surface size
+        videoSurface.OnTextureSizeModify += (int width, int height) =>
+        {
+            var transform = videoSurface.GetComponent<RectTransform>();
+            if (transform != null)
+            {
+                transform.sizeDelta = new Vector2(width / 2, height / 2);
+                transform.localScale = Vector3.one;
+            }
+            else
+            {
+                float scale = (float)height / (float)width;
+                videoSurface.transform.localScale = new Vector3(-1, 1, scale);
+            }
+            Debug.Log($"Texture size modified: {width} x {height}");
+        };
+    }
+
+    // Destroy the video view
+    static void DestroyVideoView(uint uid)
+    {
+        var go = GameObject.Find(uid.ToString());
+        if (go != null)
+        {
+            Destroy(go);
+        }
+    }
+
+    // Create a video view with a RawImage component
+    private static VideoSurface MakeImageSurface(string goName)
+    {
+        GameObject go = new GameObject(goName);
+        go.AddComponent<RawImage>();
+        go.AddComponent<UIElementDrag>();
+
+        var canvas = GameObject.Find("VideoCanvas");
+        if (canvas != null)
+        {
+            go.transform.SetParent(canvas.transform);
+            Debug.Log("Added video view");
         }
         else
         {
-            GameObject go = GameObject.Find("LocalView");
-            // Update the VideoSurface component of the local view object.
-            LocalView = go.AddComponent<VideoSurface>();
-            go.transform.Rotate(0.0f, 180.0f, 0.0f);
-            // Setup local view to display the local video.
-            LocalView.SetForUser(0, "", VIDEO_SOURCE_TYPE.VIDEO_SOURCE_CAMERA_PRIMARY);
+            Debug.Log("Canvas not found for video view");
         }
-    }
-    ```
-6.  **Clean up when you close the <Vpl k="CLIENT" />**
 
-    ``` csharp
-    public override void DestroyEngine()
-    {
-        // Destroy the media player
-        if (mediaPlayer != null)
-        {
-            mediaPlayer.Stop();
-            agoraEngine.DestroyMediaPlayer(mediaPlayer);
-        }
-        base.DestroyEngine();
+        go.transform.Rotate(0f, 0f, 180f);
+        go.transform.localPosition = Vector3.zero;
+        go.transform.localScale = new Vector3(4.5f, 3f, 1f);
+
+        return go.AddComponent<VideoSurface>();
     }
     ```
+
+### Open media resources
+
+Call `Open` to load a local or online media file. You can also set the playback start position. For supported formats, see [Supported Formats](#supported-formats-and-protocols).
+
+```csharp
+public void OnOpenButtonPress()
+{
+    var ret = MediaPlayer.Open("Your File Path", 0);
+    Debug.Log("Open returns: " + ret);
+}
+```
+
+Alternatively, use `OpenWithMediaSource` to open media resources and configure playback settings, like automatic playback and real-time caching.
+
+### Publish the audio and video streams
+    
+When joining a channel, set the `ChannelMediaOptions` as follows:
+
+```csharp
+ChannelMediaOptions options = new ChannelMediaOptions();
+// Enable automatic subscription to audio and video streams
+options.autoSubscribeAudio.SetValue(true);
+options.autoSubscribeVideo.SetValue(true);
+options.publishCustomAudioTrack.SetValue(false);
+options.publishCameraTrack.SetValue(false);
+// Enable publishing audio and video streams from the media player
+options.publishMediaPlayerAudioTrack.SetValue(true);
+options.publishMediaPlayerVideoTrack.SetValue(true);
+// Provide the media player ID
+options.publishMediaPlayerId.SetValue(MediaPlayer.GetId());
+// Enable audio playback
+options.enableAudioRecordingOrPlayout.SetValue(true);
+// Set the user role to broadcaster
+options.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+
+var ret = RtcEngine.JoinChannel(_token, _channelName, 0, options);
+this.Log.UpdateLog($"JoinChannel returns: {ret}");
+```
+
+### Playback control
+
+1. Call `Play` to start playing a local or online media resource.
+
+    ```csharp
+    public void OnPlayButtonPress()
+    {
+        var ret = MediaPlayer.Play();
+        Debug.Log($"Play return: {ret}");
+    }
+    ```
+    <Admonition type="caution" title="Caution"> 
+    If you use `Open` to load a media resource, wait for the `OnPlayerSourceStateChanged` callback to report the state as `PLAYER_STATE_OPEN_COMPLETED` before calling `Play`. If you use `OpenWithMediaSource` with `autoPlay` enabled, playback starts automatically. 
+    </Admonition>
+
+1. To loop playback, call `SetLoopCount`. Set the value to `-1` for infinite looping. The default value of `0` means no loop playback.
+
+    ```csharp
+    public void OnPlayButtonPress()
+    {
+        MediaPlayer.SetLoopCount(this.IsLoop() ? -1 : 0);
+        var ret = MediaPlayer.Play();
+        this.Log.UpdateLog($"Play return: {ret}");
+    }
+    ```
+
+1. To play from a specific position, use `Seek`. Ensure `Seek` is called after receiving the `PLAYER_STATE_OPEN_COMPLETED` state in the `OnPlayerSourceStateChanged` callback.
+
+    <Admonition type="caution" title="Caution"> 
+    If you call `Seek` while playback is paused, the media remains paused after the call. Call `Resume` or `Play` to continue playback. 
+    </Admonition>
+
+1. Call `SetPlaybackSpeed` to control the playback speed.
+
+    ```csharp
+    public void OnSetPlaybackSpeedButtonPress()
+    {
+        var ret = MediaPlayer.SetPlaybackSpeed(2);
+        this.Log.UpdateLog($"SetPlaybackSpeed return: {ret}");
+    }
+    ```
+
+#### Pause, resume, and stop
+
+To control playback, use the following methods:
+
+- `Pause`: Pauses playback.
+
+    ```csharp
+    public void OnPauseButtonPress()
+    {
+        var ret = MediaPlayer.Pause();
+        this.Log.UpdateLog($"Pause return: {ret}");
+    }
+    ```
+- `Resume`: Resumes playback after pausing.
+
+    ```csharp
+    public void OnResumeButtonPress()
+    {
+        var ret = MediaPlayer.Resume();
+        this.Log.UpdateLog($"Resume returns: {ret}");
+    }
+    ```
+
+- `Stop`: Stops playback. Reopen the media resource to play again.
+
+    ```csharp
+    public void OnStopButtonPress()
+    {
+        var ret = MediaPlayer.Stop();
+        this.Log.UpdateLog($"Stop return: {ret}");
+    }
+    ```
+
+### Adjust the volume
+
+To adjust the local playback volume, call `AdjustPlayoutVolume`. To adjust the volume of the audio stream sent to the remote end, call `AdjustPublishSignalVolume`.
+
+```csharp
+var ret = MediaPlayer.AdjustPlayoutVolume(30);
+this.Log.UpdateLog($"AdjustPlayoutVolume return: {ret}");
+
+ret = MediaPlayer.AdjustPublishSignalVolume(50);
+this.Log.UpdateLog($"AdjustPublishSignalVolume return: {ret}");
+```
+
+### Preload media resources
+
+To play multiple media resources continuously, preload the media resources to ensure optimal audience experience when switching resources.
+
+1. Call `PreloadSrc` to preload media resources. To load multiple resources, call this method multiple times. Listen to  the `OnPreloadEvent` callbacks to receive preload related events.
+
+    ```csharp
+    public void OnPreloadSrcButtonClick()
+    {
+
+        var nRet = MediaPlayer.PreloadSrc(PRELOAD_URL, 0);
+        this.Log.UpdateLog("PreloadSrc: " + nRet);
+    }
+    ```
+
+1. Call `PlayPreloadedSrc` to play the preloaded media resource. After you call this method successfully, you receive a `OnPlayerStateChanged` callback reporting status `PLAYER_STATE_PLAYING`.
+
+    ```csharp
+    public void OnPlayPreloadButtonClick()
+    {
+        var nRet = MediaPlayer.PlayPreloadedSrc(PRELOAD_URL);
+        this.Log.UpdateLog("PlayPreloadedSrc: " + nRet);
+    }
+    ```
+
+1. When you no longer need the loaded media resources, call `UnloadSrc` to release the preloaded resources.
+
+    ```csharp
+    var nRet =  MediaPlayer.UnloadSrc(PRELOAD_URL);
+    this.Log.UpdateLog("UnloadSrc: " + nRet);
+    ```
+
+### Leave channel
+
+Follow these steps to leave a channel:
+
+1. Call `DestroyMediaPlayer` to destroy the media player object.
+1. Call `InitEventHandler` to unregister the player event observer.
+1. Call `LeaveChannel` to leave the channel.
+1. Call `Dispose` to destroy `IRtcEngine` object and releases resources used by the SDK.
+
+```csharp
+public void OnLeaveChannelButtonPress()
+{
+    if (RtcEngine == null) return;
+    // Destroy the media player object
+    if (MediaPlayer != null) RtcEngine.DestroyMediaPlayer(MediaPlayer);
+    // Unregister the media player event handler
+    RtcEngine.InitEventHandler(null);
+    // Leave the channel
+    RtcEngine.LeaveChannel();
+    // Destroy the engine and release resources
+    RtcEngine.Dispose();
+    RtcEngine = null;
+    MediaPlayer = null;
+}
+```
 </PlatformWrapper>

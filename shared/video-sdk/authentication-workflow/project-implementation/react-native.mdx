@@ -1,60 +1,289 @@
 <PlatformWrapper platform="react-native">
+import CodeBlock from '@theme/CodeBlock';
 
-1.  **Add variables for your connection to the token server**
+### Use a token
 
-    Declare the variables you need to specify the token-server url and the token expire time. In `App.tsx`, add the following to declarations.
-    ```typescript
-    // Set the user role.
-    let role = 1;
-    // Set token expire time.
-    let ExpireTime = 60;
-    // The base URL to your token server. For example, https://agora-token-service-production-92ff.up.railway.app".
-    let serverUrl = 'https://agora-token-service-production-92ff.up.railway.app';
-    ```
-    Make sure you specify the token-server URL in exactly the same format as shown in the example.
+This section shows you how to integrate token authentication in your <Vpl k="CLIENT" />.
 
-1.  **Retrieve a token from the server**
+1. Open the [SDK quickstart](../get-started/get-started-sdk) project you created earlier.
 
-    Use a GET request to retrieve an authentication token for a specific channel from the token server.
+1. In `ProjectName.tsx` replace the contents with the following:
 
-    In `App.tsx`, add the following code after `const leave = () =>`:
+    <details>
+    <summary>Sample code for basic authentication</summary>
+    <CodeBlock language="js" showLineNumbers>
+    {`import React, { useCallback, useEffect, useRef, useState } from 'react';
+    import {
+        PermissionsAndroid,
+        Platform,
+        SafeAreaView,
+        ScrollView,
+        StyleSheet,
+        Switch,
+        Text,
+        View,
+    } from 'react-native';
 
-    ```typescript
-    // Fetches the <Vg k="VSDK" /> token
-    const FetchToken = async (): Promise<string> => {
-        const response = await fetch(
-        serverUrl +
-            channelName +
-            '/' +
-            role +
-            '/uid/' +
-            uid +
-            '/?expiry=' +
-            ExpireTime,
-        );
-        const data = await response.json();
-        token = data.rtcToken;
-        console.log(token);
-        return token;
+    import {
+        ChannelProfileType,
+        ClientRoleType,
+        createAgoraRtcEngine,
+        IRtcEngine,
+        IRtcEngineEventHandler,
+        RtcConnection,
+        RtcSurfaceView,
+    } from 'react-native-agora';
+
+    // Define basic information
+    const appId = '<Your app ID>';
+    const channelName = 'test';
+    const uid = 123; // Local user Uid
+
+    const App = () => {
+    const agoraEngineRef = useRef<IRtcEngine>(); // IRtcEngine instance
+    const eventHandlerRef = useRef<IRtcEngineEventHandler>(); // IRtcEngine event handler
+    const [token, setToken] = useState<string>(''); // RTC Token
+    const [isJoined, setIsJoined] = useState(false); // Whether the local user has joined the channel
+    const [isHost, setIsHost] = useState(true); // User role
+    const [remoteUid, setRemoteUid] = useState(0); // Uid of remote user
+    const [message, setMessage] = useState(''); // Message to the user
+
+    // Send a request to obtain a token to the token server
+    const fetchToken = useCallback(() => {
+        // Token server URL example: http://12.123.1.123:8082/fetch_rtc_token
+        const url = '<Your host URL and port>/fetch_rtc_token';
+        const body = JSON.stringify({
+        uid,
+        ChannelName: channelName,
+        role: isHost
+            ? ClientRoleType.ClientRoleBroadcaster
+            : ClientRoleType.ClientRoleAudience,
+        });
+        console.log('fetchToken', url, body);
+        return fetch(url, {
+            method: 'POST',
+            body,
+        })
+        .then((res) => res.json())
+        .then((res) => {
+            showMessage('token ' + res.token + 'Already refreshed');
+            if (+res.code === 200) {
+            setToken(res.token);
+            }
+            return res;
+        });
+        }, [isHost]);
+
+    // Use the obtained token to join the channel
+    const join = useCallback(async () => {
+        if (!token) {
+            await fetchToken();
+        } else {
+        try {
+            // After joining the channel, set the channel profile to live broadcast
+            agoraEngineRef.current?.setChannelProfile(
+            ChannelProfileType.ChannelProfileLiveBroadcasting
+            );
+            if (isHost) {
+            agoraEngineRef.current?.startPreview();
+            // Join the channel as a host
+            agoraEngineRef.current?.joinChannel(token, channelName, uid, {
+                publishCameraTrack: true,
+                clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+            });
+            } else {
+            // Join the channel as audience
+            agoraEngineRef.current?.joinChannel(token, channelName, uid, {
+                clientRoleType: ClientRoleType.ClientRoleAudience,
+            });
+            }
+        } catch (e) {
+            console.log(e);
+        }
+    }
+    }, [fetchToken, isHost, token]);
+
+    const leave = () => {
+        try {
+            agoraEngineRef.current?.leaveChannel();
+            setRemoteUid(0);
+            setIsJoined(false);
+            showMessage('Left the channel');
+        } catch (e) {
+            console.error(e);
+        }
     };
-    ```
 
-1.  **Fetch a token before you join a channel**
+    useEffect(() => {
+        const setupVideoSDKEngine = async () => {
+        try {
+            if (Platform.OS === 'android') {
+            await getPermission();
+            }
+            agoraEngineRef.current = createAgoraRtcEngine();
+            eventHandlerRef.current = {
+            onJoinChannelSuccess: () => {
+                showMessage('Successfully joined the channel: ' + channelName);
+                setIsJoined(true);
+            },
+            onUserJoined: (_connection, Uid) => {
+                showMessage('Remote user ' + Uid + ' joined');
+                setRemoteUid(Uid);
+            },
+            onUserOffline: (_connection, Uid) => {
+                showMessage('Remote user ' + Uid + ' left the channel');
+                setRemoteUid(0);
+            },
+            onTokenPrivilegeWillExpire(connection: RtcConnection, token: string) {
+                showMessage('token ' + token + 'Expires soon');
+                fetchToken();
+            },
+            onRequestToken(connection: RtcConnection) {
+                showMessage('token expired');
+                setToken('');
+            },
+            };
+            const agoraEngine = agoraEngineRef.current;
+            //Initialize engine
+            agoraEngine.initialize({
+                appId: appId,
+                channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+            });
+            // Register event handler
+            agoraEngine.registerEventHandler(eventHandlerRef.current);
+            // Start local video
+            agoraEngine.enableVideo();
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
-    Before you join a channel, you call `FetchToken` to get a fresh token. To do this, in `App.tsx`, add the following code after `engine.initialize({appId: appId,});`:
-    ```typescript
-    token = await FetchToken();
-    ```
+        setupVideoSDKEngine();
 
-1.  **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
+        return () => {
+            agoraEngineRef.current?.release();
+        };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    A token expires after the `ExpireTime` specified in the call to the token server or after 24 hours, if the time is not specified. The `onRequestToken` event receives a callback when the current token expires so that a fresh token may be retrieved and used. To implement this callback, in `App.tsx`, add the following code after `onUserOffline: (_connection, remoteUid)` callback:
+    useEffect(() => {
+        const checkJoined = () => {
+        if (isJoined) {
+            console.log('renewToken');
+            // agoraEngineRef.current?.renewToken(token);
+        } else {
+            console.log('joinChannel');
+            join();
+        }
+        };
+        checkJoined();
+    }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    ```typescript
-    onRequestToken: async _connection => {
-        console.log('token expired');
-        token = await FetchToken();
-        agoraEngine.renewToken(token);
-    },
-    ```
+    // Render the user interface
+    return (
+        <SafeAreaView style={styles.main}>
+        <Text style={styles.head}>Agora SDK Quickstart</Text>
+        <View style={styles.btnContainer}>
+            <Text onPress={join} style={styles.button}>
+            Join channel
+            </Text>
+            <Text onPress={leave} style={styles.button}>
+            Leave Channel
+            </Text>
+        </View>
+        <View style={styles.btnContainer}>
+            <Text>Audience</Text>
+            <Switch
+            onValueChange={(switchValue) => {
+                setIsHost(switchValue);
+                if (isJoined) {
+                leave();
+                }
+            }}
+            value={isHost}
+            />
+            <Text>Host</Text>
+        </View>
+        <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContainer}
+        >
+            {isJoined ? (
+            <React.Fragment key={0}>
+                <RtcSurfaceView canvas={{ uid: 0 }} style={styles.videoView} />
+                <Text>Local user uid: {uid}</Text>
+            </React.Fragment>
+            ) : (
+            <Text>Join a channel</Text>
+            )}
+            {isJoined && !isHost && remoteUid !== 0 ? (
+            <React.Fragment key={remoteUid}>
+                <RtcSurfaceView
+                canvas={{ uid: remoteUid }}
+                style={styles.videoView}
+                />
+                <Text>Remote user uid: {remoteUid}</Text>
+            </React.Fragment>
+            ) : (
+            <Text>{isJoined && !isHost ? 'Wait for a remote user to join' : ''}</Text>
+            )}
+            <Text style={styles.info}>{message}</Text>
+        </ScrollView>
+        </SafeAreaView>
+    );
+
+    // Show message
+    function showMessage(msg: string) {
+        console.info(msg);
+        setMessage(msg);
+    }
+    };
+
+    // Define user interface style
+    const styles = StyleSheet.create({
+        button: {
+            paddingHorizontal: 25,
+            paddingVertical: 4,
+            fontWeight: 'bold',
+            color: '#ffffff',
+            backgroundColor: '#0055cc',
+            margin: 5,
+        },
+        main: { flex: 1, alignItems: 'center' },
+        scroll: { flex: 1, backgroundColor: '#ddeeff', width: '100%' },
+        scrollContainer: { alignItems: 'center' },
+        videoView: { width: '90%', height: 200 },
+        btnContainer: { flexDirection: 'row', justifyContent: 'center' },
+        head: { fontSize: 20 },
+        info: { backgroundColor: '#ffffe0', paddingHorizontal: 8, color: '#0000ff' },
+    });
+
+    const getPermission = async () => {
+        if (Platform.OS === 'android') {
+            await PermissionsAndroid.requestMultiple([
+            'android.permission.RECORD_AUDIO',
+            'android.permission.CAMERA',
+            ]);
+        }
+    };
+
+    export default App;`}
+    </CodeBlock>
+    </details>
+
+    Replace `<Your app ID>` with your app ID, which must be consistent with the app ID you specified in the server configuration. Update `<Your host URL and port>` with the host URL and port of the local Golang server you have deployed. For example `99.9.9.99:8082`.
+
+The sample code implements the following logic:
+
+* Calls `joinChannel` to join a channel using the user ID, the channel name, and a token you obtain from the server. The user ID and channel name you specify must be consistent with the values you used to generate the token.
+
+* The SDK triggers an `onTokenPrivilegeWillExpire` callback 30 seconds before the token expires. After receiving the callback, you obtain a new token from the server and call `renewToken` to pass the newly generated token to the SDK.
+
+* If the token expires, the SDK triggers an `onRequestToken` callback. After receiving the callback, obtain a new token from the server and call `joinChannel` with the new token to rejoin the channel.
+
+Build and run the project on the local device, the <Vpl k="CLIENT" /> performs the following operations:
+
+* Obtains a token from your token server.
+* Joins the channel.
+* Automatically renews the token when it is about to expire. 
+
 </PlatformWrapper>

@@ -1,84 +1,62 @@
 ---
-title: 'Platform support'
-sidebar_position: 7
-type: docs
-description: >
-  The platforms Flexible Classroom works with.  
+title: Platform support
 ---
 
+This page introduces the platforms supported by Flexible Classroom, as well as the compatibility requirements and recommended devices for each platform.
 
-The platforms supported by Flexible Classroom and their compatibility requirements are:
+## Browser compatibility
 
-<PlatformWrapper platform="web">
+### macOS
 
-| Platform | Compatibility requirements | Recommended hardware settings |
-| :------ |:--------| :--------- |
-| Web | The browsers supported by the web client of Flexible Classroom are as follows:<ul><li>Windows: <ul><li>Chrome 89 or later</li></ul><li>macOS:<ul><li>Safari 13 or later</li><li>Chrome 89 or later</li></ul></li></li></ul> | To ensure the best end-user experience, Agora highly recommends using Flexible Classroom on the latest version of Google Chrome for Desktop. |
+| Browser | Version | Receiving audio and video streams | Publishing audio and video streams | Screen sharing |
+|---|---|---|---|---|
+| Chrome | 89 or above | ✔ | ✔ | ✔ |
 
-</PlatformWrapper>
+### Windows
 
-<PlatformWrapper platform="android">
+| Browser | Version | Receiving audio and video streams | Publishing audio and video streams | Screen sharing |
+|---|---|---|---|---|
+| Chrome | 89 or above | ✔ | ✔ | ✔ |
 
-| Platform | Compatibility requirements | Recommended hardware settings |
-| :------ |:---------------- | :------------------ |
-| Android | <ul><li>Supports Android 6 or later</li><li>Supports HarmonyOS</li></ul> | Agora recommends using mid-to-high-end Android devices with a RAM of 3GB or more. |
+### Android H5
 
-</PlatformWrapper>
+Android supports self-developed and third-party WebView. Since WebView of different devices and apps can be implemented differently, the support depends on the app version and device hardware.
 
-<PlatformWrapper platform="ios">
+| Browser type | Receive (play) | Publish (microphone) |
+|---|---|---|
+| The latest official version of Chrome browser for mobile | ✔ | ✔ |
+| The latest version of WeChat browser for mobile | ✔ | ✔ |
+| Mobile UC  | ✘ | ✘ |
+| Mobile Quark  | ✘ | ✘ |
+| Xiaomi  | ✘ | ✘ |
 
-| Platform | Compatibility requirements | Recommended hardware settings |
-| :------ |:--------| :--------- |
-| iOS | Supports iPhone or iPad with iOS 10.x or later  | <li>iPad mini 4th generation or later</li><li>iPhone 7 or later</li> |
+### H5 for iOS
 
+iOS only supports system WebView, so support depends on the iOS version.
 
-</PlatformWrapper>
+<Admonition type="caution" title="Note">
+H5 on iOS does not support direct use of WeChat for Business.
+</Admonition>
 
-<PlatformWrapper platform="electron">
+<table><thead><tr><th rowspan="2">Browser type</th><th colspan="2">Receive (play)</th><th colspan="2">Publish (microphone)</th></tr><tr><th>VP8</th><th>H.264</th><th>VP8</th><th>H.264</th></tr></thead><tbody><tr><td>WeChat embedded browser</td><td>iOS 12.2 and higher</td><td>iOS 12.1.4 and higher</td><td>iOS 14.3 and higher</td><td>iOS 14.3 and higher</td></tr><tr><td>Chrome for mobile</td><td>iOS 12.2 and higher</td><td>iOS 12.1.4 and higher</td><td>iOS 14.3 and higher</td><td>iOS 14.3 and higher</td></tr><tr><td>Safari</td><td>iOS 12.2 and higher</td><td>iOS 11 and higher</td><td>iOS 12.2 and higher</td><td>iOS 11 and higher</td></tr></tbody></table>
 
-| Platform | Compatibility requirements | Recommended hardware settings |
-| :------ |:--------| :--------- |
-| Android H5 | <ul><li>Supported browsers:<ul><li>Chrome browser latest version</li><li>WeChat browser latest version</li></ul></li><li>Not supported:<ul><li>UC Browser</li><li>Quark Browser</li><li>Xiaomi browser</li></ul></li></ul> | To ensure the best user experience, Agora recommends using the latest version of the mobile Chrome browser. |
-| iOS H5 | Browser requirements:<ul><li>`VP8`:<ul><li>Chrome browser latest version</li><li>WeChat browser latest version</li><li>Safari browser</li></ul></li><li>`H264`:<ul><li>Chrome browser latest version</li><li>WeChat browser latest version</li><li>Safari browser</li></ul></li></ul> | <ul><li>iOS version 12.2 and above is recommended for `VP8`</li><li> iOS version 12.1.4 and above is recommended for `H264`.</li></ul> |
-| Windows | <ul><li>Windows 7 and above</li><li>Chrome 89 or later</li></ul> | <ul><li>Recommended processor i5 8th generation or above</li><li>Recommended memory 8 GB or above</li></ul> |
-| macOS | <ul><li>Safari 13 or later</li><li>Chrome 89 or later</li></ul> | <ul><li>Intel chip: Recommended memory 4GB or above</li><li>M1 chip: Recommended memory 8GB or above.</li></ul> |
+## Minimum hardware requirements
 
-</PlatformWrapper>
+### Computer equipment
 
-<PlatformWrapper platform="macos">
+| Configuration item | Minimum configuration for hosts | Recommended configuration for hosts | Minimum configuration for audience | Recommended configuration for audience |
+|---|---|---|---|---|
+| Processor | <ul><li>Intel i5 8th Gen</li><li> AMD Ryzen 3 2nd Gen </li><li>macOS M1</li></ul> | <ul><li>Intel i7 9th generation or higher </li><li>AMD Ryzen 7 2nd Generation or higher </li><li>macOS M1 Pro or higher</li></ul> | <ul><li>Intel i3 8th Gen </li><li>AMD Ryzen 3 2nd Gen </li><li>macOS M1</li></ul> |<ul><li> Intel i5 8th generation or higher </li><li>AMD Ryzen 7 2nd Generation or higher</li><li> macOS M1 Pro or higher</li></ul> |
+| Memory | 8 GB RAM | 16 GB RAM or higher | 8 GB RAM | 16 GB RAM or higher |
+| System | <ul><li>Windows 7 </li><li>macOS X</li><li> 10.13 </li></ul>| <ul><li>Windows 10 or higher</li><li> macOS 11 or later</li></ul> | <ul><li>Windows 7</li><li> macOS X 10.13 </li></ul>| <ul><li>Windows 10 or higher</li><li> macOS 11 or later </li></ul>|
+| Network | Dedicated bandwidth of at least 10 Mbps | Dedicated bandwidth of at least 50 Mbps | No less than 4 Mbps | No less than 10 Mbps |
 
-| Platform | Compatibility requirements | Recommended hardware settings |
-| :------ |:--------| :--------- |
-| macOS | Supports macOS 10.13 or later | <li>For Intel chips: The RAM should be 4GB or more.</li><li>For M1 chips: The RAM should be 8GB or more.</li> |
+### Mobile device
 
-</PlatformWrapper>
-<PlatformWrapper platform="unity">
-
-
-
-</PlatformWrapper>
-
-
-
-<PlatformWrapper platform="flutter">
-
-
-</PlatformWrapper>
-
-<PlatformWrapper platform="windows">
-
-| Platform | Compatibility requirements | Recommended hardware settings |
-| :------ |:--------| :--------- |
-| Android | <li>Supports Android 6 or later</li><li>Supports HarmonyOS</li>  | Agora recommends using mid-to-high-end Android devices with a RAM of 3GB or more. |
-| iOS | Supports iPhone or iPad with iOS 10.x or later  | <li>iPad mini 4th generation or later</li><li>iPhone 7 or later</li> |
-| Windows | Supports Windows 7 or later | <li>Agora recommends using the i5 processor 8th generation or later.</li><li>The RAM should be 8GB and more.</li> |
-| macOS | Supports macOS 10.13 or later | <li>For Intel chips: The RAM should be 4GB or more.</li><li>For M1 chips: The RAM should be 8GB or more.</li> |
-| Web | The browsers supported by the web client of Flexible Classroom are as follows:<ul><li>Windows: <ul><li>Chrome 89 or later</li><li>The latest version of Firefox</li></ul><li>macOS:<ul><li>Safari 13 or later</li><li>Chrome 89 or later</li><li>The latest version of Firefox</li></ul></li><li>Android:<ul><li>The latest version of Chrome</li><li>The latest version of the WeChat browser</li></ul></li></li><li>iOS:<ul><li>The latest version of Safari, Chrome, and the WeChat browser</li><li>Safari and Chrome on Apple iPad 10.0 or later</li></ul></li></ul> | <li>Using the web client of Flexible Classroom on mobile browsers has several known issues. For details, see the <a href="/en/Video/web_sdk_known_issues#mobile" target="_blank">known issues</a>.</li><li>To ensure a better end-user experience, Agora highly recommends using Flexible Classroom on the latest version of Desktop Chrome.</li> |
-
-<div class="alert info">The Windows and macOS apps of Flexible Classroom are built with Electron.</div>
-
-</PlatformWrapper>
-
-
-
+| Configuration item | Minimum configuration | Recommended configuration |
+|---|---|---|
+| Processor | <ul><li>iPad/iPhone: A11 </li><li>Qualcomm Snapdragon 7 series: 730G </li><li>Qualcomm Snapdragon 8 series: 835 </li><li>Kirin 8 series: 810 </li><li>Kirin 9 series: 970 </li><li>MediaTek Dimensity: 720 </li><li>MediaTek Helio G90T </li></ul>| <ul><li>iPad/iPhone: A12 or higher </li><li>Qualcomm Snapdragon 8 series: 865 or higher </li><li>Kirin 9 series: 9000 or higher </li><li>MediaTek Dimensity: 1100 or higher</li></ul> |
+| Memory | <ul><li>Android: 6 GB </li><li>iPad/iPhone: 4 GB</li></ul> | <ul><li>Android: 12 GB or higher </li><li>iPad/iPhone: 6 GB or higher</li></ul> |
+| System | <ul><li>Android: 10</li><li> iOS: 10</li></ul> | <ul><li>Android: 11 or higher</li><li> iOS: 14 or higher</li></ul> |
+| Network | No less than 2 Mbps | No less than 6 Mbps |
 

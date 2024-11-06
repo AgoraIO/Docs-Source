@@ -82,46 +82,45 @@ Before you launch a file-conversion task, you must upload the source file to a t
 
 Refer to the following steps:
 
-1. Go to the <Link to="{{Global.AGORA_CONSOLE_URL}}/project-management">Project Management</Link> page in Agora Console, find the project that has the whiteboard feature enabled, and click **Configure**.
+1. On the **My Projects** page in Agora Console, find the project that has the whiteboard feature enabled, and click **Edit** ✎.
 
-2. On the **Edit Project** page, find **Whiteboard**, and click **Config**.
+2. Under **ALL FEATURES**, select **Whiteboard > Whiteboard Services**.
 
-3. Under **Services**, select a data center, and click **Config**. The data center must be the same as the one you fill in the `region` field when calling the [Create a room](../reference/whiteboard-api/room-management#create-a-room-post) API, otherwise, the service configurations do not take effect.
-    ![](https://web-cdn.agora.io/docs-files/1658998783322)    
+3. On the **Services Configuration** view, select a data center and click **Configure** ✎. The data center must be the same as the one you fill in the `region` field when calling the [Create a room](../reference/whiteboard-api/room-management#create-a-room-post) API; otherwise, the service configurations does not take effect.
 
-4. On the **Services configuration** page, select **Enabled** for **Docs to Picture** or **Docs to web** to see **Storage** settings.
+    ![](/images/interactive-whiteboard/console-services-configuration.png)
 
-    ![](/images/interactive-whiteboard/select-data-center.png)
+4. On the **Services configuration** page, , select **Enabled** for **Docs to Picture** or **Docs to web** to see **Storage** settings.
+    ![](/images/interactive-whiteboard/console-configure-service.png)
 
 5. Set up the storage space:
-    - To select a previously configured storage space, click the arrowhead to the right of **Storage** and select a configuration from the drop-down list.
-    - To add a new storage space, click **+ Create**:
-            ![](/images/interactive-whiteboard/select-whiteboard-service.png)
-            Fill in the storage information as follows:
-        - **Name**: (Required) The name of your storage space.
-        - **Vendor**: (Required) The third-party cloud storage vendor. Choose from the following options:
-            - `AWS`
-            - `Alibaba Cloud`
-            - `Google Cloud Platform`
+    - Click the **Storage** dropdown and select a previously configured storage space in the drop-down list or click **Create** to add a new storage space. 
+    
+    ![](/images/interactive-whiteboard/console-storage.png)
 
-        ![](/images/interactive-whiteboard/select-storage-service.png)
+    To add a new storage space, fill in the following information:
+    - **Name**: (Required) The name of your storage space.
+    - **Vendor**: (Required) The third-party cloud storage vendor. Choose from the following options:
+        - `AWS`
+        - `Alibaba Cloud`
+        - `Google Cloud Platform`
 
-        If you choose AWS, or Alibaba, fill in the following information:
+        If your vendor is `Google Cloud Platform`, refer to [Google Cloud Storage configuration](#google-cloud-storage-configuration). If you chose `AWS`, or `Alibaba Cloud`, fill in the following information:
 
-        - **Region**: (Required) The location of the data center you specified when creating a bucket.
-        - **accessKey**: (Required) The Access Key provided by the third-party cloud storage vendor, which is used by the vendor to identify visitors.
-        - **secretKey**: (Required) The Secret Key provided by the third-party cloud storage vendor, which is used to authenticate signatures.
-        - **bucket**: (Required) The name of the bucket.
-        - **Storage path**: The path used to save the resources in the storage space. The default is the root directory.
-        - **Domain**: The domain name used to access the third-party cloud storage service. 
+    - **Region**: (Required) The location of the data center you specified when creating a bucket.
+    - **Secret Key**: (Required) The secret key provided by the third-party cloud storage vendor, which is used to authenticate signatures.
+    - **Access Key**: (Required) The access key provided by the third-party cloud storage vendor, which is used by the vendor to identify visitors.
+    - **Bucket**: (Required) The name of the bucket.
+    - **Storage Path**: The path used to save the resources in the storage space. The default is the root directory.
+    - **Domain**: The domain name used to access the third-party cloud storage service.  
 
-        To configure storage parameters for GCP, see [Google Cloud Storage configuration](#google-cloud-storage-configuration). To get configuration information for other third-party storage services, see the documentation provided by the vendor. 
+    To configure storage parameters for GCP, see [Google Cloud Storage configuration](#google-cloud-storage-configuration). To get configuration information for other third-party storage services, see the documentation provided by the vendor. 
         
-      <div class="alert note">
-        You should enable <b>public access</b> or higher permission for third-party storage spaces so that your app clients can access files saved in the space.
-      </div>
+    You should enable <b>public access</b> or higher permission for third-party storage spaces so that your app clients can access files saved in the space.
 
-6. Click **Create**, read the pop-up prompt carefully, and click **Confirm**.
+    Click **Create** to save the storage space parameters.
+
+6. Click **Save** to save the service configuration. Read the prompt carefully, and click **Confirm**.
 
 
 ## Start file conversion
@@ -172,6 +171,5 @@ To set up cloud storage and obtain configuration information for Google Cloud Pl
 
     The `project_id` in the json file corresponds to the `projectId` on <Vg k="CONSOLE" />, `client_email` corresponds to `clientEmail`, `private_key` corresponds to `privateKey`, and `bucket` is filled with the name of the `bucket` to be used. The remaining parameters have the same meaning as for the AWS configuration.
     When copying the `private_key`, make sure that your text editor has not added any extra line breaks or `\n` after each `\n`.
-    ![](/images/interactive-whiteboard/gcp-configuration.png)
 
 1. Ensure that the newly created service account has writable permission for the Google storage bucket.

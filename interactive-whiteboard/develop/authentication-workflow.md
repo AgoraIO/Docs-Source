@@ -14,53 +14,51 @@ The <Vg k="WHITE" /> has three types of tokens: SDK Token, Room Token, and Task 
 
 An SDK Token is linked with a whiteboard project in <Vg k="CONSOLE" /> and grants the most permissions. With an SDK Token, a user can get access to every room and file-conversion task under the linked project. The permissions granted by an SDK Token in a specific role are as follows:
 
-| Permissions                                                  | admin SDK Token              | writer SDK Token             | reader SDK Token             |
-| :----------------------------------------------------------- | :--------------------------- | :--------------------------- | :--------------------------- |
-| Create a room                                                | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Join a room in interactive mode                              | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Join a room in read-only mode                                | <font color="red">✘</font>   | <font color="red">✘</font>   | <font color="green">✔</font> |
-| Get a list of rooms                                          | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Get room information                                         | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Disable a room                                               | <font color="green">✔</font> | <font color="red">✘</font>   | <font color="red">✘</font>   |
-| Take a screenshot for a specific scene                        | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Take screenshots for a scene directory                       | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Get a list of scene paths in a room                      | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Add a scene                                                  | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Switch to a scene                                            | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Start a file-conversion task                                 | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Generate a Room Token for an equal or inferior role (for example, an admin SDK Token can generate an  `admin`, `writer`, or `reader` Room Token) | <font color="green">✔</font> | <font color="green">✔</font> | <font color="green">✔</font> |
-| Generate a Task Token for an equal or inferior role (for example, an admin SDK Token can generate an  `admin`, `writer`, or `reader` Task Token) | <font color="green">✔</font> | <font color="green">✔</font> | <font color="green">✔</font> |
-
+| Permissions | admin SDK Token  | writer SDK Token   | reader SDK Token   |
+| :------------------- | :-------: | :-------: | :-------: |
+| Create a room        | ✔ | ✔ | ✘   |
+| Join a room in interactive mode| ✔ | ✔ | ✘   |
+| Join a room in read-only mode  | ✘   | ✘   | ✔ |
+| Get a list of rooms  | ✔ | ✔ | ✘   |
+| Get room information | ✔ | ✔ | ✘   |
+| Disable a room       | ✔ | ✘   | ✘   |
+| Take a screenshot for a specific scene    | ✔ | ✔ | ✘   |
+| Take screenshots for a scene directory   | ✔ | ✔ | ✘   |
+| Get a list of scene paths in a room  | ✔ | ✔ | ✘   |
+| Add a scene| ✔ | ✔ | ✘   |
+| Switch to a scene    | ✔ | ✔ | ✘   |
+| Start a file-conversion task   | ✔ | ✔ | ✘   |
+| Generate a Room Token for an equal or inferior role (for example, an admin SDK Token can generate an  `admin`, `writer`, or `reader` Room Token) | ✔ | ✔ | ✔ |
+| Generate a Task Token for an equal or inferior role (for example, an admin SDK Token can generate an  `admin`, `writer`, or `reader` Task Token) | ✔ | ✔ | ✔ |
 
 Exposure of SDK Tokens may cause security risks because they grant a large number of permissions. Agora recommends the following precautions:
 
 - Do not send SDK Tokens to your app clients, save them in a database or write them in a configuration file. You should issue them from your app server only when necessary.
 - Do not issue a permanent SDK Token. You should set a validity period according to your app scenario.
 
-
 ### Room Token
 
 A Room Token is linked with a room under a whiteboard project in <Vg k="CONSOLE" />. With a Room Token, a user can get access to the linked room. The permissions granted by a Room Token in a specific role are as follows:
 
-| Permissions                               | admin Room Token             | writer Room Token            | reader Room Token            |
-| :---------------------------------------- | :--------------------------- | :--------------------------- | :--------------------------- |
-| Join the room in interactive mode         | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Join the room in read-only mode           | <font color="red">✘</font>   | <font color="red">✘</font>   | <font color="green">✔</font> |
-| Get information about the room            | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Disable the room                          | <font color="green">✔</font> | <font color="red">✘</font>   | <font color="red">✘</font>   |
-| Take a screenshot for a specific scene     | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Take screenshots for a scene directory    | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Get a list of scene paths in the room | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Add a scene in the room                   | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
-| Switch to a scene in the room             | <font color="green">✔</font> | <font color="green">✔</font> | <font color="red">✘</font>   |
+| Permissions | admin Room Token   | writer Room Token  | reader Room Token  |
+| :--- | :-------: | :-------: | :-------: |
+| Join the room in interactive mode | ✔ | ✔ | ✘   |
+| Join the room in read-only mode | ✘   | ✘   | ✔ |
+| Get information about the room  | ✔ | ✔ | ✘   |
+| Disable the room      | ✔ | ✘   | ✘   |
+| Take a screenshot for a specific scene     | ✔ | ✔ | ✘   |
+| Take screenshots for a scene directory    | ✔ | ✔ | ✘   |
+| Get a list of scene paths in the room | ✔ | ✔ | ✘   |
+| Add a scene in the room         | ✔ | ✔ | ✘   |
+| Switch to a scene in the room   | ✔ | ✔ | ✘   |
 
 ### Task Token
 
 A Task Token is linked with a file-conversion task under a whiteboard project in <Vg k="CONSOLE" />. With a Task Token, a user can get access to the linked task. The permissions granted by a Task Token in a specific role are as follows:
 
-| Permissions                                    | admin Task Token             | writer Task Token            | reader Task Token            |
-| :--------------------------------------------- | :--------------------------- | :--------------------------- | :--------------------------- |
-| Query the progress of the file-conversion task | <font color="green">✔</font> | <font color="green">✔</font> | <font color="green">✔</font> |
+| Permissions      | admin Task Token   | writer Task Token  | reader Task Token  |
+| :----- | :-------: | :-------: | :-------: |
+| Query the progress of the file-conversion task | ✔ | ✔ | ✔ |
 
 ## Generate a token
 
@@ -84,17 +82,15 @@ When generating a token, pass in the following parameters:
 
 ### Get access keys
 
-The access keys consist of an AK (Access Key) and an SK (Secret Key). Follow these steps to get the access keys:
+Access keys consist of an Access Key (AK) and a Secret Key (SK). Refer to [Get security credentials for your whiteboard project](../get-started/enable-whiteboard#get-security-credentials-for-your-whiteboard-project) to obtain your access keys.
 
-1. On the <Link to="{{Global.AGORA_CONSOLE_URL}}/project-management">Project Management</Link> page in <Vg k="CONSOLE" />, find the whiteboard project and click **Edit**.
-2. On the **Edit Project** page, find **Whiteboard** and click **Config**.
-3. On the **Whiteboard Configuration** page, find **AK** and **SK**. Click the eye icons on the right to copy the **AK** and **SK**, respectively, to a secure location.![](https://web-cdn.agora.io/docs-files/1619577586541)
+<Admonition type="caution">
+Exposing security credentials can lead to serious risks. To improve security, Agora recommends the following best practices:
 
+- Avoid sending the Access Key (AK) and Secret Key (SK) to app clients or hard-coding them in the application. Ensure only the app server can read the keys from a secure configuration file.
 
-Unexpected exposure of these access keys can cause severe security problems. To enhance security, Agora recommends the following precautions:
-- Do not send the access keys to your app clients or hard-code the access keys in your app. Ensure that only your app server is allowed to read the access keys from the configuration file.
-- If you believe there may be a risk that your access keys have been exposed, contact support@agora.io to get new access keys.
-
+- Since SDK tokens generated through the Agora Console have high level permissions, do not send these tokens to app clients to prevent potential security risks.
+</Admonition>
 
 ### Set token role
 
@@ -178,13 +174,13 @@ A token becomes invalid if one of the following happens:
 
 You might encounter the following token errors when using <Vg k="WHITE" />:
 
-| Error                                         | Instruction                                                                                                                                                                                                                                                                                                                                                                                          |
-|:----------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `invalid format of token`                     | The data format of the token is wrong. Please check:<li>Whether the data type is string.</li><li>Whether there are extra spaces or characters before and after the token string.</li><li>Whether the prefix is correct:<ul><li>An SDK Token is prefixed with `NETLESSSDK_`</li><li>A Room Token is prefixed with `NETLESSROOM_`</li><li>A Task Token is prefixed with `NETLESSTASK_`</li></ul> </li> |
-| `expired token`                               | The token expires. Please call the <Vg k="WHITE" /> RESTful API or use code to generate a new token from the app server.                                                                                                                                                                                                                                                                       |
-| `invalid signature of token`                  | The token signature is invalid. This error might occur if you use code to generate a token from the app server. Ensure that your algorithm and code are correct.                                                                                                                                                                                                                                     |
-| `unknown error`                               | An unknown error occurs.                                                                                                                                                                                                                                                                                                                                                                             |
-| `token access role$` `{permission} forbidden` | The token cannot grant the permission because it is assigned to an inferior role. For instance, you use a `reader` token to access services that must be granted by a `writer `token. Ensure that the token you use can grant the permissions you need.                                                                                                                                              |
-| `token access task forbidden`                 | The Task Token is banned from accessing the file-conversion task. Ensure that the Task Token is generated using the Task UUID of the corresponding file-conversion task.                                                                                                                                                                                                                             |
-| `token access room forbidden`                 | The Room Token is banned from accessing the room. Ensure that the Room Token is generated using the Room UUID of the corresponding room.                                                                                                                                                                                                                                                             |
-| `token access team forbidden`                 | The token is invalid because the linked project is deleted or disabled.                                                                                                                                                                                                                                                                                                                              |
+| Error | Instruction        |
+|:------|:---------|
+| `invalid format of token` | The data format of the token is wrong. Please check:<li>Whether the data type is string.</li><li>Whether there are extra spaces or characters before and after the token string.</li><li>Whether the prefix is correct:<ul><li>An SDK Token is prefixed with `NETLESSSDK_`</li><li>A Room Token is prefixed with `NETLESSROOM_`</li><li>A Task Token is prefixed with `NETLESSTASK_`</li></ul> </li> |
+| `expired token` | The token expires. Please call the <Vg k="WHITE" /> RESTful API or use code to generate a new token from the app server.   |
+| `invalid signature of token`        | The token signature is invalid. This error might occur if you use code to generate a token from the app server. Ensure that your algorithm and code are correct.         |
+| `unknown error` | An unknown error occurs.     |
+| `token access role$` `{permission} forbidden` | The token cannot grant the permission because it is assigned to an inferior role. For instance, you use a `reader` token to access services that must be granted by a `writer `token. Ensure that the token you use can grant the permissions you need.  |
+| `token access task forbidden`       | The Task Token is banned from accessing the file-conversion task. Ensure that the Task Token is generated using the Task UUID of the corresponding file-conversion task. |
+| `token access room forbidden`       | The Room Token is banned from accessing the room. Ensure that the Room Token is generated using the Room UUID of the corresponding room.   |
+| `token access team forbidden`       | The token is invalid because the linked project is deleted or disabled.        |

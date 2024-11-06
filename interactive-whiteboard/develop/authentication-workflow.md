@@ -66,7 +66,7 @@ A Task Token is linked with a file-conversion task under a whiteboard project in
 
 You can generate a token for the <Vg k="WHITE" /> through one of the following methods:
 
-- Use <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>. See [Get security credentials for your whiteboard project](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).
+- Use <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>. See [Get security credentials for your whiteboard project](../get-started/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).
 
 This method can only generate a permanent <code>admin</code> SDK Token. Do not send this token to your app clients; otherwise, there may be a risk of exposure.
 

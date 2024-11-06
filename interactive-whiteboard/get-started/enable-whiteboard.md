@@ -84,17 +84,26 @@ Follow these steps to enable one or more features and configure the storage sett
 5. Set up the storage space:
     - Click the **Storage** dropdown and select a previously configured storage space in the drop-down list or click **Create** to add a new storage space. 
     
+    ![](/images/interactive-whiteboard/console-storage.png)
+
     To add a new storage space, fill in the following information:
     - **Name**: (Required) The name of your storage space.
-    - **Vendor**: (Required) The third-party cloud storage vendor. 
+    - **Vendor**: (Required) The third-party cloud storage vendor. Choose from the following options:
+        - `AWS`
+        - `Alibaba Cloud`
+        - `Google Cloud Platform`
+        - `Huawei Cloud`
+        
     - **Region**: (Required) The location of the data center you specified when creating a bucket.
     - **Secret Key**: (Required) The secret key provided by the third-party cloud storage vendor, which is used to authenticate signatures.
     - **Access Key**: (Required) The access key provided by the third-party cloud storage vendor, which is used by the vendor to identify visitors.
     - **Bucket**: (Required) The name of the bucket.
     - **Storage Path**: The path used to save the resources in the storage space. The default is the root directory.
     - **Domain**: The domain name used to access the third-party cloud storage service.    
-        - To get the above information for a third-party storage service, see the documentation provided by the vendor.
-        - You should enable public access or higher permission for third-party storage spaces so that your app clients can access files saved in the space.
+        
+    To get the above information for a third-party storage service, see the documentation provided by the vendor.
+        
+    You should enable public access or higher permission for third-party storage spaces so that your app clients can access files saved in the space.
 
     Click **Create** to save the storage space parameters.
 

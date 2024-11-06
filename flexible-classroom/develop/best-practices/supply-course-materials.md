@@ -20,7 +20,7 @@ To display courseware on the whiteboard in flexible classrooms, you must convert
 
 If you want to upload the courseware to third-party cloud storage or to your own server before a class and then display the courseware in Flexible Classroom, perform the following steps:
 
-1. In Agora Console, [enable and configure the Whiteboard](../../interactive-whiteboard/develop/enable-whiteboard) feature to store the courseware used in Flexible Classroom.
+1. In Agora Console, [enable and configure the Whiteboard](../../interactive-whiteboard/get-started/enable-whiteboard) feature to store the courseware used in Flexible Classroom.
 
 1. In Agora Console, enable the file-conversion feature of the Whiteboard service, and add a storage configuration for storing the converted courseware. For details, see [How to enable the file-conversion feature](../../interactive-whiteboard/develop/file-conversion-overview).
 

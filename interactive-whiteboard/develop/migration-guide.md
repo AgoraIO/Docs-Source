@@ -14,7 +14,7 @@ To follow the procedure in this document, you must have an existing Netless acco
 
 
 - Before the migration completes, do not enable the whiteboard feature in <Vg k="CONSOLE" />; otherwise, the migration may fail.
-- If you do not have a Netless account, you can skip the migration procedure and directly enable the whiteboard feature. See [Enable and Configure <Vg k="WHITE" />](../develop/enable-whiteboard).
+- If you do not have a Netless account, you can skip the migration procedure and directly enable the whiteboard feature. See [Enable and Configure <Vg k="WHITE" />](../get-started/enable-whiteboard).
 
 ## Migration procedure
 
@@ -56,5 +56,5 @@ To create a new Agora account and migrate Netless projects to that account, foll
 
 After a successful migration, you can refer to the following guides to enable and integrate the <Vg k="WHITE" /> into your app:
 
-- [Enable and Configure <Vg k="WHITE" />](../develop/enable-whiteboard) 
+- [Enable and Configure <Vg k="WHITE" />](../get-started/enable-whiteboard) 
 - [Join an <Vg k="WHITE" /> Room](../get-started/get-started-sdk)

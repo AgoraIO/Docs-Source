@@ -72,9 +72,9 @@ Follow these steps to enable one or more features and configure the storage sett
 
 1. On the **My Projects** page in Agora Console, find the project that has the whiteboard feature enabled, and click **Edit** ✎.
 
-2. Under **ALL FEATURES**, select **Whiteboard > Basic information** and then press the **Configure** button.
+2. Under **ALL FEATURES**, select **Whiteboard > Whiteboard Services**.
 
-3. Under **Services Configuration**, select a data center and click **Configure** ✎. The data center must be the same as the one you fill in the `region` field when calling the [Create a room](../reference/whiteboard-api/room-management#create-a-room-post) API; otherwise, the service configurations does not take effect.
+3. On the **Services Configuration** view, select a data center and click **Configure** ✎. The data center must be the same as the one you fill in the `region` field when calling the [Create a room](../reference/whiteboard-api/room-management#create-a-room-post) API; otherwise, the service configurations does not take effect.
 
     ![](/images/interactive-whiteboard/console-services-configuration.png)
 

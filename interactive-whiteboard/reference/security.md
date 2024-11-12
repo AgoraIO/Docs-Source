@@ -31,7 +31,7 @@ Data centers hosting <Vg k="WHITE" /> are maintained by certified and industry-l
 
 Refer to the following articles for more information on file conversion and taking screenshots:
 
-- [Enable <Vg k="WHITE" />](../develop/enable-whiteboard): The **Enable whiteboard server-side features** section describes how to configure the third-party storage space.
+- [Enable <Vg k="WHITE" />](../get-started/enable-whiteboard): The **Enable whiteboard server-side features** section describes how to configure the third-party storage space.
 - [File Conversion Overview](../reference/whiteboard-api/file-conversion): The **Start file conversion** section describes the basic workflow for converting a file.
 
 ## Network geofencing

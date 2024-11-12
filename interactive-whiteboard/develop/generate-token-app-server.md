@@ -10,7 +10,7 @@ description: >
 
 Agora provides an open source [netless-token](https://github.com/netless-io/netless-token/blob/master/README-en.md) repository on GitHub that includes code samples for generating tokens using <a href="#javascript">JavaScript</a>, <a href="#typescript">TypeScript</a>, <a href="#java">Java</a>, <a href="#golang">Golang</a>,  <a href="#php">PHP</a>,  <a href="#ruby">Ruby</a>, and  <a href="#csharp">C#</a>.
 
-This article introduces how to generate tokens from your app server using these code samples and [your access keys (the AK and SK)](../develop/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).
+This article introduces how to generate tokens from your app server using these code samples and [your access keys (the AK and SK)](../get-started/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).
 
 <div class="alert note">To enhance security, do not save or send the AK and SK to your app clients. You should save the AK and SK on the app server, and issue tokens from the app server according to the actual needs of your app scenarios.</div>
 

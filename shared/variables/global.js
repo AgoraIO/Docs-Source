@@ -143,6 +143,12 @@ export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/referenc
 export const SPATIAL = '3D Spatial Audio';
 
 export const CHAT = `Chat`;
+export const CHAT_ONE = `One-to-one chat`;
+export const CHAT_ONE_LOWER = CHAT_ONE.toLowerCase();
+export const CHAT_GROUP = `Group chat`;
+export const CHAT_GROUP_LOWER = CHAT_GROUP.toLowerCase();
+export const CHAT_ROOM = `Chat room`;
+export const CHAT_ROOM_LOWER = CHAT_ROOM.toLowerCase();
 export const CHAT_SDK = `${CHAT} SDK`;
 export const CHAT_RELEASE_API = `1.x`;
 export const API_REF_ROOT_CHAT_SDK = `${API_ROOT}/chat-sdk`;

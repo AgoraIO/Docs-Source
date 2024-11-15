@@ -30,6 +30,7 @@ When using static-file conversion, pay attention to the following issues:
 -  The conversion process works best when the source file is less than 50 pages long. If the source file has more than 100 pages, you may experience a conversion timeout.  
 - The higher the image resolution in the source file, the slower the conversion.
 - PDF files generate the most accurate images when converted. If the generated image differs greatly from the source file in content or formatting, convert the source file to PDF and try again.
+- Only valid PDF files are supported, that is, files that conform to PDF standards and have a valid header starting with `%PDF`.
 - Note that because this feature is implemented with support from [Aspose](https://www.aspose.app/), Agora might not be able to respond to requests for customization as quickly as usual.  Agora recommends that you run sufficient tests of the file-conversion feature. If the test result do not meet your expectations, consider using a third-party service.
 - The new file conversion currently does not support generating resource packages. However, because the resources path is fixed, users can download resources by themselves. 
 

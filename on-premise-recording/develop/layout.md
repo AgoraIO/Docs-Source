@@ -13,7 +13,9 @@ As shown in the following image, the background of the video is **canvas**, and 
 
 ![](https://web-cdn.agora.io/docs-files/1577697787996)
 
-> If the aspect ratio of a user's video does not match that of the user's region, the video may be cropped or letterboxed to fit the region. The aspect ratio of the user's region depends on the aspect ratio of the canvas and the layout type.
+<Admonition type="info">
+If the aspect ratio of a user's video does not match that of the user's region, the video may be cropped or letterboxed to fit the region. The aspect ratio of the user's region depends on the aspect ratio of the canvas and the layout type.
+</Admonition>
 
 You can set the video layout in two ways:
 - **Select from the predefined layout types**: If you start recording in the command line, you can selelct one of the three predefined video layouts provided by the demo of Agora On-Premise Recording:

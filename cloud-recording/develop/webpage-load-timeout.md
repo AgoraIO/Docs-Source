@@ -19,7 +19,7 @@ In order to solve these issues, the web page recording service supports **web pa
 - If the browser receives a notification that the web page is loaded before the timeout limit, the browser starts recording the web page.
 - If the browser does not receive a notification that the web page is loaded before the timeout limit, the browser automatically reloads the web page and notify the developer in time as an event message. If the web page fails to load before the timeout limit for a second time, the recording service stops to avoid recording wrong content.
 
-The Agora web page load timeout detection function can only ensure that page elements are loaded correctly. If you need more comprehensive protection for web page recording, please refer to [Best Practices in Integrating Web Page Recording](../develop/webpage-best-practices).
+The Agora web page load timeout detection function can only ensure that page elements are loaded correctly. If you need more comprehensive protection for web page recording, please refer to [Best Practices in Integrating Web Page Recording](../best-practices/webpage-best-practices).
 
 ## Implementation
 

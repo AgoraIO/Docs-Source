@@ -1,6 +1,6 @@
 ---
-title: "Best Practices in integrating web page recording"
-sidebar_position: 19
+title: "Best practices in integrating web page recording"
+sidebar_position: 2
 type: docs
 platform_selector: false
 description: >

@@ -321,7 +321,7 @@ Web page recording mode is free to use by November 1, 2021. See [Pricing for Web
 
 - Recording starts approximately five seconds after you send a request. We recommend you send the request in advance to ensure that everything you want to record is captured.
 - Web page recording does not support the `update` and `updateLayout` methods.
-- If the URL you specify in the `start` method cannot be accessed, the recording service exits automatically after the `start` call. To ensure that the recording service starts successfully, see [Best Practices in Integrating Cloud Recording](/cloud-recording/develop/integration-best-practices#ensure-the-recording-service-starts-successfully).
+- If the URL you specify in the `start` method cannot be accessed, the recording service exits automatically after the `start` call. To ensure that the recording service starts successfully, see [Best Practices in Integrating Cloud Recording](/cloud-recording/best-practices/integration-best-practices#ensure-the-recording-service-starts-successfully).
 
 ### Other considerations
 

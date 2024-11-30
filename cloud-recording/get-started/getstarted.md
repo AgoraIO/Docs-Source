@@ -150,7 +150,7 @@ curl --location --request POST  'https://api.agora.io/v1/apps/<appid>/cloud_reco
 
 During the recording, you can call the [`query`](../reference/restful-api#query) method to query the recording status multiple times.
 
-After calling this method successfully, you can get the current recording status and related information about the recording file from the response body. See *Best Practices in Integrating Cloud Recording* for details about how to [Monitor service status during a recording](../develop/integration-best-practices#monitor-service-status-during-a-recording) and[ Obtain the M3U8 file name](../develop/integration-best-practices#obtain-the-m3u8-file-name).
+After calling this method successfully, you can get the current recording status and related information about the recording file from the response body. See *Best Practices in Integrating Cloud Recording* for details about how to [Monitor service status during a recording](../best-practices/integration-best-practices#monitor-service-status-during-a-recording) and[ Obtain the M3U8 file name](../best-practices/integration-best-practices#obtain-the-m3u8-file-name).
 
 #### Sample code
 

@@ -31,7 +31,7 @@ After the recording is over, the cloud recording service uploads the recording f
 ## Prerequisites
 
 - A valid <Link to="{{Global.AGORA_CONSOLE_URL}}">Agora Account</Link>.
-- A valid Agora project with an App ID and a temporary token. For details, see [Get Started with Agora](../reference/manage-agora-account#get-the-app-id).
+- A valid Agora project with an App ID and a temporary token. For details, see [Get Started with Agora](../get-started/manage-agora-account#get-the-app-id).
 - A computer with access to the internet. If your network has a firewall, follow the instructions in [Firewall Requirements](../reference/firewall).
 - Ensure that a third-party cloud storage service has been enabled. The currently supported third-party cloud storage service providers are as follows:
   - [Qiniu Cloud](https://www.qiniu.com/en/products/kodo)

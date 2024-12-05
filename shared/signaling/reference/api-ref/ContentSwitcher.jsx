@@ -1,27 +1,36 @@
-import React, { useState } from 'react';
-import Swift from './swift.mdx';
-import ObjC from './obj-c.mdx';
+import React from "react";
+import { useLocation, useHistory } from "@docusaurus/router";
+import Swift from "./swift.mdx";
+import ObjC from "./obj-c.mdx";
 
 const ContentSwitcher = () => {
-  const [selected, setSelected] = useState('swift');
+  const location = useLocation();
+  const history = useHistory();
+  const searchParams = new URLSearchParams(location.search);
+  const currentTab = searchParams.get("tab") || "swift";
+
+  const setTab = (tab) => {
+    searchParams.set("tab", tab);
+    history.replace({ search: searchParams.toString() });
+  };
 
   return (
     <div>
       <button
-        className={`switcher-button ${selected === "swift" ? "active" : ""}`}
-        onClick={() => setSelected("swift")}
+        className={`switcher-button ${currentTab === "swift" ? "active" : ""}`}
+        onClick={() => setTab("swift")}
       >
         Swift
       </button>
       <button
-        className={`switcher-button ${selected === "objc" ? "active" : ""}`}
-        onClick={() => setSelected("objc")}
+        className={`switcher-button ${currentTab === "objc" ? "active" : ""}`}
+        onClick={() => setTab("objc")}
       >
         Objective-C
       </button>
-      <div>
-        {selected === 'swift' && <Swift />}
-        {selected === 'objc' && <ObjC />}
+      <div key={currentTab}>
+        {currentTab === "swift" && <Swift />}
+        {currentTab === "objc" && <ObjC />}
       </div>
     </div>
   );

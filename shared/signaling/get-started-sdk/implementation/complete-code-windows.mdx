@@ -1,0 +1,213 @@
+```cpp
+#include <iostream>
+#include <memory>
+#include <string>
+#include <exception>
+#include <windows.h>
+#include "IAgoraRtmClient.h"
+
+// Pass in your App ID and token
+const std::string APP_ID = "<Your App ID>";
+const std::string TOKEN = "<Your token>";
+
+using namespace agora::rtm;
+
+// Utility to set console text color
+void setConsoleColor(WORD color) {
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(hConsole, color);
+}
+
+class RtmEventHandler : public IRtmEventHandler {
+public:
+    void onLoginResult(const uint64_t requestId, RTM_ERROR_CODE errorCode) override {
+        setConsoleColor(FOREGROUND_GREEN);
+        std::cout << "onLoginResult, request id: " << requestId << ", errorCode: " << errorCode << std::endl;
+        setConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE); // Reset color
+    }
+
+    void onLogoutResult(const uint64_t requestId, RTM_ERROR_CODE errorCode) override {
+        setConsoleColor(FOREGROUND_GREEN);
+        std::cout << "onLogoutResult, request id: " << requestId << ", errorCode: " << errorCode << std::endl;
+        setConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+    }
+
+    void onConnectionStateChanged(const char *channelName, RTM_CONNECTION_STATE state, RTM_CONNECTION_CHANGE_REASON reason) override {
+        setConsoleColor(FOREGROUND_GREEN);
+        std::cout << "onConnectionStateChanged, channelName: " << channelName
+                  << ", state: " << state << ", reason: " << reason << std::endl;
+        setConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+    }
+
+    void onLinkStateEvent(const LinkStateEvent& event) override {
+        setConsoleColor(FOREGROUND_GREEN);
+        std::cout << "onLinkStateEvent, state: " << event.previousState
+                  << " -> " << event.currentState << ", operation: " << event.operation
+                  << ", reason: " << event.reason << std::endl;
+        setConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+    }
+
+    void onPublishResult(const uint64_t requestId, RTM_ERROR_CODE errorCode) override {
+        setConsoleColor(FOREGROUND_GREEN);
+        std::cout << "onPublishResult request id: " << requestId << ", result: " << errorCode << std::endl;
+        setConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+    }
+
+    void onMessageEvent(const MessageEvent &event) override {
+        setConsoleColor(FOREGROUND_GREEN);
+        std::cout << "receive message from: " << event.publisher << ", message: " << event.message << std::endl;
+        setConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+    }
+
+    void onSubscribeResult(const uint64_t requestId, const char *channelName, RTM_ERROR_CODE errorCode) override {
+        setConsoleColor(FOREGROUND_GREEN);
+        std::cout << "onSubscribeResult: channel:" << channelName
+                  << ", request id: " << requestId << ", result: " << errorCode << std::endl;
+        setConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+    }
+
+    void onUnsubscribeResult(const uint64_t requestId, const char *channelName, RTM_ERROR_CODE errorCode) override {
+        setConsoleColor(FOREGROUND_GREEN);
+        std::cout << "onUnsubscribeResult: channel:" << channelName
+                  << ", request id: " << requestId << ", result: " << errorCode << std::endl;
+        setConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+    }
+};
+
+class RtmDemo {
+public:
+    RtmDemo()
+        : eventHandler_(new RtmEventHandler()),
+          rtmClient_(nullptr) { Init(); }
+
+    void Init() {
+        setConsoleColor(FOREGROUND_YELLOW);
+        std::cout << "Please enter userID (no more than 64 characters):" << std::endl;
+
+        std::string userID;
+        std::getline(std::cin, userID);
+
+        RtmConfig config;
+        config.appId = APP_ID.c_str();
+        config.userId = userID.c_str();
+        config.eventHandler = eventHandler_.get();
+
+        int errorCode = 0;
+        rtmClient_ = createAgoraRtmClient(config, errorCode);
+        if (!rtmClient_ || errorCode != 0) {
+            setConsoleColor(FOREGROUND_RED);
+            std::cout << "Error creating RTM client!" << std::endl;
+            exit(0);
+        }
+    }
+
+    void start() {
+        uint64_t requestId = 0;
+        rtmClient_->login(TOKEN.c_str(), requestId);
+
+        mainMenu();
+
+        setConsoleColor(FOREGROUND_YELLOW);
+        std::cout << "Quit? yes/no" << std::endl;
+        std::string input;
+        std::getline(std::cin, input);
+        if (input == "yes") {
+            exit(0);
+        }
+    }
+
+    void logout() {
+        uint64_t requestId = 0;
+        rtmClient_->logout(requestId);
+    }
+
+    void subscribeChannel(const std::string& channelName) {
+        uint64_t requestId = 0;
+        rtmClient_->subscribe(channelName.c_str(), SubscribeOptions(), requestId);
+    }
+
+    void unsubscribeChannel(const std::string& channelName) {
+        uint64_t requestId = 0;
+        rtmClient_->unsubscribe(channelName.c_str(), requestId);
+    }
+
+    void publishMessage(const std::string& channelName, const std::string& message) {
+        PublishOptions options;
+        options.messageType = RTM_MESSAGE_TYPE_STRING;
+        uint64_t requestId;
+        rtmClient_->publish(channelName.c_str(), message.c_str(), message.size(), options, requestId);
+    }
+
+    void mainMenu() {
+        bool quit = false;
+        while (!quit) {
+            setConsoleColor(FOREGROUND_WHITE);
+            std::cout << "1: Subscribe channel\n"
+                      << "2: Unsubscribe channel\n"
+                      << "3: Publish message\n"
+                      << "4: Logout" << std::endl;
+            setConsoleColor(FOREGROUND_YELLOW);
+            std::cout << "Please input your choice: " << std::endl;
+
+            std::string input;
+            std::getline(std::cin, input);
+            int choice = 0;
+            try {
+                choice = std::stoi(input);
+            } catch (...) {
+                setConsoleColor(FOREGROUND_RED);
+                std::cout << "Invalid input" << std::endl;
+                continue;
+            }
+
+            switch (choice) {
+            case 1: {
+                setConsoleColor(FOREGROUND_YELLOW);
+                std::cout << "Please input channel name:" << std::endl;
+                std::string channelName;
+                std::getline(std::cin, channelName);
+                subscribeChannel(channelName);
+                break;
+            }
+            case 2: {
+                setConsoleColor(FOREGROUND_YELLOW);
+                std::cout << "Please input channel name:" << std::endl;
+                std::string channelName;
+                std::getline(std::cin, channelName);
+                unsubscribeChannel(channelName);
+                break;
+            }
+            case 3: {
+                setConsoleColor(FOREGROUND_YELLOW);
+                std::cout << "Please input channel name:" << std::endl;
+                std::string channelName;
+                std::getline(std::cin, channelName);
+                std::cout << "Please input message:" << std::endl;
+                std::string message;
+                std::getline(std::cin, message);
+                publishMessage(channelName, message);
+                break;
+            }
+            case 4:
+                logout();
+                quit = true;
+                break;
+            default:
+                setConsoleColor(FOREGROUND_RED);
+                std::cout << "Invalid choice" << std::endl;
+                break;
+            }
+        }
+    }
+
+private:
+    std::unique_ptr<RtmEventHandler> eventHandler_;
+    IRtmClient* rtmClient_;
+};
+
+int main() {
+    RtmDemo demo;
+    demo.start();
+    return 0;
+}
+```

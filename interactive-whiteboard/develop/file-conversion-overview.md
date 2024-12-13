@@ -14,7 +14,11 @@ description: >
 
 File conversion is implemented by Agora's server for Interactive Whiteboard service. When an app client requests to convert a file, your app server calls the Interactive Whiteboard RESTful API to send the request to the Agora server. The completes process is illustrated in the following diagram:
 
+<details>
+<summary>File conversion process</summary>
+
 ![](https://web-cdn.agora.io/docs-files/1618477596512)
+</details>
 
 The file-conversion feature supports the following types of file conversion:
 

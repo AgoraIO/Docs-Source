@@ -1,0 +1,414 @@
+import NotAvailable from '@docs/shared/common/not-available.mdx';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+
+<PlatformWrapper platform="web">
+OBS is a popular open source software for live streaming scenarios. It supports various host features and multiple streaming protocols. Starting with version 30.0.0, OBS officially supports the WebRTC-HTTP Ingestion Protocol (WHIP), for establishing WebRTC media connections. <Vg k="COMPANY"/> offers an experimental feature for WHIP protocol integration. 
+
+This guide explains how to stream media from OBS to a <Vg k="VSDK" /> channel using the WHIP protocol.
+
+## Set up OBS Studio
+
+This section explains how to configure OBS Studio to stream media to a channel.
+
+If you don't have OBS Studio or the installed version is too old, download and install the latest version from the [official website](https://obsproject.com/).
+
+### Configure video parameters
+
+Follow these steps to configure OBS Studio video parameters:  
+
+1. Open OBS and navigate to **Settings**:  
+   - macOS: **OBS > Preferences**  
+   - Windows: **File > Settings**
+2. Switch to the **Output** tab and set the **Output Mode** to **Advanced**.
+3. Configure the following parameters:
+   - **Video Encoder**: `x264`
+   - **Keyframe Interval**: `2s`
+   - **CPU Usage Preset**: `veryfast`
+   - **Profile**: `baseline` (recommended) or use the default settings.
+   - **Tune**: `zerolatency` (recommended) or use the default value.
+4. Click **OK** to save the changes.
+
+You only need to configure these parameters once. 
+
+![OBS Video Parameter Configuration](/images/video-sdk/obs-video-output-settings.png)
+
+### WHIP access configuration  
+
+Follow these steps to configure WHIP access settings:
+
+1. Open OBS and navigate to **Settings**:  
+   - macOS: **OBS > Preferences**  
+   - Windows: **File > Settings**
+2. Switch to the **Stream** tab and set **Service** to **WHIP**.  
+   OBS prompts you to switch the encoder to **FFmpeg Opus**. Click **Yes** to confirm.
+3. Configure the following:
+   - **Server**: A valid [WHIP server address](#whip-server-address)
+   - **Bearer Token**: A valid [WHIP authentication token](#whip-tokens).
+4. Click **OK** to save the changes.
+
+![OBS WHIP Parameter Configuration](/images/video-sdk/obs-whip-configuration.png)
+
+<Admonition type="info" info="info">
+
+- **Bearer tokens** are time-sensitive. When a token expires, you must generate a new one and update in OBS. To generate bearer tokens, see [WHIP authentication](#whip-authentication)
+
+- To enhance the user experience and eliminate manual configuration, use WebSocket services for remote WHIP parameter configuration. Refer to [Remotely configure WHIP](#remotely-configure-whip-optional) for details.
+</Admonition>
+
+## Implement OBS streaming
+
+This section explains how to stream media to a channel using OBS Studio.
+
+### Start streaming  
+
+After completing the video and WHIP access configurations, streaming users can initiate streaming by clicking **Start Streaming** in OBS. This action pushes the WHIP protocol stream to the channel.
+
+![OBS Starts Pushing WHIP](/images/video-sdk/start-obs-streaming.png)
+
+### Remotely configure WHIP (Optional)
+
+OBS supports WHIP streaming and WebSocket services, enabling developers to remotely configure WHIP access parameters. This feature reduces manual setup and improves the live-streaming experience. To use WebSocket to configure and control OBS remotely:
+
+1. The streaming user completes the video configuration and leaves OBS open.
+1. The application connects to the local OBS instance using WebSocket.
+1. The application remotely configures WHIP parameters and manages the starting and stopping of the live broadcast.
+
+#### Enable WebSocket in OBS  
+
+To enable WebSocket services, follow these steps (required only once):
+
+1. Open the **Tools** menu and select **WebSocket Server Settings**.
+2. In the **WebSocket Server Settings** interface:
+   - Enable the WebSocket server by checking **Enable WebSocket server**.
+   - Disable authentication by unchecking **Enable Authentication**.
+3. Click **OK** to save the changes.
+
+![OBS Opens WebSocket](/images/video-sdk/obs-web-socket-config.png)
+
+#### Configure WHIP via WebSockets  
+
+OBS supports WebSocket connection to remotely control certain functions. Follow these steps to update the WHIP configuration and start/stop streaming remotely. For development and testing purposes, <Vg k="COMPANY"/> provides a [demo application](https://webdemo.agora.io/renderer/whip-broadcaster/?_gl=1*1sw4yqt*_ga*MzM1NTgxNDY5LjE3MzM3NjMyMzQ.*_ga_BFVGG7E02W*MTczMzkxNDg2Mi43LjEuMTczMzkxNTM2NS4wLjAuMA..) with source code for remote WHIP configuration.
+
+1. To establish a WebSocket connection, maintain a persistent connection or create one as needed.
+
+    ```javascript
+    // Initialize a WebSocket connection to OBS
+    let socket = new WebSocket("ws://localhost:4455");
+
+    socket.onmessage = handleWebSocketMessage;
+    ```
+
+2. Use anonymous authentication for demonstration purposes. 
+
+    <Admonition type="info" info="info">
+    OBS supports password-based authentication. For simplicity, the sample code uses password-free authentication.
+    </Admonition>
+
+    ```javascript
+    function handleWebSocketMessage(event) {
+        let data = JSON.parse(event.data);
+        if (data.op === 0) {
+            if (data.d.authentication) {
+            const msg =
+                "Failed to connect to OBS. Please disable authentication for the OBS WebSocket server.";
+            console.error(msg);
+            } else {
+            // Send authentication message
+            socket.send(JSON.stringify({ op: 1, d: { rpcVersion: 1 } }));
+            }
+        } else if (data.op === 2) {
+            console.log("Connected to OBS");
+        }
+        // Additional handlers...
+    }
+    ```
+
+1. Configure WHIP access parameters:
+
+    Before proceeding, ensure the following:
+
+    1. The streaming user has switched OBS to the **Live** tab and set the service to **WHIP**.
+    2. Streaming is stopped before modifying WHIP parameters.
+
+    ```javascript
+    let cmdId = 1;
+
+    /**
+    * Updates WHIP server settings
+    * @param {Object} config - WHIP configuration
+    * @param {string} config.address - Agora WHIP server address
+    * @param {string} config.appid - Agora App ID
+    * @param {string} config.streamid - Channel name
+    * @param {string} config.token - Authentication token
+    */
+    function updateServerSettings(config) {
+        socket.send(
+            JSON.stringify({
+            op: 6,
+            d: {
+                requestId: `${cmdId++}`,
+                requestType: "SetStreamServiceSettings",
+                requestData: {
+                streamServiceType: "whip_custom",
+                streamServiceSettings: {
+                    server: `https://${config.address}/push/${config.appid}/${config.streamid}`,
+                    service: "WHIP",
+                    bearer_token: config.token,
+                },
+                },
+            },
+            })
+        );
+    }
+    ```
+
+1. Start streaming:
+
+    ```javascript
+    function startStream() {
+        socket.send(
+            JSON.stringify({
+            op: 6,
+            d: {
+                requestId: `${cmdId++}`,
+                requestType: "StartStream",
+                requestData: {},
+            },
+            })
+        );
+    }
+
+    function handleWebSocketMessage(event) {
+        let data = JSON.parse(event.data);
+        if (data.op === 5 && data.d.eventType === "StreamStateChanged") {
+            console.log("Streaming Status:", data.d.eventData.outputState);
+            if (data.d.eventData.outputState === "BS_WEBSOCKET_OUTPUT_STARTED") {
+            console.log("Streaming Started");
+            }
+        }
+    }
+    ```
+
+1. To check the streaming status, query the streaming duration and activity:
+
+    ```javascript
+    function getStatus() {
+        socket.send(
+            JSON.stringify({
+            op: 6,
+            d: {
+                requestId: `${cmdId++}`,
+                requestType: "GetStreamStatus",
+                requestData: {},
+            },
+            })
+        );
+        }
+
+        function handleWebSocketMessage(event) {
+        let data = JSON.parse(event.data);
+        if (data.op === 7 && data.d.requestType === "GetStreamStatus") {
+            if (data.d.requestStatus.code === 100 && data.d.responseData.outputActive) {
+            console.log("Streaming Duration:", data.d.responseData.totalStreamTime);
+            }
+        }
+    }
+    ```
+
+1. You can stop streaming at any time:
+
+    ```javascript
+    function stopStream() {
+        socket.send(
+            JSON.stringify({
+            op: 6,
+            d: {
+                requestId: `${cmdId++}`,
+                requestType: "StopStream",
+                requestData: {},
+            },
+            })
+        );
+        }
+
+        function handleWebSocketMessage(event) {
+        let data = JSON.parse(event.data);
+        if (data.op === 5 && data.d.eventType === "StreamStateChanged") {
+            console.log("Streaming Status:", data.d.eventData.outputState);
+            if (data.d.eventData.outputState === "BS_WEBSOCKET_OUTPUT_STOPPED") {
+            console.log("Streaming Stopped");
+            }
+        }
+    }
+    ```
+
+<Vg k="COMPANY"/>'s official [OBS remote control demo](https://obs-web.niek.tv/) offers extended features, such as screen preview, frame rate queries, bit rate checks, and CPU usage monitoring. Explore the demo for more features.
+
+## Reference
+
+This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
+
+### WHIP authentication
+
+To enable WHIP streaming, the app developer must generate the server address and bearer token and provide them to the streaming user. 
+
+#### WHIP server address   
+
+The WHIP server address must be formatted as:  
+
+```
+https://{server_address}/push/{appid}/{streamid}
+```
+
+Where:  
+
+- `server_address`: <Vg k="COMPANY"/> provides multiple access line addresses to ensure connectivity for users in different regions. Use one of the following:  
+  - `ap-webrtc-whip.ap.sd-rtn.com`  
+  - `ap-webrtc-whip.agora.io`  
+- `appid`: The project ID generated when you create a project in the <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>.  
+- `streamid`: The name of the channel to which the stream will be pushed.  
+
+#### WHIP tokens  
+
+The Bearer token for WHIP streaming must be in JWT format and consist of three parts: Header, Payload, and Signature. Follow these guidelines to generate the token:  
+
+1. **Header**: The header must include:  
+   - `alg`: Specifies the signature algorithm. For WHIP, use `HS256`.  
+   - `typ`: Specifies the token type. Use `JWT`.  
+
+   Example:  
+   ```json
+   {
+     "alg": "HS256",
+     "typ": "JWT"
+   }
+   ```  
+
+2. **Payload**: The payload must include:  
+   - `version`: Token version. Use `"1.0"`.  
+   - `appId`: The project ID from <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>.  
+   - `streamId`: The name of the channel to which the stream will be pushed.  
+   - `exp`: The token's expiration timestamp (in seconds), which must occur before the user starts streaming.  
+   - `action`: Required value: `"push"`.  
+
+   Example:  
+   ```json
+   {
+     "version": "1.0",
+     "appId": "<your appid>",
+     "streamId": "<your stream id>",
+     "exp": 1733388002,
+     "action": "push"
+   }
+   ```  
+
+3. **Signature**: 
+
+    Use the App Certificate for your project from <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link> to generate the signature.
+
+### Sample code for generating tokens
+
+Refer to the following code samples to generate a JWT token. You can also create your own implementation based on your project's language and requirements.
+
+<Tabs>
+  <TabItem value="python" label="Python" default>
+    This approach is ideal for scenarios where the backend is implemented using Python or when tokens need to be quickly generated for testing purposes.
+    <CodeBlock language="python" showLineNumbers>
+    {`import time
+import jwt
+
+def generateJsonWebToken(appid, cert, streamid):
+headers = {
+    'alg': "HS256",
+}
+
+token_payload = {
+    'version': '1.0',
+    'appID': appid,
+    'streamID': streamid,
+    'exp': int(time.time()) + 600,
+    'action': 'push',
+}
+
+jwt_token = jwt.encode(payload=token_payload,
+                        key=cert,
+                        algorithm="HS256",
+                        headers=headers)
+
+return jwt_token`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="node" label="Node.js" default>
+    This approach is ideal for scenarios where the backend is implemented using Node.js or when tokens need to be quickly generated for testing purposes.
+    <CodeBlock language="javascript" showLineNumbers>
+    {`const jwt = require("jsonwebtoken");
+    
+    function generateJsonWebToken(appid, cert, streamid) {
+    const headers = { alg: "HS256" };
+    
+    const token_payload = {
+        version: "1.0",
+        appID: appid,
+        streamID: streamid,
+        exp: Math.floor(Date.now() / 1000) + 600,
+        action: "push",
+    };
+    
+    return jwt.sign(token_payload, cert, { algorithm: "HS256", header: headers });
+}`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="javascript" label="Javascript" default>
+    This approach is suitable for scenarios where a web application quickly generates a token for testing and verifying a browser page.
+    <CodeBlock language="javascript" showLineNumbers>
+    {`"use strict";
+ 
+let jose = null;
+/**
+* Load the jose library from CDN
+*/
+import("https://cdn.jsdelivr.net/npm/jose@5.9.6/dist/browser/index.min.js")
+.then((obj) => {
+    jose = obj;
+})
+.catch((err) => {
+    console.error("Failed to load jose library:", err);
+});
+
+
+/**
+* @cert: !!! Warning: You must generate the token using your own background service,
+*  rather than having it automatically generated in the web application,
+*  to prevent your certificate information from being leaked.
+*
+*/
+async function generateJsonWebToken(appid, cert, streamid) {
+const header = {
+    alg: "HS256",
+    typ: "JWT",
+};
+
+const payload = {
+    version: "1.0",
+    appID: appid,
+    streamID: streamid,
+    exp: Math.floor(Date.now() / 1000) + 600,
+    action: "push",
+};
+
+return await new jose.SignJWT(payload)
+    .setProtectedHeader(header)
+    .sign(new TextEncoder().encode(secret));
+}`}
+    </CodeBlock>
+  </TabItem>
+</Tabs>
+
+
+</PlatformWrapper>
+
+<PlatformWrapper platform="flutter, react-js, unreal, blueprint, android, unity, electron, react-native, ios, macos, windows">
+<NotAvailable />
+</PlatformWrapper>

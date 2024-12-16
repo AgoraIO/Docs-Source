@@ -138,7 +138,7 @@ const App = () => {
     }
     rollLog('start login ...');
     chatClient
-      .login(username, chatToken, false)
+      .loginWithToken(username, chatToken)
       .then(() => {
         rollLog('login operation success.');
       })

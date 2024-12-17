@@ -26,8 +26,7 @@ Agora recommends that you use the standard mode when you start individual record
 For example, if a channel has two users and you choose to record both audio and video, the files generated for standard mode of individual recording is shown in the following diagram:
 
 
-
-![Image](/images/standard_mode.png)
+![Image](/images/cloud-recording/individual-mode.svg)
 
 
 ## Implementation

@@ -9,8 +9,6 @@ description: >
 
 This guide includes the key steps in using the Cloud Recording RESTful API to make an individual recording. For more information, see [Get started](../get-started/getstarted).
 
-## Overview
-
 Agora Cloud Recording supports three recording modes:
 
 -   Individual recording

@@ -8,15 +8,15 @@ description: >
 
 ---
 
-## Introduction
-
 The Agora server automatically uploads the recorded files in TS format to the cloud storage that you set up, and generates an M3U8 file as a playlist pointing to all the recorded TS files. You can get the URL of the M3U8 file and play it online.
 
->If Agora Cloud Recording generates WebM files instead of TS files, you cannot play the M3U8 file online.
+<Admonition type="info">
+If Agora Cloud Recording generates WebM files instead of TS files, you cannot play the M3U8 file online.
+</Admonition>
 
 ## Implementation
 
-Before you start, ensure that all the recorded files are uploaded (the `uploadingStatus` in the response of [`stop`](../reference/restful-api#stop) is `"uploaded"`).
+Before you start, ensure that all the recorded files are uploaded. The `uploadingStatus` in the response to [`stop`](../reference/restful-api#stop) should be `uploaded`.
 
 We use [Amazon S3](https://aws.amazon.com/s3/) as an example to show you how to play the recorded files online.
 

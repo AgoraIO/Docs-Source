@@ -1,0 +1,173 @@
+The `LocalAudioTrack` class is the base class for local audio tracks.
+
+### `NewCustomAudioTrackPcm`
+
+Creates a custom PCM data track.
+
+```go
+func NewCustomAudioTrackPcm(pcmSender *AudioPcmDataSender) *LocalAudioTrack {
+    cTrack := C.agora_service_create_custom_audio_track_pcm(agoraService.service, pcmSender.cSender)
+    if cTrack == nil {
+        return nil
+    }
+    return &LocalAudioTrack{
+        cTrack: cTrack,
+    }
+}
+```
+
+#### Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `pcmSender` | [`AudioPcmDataSender`](#audiopcmdatasender) object. |
+
+#### Returns
+
+- `LocalAudioTrack` object, if the method call succeeds.
+- `nil`, if the method call fails.
+
+### `NewCustomAudioTrackEncoded`
+
+Creates a custom encoded data track.
+
+```go
+func NewCustomAudioTrackEncoded(encodedAudioSender *AudioEncodedFrameSender, mixMode AudioTrackMixingState) *LocalAudioTrack {
+    cTrack := C.agora_service_create_custom_audio_track_encoded(agoraService.service, encodedAudioSender.cSender, C.int(mixMode))
+    if cTrack == nil {
+        return nil
+    }
+    return &LocalAudioTrack{
+        cTrack: cTrack,
+    }
+}
+```
+
+#### Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `encodedAudioSender` | [`AudioEncodedFrameSender`](#audioencodedframesender) object. |
+| `mixMode` | Audio track mixing mode.  |
+
+#### Returns
+
+- `LocalAudioTrack` object, if the method call succeeds.
+- `nil`, if the method call fails.
+
+### `SetEnabled`
+
+Enables or disables the local audio track. Once enabled, the SDK can capture, process, and encode local audio.
+
+```go
+func (track *LocalAudioTrack) SetEnabled(enable bool)
+```
+
+#### Parameters
+
+|Parameter|Description|
+|---------|-----------|
+|`enable`|Whether to enable the audio track: - `true`: Enable the audio track. - `false`: Disable the audio track.|
+
+### `AdjustPublishVolume`
+
+Adjusts the audio publish volume.
+
+```go
+func (track *LocalAudioTrack) AdjustPublishVolume(volume int) int
+```
+
+#### Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `volume`  | Audio publish volume. The range is [0, 100], where `0` means mute, and `100` means the original volume. |
+
+#### Returns
+
+- 0: Success.
+- < 0: Failure.
+
+### `SetMaxBufferedAudioFrameNumber`
+
+Sets the maximum capacity of the audio send buffer.
+
+```go
+func (track *LocalAudioTrack) SetMaxBufferedAudioFrameNumber(frameNum int) {
+    if track.cTrack == nil {
+        return
+    }
+    C.agora_local_audio_track_set_max_bufferd_frame_number(track.cTrack, C.int(frameNum))
+}
+```
+
+In applications like AI interaction, the frequency of sending audio frames from the sender may be irregular. For example, sometimes 1 frame is sent every 20 ms, and sometimes 3 frames are sent every 20 ms. If the SDK sends data to the Agora server based on the actual sending frequency, the receiver may experience stuttering or frame drops. To optimize audio transmission performance, the SDK sets an audio send buffer. Regardless of the actual frequency of sending audio frames, the SDK stores the data in the audio send buffer. Once the data in the audio send buffer reaches the minimum duration allowed to be sent, the SDK starts sending data to the receiver at a rate of 10 ms per frame.
+
+The default maximum capacity of the audio send buffer in the SDK is 6000 frames, which means it can store up to 6000 frames of data, or 60 seconds of data. If you need a larger buffer capacity, you can call this method to adjust it. If you also need to set the minimum duration of data allowed to be sent in the audio send buffer, call the [`SetSendDelayMs`](#setsenddelayms) method.
+
+<Admonition type="caution" title="Caution">
+This method should be called before the [`PublishAudio`](#publishaudio) method.
+</Admonition>
+
+#### Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `frameNum` | The maximum number of audio frames stored in the buffer. For example, setting it to 6000 means 6000 frames of audio data. |
+
+### `ClearSenderBuffer`
+
+Clears the current audio send buffer.
+
+```go
+func (track *LocalAudioTrack) ClearSenderBuffer() int {
+    if track.cTrack == nil {
+        return -1
+    }
+    return int(C.agora_local_audio_track_clear_sender_buffer(track.cTrack))
+}
+```
+
+If you no longer need the data in the current audio send buffer, you can call this method to clear the buffer. For example, if a user asks an AI a question and the AI is transmitting audio to the user through the SDK, the SDK's audio send buffer continuously has data in and out. When the user interrupts the AI's response and asks another question, you can call this method to let the SDK clear the current unsent buffered data to quickly buffer the AI's response to the new topic.
+
+#### Returns
+
+- 0: Success.
+- < 0: Failure.
+
+### `SetSendDelayMs`
+
+Sets the minimum duration of data allowed to be sent in the audio send buffer.
+
+```go
+func (track *LocalAudioTrack) SetSendDelayMs(delayMs int) int {
+    if track.cTrack == nil {
+        return -1
+    }
+    C.agora_local_audio_track_set_send_delay_ms(track.cTrack, C.int(delayMs))
+    return 0
+}
+```
+
+The SDK's default minimum duration of data allowed to be sent is 160 ms. This means the SDK will wait until the audio send buffer is filled with 160 ms of data before sending it to the receiver, which has the following effects:
+
+- If the sender sends data greater than or equal to 160 ms at a time, such as 800 ms, the SDK will immediately start sending data to the receiver at a rate of 10 ms per frame.
+- If the sender sends data less than 160 ms at a time, such as 100 ms, the SDK will wait until the buffer has 160 ms of data before sending it to the receiver at a rate of 10 ms per frame. This can cause a delay of up to 60 ms.
+
+You can adjust the minimum duration of data allowed to be sent in the buffer according to your actual business needs by calling this method.
+
+#### Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `delayMs` | The minimum duration of data allowed to be sent in the buffer (ms). This parameter needs to be set to a multiple of 10, and the value range is greater than 0 and less than 10 times the value of the `frameNum` parameter in the [`SetMaxBufferedAudioFrameNumber`](#setmaxbufferedaudioframenumber) method. |
+
+<a name="local-audiotrack-release">
+### Release
+</a>
+
+Releases the local audio track resources.
+
+```go
+func (track *LocalAudioTrack) Release()
+```

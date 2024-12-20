@@ -1,18 +1,134 @@
 import * as data from '@site/data/variables';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
 
-To enable <Vg k="MPULL" /> in <Vg k="CONSOLE" />:
+<Vg k="MPULL" /> service enables you to inject external media streams into real-time Agora channels. This page explains how to use <Vg k="MPULL" /> and <Vg k="VSDK" /> to publish external media to a channel.
+
+## Prerequisites
+
+Before starting, ensure that you have implemented the [<Vg k="VSDK" /> quickstart](/video-calling/get-started/get-started-sdk) in your project.
+
+## Implement <Vg k="MPULL" />
+
+This section guides you through the implementation of <Vg k="MPULL" /> basic features in your app.
+
+### Enable <Vg k="MPULL" />
+
+To enable <Vg k="MPULL" />, take the following steps:
 
 1. Log in to <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>, and click **Projects** in the left navigation panel.
 
-2. On the **Project Management** page, find the project for which you want to enable the <Vg k="MPULL" /> service, and click **Config**.
+1. On the **My Projects** page, find the project for which you want to enable <Vg k="MPULL" /> and click **Edit**.
 
-    <img src="https://web-cdn.agora.io/docs-files/1641971834422"/>
+    ![](/images/console/console-edit-project.png)
 
-3. Under **Real-time engagement extensions**, find **<Vg k="MPULL" />**, and click **Enable**.
+1. Under **All Features**, select **Media Pull**.
+1. Click **Enable**. If you do not see the **Enable** button, [contact support](mailto:support@agora.io).
 
+You can view usage statistics on the <Vg k="CONSOLE" /> **Usage** page.
 
-4. Click **Enable <Vg k="MPULL" />**.
+### Create a Cloud Player
 
-5. Click **Apply**.
+To pull external media into the channel, you create a cloud player using the [Create RESTful API](/media-pull/reference/restful-api#create-api). Refer to the following points when calling the API:
 
-You can now use <Vg k="MPULL" />. You see the usage statistics in the **Usage** page.
+- **Region configuration**:
+  - Set the `region` parameter to match the location of your media streaming source. For example, use `na` if the source is in North America.
+  - Ensure the `region` value is in lowercase.
+- **Request header**:
+  - Assign a unique string to the `X-Request-ID` field for troubleshooting. The Agora server returns an `X-Custom-request-ID` field in the response header.
+- **User identification**:
+  - Choose either `UID` or `account` for the cloud player's user name; never set both.
+  - Ensure each cloud player in a channel has a unique user name.
+- **Avoid duplicates**:
+  - Use the `name` field to manage cloud players. Names must be unique within a project. Attempting to create a cloud player with a duplicate name returns a `409 (Conflict)` status code.
+- **Supported formats**:
+  - Ensure that the media stream uses supported audio/video formats and protocols to avoid failures.
+- **Idle timeout**:
+  - Set the `idleTimeout` parameter to a suitable value. The default value of 300 seconds is recommended. The cloud player automatically destroys the stream after this period of inactivity.
+- **Cloud player creation events**:
+  - Upon successful creation, the message notification server sends a payload with the `status` field set to `connecting`, indicating the server is connecting to the media stream or probing audio and video data.
+
+Refer to the [RESTful API Reference](../reference/restful-api) to update player settings or to delete a cloud player.
+
+### Query Cloud Players
+
+To retrieve a list of cloud players under a project, use the [List RESTful API](/media-pull/reference/restful-api#list-api). Refer to the following points when calling the API:
+
+1. For the first query, omit the `pageToken` parameter. The response includes the current page and a `nextPageToken`.
+1. Use the `nextPageToken` in subsequent queries to retrieve the next page from the list of of cloud players.
+1. When `nextPageToken` is `0`, all cloud players under the project have been listed.
+
+Cloud players are returned in ascending order based on their creation time (`createTs`).
+
+### Subscribe to a cloud stream
+
+Once the cloud player is successfully created, it joins your channel as a virtual user with the specified `uid`. You can now subscribe to this user's stream in your app.
+
+<Tabs>
+  <TabItem value="Android" label="Android" default>
+<CodeBlock language="java" showLineNumbers>
+{`rtcEngine.setEventHandler(new IRtcEngineEventHandler() {
+    @Override
+    public void onUserPublished(int uid, int mediaType) {
+        super.onUserPublished(uid, mediaType);
+
+        // Subscribe to the user's media stream
+        rtcEngine.subscribe(uid, mediaType);
+    }
+});`}
+  </CodeBlock>
+  </TabItem>
+  <TabItem value="ios" label="iOS" default>
+<CodeBlock language="swift" showLineNumbers>
+{`// Callback when a remote user publishes a stream
+func rtcEngine(_ engine: AgoraRtcEngineKit, didUserPublish uid: UInt, with mediaType: AgoraMediaType) {
+    print("User published: \(uid), mediaType: \(mediaType)")
+
+    // Subscribe to the user's media stream
+    agoraEngine.subscribeStream(uid, mediaType: mediaType)
+}
+`}
+  </CodeBlock>
+  </TabItem>
+  <TabItem value="macos" label="macOS" default>
+<CodeBlock language="swift" showLineNumbers>
+{`// Callback when a remote user publishes a stream
+func rtcEngine(_ engine: AgoraRtcEngineKit, didUserPublish uid: UInt, with mediaType: AgoraMediaType) {
+    print("User published: \(uid), mediaType: \(mediaType)")
+
+    // Subscribe to the user's media stream
+    agoraEngine.subscribeStream(uid, mediaType: mediaType)
+}`}
+  </CodeBlock>
+  </TabItem>
+  <TabItem value="web" label="Web" default>
+<CodeBlock language="javascript" showLineNumbers>
+{`client.on("user-published", async (user, mediaType) => {
+    await client.subscribe(user, mediaType);
+    if (mediaType === "video") {
+        const remoteVideoTrack = user.videoTrack;
+        remoteVideoTrack.play("remote-video-container"); // Replace with your container element
+    } else if (mediaType === "audio") {
+        const remoteAudioTrack = user.audioTrack;
+        remoteAudioTrack.play();
+    }
+});`}
+  </CodeBlock>
+  </TabItem>
+  <TabItem value="flutter" label="Flutter" default>
+<CodeBlock language="dart" showLineNumbers>
+{`// Set up event handlers
+_engine.registerEventHandler(
+    RtcEngineEventHandler(
+        onUserPublished: (int uid, MediaType mediaType, int elapsed) {
+            print("User published: $uid, mediaType: $mediaType");
+            // Subscribe to the user's media stream
+            _engine.subscribeStream(uid: uid, mediaType: mediaType);
+        }
+    )
+);`}
+  </CodeBlock>
+  </TabItem>
+</Tabs>
+

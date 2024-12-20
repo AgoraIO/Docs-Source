@@ -224,7 +224,7 @@ export const CREC_TRANS_SCRIPT = 'https://download.agora.io/acrsdk/release/rtsc-
 
 export const CGATE = 'Server Gateway';
 
-export const CGATE_RELEASE_API = `3.x`;
+export const CGATE_RELEASE_API = `4.x`;
 export const API_REF_ROOT_CGATE_SDK = `${API_ROOT}/server-gateway-sdk`;
 export const CGATE_SDK_API_CPP  = `${API_REF_ROOT_CGATE_SDK}/linux-cpp/${CGATE_RELEASE_API}`;
 export const CGATE_SDK_API_JAVA  = `${API_REF_ROOT_CGATE_SDK}/linux-java/${CGATE_RELEASE_API}`
@@ -329,3 +329,5 @@ export const AGORA_VIDEO_DOC_APP_UNITY = 'https://github.com/AgoraIO/video-sdk-s
 export const AGORA_VIDEO_DOC_APP_REACTNATIVE = 'https://github.com/AgoraIO/video-sdk-samples-reactnative'
 export const AGORA_VIDEO_DOC_APP_ELECTRON = 'https://github.com/AgoraIO/video-sdk-samples-electron'
 export const AGORA_VIDEO_DOC_APP_WINDOWS = 'https://github.com/AgoraIO/video-sdk-samples-windows'
+
+export const STATUS_PAGE = 'Status Page'

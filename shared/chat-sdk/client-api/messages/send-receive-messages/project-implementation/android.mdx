@@ -31,6 +31,30 @@ message.setChatType(ChatMessage.GroupChat);
  ChatClient.getInstance().chatManager().sendMessage(message);
 ```
 
+### Send a message to online users only
+
+Agora Chat supports delivering messages only to users that are currently online. An example of using this function is displaying the votes in a group voting: Only users that are online need to see the changes in real time, while the others only need the final result.
+
+All types of messages in one-to-one chats and chat groups support this function. Compared to an ordinary message, a message that is delivered only to online users has the following differences:
+
+- Does not support offline storage: If the recipient is offline when sending a message, the message cannot be received, even after logging in again. For ordinary messages, when the recipient is online, the message reminder is received in real time; when the recipient is offline, the offline push message is sent in real time. When the recipient is online again, the Chat server actively pushes the offline message to the client.
+- Support local storage: After a message is successfully sent, it is added to the database.
+- Roaming storage is not supported by default: Sent messages are not stored on the Chat message server by default, so users cannot obtain the messages on other devices. If you need to activate roaming storage of online messages, contact support@agora.io.
+
+To deliver messages to online users only, you need to set `ChatMessage#deliverOnlineOnly` to `true` when sending the message. The following is an example of sending a text message to only online users:
+
+```java
+// Create a text message, `content` is the text content of the message.
+// `conversationId` is the message receiver. It is the peer user ID in single chat and the group ID in group chat.
+ChatMessage message = ChatMessage.createTextSendMessage(content, conversationId);
+// Whether the message is only delivered to online users. (Default) `false`: Delivered regardless of whether the user is online or not; `true`: Only delivered to online users. If the user is offline, the message will not be delivered.
+message.deliverOnlineOnly(true);
+// Conversation type: Single chat is ChatMessage.ChatType.Chat, group chat is ChatMessage.ChatType.GroupChat, the default is single chat.
+message.setChatType(ChatMessage.ChatType.Chat);
+// Send a message.
+ChatClient.getInstance().chatManager().sendMessage(message);
+```
+
 ### Set message priority
 
 In high-concurrency scenarios, you can set a certain message type or messages from a chat room member as high, normal, or low priority.
@@ -351,6 +375,58 @@ ChatClient.getInstance().chatManager().sendMessage(message);
 message.getStringAttribute("attribute1",null);message.getBooleanAttribute("attribute2", false)
 ```
 
+### Forward a single message
+
+You can use the `Message#addBody` and `Message#setAttribute` methods to create a new message identical to the original one, including its body and extended fields. After creating the message, you can forward it using the `ChatManager#sendMessage` method.
+
+You can forward all types of messages in individual chats, chat groups, and chat rooms. For messages with attachments, there's no need to re-upload the attachments during forwarding.
+
+However, if the original message expires (for example, deleted from the server due to storage limitations), the recipient can view the attachment address after forwarding but won't be able to download the attachment.
+
+To forward a single message, refer to the following code:
+
+```java
+// messageId: ID of the message for forwarding.
+String messageId = "";
+ChatMessage targetMessage = ChatClient.getInstance().chatManager().getMessage(messageId);
+// to: The peer user ID for one-to-one chat, group ID for a group chat, and chat room ID for a room chat.
+String to = "the conversationId you want to send to";
+ChatMessage newMessage = ChatMessage.createSendMessage(targetMessage.getType());
+newMessage.setTo(to);
+// chatType: ChatMessage.ChatType.Chat for one-to-one chat, ChatMessage.ChatType.GroupChat for group chat, or ChatMessage.ChatType.ChatRoom.
+// The default value is `ChatMessage.ChatType.Chat`. For a group chat, add the following line.
+//newMessage.setChatType(ChatMessage.ChatType.GroupChat);
+
+// Create a new message with the body and extension fields of the original message.
+MessageBody targetMessageBody = targetMessage.getBody();
+newMessage.addBody(targetMessageBody);
+Map<String, Object> ext = targetMessage.ext();
+//Traverse extension fields.
+if (ext != null) {
+    for (Map.Entry<String, Object> entry : ext.entrySet()) {
+        Object value = entry.getValue();
+        if (value instanceof Long) {
+            newMessage.setAttribute(entry.getKey(), (long) value);
+        } else if (value instanceof Integer) {
+            newMessage.setAttribute(entry.getKey(), (int) value);
+        } else if (value instanceof String) {
+            newMessage.setAttribute(entry.getKey(), (String) value);
+        } else if (value instanceof Boolean) {
+            newMessage.setAttribute(entry.getKey(), (boolean) value);
+        } else if (value instanceof Double) {
+            newMessage.setAttribute(entry.getKey(), (double) value);
+        } else if (value instanceof Float) {
+            newMessage.setAttribute(entry.getKey(), (float) value);
+        } else if (value instanceof JSONArray) {
+            newMessage.setAttribute(entry.getKey(), (JSONArray) value);
+        } else if (value instanceof JSONObject) {
+            newMessage.setAttribute(entry.getKey(), (JSONObject) value);
+        }
+    }
+}
+ChatClient.getInstance().chatManager().sendMessage(newMessage);
+```
+
 ### Forward multiple messages
 
 Supported types for forwarded messages include text, images, audio & video files, attachment, and custom messages. A user can create a combined message with a list of original messages and send it. When receiving a combined message, the recipient can select it and other messages to create a new layered combined message. A combined message can contain up to 10 layers of messages, with at most 300 messages at each layer.
@@ -369,24 +445,21 @@ To forward and receive combined messages, refer to the following code:
     // Send the message
     ChatClient.getInstance().chatManager().sendMessage(message);
     ```
+1. Download and parse combined messages:
 
-2. Download and parse combined messages:
+   ```java
+   ChatClient.getInstance().chatManager().downloadAndParseCombineMessage(combinedMessage, new ValueCallBack<List<ChatMessage>>() {
+               @Override
+               public void onSuccess(List<ChatMessage> value) {
 
-    ```java
-    ChatClient.getInstance().chatManager().downloadAndParseCombineMessage(combinedMessage, new ValueCallBack<List<ChatMessage>>() {
-                @Override
-                public void onSuccess(List<ChatMessage> value) {
+               }
 
-                }
+               @Override
+               public void onError(int error, String errorMsg) {
 
-                @Override
-                public void onError(int error, String errorMsg) {
-
-                }
-            });
+               }
+           });
     ```
-
-For further details see [Multiple messages forwarding limitations](../../reference/limitations#multiple-messages-forwarding-limitations).
 
 ### Modify sent messages
 
@@ -428,7 +501,6 @@ To modify a sent message, refer to the following code:
     // Create a MessageListener object
     MessageListener messageListener = new MessageListener() {
                 //……
-
                 @Override
                 public void onMessageContentChanged(ChatMessage messageModified, String operatorId, long operationTime) {
                     // int operationCount = messageModified.getBody().operationCount();

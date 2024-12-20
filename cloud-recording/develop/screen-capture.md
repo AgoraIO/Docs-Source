@@ -21,7 +21,7 @@ To implement client-side screen capture, see [Screenshot Upload](../../video-cal
 
 ## Implementation
 
-<Admonition type="info" title="Note">The initial Queries Per Second (QPS) limit is 10 per app ID when you register. If you need to extend the limit for QPS, contact support@agora.io. For more details on existing limitations, see [Integration best practices](integration-best-practices#check-the-limits).</Admonition>
+<Admonition type="info" title="Note">The initial Queries Per Second (QPS) limit is 10 per app ID when you register. If you need to extend the limit for QPS, contact support@agora.io. For more details on existing limitations, see [Integration best practices](/cloud-recording/best-practices/integration-best-practices#check-the-limits).</Admonition>
 
 ### Get a resource ID
 

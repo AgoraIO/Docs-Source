@@ -7,8 +7,6 @@ description: >
   Create a whitelist or blacklist for audio and video subscriptions.
 ---
 
-## Overview
-
 By default, Agora Cloud Recording subscribes to all published audio and video streams in a channel. This feature enables you to create a whitelist or blacklist for audio and video subscriptions. You can also update the subscription lists during a cloud recording.
 
 ## Implementation

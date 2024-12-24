@@ -49,9 +49,9 @@ When using dynamic-file conversion, pay attention to the following issues:
 - If a font is missing in a generated web page, you can either use the SDK to add a custom font or contact support@agora.io.
 - Due to inherent constrains in the PPT file format, PPT files are converted into PPTX files at the backend before parsing, which might encounter failure. Therefore, Agora recommends you to upload PPTX files for conversion. 
 - A generated web page can be rendered into canvas pages via Fastboard SDK (coming soon), [@netless/slide](https://www.npmjs.com/package/@netless/slide), or [@netless/projector-plugin](https://github.com/netless-io/projector-plugin). The differences between these three rendering solutions are as follows: 
-  - Fastboard SDK is the rendering plan designed for multi-window scenarios in Agora Interactive Whiteboard. Fastboard SDK is coming soon. 
-  - @netless/slide is a stand-alone document conversion and rendering dependency that does not include such things as whiteboards or state synchronization.  Adopting this solution requires you to write extra codes to synchronize states. It is designed for scenarios where PPT is used alone in whiteboard apps. 
-  - @netless/projector-plugin is a plug-in for Whiteboard SDK that supports state synchronization, but it only works in single-window scenarios.
+  - Fastboard SDK is the rendering plan designed for multi-window use-cases in Agora Interactive Whiteboard. Fastboard SDK is coming soon. 
+  - @netless/slide is a stand-alone document conversion and rendering dependency that does not include such things as whiteboards or state synchronization.  Adopting this solution requires you to write extra codes to synchronize states. It is designed for use-cases where PPT is used alone in whiteboard apps. 
+  - @netless/projector-plugin is a plug-in for Whiteboard SDK that supports state synchronization, but it only works in single-window use-cases.
 
 ### Version comparison
 

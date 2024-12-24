@@ -19,7 +19,7 @@ In web page recording mode, the content and audio of a specified web page are re
 
 ![](/images/cloud-recording/web-page-recording.svg)
 
-You can use web page recording to reproduce scenarios such as online classes and video conferences. For example, if your web application integrates both the Agora SDK and a third-party whiteboard SDK, web page recording can record everything on the web page instead of only the audio and video streams.
+You can use web page recording to reproduce use-cases such as online classes and video conferences. For example, if your web application integrates both the Agora SDK and a third-party whiteboard SDK, web page recording can record everything on the web page instead of only the audio and video streams.
 
 ![](/images/cloud-recording/web-page-layout.svg)
 
@@ -135,7 +135,7 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>
 
 ### Stop recording    
 
-The charging will continue until the web page recording stops. You should set a reasonable `maxRecordingHour` based on the actual business scenario or actively stop the web page recording.
+The charging will continue until the web page recording stops. You should set a reasonable `maxRecordingHour` based on the actual business use-case or actively stop the web page recording.
 
 When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the [`acquire`](../reference/restful-api#acquire) method for a new resource ID.
 

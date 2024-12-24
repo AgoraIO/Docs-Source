@@ -13,9 +13,9 @@ Before v3.0.3, the MP4 files generated after a recording might not be playable d
 - The SDK now generates video files in TS format during the recording. When the recording ends, the SDK automatically converts these TS files into MP4 format. Even if occasional crashes occur during the recording, the MP4 files can still be played.
 - The SDK adds the `crash_restore.sh` script. If the recording service quits after multiple crashes, you can run the script to convert these TS files into MP4 files and repair the incomplete `uid_UID_timestamp.txt` files.
 
-## Applicable scenarios
+## Applicable use-cases
 
-The Agora Recording SDK generates recording files in TS format during the recording process in the following scenarios:
+The Agora Recording SDK generates recording files in TS format during the recording process in the following use-cases:
 
 | Recording mode                                    | Recording Type   | Parameter Settings                          | Recording files and formats during the recording             | Recording files and formats after the recording              |
 |:--------------------------------------------------| :--------------- | :------------------------------------------ | :----------------------------------------------------------- | :----------------------------------------------------------- |

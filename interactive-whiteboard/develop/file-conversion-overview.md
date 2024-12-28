@@ -14,7 +14,11 @@ description: >
 
 File conversion is implemented by Agora's server for Interactive Whiteboard service. When an app client requests to convert a file, your app server calls the Interactive Whiteboard RESTful API to send the request to the Agora server. The completes process is illustrated in the following diagram:
 
+<details>
+<summary>File conversion process</summary>
+
 ![](https://web-cdn.agora.io/docs-files/1618477596512)
+</details>
 
 The file-conversion feature supports the following types of file conversion:
 
@@ -30,6 +34,7 @@ When using static-file conversion, pay attention to the following issues:
 -  The conversion process works best when the source file is less than 50 pages long. If the source file has more than 100 pages, you may experience a conversion timeout.  
 - The higher the image resolution in the source file, the slower the conversion.
 - PDF files generate the most accurate images when converted. If the generated image differs greatly from the source file in content or formatting, convert the source file to PDF and try again.
+- Only valid PDF files are supported, that is, files that conform to PDF standards and have a valid header starting with `%PDF`.
 - Note that because this feature is implemented with support from [Aspose](https://www.aspose.app/), Agora might not be able to respond to requests for customization as quickly as usual.  Agora recommends that you run sufficient tests of the file-conversion feature. If the test result do not meet your expectations, consider using a third-party service.
 - The new file conversion currently does not support generating resource packages. However, because the resources path is fixed, users can download resources by themselves. 
 
@@ -44,9 +49,9 @@ When using dynamic-file conversion, pay attention to the following issues:
 - If a font is missing in a generated web page, you can either use the SDK to add a custom font or contact support@agora.io.
 - Due to inherent constrains in the PPT file format, PPT files are converted into PPTX files at the backend before parsing, which might encounter failure. Therefore, Agora recommends you to upload PPTX files for conversion. 
 - A generated web page can be rendered into canvas pages via Fastboard SDK (coming soon), [@netless/slide](https://www.npmjs.com/package/@netless/slide), or [@netless/projector-plugin](https://github.com/netless-io/projector-plugin). The differences between these three rendering solutions are as follows: 
-  - Fastboard SDK is the rendering plan designed for multi-window scenarios in Agora Interactive Whiteboard. Fastboard SDK is coming soon. 
-  - @netless/slide is a stand-alone document conversion and rendering dependency that does not include such things as whiteboards or state synchronization.  Adopting this solution requires you to write extra codes to synchronize states. It is designed for scenarios where PPT is used alone in whiteboard apps. 
-  - @netless/projector-plugin is a plug-in for Whiteboard SDK that supports state synchronization, but it only works in single-window scenarios.
+  - Fastboard SDK is the rendering plan designed for multi-window use-cases in Agora Interactive Whiteboard. Fastboard SDK is coming soon. 
+  - @netless/slide is a stand-alone document conversion and rendering dependency that does not include such things as whiteboards or state synchronization.  Adopting this solution requires you to write extra codes to synchronize states. It is designed for use-cases where PPT is used alone in whiteboard apps. 
+  - @netless/projector-plugin is a plug-in for Whiteboard SDK that supports state synchronization, but it only works in single-window use-cases.
 
 ### Version comparison
 
@@ -131,6 +136,64 @@ Take the following steps:
 
 2. To query the progress of a file-conversion task, pass in the corresponding task UUID and Task Token. See [Query file-conversion progress](../reference/whiteboard-api/file-conversion#query-the-progress-of-a-file-conversion-task). Agora recommends that you implement an algorithm to regularly query the conversion progress so that your data is up to date.
 
+
+## PPT Conversion: Supported features, limitations, and troubleshooting
+
+When converting PPT or PPTX files created in Microsoft PowerPoint into dynamic HTML web pages using [File conversion](../reference/whiteboard-api/file-conversion), some elements—such as special effects, images, or animations—might not parse correctly. This can result in issues like missing or non-functional effects in the converted output. This section outlines the compatibility of the document conversion service with various PPT features, helping you identify and fix problematic elements in your presentations.
+
+<Admonition type="info">
+- These notes are only applicable to PPT or PPTX files made with MS PowerPoint. For PPT files made with WPS, <Vg k="COMPANY" /> does not guarantee the conversion effect.
+- Some functions and effects are not mentioned in the following list. This is due to functional inconsistencies caused by different versions which require manual testing.
+</Admonition>
+
+### Supported effects
+
+| PPT element           | Effects menu | Support effect        | Measures to take      |
+|:-----------|:-------------|:------------------|:--------------------|
+| Word	    | Font         | <ul><li>Font, font style, font size: All</li><li>Color and underline: All</li><li>Effect: Supports strikethrough, double strikethrough, superscript, subscript, equal-height characters</li><li>Character Spacing: All</li></ul>        | After some fonts are converted, ensure that the font is installed locally for it to be displayed correctly. |
+|          | Paragraph | <ul><li>Bullet</li><li>Serial number</li><li>Text alignment: All</li><li>Indentation</li><li>Spacing</li><li>Chinese version: All</li><li>Multi-column layout</li></ul>         | - |
+| Shape    | Shape Format | <ul><li>Shape Fill: All</li><li>Shape Outlines/Lines: All</li></ul>           | - |
+| Sheet    | Table Design | <ul><li>Table style options: All</li><li>Table style:<ul><li>Subject: All</li><li>Shading</li><li>Frame</li><li>Fill: color fill, picture fill, texture fill, gradient fill, pattern fill</li></ul></li></ul>   | - |
+|          | Table Layout | All           | - |
+| Picture  | Image Format | <ul><li>Remove background</li><li>Adjustments: All</li><li>Image style:<ul><li>Style templates</li><li>Frame</li><li>Format</li><li>Effects: shadow, reflection, glow, soft edge</li></ul></li><li>Arrangement: All</li><li>Cropping</li></ul>           | - |
+| Audio and Video       | Audio/Video Format | <ul><li>Cropping (progressive cropping)</li><li>Add bookmark</li></ul>        | - |
+| Animation             | Animation Type | <ul><li>Page cutting animation: fade in, fade out, push in, erase, split, reveal, cut in, random lines, shapes, uncover, cover, fall, hang, curtain, peel off, dissolve, chessboard, blinds, clock, ripple, switch, rotate, library, cube, box, comb, zoom, pan, carousel</li><li>Appearance/disappearance animation: All</li><li>Word animation: All</li><li>Path Animation: All</li><li>Template Animation: All</li><li>Animation with sound</li></ul> | - |
+|          | Animation Properties | <ul><li>Timing: start condition, duration, delay, repeat</li><li>Trigger: by click, by bookmark</li><li>Set text animation and combine text.</li></ul> | - |
+| Other    | Other Menu | Modify PPT theme, customize theme | - |
+
+
+### Unsupported effects
+
+| PPT element      | Unsupported effects | Imperfectly supported effects | Measures to take        |
+|:------|:------|:----------------|:------|
+| Word	            | <ul><li>Font effect: All Caps, Small Caps</li><li>Shape format - Text Options: Shadow, reflection, glow, soft edges, 3D format, 3D rotation</li></ul>   | <ul><li>Text stroke: Cannot perfectly restore the effect in PPT.</li><li>Custom fonts: Some font line breaks are inconsistent with the original PPT.</li><li>Vertical text: Line spacing that is not single-spaced may be inconsistent with the original PPT, and the horizontal coordinate of the font will be offset.</li><li>WordArt: The conversion effect is not perfect.</li></ul>   | <ul><li>Avoid inserting too much text on one page.</li><li>Avoid using line breaks continuously. It is recommended to split large paragraphs into multiple text boxes.</li></ul> |
+| Shape	           | Shapes with formulas do not support adding color fill animations.           | <ul><li>Shape Format - Effects: When using shadow, reflection, glow, or soft edge effects, the entire shape is displayed first, and the special effects will take effect later.</li><li>Shape Format - Shape Outline:<ul><li>When you select Dashed Line, dashed lines smaller than 1.5 pt are converted to solid lines.</li><li>Arrows may shift after conversion.</li></ul></li></ul> | Some special graphics should not exceed the graphic boundary, and the part beyond the boundary is not displayed.     |
+| Sheet	           | <ul><li>Shape Format - Fill:<ul><li>Pattern Fill</li><li>The option to tile the image as a texture is not supported in image or texture fills.</li></ul></li><li>Shape Format - Effects: Shadow, reflection, glow, soft edge, 3D format, 3D rotation.</li></ul>    | - | -         |
+| Picture	         | Image format-effect: 3D format, 3D rotation.     | <ul><li>Image format - Remove background: Support is not perfect, the converted image may have white edges.</li><li>Image format - Image color: Images that are recolored or use color filters may have color differences after conversion.</li><li>Image Format - Image Correction: Brightness and contrast adjustment effects are not perfectly restored.</li></ul>             | -         |
+| Audio and Video	 | <ul><li>Option: Play across slides.</li><li>Style: Play in the background.</li></ul>      | - | -         |
+| Animation	       | <ul><li>Page cutting animation: airplane, origami, fragments, vortex, shining, smooth.</li><li>Emphasis animation: Zoom in or zoom out (only for text, not supported)/ brush color, color stretch, color pulse, underline.</li><li>Path Animation: Rewind after playback is complete.</li></ul>  | <ul><li>Timing-delay: There may be a small error in the animation delay time.</li><li>Advanced Animation triggered by click: Click events penetrate the underlying elements.</li></ul>       | -         |
+| Other	           | <ul><li>Extract annotations</li><li>The following effects are not effective in the thumbnails generated after document conversion preview:<ul><li>All gradient effects</li><li>All page switching animations</li><li>Animations that involve changes to the inside of a shape do not work, including: blinds, checkerboard, dissolve, random Lines, shapes, splits, stairs, wheels, erase, fade, float</li><li>Transparency</li><li>Recolor</li><li>Shadow, reflection, glow, soft edge</li></ul></li></ul> | The hide slide function does not support hiding the first page of the slide.          | -         |
+
+### Best practices for troubleshooting conversion issues
+
+If some effects are missing in the converted PPT or are different from the original PPT, refer to the following steps to locate the problematic elements and fix them:
+
+1. Locate the problematic element
+
+    Compare the PPT before and after conversion to find the problematic elements.
+
+1. Deal with problematic elements
+
+    Resolve the problem using one of the following methods:
+
+    - Remove the problematic element directly or remove unsupported effects on the element.
+    - Replace the effect that is already supported by other document transformations for the element in question.
+    - Save the problematic element as a picture, delete the element, and then reinsert the picture to the original position. If there are many problematic elements, combine those elements first and convert them to pictures.
+
+1. Restart the conversion
+
+    Call the RESTful API again to restart the conversion. After the conversion is successful, compare the PPT effects before and after the conversion. If there are any remaining problems, repeat the previous steps.
+
 ## Reference
 
 This section contains information that completes the information on this page, or points you to documentation that explains other aspects of this product.
@@ -153,17 +216,17 @@ To set up cloud storage and obtain configuration information for Google Cloud Pl
 
     ```json
     {
-    "type": "service_account",
-    "project_id": "argon-jetty-395210",
-    "private_key_id": "yourprivateidkeyyourprivateidkeyyourprivateidkey",
-    "private_key": "-----BEGIN PRIVATE KEY-----\nThisisYourPrivateKeyThisisYourPrivateKeyThisisYourPrivateKey\nThisisYourPrivateKey\nThisisYourPrivateKey\nThisisYourPrivateKey\n-----END PRIVATE KEY-----\n",
-    "client_email": "xxxx-111@argon-jetty-395210.iam.gserviceaccount.com",
-    "client_id": "123456789012345678901",
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/xxxx-111%40argon-jetty-395210.iam.gserviceaccount.com",
-    "universe_domain": "googleapis.com"
+        "type": "service_account",
+        "project_id": "argon-jetty-395210",
+        "private_key_id": "yourprivateidkeyyourprivateidkeyyourprivateidkey",
+        "private_key": "-----BEGIN PRIVATE KEY-----\nThisisYourPrivateKeyThisisYourPrivateKeyThisisYourPrivateKey\nThisisYourPrivateKey\nThisisYourPrivateKey\nThisisYourPrivateKey\n-----END PRIVATE KEY-----\n",
+        "client_email": "xxxx-111@argon-jetty-395210.iam.gserviceaccount.com",
+        "client_id": "123456789012345678901",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/xxxx-111%40argon-jetty-395210.iam.gserviceaccount.com",
+        "universe_domain": "googleapis.com"
     }
     ```
 

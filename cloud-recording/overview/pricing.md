@@ -290,7 +290,7 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
 
 At the end of each month, Agora adds up the usage duration (in seconds) of audio and video in each category, and divides them by 60 to get the respective service minutes (rounded up to the next integer). For example, if the duration of audio service of the month is 59 seconds, then the audio service minutes is calculated as 1 minute; if the duration of video service is 61 seconds, then the video service minutes is calculated as 2 minutes. The error of service minutes for each month is within 1 minute. 
 
-### Aggregate video resolution in dual-stream scenarios
+### Aggregate video resolution in dual-stream use-cases
 
 When the user being recorded enables [dual-stream mode](../reference/glossary#dual-stream-mode), the recording service can receive only one stream at a time:
 

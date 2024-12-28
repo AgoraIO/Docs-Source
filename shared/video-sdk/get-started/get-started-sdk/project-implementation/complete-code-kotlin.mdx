@@ -1,0 +1,584 @@
+import CodeBlock from '@theme/CodeBlock';
+
+<ProductWrapper product="video-calling">
+<CodeBlock language="kotlin" showLineNumbers>
+{`package com.example.<projectname>
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Bundle
+import android.view.SurfaceView
+import android.widget.FrameLayout
+import android.widget.Toast
+
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+
+import io.agora.rtc2.ChannelMediaOptions
+import io.agora.rtc2.Constants
+import io.agora.rtc2.IRtcEngineEventHandler
+import io.agora.rtc2.RtcEngine
+import io.agora.rtc2.RtcEngineConfig
+import io.agora.rtc2.video.VideoCanvas
+
+class MainActivity : AppCompatActivity() {
+    // Fill in the App ID obtained from the Agora Console
+    private val myAppId = "<Your app ID>"
+    // Fill in the channel name
+    private val channelName = "<Your channel name>"
+    // Fill in the temporary token generated from Agora Console
+    private val token = "<Your token>"
+
+    private var mRtcEngine: RtcEngine? = null
+
+    private val mRtcEventHandler = object : IRtcEngineEventHandler() {
+        // Callback when successfully joining the channel
+        override fun onJoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "Join channel success", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // Callback when a remote user or host joins the current channel
+        override fun onUserJoined(uid: Int, elapsed: Int) {
+            runOnUiThread {
+                // When a remote user joins the channel, display the remote video stream for the specified uid
+                setupRemoteVideo(uid)
+            }
+        }
+
+        // Callback when a remote user or host leaves the current channel
+        override fun onUserOffline(uid: Int, reason: Int) {
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "User offline: $uid", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun initializeAndJoinChannel() {
+        try {
+            // Create an RtcEngineConfig instance and configure it
+            val config = RtcEngineConfig().apply {
+                mContext = applicationContext
+                mAppId = myAppId
+                mEventHandler = mRtcEventHandler
+            }
+            // Create and initialize an RtcEngine instance
+            mRtcEngine = RtcEngine.create(config)
+        } catch (e: Exception) {
+            throw RuntimeException("Check the error.")
+        }
+        // Enable the video module
+        mRtcEngine?.enableVideo()
+
+        // Enable local preview
+        mRtcEngine?.startPreview()
+
+        // Create a SurfaceView object and make it a child object of FrameLayout
+        val container = findViewById<FrameLayout>(R.id.local_video_view_container)
+        val surfaceView = SurfaceView(applicationContext)
+        container.addView(surfaceView)
+        // Pass the SurfaceView object to the SDK and set the local view
+        mRtcEngine?.setupLocalVideo(VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, 0))
+
+        // Create an instance of ChannelMediaOptions and configure it
+        val options = ChannelMediaOptions().apply {
+            // Set the user role to BROADCASTER or AUDIENCE according to the use-case
+            clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
+            // In the video calling use-case, set the channel profile to CHANNEL_PROFILE_COMMUNICATION
+            channelProfile = Constants.CHANNEL_PROFILE_COMMUNICATION
+        }
+
+        // Join the channel using a temporary token and channel name, setting uid to 0 means the engine will randomly generate a username
+        // The onJoinChannelSuccess callback will be triggered upon success
+        mRtcEngine?.joinChannel(token, channelName, 0, options)
+    }
+
+    private fun setupRemoteVideo(uid: Int) {
+        val container = findViewById<FrameLayout>(R.id.remote_video_view_container)
+        val surfaceView = SurfaceView(applicationContext).apply {
+            setZOrderMediaOverlay(true)
+        }
+        container.addView(surfaceView)
+        // Pass the SurfaceView object to the SDK and set the remote view
+        mRtcEngine?.setupRemoteVideo(VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, uid))
+    }
+
+    private val permissionReqId = 22
+
+    // Obtain recording, camera and other permissions required to implement real-time audio and video interaction
+    private fun getRequiredPermissions(): Array<String> {
+        // Determine the permissions required when targetSDKVersion is 31 or above
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            arrayOf(
+                Manifest.permission.RECORD_AUDIO, // Recording permission
+                Manifest.permission.CAMERA, // Camera permission
+                Manifest.permission.READ_PHONE_STATE, // Permission to read phone status
+                Manifest.permission.BLUETOOTH_CONNECT // Bluetooth connection permission
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.CAMERA
+            )
+        }
+    }
+
+    private fun checkPermissions(): Boolean {
+        for (permission in getRequiredPermissions()) {
+            val permissionCheck = ContextCompat.checkSelfPermission(this, permission)
+            if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+                return false
+            }
+        }
+        return true
+    }
+
+    // System permission request callback
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (checkPermissions()) {
+            initializeAndJoinChannel()
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        // If authorized, initialize RtcEngine and join the channel
+        if (checkPermissions()) {
+            initializeAndJoinChannel()
+        } else {
+            ActivityCompat.requestPermissions(this, getRequiredPermissions(), permissionReqId)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Stop local video preview
+        mRtcEngine?.stopPreview()
+        // Leave the channel
+        mRtcEngine?.leaveChannel()
+    }
+}
+`}
+</CodeBlock>
+</ProductWrapper>
+
+<ProductWrapper product="voice-calling">
+<CodeBlock language="kotlin" showLineNumbers>
+{`package com.example.<projectname>
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.widget.Toast
+
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+
+import io.agora.rtc2.ChannelMediaOptions
+import io.agora.rtc2.Constants
+import io.agora.rtc2.IRtcEngineEventHandler
+import io.agora.rtc2.RtcEngine
+import io.agora.rtc2.RtcEngineConfig
+
+class MainActivity : AppCompatActivity() {
+
+    // Fill in the App ID obtained from the Agora Console
+    private val myAppId = "<Your app ID>"
+    // Fill in the channel name
+    private val channelName = "<Your channel name>"
+    // Fill in the temporary token generated from Agora Console
+    private val token = "<Your token>"
+
+    private var mRtcEngine: RtcEngine? = null
+
+    private val mRtcEventHandler = object : IRtcEngineEventHandler() {
+        override fun onJoinChannelSuccess(channel: String, uid: Int, elapsed: Int) {
+            super.onJoinChannelSuccess(channel, uid, elapsed)
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "Join channel success", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        override fun onUserJoined(uid: Int, elapsed: Int) {
+            super.onUserJoined(uid, elapsed)
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "User joined: $uid", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        override fun onUserOffline(uid: Int, reason: Int) {
+            super.onUserOffline(uid, reason)
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "User offline: $uid", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun initializeAndJoinChannel() {
+        try {
+            val config = RtcEngineConfig().apply {
+                mContext = applicationContext
+                mAppId = myAppId
+                mEventHandler = mRtcEventHandler
+            }
+            mRtcEngine = RtcEngine.create(config)
+        } catch (e: Exception) {
+            throw RuntimeException("Check the error.")
+        }
+
+        val options = ChannelMediaOptions().apply {
+            clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
+            channelProfile = Constants.CHANNEL_PROFILE_COMMUNICATION
+            publishMicrophoneTrack = true
+            autoSubscribeAudio = true
+        }
+
+        mRtcEngine?.joinChannel(token, channelName, 0, options)
+    }
+
+    private val permissionReqId = 22
+
+    private fun getRequiredPermissions(): Array<String> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            arrayOf(
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.BLUETOOTH_CONNECT
+            )
+        } else {
+            arrayOf(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    private fun checkPermissions(): Boolean {
+        for (permission in getRequiredPermissions()) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                return false
+            }
+        }
+        return true
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        if (checkPermissions()) {
+            initializeAndJoinChannel()
+        } else {
+            ActivityCompat.requestPermissions(this, getRequiredPermissions(), permissionReqId)
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (checkPermissions()) {
+            initializeAndJoinChannel()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mRtcEngine?.apply {
+            leaveChannel()
+            RtcEngine.destroy()
+        }
+        mRtcEngine = null
+    }
+}
+`}
+</CodeBlock>
+</ProductWrapper>
+
+<ProductWrapper product="broadcast-streaming">
+<CodeBlock language="kotlin" showLineNumbers>
+{`package com.example.myapplication
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Bundle
+import android.view.SurfaceView
+import android.widget.FrameLayout
+import android.widget.Toast
+
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+
+import io.agora.rtc2.ChannelMediaOptions
+import io.agora.rtc2.Constants
+import io.agora.rtc2.IRtcEngineEventHandler
+import io.agora.rtc2.RtcEngine
+import io.agora.rtc2.RtcEngineConfig
+import io.agora.rtc2.video.VideoCanvas
+
+class MainActivity : AppCompatActivity() {
+    private val myAppId = "<Your app ID>"
+    private val channelName = "<Your channel name>"
+    private val token = "<Your token>"
+
+    private lateinit var mRtcEngine: RtcEngine
+
+    private val mRtcEventHandler = object : IRtcEngineEventHandler() {
+        override fun onJoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
+            super.onJoinChannelSuccess(channel, uid, elapsed)
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "Join channel success", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        override fun onUserJoined(uid: Int, elapsed: Int) {
+            runOnUiThread {
+                setupRemoteVideo(uid)
+            }
+        }
+
+        override fun onUserOffline(uid: Int, reason: Int) {
+            super.onUserOffline(uid, reason)
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "User offline: $uid", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun initializeAndJoinChannel() {
+        try {
+            val config = RtcEngineConfig().apply {
+                mContext = applicationContext
+                mAppId = myAppId
+                mEventHandler = mRtcEventHandler
+            }
+            mRtcEngine = RtcEngine.create(config)
+        } catch (e: Exception) {
+            throw RuntimeException("Check the error.")
+        }
+
+        mRtcEngine.enableVideo()
+        mRtcEngine.startPreview()
+
+        val container = findViewById<FrameLayout>(R.id.local_video_view_container)
+        val surfaceView = SurfaceView(applicationContext)
+        container.addView(surfaceView)
+        mRtcEngine.setupLocalVideo(VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, 0))
+
+        val options = ChannelMediaOptions().apply {
+            clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
+            channelProfile = Constants.CHANNEL_PROFILE_LIVE_BROADCASTING
+            audienceLatencyLevel = Constants.AUDIENCE_LATENCY_LEVEL_LOW_LATENCY
+        }
+
+        mRtcEngine.joinChannel(token, channelName, 0, options)
+    }
+
+    private fun setupRemoteVideo(uid: Int) {
+        val container = findViewById<FrameLayout>(R.id.remote_video_view_container)
+        val surfaceView = SurfaceView(applicationContext).apply {
+            setZOrderMediaOverlay(true)
+        }
+        container.addView(surfaceView)
+        mRtcEngine.setupRemoteVideo(VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, uid))
+    }
+
+    private val permissionReqId = 22
+
+    private fun getRequiredPermissions(): Array<String> {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            arrayOf(
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.CAMERA,
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.BLUETOOTH_CONNECT
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.CAMERA
+            )
+        }
+    }
+
+    private fun checkPermissions(): Boolean {
+        for (permission in getRequiredPermissions()) {
+            val permissionCheck = ContextCompat.checkSelfPermission(this, permission)
+            if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+                return false
+            }
+        }
+        return true
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (checkPermissions()) {
+            initializeAndJoinChannel()
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        if (checkPermissions()) {
+            initializeAndJoinChannel()
+        } else {
+            ActivityCompat.requestPermissions(this, getRequiredPermissions(), permissionReqId)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mRtcEngine.stopPreview()
+        mRtcEngine.leaveChannel()
+    }
+}
+`}
+</CodeBlock>
+</ProductWrapper>
+
+<ProductWrapper product="interactive-live-streaming">
+<CodeBlock language="kotlin" showLineNumbers>
+{`package com.example.myapplication
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Bundle
+import android.view.SurfaceView
+import android.widget.FrameLayout
+import android.widget.Toast
+
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+
+import io.agora.rtc2.ChannelMediaOptions
+import io.agora.rtc2.Constants
+import io.agora.rtc2.IRtcEngineEventHandler
+import io.agora.rtc2.RtcEngine
+import io.agora.rtc2.RtcEngineConfig
+import io.agora.rtc2.video.VideoCanvas
+
+class MainActivity : AppCompatActivity() {
+    private val myAppId = "<Your app ID>"
+    private val channelName = "<Your channel name>"
+    private val token = "<Your token>"
+
+    private lateinit var mRtcEngine: RtcEngine
+
+    private val mRtcEventHandler = object : IRtcEngineEventHandler() {
+        override fun onJoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
+            super.onJoinChannelSuccess(channel, uid, elapsed)
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "Join channel success", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        override fun onUserJoined(uid: Int, elapsed: Int) {
+            runOnUiThread {
+                setupRemoteVideo(uid)
+            }
+        }
+
+        override fun onUserOffline(uid: Int, reason: Int) {
+            super.onUserOffline(uid, reason)
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "User offline: $uid", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun initializeAndJoinChannel() {
+        try {
+            val config = RtcEngineConfig().apply {
+                mContext = applicationContext
+                mAppId = myAppId
+                mEventHandler = mRtcEventHandler
+            }
+            mRtcEngine = RtcEngine.create(config)
+        } catch (e: Exception) {
+            throw RuntimeException("Check the error.")
+        }
+
+        mRtcEngine.enableVideo()
+        mRtcEngine.startPreview()
+
+        val container = findViewById<FrameLayout>(R.id.local_video_view_container)
+        val surfaceView = SurfaceView(applicationContext)
+        container.addView(surfaceView)
+        mRtcEngine.setupLocalVideo(VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, 0))
+
+        val options = ChannelMediaOptions().apply {
+            clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
+            channelProfile = Constants.CHANNEL_PROFILE_LIVE_BROADCASTING
+            audienceLatencyLevel = Constants.AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY
+        }
+
+        mRtcEngine.joinChannel(token, channelName, 0, options)
+    }
+
+    private fun setupRemoteVideo(uid: Int) {
+        val container = findViewById<FrameLayout>(R.id.remote_video_view_container)
+        val surfaceView = SurfaceView(applicationContext).apply {
+            setZOrderMediaOverlay(true)
+        }
+        container.addView(surfaceView)
+        mRtcEngine.setupRemoteVideo(VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, uid))
+    }
+
+    private val permissionReqId = 22
+
+    private fun getRequiredPermissions(): Array<String> {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            arrayOf(
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.CAMERA,
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.BLUETOOTH_CONNECT
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.CAMERA
+            )
+        }
+    }
+
+    private fun checkPermissions(): Boolean {
+        for (permission in getRequiredPermissions()) {
+            val permissionCheck = ContextCompat.checkSelfPermission(this, permission)
+            if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+                return false
+            }
+        }
+        return true
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (checkPermissions()) {
+            initializeAndJoinChannel()
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        if (checkPermissions()) {
+            initializeAndJoinChannel()
+        } else {
+            ActivityCompat.requestPermissions(this, getRequiredPermissions(), permissionReqId)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mRtcEngine.stopPreview()
+        mRtcEngine.leaveChannel()
+    }
+}
+`}
+</CodeBlock>
+</ProductWrapper>

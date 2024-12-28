@@ -143,6 +143,12 @@ export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/referenc
 export const SPATIAL = '3D Spatial Audio';
 
 export const CHAT = `Chat`;
+export const CHAT_ONE = `One-to-one chat`;
+export const CHAT_ONE_LOWER = CHAT_ONE.toLowerCase();
+export const CHAT_GROUP = `Group chat`;
+export const CHAT_GROUP_LOWER = CHAT_GROUP.toLowerCase();
+export const CHAT_ROOM = `Chat room`;
+export const CHAT_ROOM_LOWER = CHAT_ROOM.toLowerCase();
 export const CHAT_SDK = `${CHAT} SDK`;
 export const CHAT_RELEASE_API = `1.x`;
 export const API_REF_ROOT_CHAT_SDK = `${API_ROOT}/chat-sdk`;
@@ -203,6 +209,7 @@ export const CP = 'Cloud Proxy';
 export const RTMPC = 'RTMP Converter';
 export const TRANS = 'Transcoding';
 export const OPREC = 'On-Premise Recording';
+export const STT = 'Speech to Text';
 export const OPREC_RELEASE_API = `3.x`;
 export const API_REF_ROOT_OPREC_SDK = `${API_ROOT}/on-premise-recording-sdk`;
 export const OPREC_SDK_API_CPP  = `${API_REF_ROOT_OPREC_SDK}/linux-cpp/${OPREC_RELEASE_API}`;
@@ -215,9 +222,9 @@ export const CREC_FCS = 'https://download.agora.io/acrsdk/release/cloud_recordin
 export const CREC_TRANS_SCRIPT = 'https://download.agora.io/acrsdk/release/rtsc-ha_transcoder.v1.1.9-202204180321-release-prod.tar.gz'
 
 
-export const CGATE = 'Cloud Gateway';
+export const CGATE = 'Server Gateway';
 
-export const CGATE_RELEASE_API = `3.x`;
+export const CGATE_RELEASE_API = `4.x`;
 export const API_REF_ROOT_CGATE_SDK = `${API_ROOT}/server-gateway-sdk`;
 export const CGATE_SDK_API_CPP  = `${API_REF_ROOT_CGATE_SDK}/linux-cpp/${CGATE_RELEASE_API}`;
 export const CGATE_SDK_API_JAVA  = `${API_REF_ROOT_CGATE_SDK}/linux-java/${CGATE_RELEASE_API}`
@@ -322,3 +329,5 @@ export const AGORA_VIDEO_DOC_APP_UNITY = 'https://github.com/AgoraIO/video-sdk-s
 export const AGORA_VIDEO_DOC_APP_REACTNATIVE = 'https://github.com/AgoraIO/video-sdk-samples-reactnative'
 export const AGORA_VIDEO_DOC_APP_ELECTRON = 'https://github.com/AgoraIO/video-sdk-samples-electron'
 export const AGORA_VIDEO_DOC_APP_WINDOWS = 'https://github.com/AgoraIO/video-sdk-samples-windows'
+
+export const STATUS_PAGE = 'Status Page'

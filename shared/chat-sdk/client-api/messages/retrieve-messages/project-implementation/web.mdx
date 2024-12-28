@@ -2,8 +2,9 @@
 
 ### Retrieve a list of conversations from the server
 
-Call `getServerConversations` to retrieve conversations from the server with pagination. The SDK returns the conversation list in the reverse chronological order of when conversations are active (the timestamp of the last message in the conversation). In the conversation list, each conversation object contains the conversation ID, conversation type, whether the conversation is pinned, the pinned time (the value is 0 for an unpinned conversation), and the last message in the conversation. After the conversation list is retrieved from the server, the local conversation list will be updated accordingly. We recommend calling this method when the app is first installed, or when there is no conversation on the local device. The server stores 100 conversations for 7 days by default. To increase the two upper limits, contact support@agora.io. Agora Chat server can store up to 3,000 conversation per end user.
+Call `getServerConversations` to retrieve conversations from the server with pagination. The SDK returns the conversation list in the reverse chronological order of when conversations are active (the timestamp of the last message in the conversation). In the conversation list, each conversation object contains the conversation ID, conversation type, whether the conversation is pinned, the pinned time (the value is 0 for an unpinned conversation), and the last message in the conversation. After the conversation list is retrieved from the server, the local conversation list will be updated accordingly. We recommend calling this method when the app is first installed, or when there is no conversation on the local device.
 
+For each end user, the server stores 100 conversations by default. When this limit is exceeded, new conversations will start overwriting the old ones. If the entire message history in a conversation expires, the conversation becomes empty. When pulling the conversation list from the server, these empty conversations are not included. However, if there are empty conversations on the server, they will occupy the conversation list quota. To change this, contact support@agoro.io.
 <div class="alert note">Do not use mixed upper-case.</div>
 
 ```javascript
@@ -14,7 +15,7 @@ connection.getServerConversations({pageSize:50, cursor: ''}).then((res)=>{
 })
 ```
 
-### Retrieve historical messages of the specified conversation
+### Retrieve message history of the specified conversation
 
 After retrieving conversations, you can retrieve historical messages from the server.
 
@@ -26,7 +27,9 @@ The Agora Chat server stores the full message history for a certain period of ti
 
 - 1:1 private chat: Store 500 offline messages by default;
 - Chat Group: Store 200 offline messages by default;
-- Chatroom: Doesn't store offline messages. However, whenever an end user joins a chatroom, Agora Chat servers push the 10 latest messages/chatroom to them, by default. This number can be adjusted to 200 messages/chatroom without additional charges.
+- Chatroom: Doesn't store offline messages. However, by default, whenever an end user joins a chatroom, Agora Chat servers push the 10 latest messages/chatroom to them, and this number can be adjusted to 200 messages/chatroom without additional charges.
+
+After the GA release of Agora Chat 1.3, you can log in to Agora Console and enable the chatroom message history retrieval feature. After that, Agora Chat servers will stop automatically pushing chatroom messages to new members and you can follow the guidance below to retrieve chatroom message history.
 
 For users to receive more offline messages, use the client API or a webhook to sync with Agora Chat's server. End users can also store additional messages on their local database.
 
@@ -73,6 +76,78 @@ Refer to the following code example to get a list of pinned conversations from t
 connection.getServerPinnedConversations({pageSize:50, cursor: ''})
 ```
 
+### Pin a message
+
+You can call `pinMessage` to pin a message to the top of a one-to-one chat, chat group, or chat room. When the pinned status of a message changes, other members in the group or chat room conversation will receive the `onMessagePinEvent` event. In the case of multi-device login, the updated top status will be synchronized to other logged-in devices, and other devices will receive the `onMessagePinEvent` event, respectively.
+
+In group and chat room conversations, multiple users can pin the same message to the top. The latest pinned message will overwrite the earlier information. That is, the `PinnedMessageInfo` user ID and pin time will correspond to the latest pinned message.
+
+For a single conversation, 20 messages can be pinned to the top by default.
+
+```javascript
+const options = {
+   // Conversation type which is `groupChat` for group chat and `chatRoom` for chat room chat.
+   conversationType: 'groupChat',
+   // Conversation ID.
+   conversationId: 'conversationId',
+   // Message ID.
+   messageId: 'messageId'
+}
+
+conn.pinMessage(options).then(()=>{
+   // Succeeded in pinning the message.
+   console.log('Succeeded in pinning the message')
+})
+
+```
+
+### Unpin a message
+
+You can call `unpinMessage` to unpin a message in a group or room chat. As with pinned messages, other members of the group or chat room will receive the `onMessagePinEvent` event when the pinned message is unpinned. In the case of multi-device login, the updated pin status will be synchronized to other logged-in devices, and other devices will receive the `onMessagePinEvent` event, respectively.
+
+Any user in a group or room can unpin a message, regardless of who pinned it. After unpinning a message, the message is no longer included in the pinned message list.
+
+```javascript
+const options = {
+   // Conversation type which is `groupChat` for group chat and `chatRoom` for chat room chat.
+   conversationType: 'groupChat',
+   // Conversation ID.
+   conversationId: 'conversationId',
+   // Message ID.
+   messageId: 'messageId'
+}
+
+conn.unpinMessage(options).then(()=>{
+   // Succeeded in unpinning the message.
+   console.log('Succeeded in unpinning the message.')
+})
+
+```
+
+### Get pinned messages in a single conversation
+
+You can call `getServerPinnedMessages` to get the pinned messages from a single conversation from the server. The SDK returns messages in the reverse order of pinning.
+
+<Admonition type="tip" title="Note"><ul><li>If a message expires on the server or the user deletes it unilaterally from the server after pinning, such user will not be able to pull it when pulling roaming messages. However, this user and other users will be able to pull this message from the pinned message list.</li><li>If the user withdraws a message after pinning, the message will be removed from the server; other users will not be able to pull it when they pull the pinned message list from the server.</li></ul></Admonition>
+
+```javascript
+const options = {
+   // Conversation ID.
+   conversationId: 'conversationId',
+   // Conversation type which is `groupChat` for group chat and `chatRoom` for chat room chat.
+   conversationType: 'groupChat',
+   // The number of pinned messages to retrieve per page. The value range is [1,50] and the default value is `10`
+   pageSize: 20,
+   // The cursor position that indicates where to start getting data.
+   // Pass in an empty string ('') for the first call of the API and the SDK returns the pinned messages in the descending order of the pinning time.
+   cursor: ''
+}
+
+conn.getServerPinnedMessages(options).then((res)=>{
+   // Succeeded in retrieving the list of pinned messages in a conversation.
+   console.log(res)
+})
+```
 
 ### Delete historical messages from the server unidirectionally
 
@@ -87,25 +162,92 @@ connection.removeHistoryMessages({targetId: 'userId', chatType: 'singleChat', me
 
 ### Delete conversations and related messages from the server unidirectionally
 
-Call `deleteConversation` to delete conversations and related messages unidirectionally from the server. Other chat users can still get the conversations and their historical messages from the server.
+You can use the `removeHistoryMessages` method to unidirectionally delete historical messages on the server based on time or message ID. Up to 20 messages can be deleted at once. After deletion, the account cannot retrieve the message from the server. Other users are not affected by this operation.
+
+Upon successful deletion, the `deleteRoaming` callback will be triggered when logging in from multiple terminals and devices.
 
 ```javascript
-let options = {
-  // conversation ID: The conversation ID is the user ID of the peer user for one-to-one chat and the group ID for group chat.
-  channel: "channel",
-  // Conversation type: (Default) `singleChat`: one-to-one chat; `groupChat`: group chat.
-  chatType: "singleChat",
-  // Whether to delete historical messages from the server with the conversation.
-  deleteRoam: true,
-};
-WebIM.conn
-  .deleteConversation(options)
-  .then((res) => {
-    console.log(res);
-  })
-  .catch((e) => {
-    // Deletion failure.
-  });
+// Delete messages by time stamp
+connection.removeHistoryMessages({targetId: 'userId', chatType: 'singleChat', beforeTimeStamp: Date.now()})
+
+// Delete messages by message ID
+connection.removeHistoryMessages({targetId: 'userId', chatType: 'singleChat', messageIds: ['messageId']})
+```
+### Tag a conversation
+
+To tag a conversation, use the `addConversationMark` method. This method allows you to add tags to both local and server-side conversations. Each conversation can have up to 20 tags. This feature applies only to private chats and chat groups.
+
+After adding a tag, you can retrieve the tagged conversations from the server by calling the `getServerConversations` method. The returned conversation objects will include the conversation tag, which you can obtain using the `ConversationItem#marks` method.
+
+If the server conversation list reaches its limit (default 100 conversations per user), inactive conversations will be deleted based on conversation activity (timestamp of the latest message). Consequently, the conversation tags of these deleted conversations will also be removed.
+
+<Admonition type="info" title="Hint">Adding tags to a conversation, such as stars, does not affect other logic of the conversation, such as the number of unread messages in it.</Admonition>
+
+```javascript
+const options = {
+  conversations: [
+    {conversationId: 'test', conversationType: 'singleChat'},
+    {conversationId: 'groupId', conversationType: 'groupChat'}
+  ],
+  mark: 0,
+}
+
+conn.addConversationMark(options).then(() => {
+  console.log('addConversationMark success')
+})
+```
+
+To create customized tags, you need to do the following:
+  
+  ```javascript
+  const MarkMap = new Map();
+  MarkMap.set(0, 'IMPORTANT');
+  MarkMap.set(1, 'NORMAL');
+  MarkMap.set(2, 'STAR');
+  ```
+
+### Remove conversation tag
+
+To remove a conversation tag, call `removeConversationMark`. Calling this method removes both the local and server-side conversation tags.
+
+```javascript
+const options = {
+  conversations: [
+    {conversationId: 'test', conversationType: 'singleChat'},
+    {conversationId: 'groupId', conversationType: 'groupChat'}
+  ],
+  mark: 0,
+}
+
+conn.removeConversationMark(options).then(() => {
+  console.log('removeConversationMark success')
+})
+```
+
+### Query conversations from the server by the conversation tag
+
+You can use the `getServerConversationsByFilter` method to retrieve a list of conversations from the server based on the tag. The SDK returns the conversation list in the reverse order of the conversation tag's timestamp. Each conversation object includes the following information:
+
+- Conversation ID
+- Conversation type
+- Pinned status (whether it is pinned or not)
+- Pin time (For an unpinned conversation, the value is 0)
+- Conversation tag
+- Latest message
+
+After fetching the conversation list from the server, the local conversation list is updated accordingly:
+
+```javascript
+const options = {
+  pageSize: 10,
+  cursor: '',
+  filter: {
+    mark: 0
+  }
+}
+conn.getServerConversationsByFilter().then((res) => {
+  console.log('getServerConversationsByFilter success', res)
+})
 ```
 
 </PlatformWrapper>

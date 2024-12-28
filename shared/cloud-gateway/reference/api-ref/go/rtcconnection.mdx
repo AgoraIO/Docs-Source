@@ -1,0 +1,366 @@
+The `RtcConnection` class is used to manage the connection between the SDK and the RTC channel. Once the connection is established, you can use the `LocalUser` object to send and receive media streams in the RTC channel. Connecting to the channel is an asynchronous operation, and you can monitor connection state changes and events through the [`RtcConnectionObserver`](#rtcconnectionobserver) object. `RtcConnection` can also monitor whether a remote user joins or leaves the channel.
+
+### `NewRtcConnection`
+
+Creates an RTC connection object.
+
+```go
+func NewRtcConnection(cfg *RtcConnectionConfig) *RtcConnection {
+    cCfg := CRtcConnectionConfig(cfg)
+    defer FreeCRtcConnectionConfig(cCfg)
+
+    ret := &RtcConnection{
+        cConnection: C.agora_rtc_conn_create(agoraService.service, cCfg),
+        handler:                     nil,
+        localUserObserver:           nil,
+        audioObserver:               nil,
+        videoObserver:               nil,
+        remoteVideoRWMutex:          &sync.RWMutex{},
+        remoteEncodedVideoReceivers: make(map[*VideoEncodedImageReceiver]*videoEncodedImageReceiverInner),
+    }
+    ret.localUser = &LocalUser{
+        connection: ret,
+        cLocalUser: C.agora_rtc_conn_get_local_user(ret.cConnection),
+    }
+    ret.parameter = &AgoraParameter{
+        cParameter: C.agora_rtc_conn_get_agora_parameter(ret.cConnection),
+    }
+    agoraService.connectionRWMutex.Lock()
+    agoraService.consByCCon[ret.cConnection] = ret
+    agoraService.consByCLocalUser[ret.localUser.cLocalUser] = ret
+    agoraService.connectionRWMutex.Unlock()
+    return ret
+}
+```
+
+#### Parameters
+
+| Parameter     | Description                                                                 |
+|---------------|-----------------------------------------------------------------------------|
+| `cfg`         | RTC connection configuration. See [`RtcConnectionConfig`](#rtcconnectionconfig) for details. |
+
+
+#### Returns
+
+- `RtcConnection` object, if the method call succeeds.
+- `nil`, if the method call fails.
+
+### Connect
+
+Connects to the RTC channel.
+
+```go
+func (conn *RtcConnection) Connect(token string, channel string, uid string) int {
+    if conn.cConnection == nil {
+        return -1
+    }
+    conn.connInfo.ChannelId = channel
+    conn.connInfo.LocalUserId = uid
+    uidInt, _ := strconv.Atoi(uid)
+    conn.connInfo.InternalUid = uint(uidInt)
+    cChannel := C.CString(channel)
+    cToken := C.CString(token)
+    cUid := C.CString(uid)
+    defer C.free(unsafe.Pointer(cChannel))
+    defer C.free(unsafe.Pointer(cToken))
+    defer C.free(unsafe.Pointer(cUid))
+    return int(C.agora_rtc_conn_connect(conn.cConnection, cToken, cChannel, cUid))
+}
+```
+
+When the method succeeds, the connection state changes from `true` to `2`.
+
+Depending on whether the connection is successful, the connection state will change to `3` or `5`. The SDK will trigger [`OnConnected`](#onconnected) or [`OnDisconnected`](#ondisconnected) to notify the connection state change.
+
+#### Parameters
+
+|Parameter|Description|
+|---------|-----------|
+|`token`|RTC Token. See [Secure authentication with tokens](/video-calling/get-started/authentication-workflow) for details.|
+|`channel`|Channel name. Must be a string with a length of no more than 64 bytes. Supported character types include: - All lowercase letters: a to z; - All uppercase letters: A to Z; - All Arabic numerals: 0 to 9; - Space; - Punctuation and other special symbols: `!`, `#`, `$`, `%`, `&`, `(`, `)`, `+`, `-`, `:`, `;`, `<`, `=`, `.`, `>`, `?`, `@`, `[`, `]`, `^`, `_`, `{`, `}`, `|`, `~`, `,`|
+|`uid`|Local user ID. No more than 64 bytes in length. If you do not set a user ID or set it to nil, the SDK will automatically return a user ID in the `OnConnected` callback. You must save and manage this ID yourself. Depending on the user ID type you choose in the [`Initialize`](#initialize) method, the supported character sets for this parameter are different: - For int type user ID, the supported character set includes 10 digits 0-9 - For String type user ID, the supported character set includes: - 26 lowercase English letters a-z; - 26 uppercase English letters A-Z; - 10 digits 0-9; - Space; - `!`, `#`, `$`, `%`, `&`, `(`, `)`, `+`, `-`, `:`, `;`, `<`, `=`, `.`, `>`, `?`, `@`, `[`, `]`, `^`, `_`, `{`, `}`, `|`, `~`, `,`|
+
+#### Returns
+
+- `0`: Success.
+- < `0`: Failure.
+  - `-2`: Invalid parameter.
+  - `-8`: The current connection state is not `true`.
+
+### `Disconnect`
+
+Disconnects from the RTC channel. When the SDK disconnects from the channel, the connection state changes to `true`. You can also be notified through the [`OnDisconnected`](#ondisconnected) callback.
+
+```go
+func (conn *RtcConnection) Disconnect() int {
+    if conn.cConnection == nil {
+        return -1
+    }
+    return int(C.agora_rtc_conn_disconnect(conn.cConnection))
+}
+```
+
+#### Returns
+
+- `0`: Success.
+- < `0`: Failure.
+
+### `RenewToken`
+
+Renews the Token. The Token will expire after a certain period. When you receive the [`OnTokenPrivilegeWillExpire`](#ontokenprivilegewillexpire) callback, you must generate a new token from your server and use this method to update the token. Otherwise, the SDK will disconnect from the channel.
+
+```go
+func (conn *RtcConnection) RenewToken(token string) int {
+    if conn.cConnection == nil {
+        return -1
+    }
+    cToken := C.CString(token)
+    defer C.free(unsafe.Pointer(cToken))
+    return int(C.agora_rtc_conn_renew_token(conn.cConnection, cToken))
+}
+```
+
+#### Parameters
+
+| Parameter  | Description |
+|------------|-------------|
+| `token`    | The new Token. |
+
+#### Returns
+
+- `0`: Success.
+- < `0`: Failure.
+
+### `RegisterObserver`
+
+Registers an RTC connection observer.
+
+```go
+func (conn *RtcConnection) RegisterObserver(handler *RtcConnectionObserver) int {
+    if conn.cConnection == nil || handler == nil {
+        return -1
+    }
+    conn.handler = handler
+    if conn.cHandler == nil {
+        conn.cHandler = CRtcConnectionObserver()
+        C.agora_rtc_conn_register_observer(conn.cConnection, conn.cHandler)
+    }
+    return 0
+}
+```
+
+#### Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `handler` | [`RtcConnectionObserver`](#rtcconnectionobserver) object. |
+
+#### Returns
+
+- `0`: Success.
+- < `0`: Failure.
+
+### `UnregisterObserver`
+
+Unregisters the RTC connection observer.
+
+```go
+func (conn *RtcConnection) UnregisterObserver() int {
+    conn.handler = nil
+    return 0
+}
+```
+
+#### Returns
+
+- `0`: Success.
+- < `0`: Failure.
+
+### `CreateDataStream`
+
+Creates a data stream.
+
+```go
+func (conn *RtcConnection) CreateDataStream(reliable bool, ordered bool) (int, int) {
+    if conn.cConnection == nil {
+        return -1, -1
+    }
+
+    cStreamId := C.int(-1)
+    ret := int(C.agora_rtc_conn_create_data_stream(conn.cConnection, &cStreamId, CIntFromBool(reliable), CIntFromBool(ordered)))
+    return int(cStreamId), ret
+}
+```
+
+Each user can create up to 5 data streams per channel.
+
+<Admonition type="caution" title="Note">
+- Agora does not support setting `reliable` to `true` and `ordered` to `false`.
+- When immediate data packet delivery is required, do not set the `ordered` parameter to `true`.
+</Admonition>
+
+#### Parameters
+
+|Parameter|Description|
+|---------|-----------|
+|`reliable`|Indicates whether the data stream is reliable: - `true`: The receiver will receive the data sent by the sender within 5 seconds. - `false`: The receiver is not guaranteed to receive the data, and no error will be reported if data is lost.|
+|`ordered`|Indicates whether the data stream is ordered: - `true`: The receiver will receive data packets in the order sent by the sender. - `false`: The receiver is not guaranteed to receive data packets in the order sent by the sender.|
+
+#### Returns
+
+- `stream_id`: The stream ID, if the method call succeeds.
+- `nil`, if the method call fails.
+
+### `SendStreamMessage`
+
+Sends a data stream message.
+
+```go
+func (conn *RtcConnection) SendStreamMessage(streamId int, msg []byte) int {
+    if conn.cConnection == nil {
+        return -1
+    }
+    cMsg := C.CBytes(msg)
+    defer C.free(cMsg)
+    return int(C.agora_rtc_conn_send_stream_message(conn.cConnection, C.int(streamId), (*C.char)(cMsg), C.uint32_t(len(msg))))
+}
+```
+
+This method sends a data stream message to all users in the channel. The SDK imposes the following restrictions on this method:
+- A maximum of 30 packets can be sent per second within the channel, with each packet being up to 1 KB in size.
+- Each client can send up to 6 KB of data per second.
+- Each user in the channel can have up to 5 data channels simultaneously.
+
+Upon successfully calling this method, the remote end will trigger the [`OnStreamMessage`](#onstreammessage) callback, where the remote user can receive the stream message.
+
+<Admonition type="caution" title="Note">
+- Ensure that you have called [`CreateDataStream`](#createdatastream) to create a data channel before using this method.
+- In a live broadcast use-case, this method is only applicable to host users.
+</Admonition>
+
+#### Parameters
+
+| Parameter   | Description   |
+|-------------|---------------|
+| `stream_id` | The data stream ID. It can be obtained through [`CreateDataStream`](#createdatastream). |
+| `data`      | The data to be sent. |
+
+#### Returns
+
+- `0`: Success.
+- < `0`: Failure.
+
+### `GetAgoraParameter`
+
+Get `AgoraParameter` object.
+
+```go
+func (conn *RtcConnection) GetAgoraParameter() *AgoraParameter {
+    return conn.parameter
+}
+```
+
+#### Returns
+
+- `AgoraParameter` object, if the method call was succeeds.
+- `nil`, if the method call fails.
+
+### `GetLocalUser`
+
+Get `LocalUser` Object. Each connection corresponds to only one local user.
+
+```go
+func (conn *RtcConnection) GetLocalUser() *LocalUser {
+    return conn.localUser
+}
+```
+
+#### Returns
+
+- `LocalUser` object, if the method call succeeds.
+- `nil`, if the method call fails.
+
+<a name="rtc-connection-release">
+### `Release`
+</a>
+
+Releases the RTC connection.
+
+```go
+func (conn *RtcConnection) Release() {
+    if conn.cConnection == nil {
+        return
+    }
+    agoraService.connectionRWMutex.Lock()
+    delete(agoraService.consByCCon, conn.cConnection)
+    delete(agoraService.consByCLocalUser, conn.localUser.cLocalUser)
+    if conn.cVideoObserver != nil {
+        delete(agoraService.consByCVideoObserver, conn.cVideoObserver)
+    }
+    agoraService.connectionRWMutex.Unlock()
+
+    encodedVideoReceiversInners := make([]*videoEncodedImageReceiverInner, 0, 10)
+    conn.remoteVideoRWMutex.RLock()
+    for _, receiverInner := range conn.remoteEncodedVideoReceivers {
+        encodedVideoReceiversInners = append(encodedVideoReceiversInners, receiverInner)
+    }
+    conn.remoteVideoRWMutex.RUnlock()
+    agoraService.remoteVideoRWMutex.Lock()
+    for _, receiverInner := range encodedVideoReceiversInners {
+        delete(agoraService.remoteEncodedVideoReceivers, receiverInner.cReceiver)
+    }
+    agoraService.remoteVideoRWMutex.Unlock()
+
+    localUser := conn.localUser
+    if conn.cAudioObserver != nil {
+        C.agora_local_user_unregister_audio_frame_observer(localUser.cLocalUser)
+    }
+    if conn.cVideoObserver != nil {
+        C.agora_local_user_unregister_video_frame_observer(localUser.cLocalUser, conn.cVideoObserver)
+    }
+    if conn.cLocalUserObserver != nil {
+        C.agora_local_user_unregister_observer(localUser.cLocalUser)
+    }
+    if conn.cHandler != nil {
+        C.agora_rtc_conn_unregister_observer(conn.cConnection)
+    }
+    C.agora_rtc_conn_destroy(conn.cConnection)
+
+    conn.remoteVideoRWMutex.Lock()
+    conn.remoteEncodedVideoReceivers = make(map[*VideoEncodedImageReceiver]*videoEncodedImageReceiverInner)
+    conn.remoteVideoRWMutex.Unlock()
+
+    for _, receiverInner := range encodedVideoReceiversInners {
+        receiverInner.release()
+    }
+    encodedVideoReceiversInners = nil
+
+    conn.cConnection = nil
+    if conn.cAudioObserver != nil {
+        FreeCAudioFrameObserver(conn.cAudioObserver)
+        conn.cAudioObserver = nil
+    }
+    if conn.cVideoObserver != nil {
+        FreeCVideoFrameObserver(conn.cVideoObserver)
+        conn.cVideoObserver = nil
+    }
+    if conn.cLocalUserObserver != nil {
+        FreeCLocalUserObserver(conn.cLocalUserObserver)
+        conn.cLocalUserObserver = nil
+    }
+    if conn.cHandler != nil {
+        FreeCRtcConnectionObserver(conn.cHandler)
+        conn.cHandler = nil
+    }
+    conn.parameter = nil
+    conn.localUser = nil
+    localUser.connection = nil
+    localUser.cLocalUser = nil
+    localUser = nil
+    conn.handler = nil
+    conn.localUserObserver = nil
+    conn.audioObserver = nil
+    conn.videoObserver = nil
+}
+```
+

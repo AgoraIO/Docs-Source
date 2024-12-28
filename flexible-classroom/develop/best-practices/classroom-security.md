@@ -11,12 +11,12 @@ Security and compliance are essential for real-time engagements through technolo
 
 Agora Flexible Classroom is designed and built with multiple protection measures against attacks commonly seen in the real-time engagement industry. This page describes some of the security best practices that Agora Flexible Classroom has adopted, as well as security tools it provides for developers, as follows:
 
-| Protection measures         | Applied by default | Recommended scenarios                                        |
+| Protection measures         | Applied by default | Recommended use-cases                                        |
 | :-------------------------- | :----------------- | :----------------------------------------------------------- |
-| Classroom separation        | Yes                | All real-time scenarios.                                     |
+| Classroom separation        | Yes                | All real-time use-cases.                                     |
 | Token authentication        | No                 | All real-time apps must use token-based end user authentication. |
-| Data encryption and storage | Yes                | Real-time scenarios that require confidentiality.            |
-| Network geofencing          | No                 | Real-time scenarios where customers wish to restrict access to Agora servers to within a specified region. |
+| Data encryption and storage | Yes                | Real-time use-cases that require confidentiality.            |
+| Network geofencing          | No                 | Real-time use-cases where customers wish to restrict access to Agora servers to within a specified region. |
 
 ## Classroom separation
 

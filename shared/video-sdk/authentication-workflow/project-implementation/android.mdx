@@ -1,12 +1,16 @@
 <PlatformWrapper platform="android">
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 import CodeBlock from '@theme/CodeBlock';
 
 ### Use a token
 
 The client requests a token from your authentication server corresponding to the user ID and the channel name. You use the received token to join a channel.
 
-```java
-// Channel name
+<Tabs groupId="language">
+<TabItem value="java" label="Java">
+<CodeBlock language="java" showLineNumbers>
+{`// Channel name
 String channelId = "xxx";
 // User ID
 int uid = 0;
@@ -16,8 +20,27 @@ String token = getToken(channelId, uid);
 ChannelMediaOptions option = new ChannelMediaOptions();
 option.clientRoleType = Constants.CLIENT_ROLE_BROADCASTER;
 // Join a channel
-engine.joinChannel(token, channelId, 0, option);
-```
+engine.joinChannel(token, channelId, 0, option);`}
+</CodeBlock>
+</TabItem>
+
+<TabItem value="kotlin" label="Kotlin" default>
+<CodeBlock language="kotlin" showLineNumbers>
+{`// Channel name
+val channelId = "xxx"
+// User ID
+val uid = 0
+// Request a token from the server corresponding to channelId and uid
+val token = getToken(channelId, uid)
+// Set channel media options
+val option = ChannelMediaOptions().apply {
+    clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
+}
+// Join a channel
+engine.joinChannel(token, channelId, 0, option)`}
+</CodeBlock>
+</TabItem>
+</Tabs>
 
 ### Token expiration 
 
@@ -25,7 +48,7 @@ After you join a channel using a token, the SDK triggers an `onTokenPrivilegeWil
 
 When the token expires, the SDK triggers an `onRequestToken` callback. After receiving the callback, you regenerate a new token on the server side, and then update the token in one of the following ways:
 
-#### Single channel scenario
+#### Single channel use-case
 
 * Call `renewToken` to pass in the newly generated Token (Recommended).
 
@@ -33,14 +56,16 @@ When the token expires, the SDK triggers an `onRequestToken` callback. After rec
 
 * Call `leaveChannel` [2/2] to leave the current channel, and then pass in a new token when calling `joinChannel` [2/2] to rejoin the channel.
 
-#### Multi-channel scenario
+#### Multi-channel use-case
 
 If you call `joinChannelEx` to join multiple channels, call the `updateChannelMediaOptionsEx` method to update the token.
 
 The following sample code shows calling `renewToken` to update the token when receiving an `onTokenPrivilegeWillExpire` callback notification.
 
-```java
-class RtcEngineEventHandlerImpl extends IRtcEngineEventHandler {
+<Tabs groupId="language">
+<TabItem value="java" label="Java">
+<CodeBlock language="java" showLineNumbers>
+{`class RtcEngineEventHandlerImpl extends IRtcEngineEventHandler {
     // Callback is triggered when the token is about to expire
     @Override
     public void onTokenPrivilegeWillExpire(String token) {
@@ -51,11 +76,29 @@ class RtcEngineEventHandlerImpl extends IRtcEngineEventHandler {
         // Update token
         engine.renewToken(token);
     }
-}
-```
+}`}
+</CodeBlock>
+</TabItem>
+
+<TabItem value="kotlin" label="Kotlin" default>
+<CodeBlock language="kotlin" showLineNumbers>
+{`class RtcEngineEventHandlerImpl : IRtcEngineEventHandler() {
+    // Callback triggered when the token is about to expire
+    override fun onTokenPrivilegeWillExpire(token: String) {
+        super.onTokenPrivilegeWillExpire(token)
+
+        // Request to generate a fresh token
+        val newToken = getToken()
+        // Update the token
+        engine.renewToken(newToken)
+    }
+}`}
+</CodeBlock>
+</TabItem>
+</Tabs>
 
 ### Complete sample code
-For a complete implementation of token authentication, refer to the following:
+This section presents sample code to implement token authentication in your client. 
 
 1. In `/Gradle Scripts/build.gradle(Module: <projectname>.app)`, add the following dependencies for making HTTP requests to the token server:
 
@@ -66,10 +109,12 @@ For a complete implementation of token authentication, refer to the following:
     }
     ```
 
-1. In `MainActivity.java`, replace the content with the following code:
+1. In `MainActivity`, replace the content with the following code:
 
     <details>
     <summary>Complete sample code for token authentication</summary>
+    <Tabs groupId="language">
+    <TabItem value="java" label="Java">
     <CodeBlock language="java" showLineNumbers>
     {` package com.example.rtcquickstart;
 
@@ -268,6 +313,181 @@ For a complete implementation of token authentication, refer to the following:
 
     }`}
     </CodeBlock>
+    </TabItem>
+   
+    <TabItem value="kotlin" label="Kotlin" default>
+    <CodeBlock language="kotlin" showLineNumbers>
+    {`package com.example.rtcquickstart
+   
+    import android.Manifest
+    import android.content.pm.PackageManager
+    import android.os.Bundle
+    import android.view.SurfaceView
+    import android.widget.FrameLayout
+    import android.widget.Toast
+    import androidx.appcompat.app.AppCompatActivity
+    import androidx.core.app.ActivityCompat
+    import androidx.core.content.ContextCompat
+    import com.google.gson.Gson
+    import io.agora.rtc2.*
+    import io.agora.rtc2.video.VideoCanvas
+    import okhttp3.*
+    import org.json.JSONException
+    import org.json.JSONObject
+    import java.io.IOException
+    import java.util.*
+    
+    class MainActivity : AppCompatActivity() {
+    
+        // Fill in the App ID from Agora console
+        private val appId = "Your App ID"
+        // Fill in the channel name
+        private val channelName = "demo"
+        private var token = ""
+        private var mRtcEngine: RtcEngine? = null
+        private var joined = 1
+    
+        private val mRtcEventHandler = object : IRtcEngineEventHandler() {
+            override fun onUserJoined(uid: Int, elapsed: Int) {
+                runOnUiThread {
+                    // After obtaining the user ID in the onUserJoined callback, call setupRemoteVideo to set the remote user view
+                    setupRemoteVideo(uid)
+                }
+            }
+    
+            override fun onTokenPrivilegeWillExpire(token: String) {
+                fetchToken(1234, channelName, 1)
+                runOnUiThread {
+                    val toast = Toast.makeText(this@MainActivity, "Token renewed", Toast.LENGTH_SHORT)
+                    toast.show()
+                }
+                super.onTokenPrivilegeWillExpire(token)
+            }
+    
+            override fun onRequestToken() {
+                joined = 1
+                fetchToken(1234, channelName, 1)
+                super.onRequestToken()
+            }
+        }
+    
+        companion object {
+            private const val PERMISSION_REQ_ID = 22
+            private val REQUESTED_PERMISSIONS = arrayOf(
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.CAMERA
+            )
+        }
+    
+        private fun checkSelfPermission(permission: String, requestCode: Int): Boolean {
+            return if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, REQUESTED_PERMISSIONS, requestCode)
+                false
+            } else {
+                true
+            }
+        }
+    
+        // Get RTC Token
+        private fun fetchToken(uid: Int, channelName: String, tokenRole: Int) {
+            val client = OkHttpClient()
+            val JSON = MediaType.parse("application/json; charset=utf-8")
+            val json = JSONObject()
+            try {
+                json.put("uid", uid)
+                json.put("ChannelName", channelName)
+                json.put("role", tokenRole)
+            } catch (e: JSONException) {
+                e.printStackTrace()
+            }
+    
+            val requestBody = RequestBody.create(JSON, json.toString())
+            val request = Request.Builder()
+                .url("http://<Your Host URL and port>/fetch_rtc_token")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .post(requestBody)
+                .build()
+    
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    // Handle failure
+                }
+    
+                override fun onResponse(call: Call, response: Response) {
+                    if (response.isSuccessful) {
+                        val gson = Gson()
+                        val result = response.body?.string()
+                        val map: Map<String, Any> = gson.fromJson(result, Map::class.java)
+                        Thread {
+                            token = map["token"].toString()
+                            // If the user has not joined the channel, use token to join the channel
+                            val options = ChannelMediaOptions()
+                            if (joined != 0) {
+                                joined = mRtcEngine?.joinChannel(token, channelName, 1234, options) ?: -1
+                            } else {
+                                mRtcEngine?.renewToken(token)
+                            }
+                        }.start()
+                    }
+                }
+            })
+        }
+    
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+            setContentView(R.layout.activity_main)
+    
+            // If all permissions are granted, initialize the RtcEngine object and join the channel
+            if (checkSelfPermission(REQUESTED_PERMISSIONS[0], PERMISSION_REQ_ID) &&
+                checkSelfPermission(REQUESTED_PERMISSIONS[1], PERMISSION_REQ_ID)) {
+                initializeAndJoinChannel()
+            }
+        }
+    
+        override fun onDestroy() {
+            super.onDestroy()
+            mRtcEngine?.leaveChannel()
+            mRtcEngine?.destroy()
+        }
+    
+        private fun initializeAndJoinChannel() {
+            try {
+                mRtcEngine = RtcEngine.create(baseContext, appId, mRtcEventHandler)
+            } catch (e: Exception) {
+                throw RuntimeException("Check the error.")
+            }
+    
+            // In interactive live broadcast, set the channel scene to BROADCASTING
+            mRtcEngine?.setChannelProfile(Constants.CHANNEL_PROFILE_LIVE_BROADCASTING)
+            // Depending on the actual situation, set the user role to BROADCASTER or AUDIENCE
+            mRtcEngine?.setClientRole(Constants.CLIENT_ROLE_BROADCASTER)
+    
+            // SDK turns off video by default. Call enableVideo to enable video
+            mRtcEngine?.enableVideo()
+    
+            val container: FrameLayout = findViewById(R.id.local_video_view_container)
+            // Call CreateRendererView to create a SurfaceView object and add it as a child to the FrameLayout
+            val surfaceView = SurfaceView(baseContext)
+            container.addView(surfaceView)
+            // Pass the SurfaceView object to Agora to render local video
+            mRtcEngine?.setupLocalVideo(VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, 0))
+            // Start local video preview
+            mRtcEngine?.startPreview()
+            // Get a token from the token server
+            fetchToken(1234, channelName, 1)
+        }
+    
+        private fun setupRemoteVideo(uid: Int) {
+            val container: FrameLayout = findViewById(R.id.remote_video_view_container)
+            val surfaceView = SurfaceView(baseContext)
+            surfaceView.setZOrderMediaOverlay(true)
+            container.addView(surfaceView)
+            mRtcEngine?.setupRemoteVideo(VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, uid))
+        }
+    }`}
+    </CodeBlock>
+    </TabItem>
+    </Tabs>
     </details>
 
 </PlatformWrapper>

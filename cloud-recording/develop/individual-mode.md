@@ -9,8 +9,6 @@ description: >
 
 This guide includes the key steps in using the Cloud Recording RESTful API to make an individual recording. For more information, see [Get started](../get-started/getstarted).
 
-## Overview
-
 Agora Cloud Recording supports three recording modes:
 
 -   Individual recording
@@ -26,8 +24,7 @@ Agora recommends that you use the standard mode when you start individual record
 For example, if a channel has two users and you choose to record both audio and video, the files generated for standard mode of individual recording is shown in the following diagram:
 
 
-
-![Image](/images/standard_mode.png)
+![Image](/images/cloud-recording/individual-mode.svg)
 
 
 ## Implementation

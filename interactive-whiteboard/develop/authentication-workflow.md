@@ -34,7 +34,7 @@ An SDK Token is linked with a whiteboard project in <Vg k="CONSOLE" /> and grant
 Exposure of SDK Tokens may cause security risks because they grant a large number of permissions. Agora recommends the following precautions:
 
 - Do not send SDK Tokens to your app clients, save them in a database or write them in a configuration file. You should issue them from your app server only when necessary.
-- Do not issue a permanent SDK Token. You should set a validity period according to your app scenario.
+- Do not issue a permanent SDK Token. You should set a validity period according to your app use-case.
 
 ### Room Token
 
@@ -98,7 +98,7 @@ A token can be assigned to an `admin`, `writer`, or `reader` role. The permissio
 
 To enhance security, Agora recommends the following precautions:
 - Avoid sending tokens that grant a lot of permissions to your app clients.
-- When it is necessary to send a token to an app client, do not use tokens that grant more permissions than are needed in your app scenario.
+- When it is necessary to send a token to an app client, do not use tokens that grant more permissions than are needed in your app use-case.
 
 
 ### Set the validity period
@@ -109,7 +109,7 @@ If a user uses a token to join a room and the token expires while the user is st
 
 Not setting the validity period or setting it to 0 generates a permanent Token.
 
-A permanent Token may cause security risks for your app service. If an illegal user gets a permanent token that grants a lot of permissions, they could use it to disrupt or damage your app system. The only way to invalidate a token is to disable the access keys used to generate it, but this action has significant side effects. Therefore, Agora recommends that you estimate the maximum amount of time a token will be used on app clients based on your app scenario and set this as the validity period.
+A permanent Token may cause security risks for your app service. If an illegal user gets a permanent token that grants a lot of permissions, they could use it to disrupt or damage your app system. The only way to invalidate a token is to disable the access keys used to generate it, but this action has significant side effects. Therefore, Agora recommends that you estimate the maximum amount of time a token will be used on app clients based on your app use-case and set this as the validity period.
 
 ### Get a Room UUID
 

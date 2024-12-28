@@ -108,7 +108,7 @@ For example, if the recording server records two video streams with resolutions 
 
 This section shows how to calculate the monthly audio and video service minutes of each category, as well as the total cost based on the corresponding unit price.
 
-### Scenario description
+### Use-case description
 
 Suppose you have an enabled project named Test under your Agora account, and the project uses the Agora On-Premise Recording SDK to implement the recording function.
 
@@ -414,7 +414,7 @@ At the end of each month, Agora adds up the usage duration (in seconds) of audio
 
 
 
-### Video resolution in the dual-stream scenario
+### Video resolution in the dual-stream use-case
 
 When the user being recorded enables [dual-stream mode](../../video-calling/reference/glossary#dual-stream-mode), the recording service can receive only one stream at a time:
 

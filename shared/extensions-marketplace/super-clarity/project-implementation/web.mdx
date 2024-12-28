@@ -1,0 +1,217 @@
+import CodeBlock from '@theme/CodeBlock';
+
+<PlatformWrapper platform="web">
+
+### Integrate the extension
+
+To install the [<Vg k="RTEE_CLARITY" /> extension](https://www.npmjs.com/package/agora-extension-super-clarity), do the following:
+
+    1. Run the following command in the root directory of your project:
+
+        ```bash
+        npm install agora-extension-super-clarity
+        ```
+
+    1. To import the <Vg k="RTEE_CLARITY" /> extension, use one of the following methods:
+
+        - **Method 1**: Add the following code to your JavaScript file:
+
+            ```javascript
+            import {
+              SuperClarityExtension,
+              SuperClarityEvents,
+              SuperClarityProcessor,
+            } from 'agora-extension-super-clarity';
+            ```
+      
+        - **Method 2:** Import it in the HTML file using the script tag. After importing, you can directly use the `SuperClarityExtension` object in your JavaScript file.
+
+            ```html
+            <script src="./agora-extension-super-clarity.js"></script>
+            ```
+### Register the extension
+
+Before joining a channel, create a `SuperClarityExtension` object and call the SDK's `registerExtensions` method to register the extension.
+
+    ```javascript
+    // Create a SuperClarityExtension object
+    const extension = new SuperClarityExtension();
+
+    // Register the extension
+    AgoraRTC.registerExtensions([extension]);
+
+    const context = {
+      uid: undefined,
+      client: undefined,
+      track: undefined,
+      processor: undefined,
+    };
+
+    async function join(appid, channel) {
+      context.client = AgoraRTC.createClient({ mode: "live", codec: "vp8", role: "host" });
+      context.client.on("user-published", onUserPublished);
+      context.client.on("user-unpublished", onUserUnpublished);
+
+      await context.client.join(appid, channel, null);
+    }
+
+    // Join the channel
+    join('your-appid', 'your-channel');
+    ```
+
+### Enable the extension
+
+When subscribing to a remote video track, follow these steps to enable the <Vg k="RTEE_CLARITY" /> extension:
+
+1. Call the extension's `createProcessor` method to create the extension's processor and listen to related events.
+1. Call the SDK's `IRemoteVideoTrack.pipe` method to connect the pipeline between the <Vg k="RTEE_CLARITY" /> extension and the video track.
+1. Call the `enable` method of the extension to activate it. After enabling, play the video track to see the effect of the <Vg k="RTEE_CLARITY" /> extension.
+
+<Admonition type="caution" title="Caution">
+To avoid performance issues caused by multiple processors working simultaneously, you can create a maximum of two processors. As a result, the <Vg k="RTEE_CLARITY" /> extension can only be applied to a maximum of two video tracks at the same time.
+</Admonition>
+
+```typescript
+async function onUserPublished(user, mediaType) {
+  if (!context.client || mediaType !== "video" || !!context.uid) {
+    return;
+  }
+  context.uid = user.uid;
+  context.track = await context.client.subscribe(user, mediaType);
+  
+  // Create a processor
+  context.processor = extension.createProcessor();
+
+  // Listen for processor-related events
+  context.processor.on("first-video-frame", (stats) => {
+    console.log("Plugin received the first video frame, stats:", stats);
+  });
+  context.processor.on("error", (msg) => {
+    console.error("Plugin error:", msg);
+  });
+
+  context.processor.on("stats", (stats) => {
+    console.log("Plugin stats:", Date.now(), stats);
+  });
+
+  // Connect the pipeline between the processor and the video track
+  context.track.pipe(context.processor).pipe(context.track.processorDestination);
+
+  // Enable the extension
+  await context.processor.enable();
+  context.track.play('any-element-id');
+}
+```
+
+### Switch video tracks
+
+Although the extension limits the number of `processors` that can be created, you can use the same `processor` to perform <Vg k="RTEE_CLARITY" /> processing on multiple video tracks by switching tracks.
+
+To switch video tracks, call `IRemoteVideoTrack.unpipe` to disconnect the `processor` from the current video track, and then call `IRemoteVideoTrack.pipe` to connect the new video track.
+
+```typescript
+// Disconnect the processor from the current video track
+await processor.disable();
+processor.unpipe();
+track?.unpipe();
+track?.pipe(track.processorDestination);
+
+// Connect to the new video track
+track2.pipe(processor).pipe(track2.processorDestination);
+await processor.enable();
+track2.play(ele);
+```
+
+### Destroy the extension
+
+To stop using the <Vg k="RTEE_CLARITY" /> extension, follow these steps to ensure proper cleanup and avoid potential issues:
+
+1. Call the SDK's `IRemoteVideoTrack.unpipe` method to disconnect the pipeline between the `processor` and the current video track.
+1. Call the extension's `release` method to destroy the `processor`.
+1. Call the SDK's `stop` method to stop the video track, set it to `null`, and destroy it.
+
+```typescript
+async function onUserUnpublished(user, mediaType) {
+  if (!context.client || mediaType !== "video" || context.uid !== user.uid) {
+    return;
+  }
+  
+  // Disconnect the pipeline between the processor and the current video track
+  context.processor.unpipe();
+  context.track.unpipe();
+  
+  // Destroy the processor and video track
+  await context.processor.release();
+  context.processor = undefined;
+  context.track.stop();
+  context.track = undefined;
+}
+```
+
+### Complete sample code
+
+This section presents the minimum code to integrate the <Vg k="RTEE_CLARITY" /> extension into your project. Copy the following into your script file:
+
+<details> 
+<summary>Complete sample code for the Super Clarity extension</summary>
+<CodeBlock language="js" showLineNumbers>
+{`
+const extension = new SuperClarityExtension();
+AgoraRTC.registerExtensions([extension]);
+
+const context = {
+  uid: undefined,
+  client: undefined,
+  track: undefined,
+  processor: undefined,
+};
+
+async function join(appid, channel) {
+  context.client = AgoraRTC.createClient({ mode: "live", codec: "vp8", role: "host" });
+  client.on("user-published", onUserPublished);
+  client.on("user-unpublished", onUserUnpublished);
+
+  await client.join(appid, channel, null);
+}
+
+async function onUserPublished(user, mediaType) {
+  if (!context.client || mediaType !== "video" || !!context.uid) {
+    return;
+  }
+  context.uid = user.uid;
+  context.track = await context.client.subscribe(user, mediaType);
+  context.processor = extension.createProcessor();
+
+  context.processor.on("first-video-frame", (stats) => {
+    console.log("plugin have first video frame, stats:", stats);
+  });
+  context.processor.on("error", (msg) => {
+    console.log("plugin error:", msg);
+  });
+  context.processor.on("stats", (stats) => {
+    console.log("plugin stats:", Date.now(), stats);
+  });
+  context.track.pipe(context.processor).pipe(context.track.processorDestination);
+  await context.processor.enable();
+  context.track.play('any element id')
+}
+
+async function onUserUnpublished(user, mediaType) {
+  if (!context.client || mediaType !== "video" || context.uid !== user.uid) {
+    return;
+  }
+  context.processor.unpipe();
+  context.track.unpipe();
+  await context.processor.release();
+  context.processor = undefined;
+  context.track.stop();
+  context.track = undefined;
+}
+
+
+join('your-appid', 'your-channel');
+`}
+</CodeBlock>
+</details> 
+
+</PlatformWrapper>

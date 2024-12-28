@@ -20,9 +20,11 @@ You can set the video layout in two ways:
 - [Select from the predefined layout types](#select-from-the-predefined-layout-types) (Floating Layout, Best Fit Layout, and Vertical Layout).
 - [Customize the video layout](#customize-the-video-layout).
 
-> - The canvas can display up to 17 regions.
-> - If a user sends only audio, the user occupies a region.
-> - If the aspect ratio of a user's video does not match that of the user's region, the video may be cropped or scaled to fit the region. The aspect ratio of the user's region depends on the aspect ratio of the canvas and the layout type.
+<Admonition type="info">
+- The canvas can display up to 17 regions.
+- If a user sends only audio, the user occupies a region.
+- If the aspect ratio of a user's video does not match that of the user's region, the video may be cropped or scaled to fit the region. The aspect ratio of the user's region depends on the aspect ratio of the canvas and the layout type.
+</Admonition>
 
 ## Select from the predefined layout types
 
@@ -36,7 +38,9 @@ The Agora Cloud Recording Service provides the following predefined layout types
 
 Set the `mixedVideoLayout` parameter in `transcodingConfig` as 0 (floating layout), 1 (best fit layout), or 2 (vertical layout) when calling the [`start`](../reference/restful-api#start) or [`updateLayout`](../reference/restful-api#updatelayout) method.
 
-> If you set the `mixedVideoLayout` parameter as 0, 1, or 2, do not pass in the `layoutConfig` parameter.
+<Admonition type="info">
+ If you set the `mixedVideoLayout` parameter as 0, 1, or 2, do not pass in the `layoutConfig` parameter.
+</Admonition>
 
 ### Predefined layout types
 
@@ -128,7 +132,9 @@ See the following pictures for the layouts with different number of users in the
 
 You can customize the video layout by setting the size and position of each user's region on the canvas.
 
->Regardless of the number of users displaying in the canvas, the Cloud Recording Service subscribes to all the streams in the channel.
+<Admonition type="info">
+Regardless of the number of users displaying in the canvas, the Cloud Recording Service subscribes to all the streams in the channel.
+</Admonition>
 
 ### Implementation
 

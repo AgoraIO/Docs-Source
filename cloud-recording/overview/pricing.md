@@ -17,18 +17,20 @@ The unit pricing for audio and video usage is as follows:
 
 | Service Type    | Category                       | Pricing, US$/1,000 minutes |
 |:----------------|:-------------------------------|:---------------------------|
-| Recording Audio | N/A                            | 1.49                       |
+| Recording Audio | Audio                          | 1.49                       |
 | Recording Video | High-Definition (HD)           | 5.99                       |
 | Recording Video | Full High-Definition (Full HD) | 13.49                      |
 | Recording Video | 2K                             | 23.99                      |
 | Recording Video | 2K+                            | 53.99                      |
 | Cloud-Based Screenshot Upload | All definitions  | 2.49 or free               |
 
-**Note**: Cloud-Based Screenshot Upload is free if bundled with Cloud Recording, that is, initiated along with Cloud Recording in a single task.  
+<Admonition type="info" title="Note">
+Cloud-Based Screenshot Upload is free if bundled with Cloud Recording, that is, initiated along with Cloud Recording in a single task.  
+</Admonition>
 
-Agora determines video category based on **aggregate video resolution**, which is the sum of resolutions of all the video 
-streams a user subscribes to at the same time. Agora adds up the resolution of all the video streams recorded at the same 
-time to get the aggregate resolution, which categorizes video as follows:
+### Video category
+
+Agora determines video category based on **aggregate video resolution**, which is the sum of resolutions of all the video streams a user subscribes to at the same time. Agora adds up the resolution of all the video streams recorded at the same time to get the aggregate resolution, which categorizes video as follows:
 
 | Video category                 | Aggregate video resolution                      |
 | :----------------------------- | :----------------------------------------------------------- |

@@ -8,7 +8,7 @@ description: >
 
 <Vg k="WHITE" /> supports file conversion from PPT and PPTX files into dynamic HTML web pages. The generated web pages can be accessed directly or presented on the whiteboard.
 
-<Vg k="WHITE" /> released a new version of file conversion service on July 27, 2022, that greatly improves conversion speed, content parsing, and stability.  The new version also adds the ability to integrate with third-party whiteboard SDKs. Agora strongly recommends you use the new version of file conversion. See [File conversion RESTful API reference](../reference/whiteboard-api/file-conversion).
+<Vg k="WHITE" /> released a new version of file conversion service on July 27, 2022, that greatly improves conversion speed, content parsing, and stability.  The new version also adds the ability to integrate with third-party whiteboard SDKs. Agora strongly recommends you use the new version of file conversion. See [File conversion RESTful API reference](../../reference/whiteboard-api/file-conversion).
  
 ## Introduction
 
@@ -48,8 +48,8 @@ When using dynamic-file conversion, pay attention to the following issues:
 - The new file conversion currently does not support generating resource packages. However, because the resources path is fixed, users can download resources by themselves. 
 - If a font is missing in a generated web page, you can either use the SDK to add a custom font or contact support@agora.io.
 - Due to inherent constrains in the PPT file format, PPT files are converted into PPTX files at the backend before parsing, which might encounter failure. Therefore, Agora recommends you to upload PPTX files for conversion. 
-- A generated web page can be rendered into canvas pages via Fastboard SDK (coming soon), [@netless/slide](https://www.npmjs.com/package/@netless/slide), or [@netless/projector-plugin](https://github.com/netless-io/projector-plugin). The differences between these three rendering solutions are as follows: 
-  - Fastboard SDK is the rendering plan designed for multi-window use-cases in Agora Interactive Whiteboard. Fastboard SDK is coming soon. 
+- A generated web page can be rendered into canvas pages via Fastboard SDK, [@netless/slide](https://www.npmjs.com/package/@netless/slide), or [@netless/projector-plugin](https://github.com/netless-io/projector-plugin). The differences between these three rendering solutions are as follows: 
+  - Fastboard SDK is the rendering plan designed for multi-window use-cases in Agora Interactive Whiteboard.
   - @netless/slide is a stand-alone document conversion and rendering dependency that does not include such things as whiteboards or state synchronization.  Adopting this solution requires you to write extra codes to synchronize states. It is designed for use-cases where PPT is used alone in whiteboard apps. 
   - @netless/projector-plugin is a plug-in for Whiteboard SDK that supports state synchronization, but it only works in single-window use-cases.
 
@@ -67,8 +67,8 @@ The new and the old versions of file conversion are **independent of each other*
 
 Although Agora Interactive Whiteboard continues to maintain the old version of file conversion, some issues could arise due to inherent limits in the architectural design.  Agora recommends you choose an appropriate time to switch to the new file conversion.  If you need support for the old version of file conversion, see the following resources: 
 
-- [Old File Conversion Overview](../reference/file-conversion-overview-deprecated)
-- [Old File Conversion API Reference](../reference/whiteboard-api/file-conversion-deprecated)
+- [Old File Conversion Overview](../../reference/file-conversion-overview-deprecated)
+- [Old File Conversion API Reference](../../reference/whiteboard-api/file-conversion-deprecated)
 
 
 ## Prerequisites
@@ -91,7 +91,7 @@ Refer to the following steps:
 
 2. Under **ALL FEATURES**, select **Whiteboard > Whiteboard Services**.
 
-3. On the **Services Configuration** view, select a data center and click **Configure** ✎. The data center must be the same as the one you fill in the `region` field when calling the [Create a room](../reference/whiteboard-api/room-management#create-a-room-post) API; otherwise, the service configurations does not take effect.
+3. On the **Services Configuration** view, select a data center and click **Configure** ✎. The data center must be the same as the one you fill in the `region` field when calling the [Create a room](../../reference/whiteboard-api/room-management#create-a-room-post) API; otherwise, the service configurations does not take effect.
 
     ![](/images/interactive-whiteboard/console-services-configuration.png)
 
@@ -132,14 +132,14 @@ Refer to the following steps:
 
 Take the following steps:
 
-1. To start a file-conversion task, call the RESTful API and pass in the URL address of the source file along with other parameters. See [Start file conversion](../reference/whiteboard-api/file-conversion#start-file-conversion). 
+1. To start a file-conversion task, call the RESTful API and pass in the URL address of the source file along with other parameters. See [Start file conversion](../../reference/whiteboard-api/file-conversion#start-file-conversion). 
 
-2. To query the progress of a file-conversion task, pass in the corresponding task UUID and Task Token. See [Query file-conversion progress](../reference/whiteboard-api/file-conversion#query-the-progress-of-a-file-conversion-task). Agora recommends that you implement an algorithm to regularly query the conversion progress so that your data is up to date.
+2. To query the progress of a file-conversion task, pass in the corresponding task UUID and Task Token. See [Query file-conversion progress](../../reference/whiteboard-api/file-conversion#query-the-progress-of-a-file-conversion-task). Agora recommends that you implement an algorithm to regularly query the conversion progress so that your data is up to date.
 
 
 ## PPT Conversion: Supported features, limitations, and troubleshooting
 
-When converting PPT or PPTX files created in Microsoft PowerPoint into dynamic HTML web pages using [File conversion](../reference/whiteboard-api/file-conversion), some elements—such as special effects, images, or animations—might not parse correctly. This can result in issues like missing or non-functional effects in the converted output. This section outlines the compatibility of the document conversion service with various PPT features, helping you identify and fix problematic elements in your presentations.
+When converting PPT or PPTX files created in Microsoft PowerPoint into dynamic HTML web pages using [File conversion](../../reference/whiteboard-api/file-conversion), some elements—such as special effects, images, or animations—might not parse correctly. This can result in issues like missing or non-functional effects in the converted output. This section outlines the compatibility of the document conversion service with various PPT features, helping you identify and fix problematic elements in your presentations.
 
 <Admonition type="info">
 - These notes are only applicable to PPT or PPTX files made with MS PowerPoint. For PPT files made with WPS, <Vg k="COMPANY" /> does not guarantee the conversion effect.

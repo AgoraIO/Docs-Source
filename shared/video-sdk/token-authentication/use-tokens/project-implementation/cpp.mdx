@@ -1,0 +1,201 @@
+Please note, logic is already implemented in `video-sdk-samples-windows\agora_manager` project. Here we just reiterate the logic to understand the secure token authentication implementation.
+
+1. **Import the required package**
+
+    To use the `libcurl` package to execute url and get data from token server, add the following to the list of `#include` statements in `agora_manager.cpp`:
+    ```cpp
+    #include <curl/curl.h>
+    ```
+2. **Add variables for your connection to the token server**
+
+    Declare the variables you need to specify rtcToken, token-server URL and the token expire time. In `agora_manager.h`, add the following declarations to the `AgoraManager` class after `channelName` declaration. The values for these variables will be retrieved from `video-sdk-samples-windows/agora-manager/config.json`:
+    ```cpp
+    std::string appId = "";
+    std::string channelName = ""
+    std::string token = "";
+	std::string serverUrl =" ";<The base URL to your token server>"; //For example, "https://agora-token-service-production-92ff.up.railway.app"
+	int expireTime; //Expire time in Seconds.
+	// ----
+    // ----
+    ```
+   
+4. **Retrieve a token from the server**
+
+    in case of rtcToken is supplied as null string in `config.json`, it is retrieved from token server.  In `agora_manager.cpp`, add the following `fetchToken()` method with some supportive functions:
+    ```cpp
+    // Callback function writes data to a std::string
+    size_t AgoraManager::WriteCallback(void* contents, size_t size, size_t nmemb, std::string* s) {
+        size_t newLength = size * nmemb;
+        try {
+            s->append((char*)contents, newLength);
+        }
+        catch (std::bad_alloc& e) {
+            // handle memory problem
+            return 0;
+        }
+        return newLength;
+    }
+
+    std::string AgoraManager::fetchToken(const std::string& serverUrl, const std::string& channelName, int tokenRole, size_t uid, int expireTime) {
+        CURL* curl = nullptr;
+        CURLcode res = CURLcode::CURLE_OK;
+        std::string readBuffer = "";
+        curl_global_init(CURL_GLOBAL_DEFAULT);
+        curl = curl_easy_init();
+
+        if (!curl) {
+            fprintf(stderr, "curl_easy_init() failed, could not initialize libcurl\n");
+
+        }
+        else {
+            std::string rest_url = serverUrl + "/rtc/" + channelName + "/" + std::to_string(tokenRole) + "/uid/" + std::to_string(uid) + "/?expiry=" + std::to_string(expireTime);
+
+            curl_easy_setopt(curl, CURLOPT_URL, rest_url.c_str());
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+            res = curl_easy_perform(curl);
+            if (res != CURLE_OK) {
+                fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+            }
+            else {
+                std::string tokenKey = "\"rtcToken\":\"";
+                size_t startPos = readBuffer.find(tokenKey);
+                if (startPos != std::string::npos) {
+                    startPos += tokenKey.size(); // skip past the key to the value
+                    size_t endPos = readBuffer.find('\"', startPos); // find the next quote after the value
+                    if (endPos != std::string::npos) {
+                        readBuffer = readBuffer.substr(startPos, endPos - startPos);
+                    }
+                }
+                else
+                {
+                    readBuffer = "";  // making buffer empty to return as empty token
+                }
+            }
+
+            // Always cleanup
+            curl_easy_cleanup(curl);
+        }
+        curl_global_cleanup();
+
+        return readBuffer;
+    }
+    ```
+5. **Define `Join()` function to support fetch a new token and join the channel with this new token**
+    ```cpp
+    void AgoraManager::join()
+    {
+        expireTime = config["tokenExpiryTime"].asInt() ? config["tokenExpiryTime"].asInt() : 0;
+        serverUrl = config["tokenUrl"].asString();
+
+        if (token == "")
+        {
+            // Fetch new token 
+            token = fetchToken(serverUrl, channelName, tokenRole, uid, expireTime);
+            if (token == "")
+            {
+                MessageBox(NULL, L"Invalid Token : token server fetch failed.", L"Error!", MB_ICONEXCLAMATION | MB_OK);
+                return;
+            }
+        }
+
+        if (0 != agoraEngine->joinChannel(token.c_str(), channelName.c_str(), 0, NULL))
+        {
+            MessageBox(NULL, L"AgoraManager::joinChannel() error.", L"Error!", MB_ICONEXCLAMATION | MB_OK);
+            return;
+        }
+    }
+    ```
+ 
+6. **Set `token` as an empty string in the `leave()`:**
+
+    This forces your <Vpl k="CLIENT" />  to fetch a new token whenever your user rejoins a channel after leaving.
+    ```cpp
+    void AgoraManager::leave()
+    {
+        ----
+        ----
+        token = "";
+    }
+    ```
+
+7. **Handle the event triggered by <Vg k="AGORA_BACKEND" /> when the token is about to expire**
+
+    A token expires after the `expireTime` specified in `config.json`, or after 24 hours if the time is not specified. In order for you to renew the token, the `onTokenPrivilegeWillExpire` event receives a callback when the current token is about to expire. To implement this workflow:
+
+      1. In **Solution Explorer**, open `agora_manager/pch.h` and define the `EID_TOKEN_PRIVILEGE_WILL_EXPIRE` window message macro after the `EID_USER_JOINED` macro definition:
+        ```cpp
+        #define EID_TOKEN_PRIVILEGE_WILL_EXPIRE	0x00000023
+        ```
+      2. In `agora_manager.h`, declare the event callback to handle the triggered event in the `AgoraManagerEventHandler` class:
+
+        ```cpp
+        class AgoraManagerEventHandler : public IRtcEngineEventHandler
+        {
+        public:
+            
+            virtual void onTokenPrivilegeWillExpire(const char* token) override;
+            ----
+            ----
+        public:
+            HWND m_hMsgHandler;
+        };
+        ```
+     3. Add the following method declaration to `AgoraManager` class:
+        ```cpp
+        LRESULT OnEIDTokenPrivilegeWillExpire(WPARAM wParam, LPARAM lParam);
+        ```
+      4. In the `agora_manager.cpp`, define the event callback:
+        ```cpp
+        void AgoraManagerEventHandler::onTokenPrivilegeWillExpire(const char* token)
+        {
+            // Occurs on requesting new token
+            MessageBox(NULL, L"Token is about to expire.", L"Notification", NULL);
+            HWND MsgEventHandler = getMsgEventHandler();
+            if (MsgEventHandler)
+            {
+                ::PostMessage(MsgEventHandler, WM_MSGID(EID_TOKEN_PRIVILEGE_WILL_EXPIRE), (WPARAM)token, NULL);
+            }
+        }
+        ```
+      5. Define the `OnEIDTokenPrivilegeWillExpire()` method through which a new token is fetched (`fetchtoken`) on token expired and set this as new working token (`renewToken`) to join the channel.
+        ```cpp
+        LRESULT AgoraManager::OnEIDTokenPrivilegeWillExpire(WPARAM wParam, LPARAM lParam)
+        {
+            token = fetchToken(serverUrl, channelName, tokenRole, uid, expireTime);
+            HWND hwndParent = GetParent(gui->getGuiWindowReference());
+            if (token == "")
+            {
+                MessageBox(NULL, L"Invalid Token : token server fetch failed.", L"Error!", MB_ICONEXCLAMATION | MB_OK);
+                ::PostMessage(hwndParent, WM_MSGID(EID_TOKEN_PRIVILEGE_WILL_EXPIRE), TRUE, 0);
+                return 0;
+            }
+            // Renew Agora engine token by the new one
+            if (0 == agoraEngine->renewToken(token.c_str()))
+            {
+                MessageBox(NULL, L"Token Renewed!!", L"Notification", NULL);
+            }
+
+            ::PostMessage(hwndParent, WM_MSGID(EID_TOKEN_PRIVILEGE_WILL_EXPIRE), TRUE, 0);
+            return 0;
+        }
+        ```
+8. **Handle GUI User Message** 
+
+    On receiving `WM_USER` message for `EID_TOKEN_PRIVILEGE_WILL_EXPIRE`, it call the function `OnEIDTokenPrivilegeWillExpire(wparam, lparam)` to fetch and renew the token.
+    ```cpp
+    void AgoraManager::handleGuiUserMsg(int msgId, WPARAM wparam, LPARAM lparam) 
+    {
+        // Handle WM_USER messages based on the passed msgId
+        switch (msgId)
+        {
+        ----
+        ----
+        case EID_TOKEN_PRIVILEGE_WILL_EXPIRE:
+            OnEIDTokenPrivilegeWillExpire(wparam, lparam);
+            break;
+        ----
+        ----
+        }
+    }
+    ```

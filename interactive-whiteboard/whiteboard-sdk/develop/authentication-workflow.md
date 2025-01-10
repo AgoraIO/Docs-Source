@@ -115,8 +115,8 @@ A permanent Token may cause security risks for your app service. If an illegal u
 
 To generate a Room Token, you need to pass in the Room UUID, the unique identifier of a whiteboard room, so that the Room Token is linked with the room. Follow these steps to get a Room UUID:
 
-- If the room has been created, call the [<Vg k="WHITE" /> RESTful API](../reference/whiteboard-api/room-management#get-a-room-list-get) to get a list of rooms. You can get the corresponding Room UUID in the response body if the request succeeds.
-- If the room has not been created, call the [<Vg k="WHITE" /> RESTful API](../reference/whiteboard-api/room-management#create-a-room-post) to create a room. You can get the corresponding Room UUID in the response body if the request succeeds.
+- If the room has been created, call the [<Vg k="WHITE" /> RESTful API](../../reference/whiteboard-api/room-management#get-a-room-list-get) to get a list of rooms. You can get the corresponding Room UUID in the response body if the request succeeds.
+- If the room has not been created, call the [<Vg k="WHITE" /> RESTful API](../../reference/whiteboard-api/room-management#create-a-room-post) to create a room. You can get the corresponding Room UUID in the response body if the request succeeds.
 
 If you call the <Vg k="WHITE" /> RESTful API to generate a Room Token, the SDK Token in the request header must be the same as that used to create the room.
 
@@ -128,7 +128,7 @@ If you generate the Room Token by adding code on the app server, the access keys
 
 To generate a Task Token, you need to pass in the Task UUID, the unique identifier of a file-conversion task, so that the Task Token is linked with the task.
 
-To get a Task UUID, call the [<Vg k="WHITE" /> RESTful API](../reference/whiteboard-api/file-conversion#start-file-conversion-post) to start a file-conversion task. You can get the Task UUID in the response body if the request succeeds.
+To get a Task UUID, call the [<Vg k="WHITE" /> RESTful API](../../reference/whiteboard-api/file-conversion#start-file-conversion-post) to start a file-conversion task. You can get the Task UUID in the response body if the request succeeds.
 
 ## Use a Token
 

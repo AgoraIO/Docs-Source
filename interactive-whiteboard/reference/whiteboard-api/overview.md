@@ -22,7 +22,7 @@ The `Content-Type` field in all HTTP request headers is `application/json`. All 
 
 The <Vg k="WHITE_SDK" /> RESTful API provides the following features:
 
-- [Token generation](/interactive-whiteboard/develop/generate-token-rest)
+- [Token generation](../../whiteboard-sdk/develop/generate-token-rest)
 - [Room management](room-management)
 - [Screenshot management](screenshots)
 - [Scene management](scene-management)

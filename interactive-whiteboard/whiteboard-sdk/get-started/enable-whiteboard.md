@@ -56,17 +56,17 @@ Exposing security credentials can lead to serious risks. To improve security, Ag
 
 ## Enable whiteboard server-side features
 
-<Vg k="WHITE" /> sets up five [data centers](../reference/security#network-geofencing). Each data center provides the following server-side features: 
+<Vg k="WHITE" /> sets up five [data centers](../../reference/security#network-geofencing). Each data center provides the following server-side features: 
 
 - File conversion features:
     - **Docs to Picture** 
     - **Docs to web**
     
-    After enabling the file conversion features, you can call the [RESTful APIs](../reference/whiteboard-api/file-conversion) to launch a file conversion task or query the conversion progress.
+    After enabling the file conversion features, you can call the [RESTful APIs](../../reference/whiteboard-api/file-conversion) to launch a file conversion task or query the conversion progress.
 
-    Agora charges for the file-conversion feature. See [Pricing](../overview/pricing).
+    Agora charges for the file-conversion feature. See [Pricing](../../overview/pricing).
 
-- **Screenshot**. After enabling, you can call the [RESTful APIs](../reference/whiteboard-api/screenshots) to take screenshots.
+- **Screenshot**. After enabling, you can call the [RESTful APIs](../../reference/whiteboard-api/screenshots) to take screenshots.
 
 Follow these steps to enable one or more features and configure the storage settings:
 
@@ -74,7 +74,7 @@ Follow these steps to enable one or more features and configure the storage sett
 
 2. Under **ALL FEATURES**, select **Whiteboard > Whiteboard Services**.
 
-3. On the **Services Configuration** view, select a data center and click **Configure** ✎. The data center must be the same as the one you fill in the `region` field when calling the [Create a room](../reference/whiteboard-api/room-management#create-a-room-post) API; otherwise, the service configurations does not take effect.
+3. On the **Services Configuration** view, select a data center and click **Configure** ✎. The data center must be the same as the one you fill in the `region` field when calling the [Create a room](../../reference/whiteboard-api/room-management#create-a-room-post) API; otherwise, the service configurations does not take effect.
 
     ![](/images/interactive-whiteboard/console-services-configuration.png)
 
@@ -112,4 +112,4 @@ Follow these steps to enable one or more features and configure the storage sett
 ## Reference
 After enabling the <Vg k="WHITE" />, you can refer to the following documents to use its functions:
 - [Join a whiteboard room](../get-started/get-started-sdk)
-- [File conversion overview](../reference/whiteboard-api/file-conversion)
+- [File conversion overview](../../reference/whiteboard-api/file-conversion)

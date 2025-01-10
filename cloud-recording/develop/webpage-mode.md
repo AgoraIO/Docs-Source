@@ -7,15 +7,14 @@ description:
    Use the Cloud Recording RESTful API to make a web page recording and push media stream to the CDN during a web page recording.
 ---
 
-This guide includes the key steps in using the Cloud Recording RESTful API to make a web page recording.
-
 Agora Cloud Recording supports three recording modes:
 
 - Individual recording
 - Composite recording
 - Web page recording
 
-In web page recording mode, the content and audio of a specified web page are recorded in a single file.
+This guide outlines the key steps for using the Cloud Recording RESTful API to record a web page.
+In this recording mode, the content and audio of the specified web page are captured in a single file.
 
 ![](/images/cloud-recording/web-page-recording.svg)
 

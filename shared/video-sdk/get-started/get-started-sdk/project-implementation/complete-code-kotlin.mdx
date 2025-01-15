@@ -10,8 +10,8 @@ import android.os.Bundle
 import android.view.SurfaceView
 import android.widget.FrameLayout
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import io.agora.rtc2.ChannelMediaOptions
 import io.agora.rtc2.Constants
@@ -21,7 +21,11 @@ import io.agora.rtc2.RtcEngineConfig
 import io.agora.rtc2.video.VideoCanvas
 
 class MainActivity : AppCompatActivity() {
-    private val PERMISSION_REQ_ID = 22
+
+    companion object {
+        private const val PERMISSION_REQ_ID = 22
+    }
+
     private val myAppId = "<Your app ID>"
     private val channelName = "<Your channel name>"
     private val token = "<Your token>"
@@ -30,14 +34,14 @@ class MainActivity : AppCompatActivity() {
     private val mRtcEventHandler = object : IRtcEngineEventHandler() {
         override fun onJoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
             super.onJoinChannelSuccess(channel, uid, elapsed)
-            runOnUiThread {
-                showToast("Join channel success")
-            }
+            showToast("Join channel success")
         }
 
         override fun onUserJoined(uid: Int, elapsed: Int) {
+            super.onUserJoined(uid, elapsed)
             runOnUiThread {
                 setupRemoteVideo(uid)
+                showToast("User joined: $uid")
             }
         }
 
@@ -48,7 +52,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,19 +65,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestPermissions() {
-        val requiredPermissions = getRequiredPermissions()
-        requestPermissionsLauncher.launch(requiredPermissions)
-    }
-
-    private val requestPermissionsLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-        if (permissions.all { it.value }) {
-            startVideoCalling()
-        }
+        ActivityCompat.requestPermissions(this, getRequiredPermissions(), PERMISSION_REQ_ID)
     }
 
     private fun checkPermissions(): Boolean {
-        return getRequiredPermissions().all { permission ->
-            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+        return getRequiredPermissions().all {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
         }
     }
 
@@ -94,29 +90,42 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PERMISSION_REQ_ID && checkPermissions()) {
+            startVideoCalling()
+        }
+    }
+
     private fun startVideoCalling() {
-        initializeRtcEngine()
+        initializeAgoraVideoSDK()
         enableVideo()
         setupLocalVideo()
         joinChannel()
     }
 
-    private fun initializeRtcEngine() {
+    private fun initializeAgoraVideoSDK() {
         try {
             val config = RtcEngineConfig().apply {
-                mContext = baseContext
+                mContext = applicationContext
                 mAppId = myAppId
                 mEventHandler = mRtcEventHandler
             }
             mRtcEngine = RtcEngine.create(config)
         } catch (e: Exception) {
-            throw RuntimeException("Error initializing RTC engine: $\{e.message\}")
+            throw RuntimeException("Error initializing RTC engine: $\{\e.message\}")
         }
     }
 
     private fun enableVideo() {
-        mRtcEngine?.enableVideo()
-        mRtcEngine?.startPreview()
+        mRtcEngine?.apply {
+            enableVideo()
+            startPreview()
+        }
     }
 
     private fun setupLocalVideo() {
@@ -130,16 +139,18 @@ class MainActivity : AppCompatActivity() {
         val options = ChannelMediaOptions().apply {
             clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
             channelProfile = Constants.CHANNEL_PROFILE_COMMUNICATION
+            publishMicrophoneTrack = true
+            publishCameraTrack = true
         }
         mRtcEngine?.joinChannel(token, channelName, 0, options)
     }
 
     private fun setupRemoteVideo(uid: Int) {
         val container: FrameLayout = findViewById(R.id.remote_video_view_container)
-        val surfaceView = SurfaceView(baseContext).apply {
+        val surfaceView = SurfaceView(applicationContext).apply {
             setZOrderMediaOverlay(true)
+            container.addView(this)
         }
-        container.addView(surfaceView)
         mRtcEngine?.setupRemoteVideo(VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, uid))
     }
 
@@ -161,8 +172,7 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
         }
     }
-}
-`}
+}`}
 </CodeBlock>
 </ProductWrapper>
 
@@ -186,9 +196,7 @@ import io.agora.rtc2.RtcEngineConfig
 
 class MainActivity : AppCompatActivity() {
 
-    companion object {
-        private const val PERMISSION_REQ_ID = 22
-    }
+    private val PERMISSION_REQ_ID = 22
 
     private val myAppId = "<Your app ID>"
     private val channelName = "<Your channel name>"
@@ -200,21 +208,18 @@ class MainActivity : AppCompatActivity() {
         override fun onJoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
             super.onJoinChannelSuccess(channel, uid, elapsed)
             runOnUiThread {
-                Toast.makeText(this@MainActivity, "Join channel success", Toast.LENGTH_SHORT).show()
+                showToast("Join channel success")
             }
         }
-
         override fun onUserJoined(uid: Int, elapsed: Int) {
-            super.onUserJoined(uid, elapsed)
             runOnUiThread {
-                Toast.makeText(this@MainActivity, "User joined: $uid", Toast.LENGTH_SHORT).show()
+                showToast("A user joined")
             }
         }
-
         override fun onUserOffline(uid: Int, reason: Int) {
             super.onUserOffline(uid, reason)
             runOnUiThread {
-                Toast.makeText(this@MainActivity, "User offline: $uid", Toast.LENGTH_SHORT).show()
+                showToast("User offline: $uid")
             }
         }
     }
@@ -283,6 +288,7 @@ class MainActivity : AppCompatActivity() {
         val options = ChannelMediaOptions().apply {
             clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
             channelProfile = Constants.CHANNEL_PROFILE_COMMUNICATION
+            publishMicrophoneTrack = true
         }
         mRtcEngine?.joinChannel(token, channelName, 0, options)
     }
@@ -299,13 +305,19 @@ class MainActivity : AppCompatActivity() {
         }
         mRtcEngine = null
     }
+
+    private fun showToast(message: String) {
+        runOnUiThread {
+            Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+        }
+    }
 }`}
 </CodeBlock>
 </ProductWrapper>
 
 <ProductWrapper product="broadcast-streaming">
 <CodeBlock language="kotlin" showLineNumbers>
-{`package com.example.projectname
+{`package com.example.<projectname>
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -443,6 +455,8 @@ class MainActivity : AppCompatActivity() {
             clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
             channelProfile = Constants.CHANNEL_PROFILE_LIVE_BROADCASTING
             audienceLatencyLevel = Constants.AUDIENCE_LATENCY_LEVEL_LOW_LATENCY
+            publishMicrophoneTrack = true
+            publishCameraTrack = true
         }
         mRtcEngine?.joinChannel(token, channelName, 0, options)
     }
@@ -480,7 +494,7 @@ class MainActivity : AppCompatActivity() {
 
 <ProductWrapper product="interactive-live-streaming">
 <CodeBlock language="kotlin" showLineNumbers>
-{`package com.example.projectname
+{`package com.example.<projectname>
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -618,6 +632,8 @@ class MainActivity : AppCompatActivity() {
             clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
             channelProfile = Constants.CHANNEL_PROFILE_LIVE_BROADCASTING
             audienceLatencyLevel = Constants.AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY
+            publishMicrophoneTrack = true
+            publishCameraTrack = true
         }
         mRtcEngine?.joinChannel(token, channelName, 0, options)
     }

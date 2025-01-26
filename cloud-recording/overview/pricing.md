@@ -13,7 +13,7 @@ This page explains how <Vg k="COMPANY" /> calculates your monthly bill for Cloud
 
 If you have already signed a contract with <Vg k="COMPANY" />, the billing terms and conditions within that contract take precedence.
 
-
+{ /*
 <Admonition type="info">
 The Agora Pricing calculator helps you estimate your channel and <Vpd k="NAME" /> costs. Use this tool to understand the pricing policy and estimate your session costs or monthly expenses.
 </Admonition>
@@ -32,6 +32,7 @@ The costs estimated by this calculator are indicative and may not match actual b
 </Admonition>
 
 </details>
+*/}
 
 ## Cloud Recording pricing
 

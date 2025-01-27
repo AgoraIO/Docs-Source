@@ -19,11 +19,572 @@ The following figure illustrates the essential steps:
 </details>
 </ProductWrapper>
 
+This guide includes [complete sample code](#complete-sample-code) that demonstrates implementing basic real-time interaction. To understand the core API calls in the sample code, review the following implementation steps.
+
+### Implement the system logic
+This section describes how to add the C++ libraries required to implement <Vpd k="PRODUCT"/> in your project.
+
+1. Add the <Vg k="COMPANY" /> dependency library
+
+    In `Project/Source/Project/Project.Build.cs`, add the `AgoraPlugin` using `PublicDependencyModuleNames.AddRange()`.
+
+    ```cpp
+    // Add the AgoraPlugin library
+    PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore","AgoraPlugin" });
+    ```
+
+1. Create a new C++ class and generate header files and library files
+
+    In the Unreal Editor, select **Tools > New C++ Class**, then select **All Classes**, find **UserWidget** and name it **AgoraWidget**. Click **Create Class** to create the class. A new C++ class is added to your project and you see `AgoraWidget.h` and `AgoraWidget.cpp` files.
+
+1. Initialize custom Widget
+
+    Add the following code to your widget header file:
+
+    ```cpp
+    protected:
+    // Initialize custom Widget
+    void NativeConstruct() override;
+    ```
+
+1. Associate C++ classes and Widgets
+
+    In Unreal Editor, click **Content Drawer**, select **Class Settings > Graph**, and set the **Parent Class** under **Class Options** to **AgoraWidget**.
+
+        ![](/images/video-sdk/associate-classes-unreal.png)
+
+### Handle permissions​
+
+Follow the steps for your target platform:
+
+<Tabs>
+<TabItem value="android" label="Android" default>
+
+Add the `AndroidPermission` library to obtain device and network permissions:
+
+1. Add the following code to your header file:
+
+    <CodeBlock language="cpp" showLineNumbers>
+    {`#if PLATFORM_ANDROID
+   #include "AndroidPermission/Classes/AndroidPermissionFunctionLibrary.h"
+   #endif`}
+    </CodeBlock>
+
+1. Add the `AndroidPermission` library to the `Project/Source/Project/Project.Build.cs` file:
+
+    <CodeBlock language="cpp" showLineNumbers>
+    {`if (Target.Platform == UnrealTargetPlatform.Android)
+   {
+       PrivateDependencyModuleNames.AddRange(new string[] { "AndroidPermission" });
+   }`}
+    </CodeBlock>
+
+1. To check whether Android permissions have been granted, add the `CheckAndroidPermission` method and its implementation to the `AgoraWidget.h` and `AgoraWidget.cpp` files. 
+    
+    * `AgoraWidget.h`
+
+        <CodeBlock language="cpp" showLineNumbers>
+        {`private:
+        // Get Android permissions
+        void CheckAndroidPermission();`}
+        </CodeBlock>
+
+    * `AgoraWidget.cpp`
+
+        <ProductWrapper notAllowed="voice-calling">
+        <CodeBlock language="cpp" showLineNumbers>
+        {`void UAgoraWidget::CheckAndroidPermission()
+      {
+      #if PLATFORM_ANDROID
+          FString pathfromName = UGameplayStatics::GetPlatformName();
+          if (pathfromName == "Android")
+          {
+              TArray<FString> AndroidPermission;
+              AndroidPermission.Add(FString("android.permission.CAMERA"));
+              AndroidPermission.Add(FString("android.permission.RECORD_AUDIO"));
+              AndroidPermission.Add(FString("android.permission.READ_PHONE_STATE"));
+              AndroidPermission.Add(FString("android.permission.WRITE_EXTERNAL_STORAGE"));
+              AndroidPermission.Add(FString("android.permission.ACCESS_WIFI_STATE"));
+              AndroidPermission.Add(FString("android.permission.ACCESS_NETWORK_STATE"));
+              UAndroidPermissionFunctionLibrary::AcquirePermissions(AndroidPermission);
+          }
+      #endif
+      }
+
+      void UAgoraWidget::NativeConstruct()
+      {
+          Super::NativeConstruct();
+      #if PLATFORM_ANDROID
+          CheckAndroidPermission()
+      #endif
+      }`}
+          </CodeBlock>
+          </ProductWrapper>
+
+            <ProductWrapper product="voice-calling">
+            <CodeBlock language="cpp" showLineNumbers>
+            {`void UAgoraWidget::CheckAndroidPermission()
+        {
+        #if PLATFORM_ANDROID
+            FString pathfromName = UGameplayStatics::GetPlatformName();
+            if (pathfromName == "Android")
+            {
+                TArray<FString> AndroidPermission;
+                AndroidPermission.Add(FString("android.permission.RECORD_AUDIO"));
+                AndroidPermission.Add(FString("android.permission.READ_PHONE_STATE"));
+                AndroidPermission.Add(FString("android.permission.WRITE_EXTERNAL_STORAGE"));
+                AndroidPermission.Add(FString("android.permission.ACCESS_WIFI_STATE"));
+                AndroidPermission.Add(FString("android.permission.ACCESS_NETWORK_STATE"));
+                UAndroidPermissionFunctionLibrary::AcquirePermissions(AndroidPermission);
+            }
+        #endif
+        }
+
+        void UAgoraWidget::NativeConstruct()
+        {
+            Super::NativeConstruct();
+        #if PLATFORM_ANDROID
+            CheckAndroidPermission()
+        #endif
+        }`}
+        </CodeBlock>
+        </ProductWrapper>
+
+</TabItem>
+
+<TabItem value="apple" label="iOS and macOS">
+
+1. Refer to [How to add the permissions required for real-time interaction to an Unreal Engine project?](./)
+
+1. In `Project/Source/Project.Target.cs`, add the following code:
+
+    <CodeBlock language="cpp" showLineNumbers>
+    {`public class unrealstartTarget : TargetRules
+   {
+       public unrealstartTarget( TargetInfo Target) : base(Target)
+       {
+           Type = TargetType.Game;
+           DefaultBuildSettings = BuildSettingsVersion.V2;
+           if (Target.Platform == UnrealTargetPlatform.IOS)
+           {
+               bOverrideBuildEnvironment = true;
+               GlobalDefinitions.Add("FORCE_ANSI_ALLOCATOR=1")
+           }
+           ExtraModuleNames.AddRange( new string[] { "unrealstart" } );
+       }
+   }`}
+    </CodeBlock>
+
+</TabItem>
+</Tabs>
+
+
+    
+### Import libraries
+
+To import <Vg k="COMPANY" /> library, add the following to `AgoraWidget.h`:
+
+    ```cpp
+    #include "AgoraPluginInterface.h"
+    ```
+
+{/*
+### Declare variables
+
+Declare variables for creating an engine instance and joining a channel.
+
+<ProductWrapper notAllowed="voice-calling">
+```cpp
+// Fill in your app ID
+FString _appID = "";
+// Fill in your channel name
+FString _channelName = "";
+// Fill in a valid authentication token
+FString _token = "";
+// Define a global variable for IRtcEngine 
+agora::rtc::IRtcEngine* RtcEngineProxy;
+```
+</ProductWrapper>
+<ProductWrapper product="voice-calling">
+```cpp
+// Fill in your app ID
+FString _appID = "";
+// Fill in your channel name
+FString _channelName = "";
+// Fill in a valid authentication token
+FString _token = "";
+// Define a global variable for IRtcEngine 
+agora::rtc::IRtcEngine* RtcEngineProxy;
+```
+</ProductWrapper>
+*/}
+
+### Initialize the engine
+
+<ProductWrapper notAllowed="voice-calling">
+
+Before calling other `IRtcEngine` methods, you create and initialize an `IRtcEngine` instance. Add the `SetupVideoSDKEngine` declaration and implementation to the following files: 
+* `AgoraWidget.h`
+
+    ```cpp
+    // Fill in your app ID
+    FString _appID = "";
+    // Define a global variable for IRtcEngine 
+    agora::rtc::IRtcEngine* RtcEngineProxy;
+
+    private:
+        // Create and initialize IRtcEngine
+        void SetupVideoSDKEngine();
+    ```
+</ProductWrapper>
+<ProductWrapper product="voice-calling">
+Before calling other `IRtcEngine` methods, you create and initialize an `IRtcEngine` instance. Add the `SetupSDKEngine` declaration and implementation to the following files: 
+* `AgoraWidget.h`
+
+    ```cpp
+    // Add code after private:  
+    private:
+    // Get Android permissions (only required for Android platform)
+    void CheckAndroidPermission();
+    // Create and initialize IRtcEngine
+    void SetupSDKEngine();
+    ```
+</ProductWrapper>
+
+* `AgoraWidget.cpp`
+
+    Add this code after `#include AgoraWidget.h`
+    <ProductWrapper notAllowed="voice-calling">
+    ```cpp
+    void UAgoraWidget::SetupVideoSDKEngine()
+    {
+        agora::rtc::RtcEngineContext RtcEngineContext;
+
+        RtcEngineContext.appId = TCHAR_TO_ANSI(*_appID);
+        RtcEngineContext.eventHandler = this;
+
+        // Create IRtcEngine instance
+        RtcEngineProxy = agora::rtc::ue::createAgoraRtcEngine();
+        // Initialize IRtcEngine
+        RtcEngineProxy->initialize(RtcEngineContext);
+    }
+    ```
+    </ProductWrapper>
+    <ProductWrapper product="voice-calling">
+    ```cpp
+    void UAgoraWidget::SetupSDKEngine()
+    {
+        agora::rtc::RtcEngineContext RtcEngineContext;
+
+        RtcEngineContext.appId = TCHAR_TO_ANSI(*_appID);
+        RtcEngineContext.eventHandler = this;
+
+        // Create IRtcEngine instance
+        RtcEngineProxy = agora::rtc::ue::createAgoraRtcEngine();
+        // Initialize IRtcEngine
+        RtcEngineProxy->initialize(RtcEngineContext);
+    }
+    ```
+    </ProductWrapper>
+
+<Admonition type="caution" title="Note">
+Before initializing the SDK, ensure that the user fully understands and agrees to the relevant privacy policy.
+</Admonition>
+
+### Join and leave a channel
+To enable local users to join and leave a channel, add the `Join` and `Leave` method declarations and implementations to the following files: 
+
+* `AgoraWidget.h`
+
+    ```cpp
+    // Fill in your channel name
+    FString _channelName = "";
+    // Fill in Token
+    FString _token = "";
+
+    UFUNCTION(BlueprintCallable)
+    void Join();
+    UFUNCTION(BlueprintCallable)
+    void Leave();
+    ```
+
+* `AgoraWidget.cpp`
+    
+    <ProductWrapper product="interactive-live-streaming">
+    ```cpp
+    void UAgoraWidget::Join()
+    {
+        // Enable the video module
+        RtcEngineProxy->enableVideo();
+        // Set channel media options
+        agora::rtc::ChannelMediaOptions options;
+        // Automatically subscribe to all audio streams
+        options.autoSubscribeAudio = true;
+        // Automatically subscribe to all video streams
+        options.autoSubscribeVideo = true;
+        // Publish video captured by the camera
+        options.publishCameraTrack = true;
+        // Publish audio captured by the microphone
+        options.publishMicrophoneTrack = true;
+        // Set the channel profile to live broadcasting
+        options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_LIVE_BROADCASTING;
+        // Set the user role as host or audience
+        options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
+        // Set the latency level for optimal experience
+        options.audienceLatencyLevel = agora::rtc::AUDIENCE_LATENCY_LEVEL_TYPE::AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY;
+        // Join a channel
+        RtcEngineProxy->joinChannel(TCHAR_TO_ANSI(*_token), TCHAR_TO_ANSI(*_channelName), 0, options);
+    }
+
+    void UAgoraWidget::Leave()
+    {
+        // Leave the channel
+        RtcEngineProxy->leaveChannel();
+    }
+    ```
+    </ProductWrapper>
+    <ProductWrapper product="broadcast-streaming">
+    ```cpp
+    void UAgoraWidget::Join()
+    {
+        // Enable the video module
+        RtcEngineProxy->enableVideo();
+        // Set channel media options
+        agora::rtc::ChannelMediaOptions options;
+        // Automatically subscribe to all audio streams
+        options.autoSubscribeAudio = true;
+        // Automatically subscribe to all video streams
+        options.autoSubscribeVideo = true;
+        // Publish video captured by the camera
+        options.publishCameraTrack = true;
+        // Publish audio captured by the microphone
+        options.publishMicrophoneTrack = true;
+        // Set the channel profile to live broadcasting
+        options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_LIVE_BROADCASTING;
+        // Set the user role as host or audience
+        options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
+        // Set the latency level for optimal experience
+        options.audienceLatencyLevel = agora::rtc::AUDIENCE_LATENCY_LEVEL_TYPE::AUDIENCE_LATENCY_LEVEL_LOW_LATENCY;
+        // Join a channel
+        RtcEngineProxy->joinChannel(TCHAR_TO_ANSI(*_token), TCHAR_TO_ANSI(*_channelName), 0, options);
+    }
+
+    void UAgoraWidget::Leave()
+    {
+        // Leave the channel
+        RtcEngineProxy->leaveChannel();
+    }
+    ```
+    </ProductWrapper>
+    <ProductWrapper product="video-calling">
+    ```cpp
+    void UAgoraWidget::Join()
+    {
+        // Enable the video module
+        RtcEngineProxy->enableVideo();
+        // Set channel media options
+        agora::rtc::ChannelMediaOptions options;
+        // Automatically subscribe to all audio streams
+        options.autoSubscribeAudio = true;
+        // Automatically subscribe to all video streams
+        options.autoSubscribeVideo = true;
+        // Publish video captured by the camera
+        options.publishCameraTrack = true;
+        // Publish audio captured by the microphone
+        options.publishMicrophoneTrack = true;        
+        // Set the channel profile to live broadcasting
+        options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_COMMUNICATION;
+        // Set the user role as host or audience
+        options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
+        // Join a channel
+        RtcEngineProxy->joinChannel(TCHAR_TO_ANSI(*_token), TCHAR_TO_ANSI(*_channelName), 0, options);
+    }
+
+    void UAgoraWidget::Leave()
+    {
+        // Leave the channel
+        RtcEngineProxy->leaveChannel();
+    }
+    ```
+    </ProductWrapper>
+    <ProductWrapper product="voice-calling">
+    ```cpp
+    void UAgoraWidget::Join()
+    {
+        // Set channel media options
+        agora::rtc::ChannelMediaOptions options;
+        // Automatically subscribe to all audio streams
+        options.autoSubscribeAudio = true;
+        // Publish video captured by the camera
+        options.publishMicrophoneTrack = true;        
+        // Set the channel profile to live broadcasting
+        options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_COMMUNICATION;
+        // Set the user role as host or audience
+        options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_AUDIENCE;
+        // Join a channel
+        RtcEngineProxy->joinChannel(TCHAR_TO_ANSI(*_token), TCHAR_TO_ANSI(*_channelName), 0, options);
+    }
+
+    void UAgoraWidget::Leave()
+    {
+        // Leave the channel
+        RtcEngineProxy->leaveChannel();
+    }
+    ```
+    </ProductWrapper>
+
+
+### Implement callbacks
+<ProductWrapper notAllowed="voice-calling">
+You implement callbacks to handle and respond to events triggered by the `IRtcEngine` instance. For example, you set up video displays when local and remote users join a channel and stop videos after they leave. Override the following callbacks and add their implementations to the `AgoraWidget` files:
+</ProductWrapper>
+<ProductWrapper product="voice-calling">
+You implement callbacks to handle and respond to events triggered by the `IRtcEngine` instance. For example, you subscribe to the remote audio stream when a remote user joins the channel. Override the following callbacks and add their implementations to the `AgoraWidget` files:
+</ProductWrapper>
+
+* `AgoraWidget.h`
+
+    ```cpp
+    // Triggered when the local user leaves a channel
+    void onLeaveChannel(const agora::rtc::RtcStats& stats) override;
+
+    // Triggered when a remote user joins a channel
+    void onUserJoined(agora::rtc::uid_t uid, int elapsed) override;
+
+    // Triggered when a remote user leaves a channel
+    void onUserOffline(agora::rtc::uid_t uid, agora::rtc::USER_OFFLINE_REASON_TYPE reason) override;
+
+    // Triggered when the local user joins a channel
+    void onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed) override;
+    ```
+
+* `AgoraWidget.cpp`
+
+    <ProductWrapper notAllowed="voice-calling">
+
+    ```cpp
+    // Implement the callback triggered after a remote user joins the channel
+    void UAgoraWidget::onUserJoined(agora::rtc::uid_t uid, int elapsed)
+    {
+        // Set up remote video 
+        agora::rtc::VideoCanvas videoCanvas;
+        videoCanvas.view = RemoteVideo;
+        videoCanvas.uid = uid;
+        videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_REMOTE;
+
+        agora::rtc::RtcConnection connection;
+        connection.channelId = TCHAR_TO_ANSI(*_channelName);
+
+        ((agora::rtc::IRtcEngineEx*)RtcEngineProxy)->setupRemoteVideoEx(videoCanvas, connection);
+    }
+
+    // Implement the callback triggered when a remote user leaves the channel
+    void UAgoraWidget::onUserOffline(agora::rtc::uid_t uid, agora::rtc::USER_OFFLINE_REASON_TYPE reason)
+    {
+        // Stop remote video 
+        agora::rtc::VideoCanvas videoCanvas;
+        videoCanvas.view = nullptr;
+        videoCanvas.uid = uid;
+        videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_REMOTE;
+
+        agora::rtc::RtcConnection connection;
+        connection.channelId = TCHAR_TO_ANSI(*_channelName);
+
+        ((agora::rtc::IRtcEngineEx*)RtcEngineProxy)->setupRemoteVideoEx(videoCanvas, connection);
+    }
+
+    // Implement the callback triggered when the local user joins the channel
+    void UAgoraWidget::onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed)
+    {
+        AsyncTask(ENamedThreads::GameThread, [=]()
+        {
+            UE_LOG(LogTemp, Warning, TEXT("JoinChannelSuccess uid: %u"), uid);
+            // Set up local video
+            agora::rtc::VideoCanvas videoCanvas;
+            videoCanvas.view = LocalVideo;
+            videoCanvas.uid = 0;
+            videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_CAMERA;
+            RtcEngineProxy->setupLocalVideo(videoCanvas);
+        });
+    }
+
+    // Implement the callback triggered when the local user leaves the channel
+    void UAgoraWidget::onLeaveChannel(const agora::rtc::RtcStats& stats)
+    {
+        AsyncTask(ENamedThreads::GameThread, [=]()
+        {
+            agora::rtc::VideoCanvas videoCanvas;
+            videoCanvas.view = nullptr;
+            videoCanvas.uid = 0;
+            videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_CAMERA;
+            RtcEngineProxy->setupLocalVideo(videoCanvas);
+        });
+    }
+    ```
+    </ProductWrapper>
+    <ProductWrapper product="voice-calling">
+
+    ```cpp
+    void UAgoraWidget::onUserJoined(agora::rtc::uid_t uid, int elapsed)
+    {
+        // Callback when a remote user joins the channel
+        agora::rtc::RtcConnection connection;
+        connection.channelId = TCHAR_TO_ANSI(*_channelName);
+    }
+    
+    void UAgoraWidget::onUserOffline(agora::rtc::uid_t uid, agora::rtc::USER_OFFLINE_REASON_TYPE reason)
+    {
+        // Callback when a remote user leaves the channel
+        agora::rtc::RtcConnection connection;
+        connection.channelId = TCHAR_TO_ANSI(*_channelName);
+    }
+    
+    void UAgoraWidget::onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed)
+    {
+        // Callback when the local user successfully joins the channel
+        AsyncTask(ENamedThreads::GameThread, =
+        {
+            UE_LOG(LogTemp, Warning, TEXT("JoinChannelSuccess uid: %u"), uid);
+        });
+    }
+    void UAgoraWidget::onLeaveChannel(const agora::rtc::RtcStats& stats)
+    {
+        // Callback when the local user successfully leaves the channel
+
+    }
+    ```
+    </ProductWrapper>
+    
+### Release resources
+
+When the local user leaves the channel, or exits the <Vpl k="CLIENT" />, you release memory by calling the `release` method of `IRtcEngine`. Override the `NativeDestruct()` method and add its implementation as follows: 
+
+* `AgoraWidget.h`
+
+    ```cpp
+    void NativeDestruct() override;
+    ```
+
+* `AgoraWidget.cpp`
+    
+    ```cpp
+    void UAgoraWidget::NativeDestruct()
+    {
+        Super::NativeDestruct();
+        if (RtcEngineProxy != nullptr)
+        {
+            RtcEngineProxy->unregisterEventHandler(this);
+            RtcEngineProxy->release();
+            delete RtcEngineProxy;
+
+            RtcEngineProxy = nullptr;
+        }
+    }
+    ```
+
 ### Complete sample code
 
-A complete code sample that implements the basic process of real-time interaction is presented here for your reference. Copy the sample code into your project to quickly implement the basic functions of real-time <Vpd k="PRODUCT"/> interaction. 
-
-To use the sample code, copy each of the following code blocks and paste it in the corresponding file.
+A complete code sample demonstrating the basic process of real-time interaction is provided for your reference. To use the sample code, copy each of the following code blocks and paste it in the corresponding file.
 
 <details> 
 <summary><code>Project/Source/Project/AgoraWidget.h</code></summary>
@@ -31,19 +592,24 @@ To use the sample code, copy each of the following code blocks and paste it in t
 
 <CodeBlock language="cpp" showLineNumbers>
 {`#pragma once
+
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+
 #if PLATFORM_ANDROID
 #include "AndroidPermission/Classes/AndroidPermissionFunctionLibrary.h"
 #endif
+
 #include "AgoraPluginInterface.h"
 #include "Components/Image.h"
 #include "Components/Button.h"
 #include "AgoraWidget.generated.h"
+
 UCLASS()
-class UNREALLEARNING_API UAgoraWidget : public UUserWidget,public agora::rtc::IRtcEngineEventHandler
+class UNREALLEARNING_API UAgoraWidget : public UUserWidget, public agora::rtc::IRtcEngineEventHandler
 {
     GENERATED_BODY()
+
 public:
     // Fill in your app ID
     FString _appID = "";
@@ -51,30 +617,44 @@ public:
     FString _channelName = "";
     // Fill in a valid authentication token
     FString _token = "";
-UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
-UImage* RemoteVideo = nullptr;
-UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
-UImage* LocalVideo = nullptr;
-UPROPERTY(VisibleAnywhere, BlueprintReadWrite, meta = (BindWidget))
-UButton* JoinBtn = nullptr;
-UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (BindWidget))
-UButton* LeaveBtn = nullptr;
-UFUNCTION(BlueprintCallable)
-void Join();
-UFUNCTION(BlueprintCallable)
-void Leave();
-agora::rtc::IRtcEngine* RtcEngineProxy;
-void onLeaveChannel(const agora::rtc::RtcStats& stats) override;
-void onUserJoined(agora::rtc::uid_t uid, int elapsed) override;
-void onUserOffline(agora::rtc::uid_t uid, agora::rtc::USER_OFFLINE_REASON_TYPE reason) override;
-void onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed) override;
+
+    UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
+    UImage* RemoteVideo = nullptr;
+
+    UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
+    UImage* LocalVideo = nullptr;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, meta = (BindWidget))
+    UButton* JoinBtn = nullptr;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (BindWidget))
+    UButton* LeaveBtn = nullptr;
+
+    UFUNCTION(BlueprintCallable)
+    void Join();
+
+    UFUNCTION(BlueprintCallable)
+    void Leave();
+
+    agora::rtc::IRtcEngine* RtcEngineProxy;
+
+    // Callback triggered when the local user leaves the channel
+    void onLeaveChannel(const agora::rtc::RtcStats& stats) override;
+    // Callback triggered when a remote broadcaster successfully joins the channel
+    void onUserJoined(agora::rtc::uid_t uid, int elapsed) override;
+    // Callback triggered when a remote broadcaster leaves the channel
+    void onUserOffline(agora::rtc::uid_t uid, agora::rtc::USER_OFFLINE_REASON_TYPE reason) override;
+    // Callback triggered when the local user successfully joins the channel
+    void onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed) override;
+
 private:
-    void CheckAndroidPermission();
-    void SetupVideoSDKEngine();
-    void SetupUI();
+    void CheckAndroidPermission(); // Get Android permissions
+    void SetupSDKEngine(); // Create and initialize IRtcEngine
+    void SetupUI(); // Set up UI elements
+
 protected:
-    void NativeConstruct() override;
-    void NativeDestruct() override;
+    void NativeConstruct() override; // Initialize the custom Widget
+    void NativeDestruct() override; // Clean up all session-related resources
 };`}
 </CodeBlock>
 </ProductWrapper>
@@ -82,11 +662,14 @@ protected:
 <ProductWrapper product="voice-calling">
 <CodeBlock language="cpp" showLineNumbers>
 {`#pragma once
+
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+
 #if PLATFORM_ANDROID
 #include "AndroidPermission/Classes/AndroidPermissionFunctionLibrary.h"
 #endif
+
 #include "AgoraPluginInterface.h"
 #include "Components/Image.h"
 #include "Components/Button.h"
@@ -107,7 +690,7 @@ public:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, meta = (BindWidget))
     UButton* JoinBtn = nullptr;
-    
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (BindWidget))
     UButton* LeaveBtn = nullptr;
 
@@ -121,32 +704,21 @@ public:
 
     // Callback triggered when the local user leaves the channel
     void onLeaveChannel(const agora::rtc::RtcStats& stats) override;
-
     // Callback triggered when a remote broadcaster successfully joins the channel
     void onUserJoined(agora::rtc::uid_t uid, int elapsed) override;
-
     // Callback triggered when a remote broadcaster leaves the channel
     void onUserOffline(agora::rtc::uid_t uid, agora::rtc::USER_OFFLINE_REASON_TYPE reason) override;
-
     // Callback triggered when the local user successfully joins the channel
     void onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed) override;
 
 private:
-    // Get Android permissions
-    void CheckAndroidPermission();
-    
-    // Create and initialize IRtcEngine
-    void SetupSDKEngine();
-    
-    // Set up UI elements
-    void SetupUI();
+    void CheckAndroidPermission(); // Get Android permissions
+    void SetupSDKEngine(); // Create and initialize IRtcEngine
+    void SetupUI(); // Set up UI elements
 
 protected:
-    // Initialize the custom Widget
-    void NativeConstruct() override;
-    
-    // Clean up all session-related resources
-    void NativeDestruct() override;
+    void NativeConstruct() override; // Initialize the custom Widget
+    void NativeDestruct() override; // Clean up all session-related resources
 };`}
 </CodeBlock>
 </ProductWrapper>
@@ -638,611 +1210,5 @@ public class UnrealLearning : ModuleRules
 }`}
 </CodeBlock>
 </details> 
-
-To understand the sample code, refer to the following sections.
-
-### Implement the system logic
-This section describes how to add the C++ libraries required to implement <Vpd k="PRODUCT"/> in your project.
-
-1. Add the <Vg k="COMPANY" /> dependency library
-
-    In `Project/Source/Project/Project.Build.cs`, add the `AgoraPlugin` using `PublicDependencyModuleNames.AddRange()`.
-
-    ```cpp
-    // Add the AgoraPlugin library
-    PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore","AgoraPlugin" });
-    ```
-
-1. Create a new C++ class and generate header files and library files
-
-    In the Unreal Editor, select **Tools > New C++ Class**, then select **All Classes**, find **UserWidget** and name it **AgoraWidget**. Click **Create Class** to create the class. A new C++ class is added to your project and you see `AgoraWidget.h` and `AgoraWidget.cpp` files.
-
-1. Initialize custom Widget
-
-    Add the following code to the `Project/Source/AgoraWidget.h` file:
-
-    ```cpp
-    protected:
-    // Initialize custom Widget
-    void NativeConstruct() override;
-    ```
-
-1. Associate C++ classes and Widgets
-
-    In Unreal Editor, click **Content Drawer**, select **Class Settings > Graph**, and set the **Parent Class** under **Class Options** to **AgoraWidget**.
-
-        ![](/images/video-sdk/associate-classes-unreal.png)
-
-### Handle permissions​
-
-Follow the steps for your target platform:
-
-<details>
-<summary>Android</summary>
-
-Add the `AndroidPermission` library to obtain device and network permissions:
-
-1. Add the following code to the `Project/Source/Project/AgoraWidget.h` file:
-
-    ```cpp
-    #if PLATFORM_ANDROID
-    #include "AndroidPermission/Classes/AndroidPermissionFunctionLibrary.h"
-    #endif
-    ```
-
-1. Add the `AndroidPermission` library to the `Project/Source/Project/Project.Build.cs` file:
-
-    ```cpp
-    if (Target.Platform == UnrealTargetPlatform.Android)
-    {
-        PrivateDependencyModuleNames.AddRange(new string[] { "AndroidPermission" });
-    }
-    ```
-
-1. To check whether Android permissions have been granted, add the `CheckAndroidPermission` method and its implementation to the `AgoraWidget.h` and `AgoraWidget.cpp` files. Add the following code to the respective files:
-    
-* `AgoraWidget.h`
-
-    ```cpp
-    private:
-        // Get Android permissions
-        void CheckAndroidPermission();
-    ```
-
-* `AgoraWidget.cpp`
-
-    <ProductWrapper notAllowed="voice-calling">
-    ```cpp
-    // Add the following code after #include "AgoraWidget.h"
-    void UAgoraWidget::CheckAndroidPermission()
-    {
-    #if PLATFORM_ANDROID
-        FString pathfromName = UGameplayStatics::GetPlatformName();
-        if (pathfromName == "Android")
-        {
-            TArray<FString> AndroidPermission;
-            AndroidPermission.Add(FString("android.permission.CAMERA"));
-            AndroidPermission.Add(FString("android.permission.RECORD_AUDIO"));
-            AndroidPermission.Add(FString("android.permission.READ_PHONE_STATE"));
-            AndroidPermission.Add(FString("android.permission.WRITE_EXTERNAL_STORAGE"));
-            AndroidPermission.Add(FString("android.permission.ACCESS_WIFI_STATE"));
-            AndroidPermission.Add(FString("android.permission.ACCESS_NETWORK_STATE"));
-            UAndroidPermissionFunctionLibrary::AcquirePermissions(AndroidPermission);
-        }
-    #endif
-    }
-
-    void UAgoraWidget::NativeConstruct()
-    {
-        Super::NativeConstruct();
-    #if PLATFORM_ANDROID
-        CheckAndroidPermission()
-    #endif
-    }
-    ```
-    </ProductWrapper>
-
-    <ProductWrapper product="voice-calling">
-    ```cpp
-    // Add the following code after #include "AgoraWidget.h"
-    void UAgoraWidget::CheckAndroidPermission()
-    {
-    #if PLATFORM_ANDROID
-        FString pathfromName = UGameplayStatics::GetPlatformName();
-        if (pathfromName == "Android")
-        {
-            TArray<FString> AndroidPermission;
-            AndroidPermission.Add(FString("android.permission.RECORD_AUDIO"));
-            AndroidPermission.Add(FString("android.permission.READ_PHONE_STATE"));
-            AndroidPermission.Add(FString("android.permission.WRITE_EXTERNAL_STORAGE"));
-            AndroidPermission.Add(FString("android.permission.ACCESS_WIFI_STATE"));
-            AndroidPermission.Add(FString("android.permission.ACCESS_NETWORK_STATE"));
-            UAndroidPermissionFunctionLibrary::AcquirePermissions(AndroidPermission);
-        }
-    #endif
-    }
-
-    void UAgoraWidget::NativeConstruct()
-    {
-        Super::NativeConstruct();
-    #if PLATFORM_ANDROID
-        CheckAndroidPermission()
-    #endif
-    }
-    ```
-    </ProductWrapper>
-
-</details>
-
-<p/>
-
-<details>
-<summary>iOS and macOS</summary>
-
-1. Refer to [How to add the permissions required for real-time interaction to an Unreal Engine project?](./)
-
-1. In `Project/Source/Project.Target.cs`, add the following code:
-
-    ```cpp
-    public class unrealstartTarget : TargetRules
-    {
-        public unrealstartTarget( TargetInfo Target) : base(Target)
-        {
-            Type = TargetType.Game;
-            DefaultBuildSettings = BuildSettingsVersion.V2;
-            if (Target.Platform == UnrealTargetPlatform.IOS)
-            {
-                bOverrideBuildEnvironment = true;
-                GlobalDefinitions.Add("FORCE_ANSI_ALLOCATOR=1")
-            }
-            ExtraModuleNames.AddRange( new string[] { "unrealstart" } );
-        }
-    }
-    ```
-</details>
-    
-### Import libraries
-
-1. To import <Vg k="COMPANY" /> library, add the following to `AgoraWidget.h`:
-
-    ```cpp
-    #include "AgoraPluginInterface.h"
-    ```
-
-1. To import UI related libraries, add the following to `AgoraWidget.h`:
-
-    ```cpp
-    #include "Components/Image.h"
-    #include "Components/Button.h"
-    ```
-
-### Declare variables
-
-1. Declare variables for creating an engine instance and joining a channel.
-
-    Add the following code after `GENERATED_BODY()`. The variable name must be consistent with the name of the control used to create the UI:
-    <ProductWrapper notAllowed="voice-calling">
-    ```cpp
-    // Fill in your app ID
-    FString _appID = "";
-    // Fill in your channel name
-    FString _channelName = "";
-    // Fill in a valid authentication token
-    FString _token = "";
-
-    // Define variable properties
-    UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
-    UImage* RemoteVideo = nullptr;
-
-    UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
-    UImage* LocalVideo = nullptr;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, meta = (BindWidget))
-    UButton* JoinBtn = nullptr;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (BindWidget))
-    UButton* LeaveBtn = nullptr;
-
-    // Define a global variable for IRtcEngine 
-    agora::rtc::IRtcEngine* RtcEngineProxy;
-    ```
-    </ProductWrapper>
-    <ProductWrapper product="voice-calling">
-    ```cpp
-        // Fill in your app ID
-    FString _appID = "";
-    // Fill in your channel name
-    FString _channelName = "";
-    // Fill in a valid authentication token
-    FString _token = "";
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, meta = (BindWidget))
-    UButton* JoinBtn = nullptr;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (BindWidget))
-    UButton* LeaveBtn = nullptr;
-
-    // Define a global variable for IRtcEngine 
-    agora::rtc::IRtcEngine* RtcEngineProxy;
-    ```
-    </ProductWrapper>
-
-### Initialize the engine
-
-<ProductWrapper notAllowed="voice-calling">
-
-Before calling other `IRtcEngine` methods, you create and initialize an `IRtcEngine` instance. Add the `SetupVideoSDKEngine` declaration and implementation to the following files: 
-* `AgoraWidget.h`
-
-    ```cpp
-    private:
-        // Create and initialize IRtcEngine
-        void SetupVideoSDKEngine();
-    ```
-</ProductWrapper>
-<ProductWrapper product="voice-calling">
-Before calling other `IRtcEngine` methods, you create and initialize an `IRtcEngine` instance. Add the `SetupSDKEngine` declaration and implementation to the following files: 
-* `AgoraWidget.h`
-
-    ```cpp
-    // Add code after private:  
-    private:
-    // Get Android permissions (only required for Android platform)
-    void CheckAndroidPermission();
-    // Create and initialize IRtcEngine
-    void SetupSDKEngine();
-    ```
-</ProductWrapper>
-
-* `AgoraWidget.cpp`
-
-    Add this code after `#include AgoraWidget.h`
-    <ProductWrapper notAllowed="voice-calling">
-    ```cpp
-    void UAgoraWidget::SetupVideoSDKEngine()
-    {
-        agora::rtc::RtcEngineContext RtcEngineContext;
-
-        RtcEngineContext.appId = TCHAR_TO_ANSI(*_appID);
-        RtcEngineContext.eventHandler = this;
-
-        // Create IRtcEngine instance
-        RtcEngineProxy = agora::rtc::ue::createAgoraRtcEngine();
-        // Initialize IRtcEngine
-        RtcEngineProxy->initialize(RtcEngineContext);
-    }
-    ```
-    </ProductWrapper>
-    <ProductWrapper product="voice-calling">
-    ```cpp
-    void UAgoraWidget::SetupSDKEngine()
-    {
-        agora::rtc::RtcEngineContext RtcEngineContext;
-
-        RtcEngineContext.appId = TCHAR_TO_ANSI(*_appID);
-        RtcEngineContext.eventHandler = this;
-
-        // Create IRtcEngine instance
-        RtcEngineProxy = agora::rtc::ue::createAgoraRtcEngine();
-        // Initialize IRtcEngine
-        RtcEngineProxy->initialize(RtcEngineContext);
-    }
-    ```
-    </ProductWrapper>
-
-<Admonition type="caution" title="Note">
-Before initializing the SDK, ensure that the user fully understands and agrees to the relevant privacy policy.
-</Admonition>
-
-### Set up the user interface
-To connect the `OnClicked` event of join and leave buttons to their respective handler functions, add the `SetupUI` declaration and implementation to the following files: 
-
-* `AgoraWidget.h`
-
-    ```cpp
-    private:
-    // Set up UI elements
-    void SetupUI();
-    ```
-
-* `AgoraWidget.cpp`
-
-    ```cpp
-    void UAgoraWidget::SetupUI()
-    {
-        JoinBtn->OnClicked.AddDynamic(this, &UAgoraWidget::Join);
-        LeaveBtn->OnClicked.AddDynamic(this, &UAgoraWidget::Leave);
-    }
-    ```
-
-### Join and leave a channel
-To enable local users to join and leave a channel, add the `Join` and `Leave` method declarations and implementations to the following files: 
-
-* `AgoraWidget.h`
-
-    ```cpp
-    // Add the following code after UPROPERTY:
-    UFUNCTION(BlueprintCallable)
-    void Join();
-    UFUNCTION(BlueprintCallable)
-    void Leave();
-    ```
-
-* `AgoraWidget.cpp`
-    
-    Add the following code after `SetupUI()`.
-    <ProductWrapper product="interactive-live-streaming">
-    ```cpp
-    void UAgoraWidget::Join()
-    {
-        // Enable the video module
-        RtcEngineProxy->enableVideo();
-        // Set channel media options
-        agora::rtc::ChannelMediaOptions options;
-        // Automatically subscribe to all audio streams
-        options.autoSubscribeAudio = true;
-        // Automatically subscribe to all video streams
-        options.autoSubscribeVideo = true;
-        // Publish video captured by the camera
-        options.publishCameraTrack = true;
-        // Publish audio captured by the microphone
-        options.publishMicrophoneTrack = true;
-        // Set the channel profile to live broadcasting
-        options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_LIVE_BROADCASTING;
-        // Set the user role as host or audience
-        options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
-        // Set the latency level for optimal experience
-        options.audienceLatencyLevel = agora::rtc::AUDIENCE_LATENCY_LEVEL_TYPE::AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY;
-        // Join a channel
-        RtcEngineProxy->joinChannel(TCHAR_TO_ANSI(*_token), TCHAR_TO_ANSI(*_channelName), 0, options);
-    }
-
-    void UAgoraWidget::Leave()
-    {
-        // Leave the channel
-        RtcEngineProxy->leaveChannel();
-    }
-    ```
-    </ProductWrapper>
-    <ProductWrapper product="broadcast-streaming">
-    ```cpp
-    void UAgoraWidget::Join()
-    {
-        // Enable the video module
-        RtcEngineProxy->enableVideo();
-        // Set channel media options
-        agora::rtc::ChannelMediaOptions options;
-        // Automatically subscribe to all audio streams
-        options.autoSubscribeAudio = true;
-        // Automatically subscribe to all video streams
-        options.autoSubscribeVideo = true;
-        // Publish video captured by the camera
-        options.publishCameraTrack = true;
-        // Publish audio captured by the microphone
-        options.publishMicrophoneTrack = true;
-        // Set the channel profile to live broadcasting
-        options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_LIVE_BROADCASTING;
-        // Set the user role as host or audience
-        options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
-        // Set the latency level for optimal experience
-        options.audienceLatencyLevel = agora::rtc::AUDIENCE_LATENCY_LEVEL_TYPE::AUDIENCE_LATENCY_LEVEL_LOW_LATENCY;
-        // Join a channel
-        RtcEngineProxy->joinChannel(TCHAR_TO_ANSI(*_token), TCHAR_TO_ANSI(*_channelName), 0, options);
-    }
-
-    void UAgoraWidget::Leave()
-    {
-        // Leave the channel
-        RtcEngineProxy->leaveChannel();
-    }
-    ```
-    </ProductWrapper>
-    <ProductWrapper product="video-calling">
-    ```cpp
-    void UAgoraWidget::Join()
-    {
-        // Enable the video module
-        RtcEngineProxy->enableVideo();
-        // Set channel media options
-        agora::rtc::ChannelMediaOptions options;
-        // Automatically subscribe to all audio streams
-        options.autoSubscribeAudio = true;
-        // Automatically subscribe to all video streams
-        options.autoSubscribeVideo = true;
-        // Publish video captured by the camera
-        options.publishCameraTrack = true;
-        // Publish audio captured by the microphone
-        options.publishMicrophoneTrack = true;        
-        // Set the channel profile to live broadcasting
-        options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_COMMUNICATION;
-        // Set the user role as host or audience
-        options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
-        // Join a channel
-        RtcEngineProxy->joinChannel(TCHAR_TO_ANSI(*_token), TCHAR_TO_ANSI(*_channelName), 0, options);
-    }
-
-    void UAgoraWidget::Leave()
-    {
-        // Leave the channel
-        RtcEngineProxy->leaveChannel();
-    }
-    ```
-    </ProductWrapper>
-    <ProductWrapper product="voice-calling">
-    ```cpp
-    void UAgoraWidget::Join()
-    {
-        // Set channel media options
-        agora::rtc::ChannelMediaOptions options;
-        // Automatically subscribe to all audio streams
-        options.autoSubscribeAudio = true;
-        // Publish video captured by the camera
-        options.publishMicrophoneTrack = true;        
-        // Set the channel profile to live broadcasting
-        options.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_COMMUNICATION;
-        // Set the user role as host or audience
-        options.clientRoleType = agora::rtc::CLIENT_ROLE_TYPE::CLIENT_ROLE_AUDIENCE;
-        // Join a channel
-        RtcEngineProxy->joinChannel(TCHAR_TO_ANSI(*_token), TCHAR_TO_ANSI(*_channelName), 0, options);
-    }
-
-    void UAgoraWidget::Leave()
-    {
-        // Leave the channel
-        RtcEngineProxy->leaveChannel();
-    }
-    ```
-    </ProductWrapper>
-
-
-### Implement callbacks
-<ProductWrapper notAllowed="voice-calling">
-You implement callbacks to handle and respond to events triggered by the `IRtcEngine` instance. For example, you set up video displays when local and remote users join a channel and stop videos after they leave. Override the following callbacks and add their implementations to the `AgoraWidget` files:
-</ProductWrapper>
-<ProductWrapper product="voice-calling">
-You implement callbacks to handle and respond to events triggered by the `IRtcEngine` instance. For example, you subscribe to the remote audio stream when a remote user joins the channel. Override the following callbacks and add their implementations to the `AgoraWidget` files:
-</ProductWrapper>
-
-* `AgoraWidget.h`
-
-    Add the following code after `agora::rtc::IRtcEngine* RtcEngineProxy;`.
-
-    ```cpp
-    // This callback is triggered when the local user leaves the channel
-    void onLeaveChannel(const agora::rtc::RtcStats& stats) override;
-
-    // This callback is triggered when a remote user joins the channel
-    void onUserJoined(agora::rtc::uid_t uid, int elapsed) override;
-
-    // This callback is triggered when a remote user leaves the channel
-    void onUserOffline(agora::rtc::uid_t uid, agora::rtc::USER_OFFLINE_REASON_TYPE reason) override;
-
-    // This callback is triggered when the local user joins the channel
-    void onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed) override;
-    ```
-
-* `AgoraWidget.cpp`
-
-    <ProductWrapper notAllowed="voice-calling">
-    Add the following code after `SetupVideoSDKEngine()`:
-    ```cpp
-    // Implement the callback triggered after a remote user joins the channel
-    void UAgoraWidget::onUserJoined(agora::rtc::uid_t uid, int elapsed)
-    {
-        // Set up remote video 
-        agora::rtc::VideoCanvas videoCanvas;
-        videoCanvas.view = RemoteVideo;
-        videoCanvas.uid = uid;
-        videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_REMOTE;
-
-        agora::rtc::RtcConnection connection;
-        connection.channelId = TCHAR_TO_ANSI(*_channelName);
-
-        ((agora::rtc::IRtcEngineEx*)RtcEngineProxy)->setupRemoteVideoEx(videoCanvas, connection);
-    }
-
-    // Implement the callback triggered when a remote user leaves the channel
-    void UAgoraWidget::onUserOffline(agora::rtc::uid_t uid, agora::rtc::USER_OFFLINE_REASON_TYPE reason)
-    {
-        // Stop remote video 
-        agora::rtc::VideoCanvas videoCanvas;
-        videoCanvas.view = nullptr;
-        videoCanvas.uid = uid;
-        videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_REMOTE;
-
-        agora::rtc::RtcConnection connection;
-        connection.channelId = TCHAR_TO_ANSI(*_channelName);
-
-        ((agora::rtc::IRtcEngineEx*)RtcEngineProxy)->setupRemoteVideoEx(videoCanvas, connection);
-    }
-
-    // Implement the callback triggered when the local user joins the channel
-    void UAgoraWidget::onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed)
-    {
-        AsyncTask(ENamedThreads::GameThread, [=]()
-        {
-            UE_LOG(LogTemp, Warning, TEXT("JoinChannelSuccess uid: %u"), uid);
-            // Set up local video
-            agora::rtc::VideoCanvas videoCanvas;
-            videoCanvas.view = LocalVideo;
-            videoCanvas.uid = 0;
-            videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_CAMERA;
-            RtcEngineProxy->setupLocalVideo(videoCanvas);
-        });
-    }
-
-    // Implement the callback triggered when the local user leaves the channel
-    void UAgoraWidget::onLeaveChannel(const agora::rtc::RtcStats& stats)
-    {
-        AsyncTask(ENamedThreads::GameThread, [=]()
-        {
-            agora::rtc::VideoCanvas videoCanvas;
-            videoCanvas.view = nullptr;
-            videoCanvas.uid = 0;
-            videoCanvas.sourceType = agora::rtc::VIDEO_SOURCE_TYPE::VIDEO_SOURCE_CAMERA;
-            RtcEngineProxy->setupLocalVideo(videoCanvas);
-        });
-    }
-    ```
-    </ProductWrapper>
-    <ProductWrapper product="voice-calling">
-    Add the following code after `SetupSDKEngine()`:
-
-    ```cpp
-    void UAgoraWidget::onUserJoined(agora::rtc::uid_t uid, int elapsed)
-    {
-        // Callback when a remote user joins the channel
-        agora::rtc::RtcConnection connection;
-        connection.channelId = TCHAR_TO_ANSI(*_channelName);
-    }
-    
-    void UAgoraWidget::onUserOffline(agora::rtc::uid_t uid, agora::rtc::USER_OFFLINE_REASON_TYPE reason)
-    {
-        // Callback when a remote user leaves the channel
-        agora::rtc::RtcConnection connection;
-        connection.channelId = TCHAR_TO_ANSI(*_channelName);
-    }
-    
-    void UAgoraWidget::onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed)
-    {
-        // Callback when the local user successfully joins the channel
-        AsyncTask(ENamedThreads::GameThread, =
-        {
-            UE_LOG(LogTemp, Warning, TEXT("JoinChannelSuccess uid: %u"), uid);
-        });
-    }
-    void UAgoraWidget::onLeaveChannel(const agora::rtc::RtcStats& stats)
-    {
-        // Callback when the local user successfully leaves the channel
-
-    }
-    ```
-    </ProductWrapper>
-    
-### Release resources
-When the local user leaves the channel, or exits the <Vpl k="CLIENT" />, you release memory by calling the `release` method of `IRtcEngine`. Override the `NativeDestruct()` method and add its implementation as follows: 
-
-* `AgoraWidget.h`
-
-    ```cpp
-    void NativeDestruct() override;
-    ```
-
-* `AgoraWidget.cpp`
-    
-    ```cpp
-    void UAgoraWidget::NativeDestruct()
-    {
-        Super::NativeDestruct();
-        if (RtcEngineProxy != nullptr)
-        {
-            RtcEngineProxy->unregisterEventHandler(this);
-            RtcEngineProxy->release();
-            delete RtcEngineProxy;
-
-            RtcEngineProxy = nullptr;
-        }
-    }
-    ```
 
 </PlatformWrapper>

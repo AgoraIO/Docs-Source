@@ -2,7 +2,6 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import CodeBlock from '@theme/CodeBlock';
 
-
 <PlatformWrapper platform="unity">
 The following figure illustrates the essential steps:
 <ProductWrapper notAllowed="voice-calling">
@@ -20,11 +19,492 @@ The following figure illustrates the essential steps:
 </details>
 </ProductWrapper>
 
-To quickly implement the basic functions of real-time <Vpd k="PRODUCT"/>, copy the following sample code into your project:
+This guide includes [complete sample code](#complete-sample-code) that demonstrates implementing basic real-time interaction. To understand the core API calls in the sample code, review the following implementation steps.
+
+### Create and set up a script
+
+This section shows you how to create a script required to implement <Vpd k="NAME" /> and bind the script to the canvas.
+
+1. Create a new script and import the UI library.
+
+    1. In the **Project** tab, navigate to **Assets > Agora-Unity-RTC-SDK > Code > Rtc**, right-click and select **Create > C# Script**. A new file named `NewBehaviourScript.cs` appears in your Assets.
+
+    1. Rename the file to <code>{props.fileName}</code> and open it.
+
+    1. Import the Unity namespaces to access UI components by adding the following code at the top of the file:
+
+        ```c#
+        using UnityEngine;
+        using UnityEngine.UI;
+        ```
+1. Bind the script to the canvas. 
+
+    In `Assets/Agora-Unity-RTC-SDK/Code/Rtc` , select the <code>{props.fileName}</code> file, and drag it to the Canvas. 
+    
+        In the **Inspector** panel, ensure that the file is bound to the Canvas.
+
+### Handle permissions
+
+Add device permissions to your project according to your target platform.
+
+<Tabs>
+<TabItem value="tab1" label="Android" default>
+Since version 2018.3, Unity does not actively obtain device permissions from the user. You call the `CheckPermission` method to obtain permissions. This step is only required for the Android platform.
+
+1. Include the `UnityEngine.Android` namespace, which contains Android-specific classes for interacting with Android devices from Unity:
+
+    ```c#
+    #if (UNITY_2018_3_OR_NEWER && UNITY_ANDROID)
+    using UnityEngine.Android;
+    #endif
+    ```
+
+2. Create a list of permissions to be obtained. 
+    
+    <ProductWrapper notAllowed="voice-calling">
+    ```c#
+    #if (UNITY_2018_3_OR_NEWER && UNITY_ANDROID)
+    private ArrayList permissionList = new ArrayList() { Permission.Camera, Permission.Microphone };
+    #endif
+    ```
+    </ProductWrapper>    
+    <ProductWrapper product="voice-calling">
+    ```c#
+    #if (UNITY_2018_3_OR_NEWER && UNITY_ANDROID)
+    private ArrayList permissionList = new ArrayList() { Permission.Microphone };
+    #endif
+    ```
+    </ProductWrapper>    
+
+3. Check if the required permissions have been granted. If not, prompt the user to grant the necessary permissions.
+
+    ```c#
+    private void CheckPermissions() {
+        #if (UNITY_2018_3_OR_NEWER && UNITY_ANDROID)
+        foreach (string permission in permissionList) {
+            if (!Permission.HasUserAuthorizedPermission(permission)) {
+                Permission.RequestUserPermission(permission);
+            }
+        }
+        #endif
+    }
+    ```
+</TabItem>
+<TabItem value="tab2" label="iOS and macOS" default>
+For iOS and macOS platforms, the <Vpd k="SDK"/> includes a post-build script named `BL_BuildPostProcess.cs`. When you build and export your Unity project as an iOS project, this script automatically inserts camera and microphone permission entries into the `Info.plist` file, eliminating the need for manual updates.
+</TabItem>
+</Tabs>
+
+### Import Agora classes​
+
+Import the `Agora.Rtc` namespace, which contains various classes and interfaces required to implement real-time audio and video functions.
+
+```c#
+using Agora.Rtc;
+```
+
+### Initialize an `IRtcEngine` instance
+
+Before calling other Agora APIs, create and initialize an `IRtcEngine` instance. Call `CreateAgoraRtcEngine` to create the instance. 
+
+<ProductWrapper notAllowed="voice-calling">
+
+```c#
+internal IRtcEngine RtcEngine;
+// Fill in your app ID
+private string _appID= "";
+
+private void SetupVideoSDKEngine() 
+{
+    // Create an IRtcEngine instance
+    RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
+    RtcEngineContext context = new RtcEngineContext();
+    context.appId = _appID;
+    context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+    context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
+    // Initialize the instance
+    RtcEngine.Initialize(context);
+}
+```
+</ProductWrapper>
+<ProductWrapper product="voice-calling">
+
+```c#
+internal IRtcEngine RtcEngine;
+// Fill in your app ID
+private string _appID= "";
+
+private void SetupAudioSDKEngine()
+{
+    // Create an IRtcEngine instance
+    RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
+    RtcEngineContext context = new RtcEngineContext();
+        context.appId = _appID;
+        context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+        context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
+    // Initialize the IRtcEngine
+    RtcEngine.Initialize(context);
+}
+```
+</ProductWrapper>
+
+<Admonition type="caution" title="Note">
+Before initializing the SDK, ensure that the user fully understands and agrees to the relevant privacy policy.
+</Admonition>
+
+### Set up an event handler
+<ProductWrapper notAllowed="voice-calling">
+Create an instance of the `UserEventHandler` class and set it as the engine event handler.Define the necessary callbacks based on your use-case. 
+
+```c#
+// Implement your own callback class by inheriting from the IRtcEngineEventHandler interface
+internal class UserEventHandler : IRtcEngineEventHandler
+{
+    private readonly JoinChannelVideo _videoSample;
+    internal UserEventHandler(JoinChannelVideo videoSample)
+    {
+        _videoSample = videoSample;
+    }
+
+    // Triggered when the local user successfully joins a channel
+    public override void OnJoinChannelSuccess(RtcConnection connection, int elapsed)
+    {
+    }
+
+    // Triggered when the SDK receives and successfully decodes the first frame of remote video
+    public override void OnUserJoined(RtcConnection connection, uint uid, int elapsed)
+    {
+        // Set the display for the remote video
+        _videoSample.RemoteView.SetForUser(uid, connection.channelId, VIDEO_SOURCE_TYPE.VIDEO_SOURCE_REMOTE);
+        // Start video rendering
+        _videoSample.RemoteView.SetEnable(true);
+        Debug.Log("Remote user joined");
+    }
+
+    // Triggered when the remote user leaves the current channel
+    public override void OnUserOffline(RtcConnection connection, uint uid, USER_OFFLINE_REASON_TYPE reason)
+    {
+        // Stop displaying the remote video
+        _videoSample.RemoteView.SetEnable(false);
+    }
+}
+```
+</ProductWrapper>
+
+<ProductWrapper product="voice-calling">
+Create an instance of the `UserEventHandler` class and set it as the engine event handler. Define the necessary callbacks based on your use-case. 
+
+```csharp
+// Create an instance of the user callback class and set the callback
+private void InitEventHandler() {
+    UserEventHandler handler = new UserEventHandler(this);
+    RtcEngine.InitEventHandler(handler);
+}
+
+// Implement your own callback class by inheriting the IRtcEngineEventHandler interface class
+internal class UserEventHandler : IRtcEngineEventHandler
+{
+    private readonly JoinChannelAudio _audioSample;
+    internal UserEventHandler(JoinChannelAudio audioSample)
+    {
+        _audioSample = audioSample;
+    }
+    // Triggered when the local user successfully joins a channel
+    public override void OnJoinChannelSuccess(RtcConnection connection, int elapsed)
+    {
+        Debug.Log("OnJoinChannelSuccess _channelName");
+    }
+    // Triggered when a remote user successfully joins a channel
+    public override void OnUserJoined(RtcConnection connection, uint uid, int elapsed)
+    {
+        Debug.Log("Remote user joined");
+    }
+    // Triggered when a remote user leaves the current channel
+    public override void OnUserOffline(RtcConnection connection, uint uid, USER_OFFLINE_REASON_TYPE reason) {
+    }
+}
+```
+</ProductWrapper>
+
+<ProductWrapper notAllowed="voice-calling">
+
+### Set up the local video view
+
+Use the following code to set up the local video view:
+
+```csharp
+internal VideoSurface LocalView;
+
+private void PreviewSelf()
+{
+    // Enable the video module
+    RtcEngine.EnableVideo();
+    // Enable local video preview
+    RtcEngine.StartPreview();
+    // Set up local video display
+    LocalView.SetForUser(0, "");
+    // Render the video
+    LocalView.SetEnable(true);
+}
+```
+</ProductWrapper>
+<ProductWrapper product="interactive-live-streaming">
+
+### Join a channel
+
+Call `JoinChannel` to join a channel. Configure the following in `ChannelMediaOptions`:
+
+- Set the channel profile to `CHANNEL_PROFILE_LIVE_BROADCASTING` (live broadcast profile) and the user role to `BROADCASTER`.
+- Set `publishMicrophoneTrack` and `publishCameraTrack` to `true` to publish the audio from the microphone and the video from the camera.
+- Set `autoSubscribeAudio` and `autoSubscribeVideo` to `true` to automatically subscribe to all audio and video streams.
+
+```c#
+// Fill in your channel name
+private string _channelName = "";
+// Fill in a temporary token
+private string _token = "";
+
+public void Join() {
+    // Set channel media options
+    ChannelMediaOptions options = new ChannelMediaOptions();
+    // Start video rendering
+    LocalView.SetEnable(true);
+    // Automatically subscribe to all audio streams
+    options.autoSubscribeAudio.SetValue(true);
+    // Automatically subscribe to all video streams
+    options.autoSubscribeVideo.SetValue(true);
+    // Set the channel profile to live broadcast
+    options.channelProfile.SetValue(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
+    //Set the user role as host
+    options.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+    // Set the audience latency level
+    options.audienceLatencyLevel.SetValue(AUDIENCE_LATENCY_LEVEL_TYPE.AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY);
+    // Join a channel
+    RtcEngine.JoinChannel(_token, _channelName, 0, options);
+}
+```
+</ProductWrapper>
+
+<ProductWrapper product="broadcast-streaming">
+### Join a channel
+
+Call `JoinChannel` to join a channel. Configure the following in `ChannelMediaOptions`:
+
+- Set the channel profile to `CHANNEL_PROFILE_LIVE_BROADCASTING` (live broadcast profile) and the user role to `BROADCASTER`.
+- Set `publishMicrophoneTrack` and `publishCameraTrack` to `true` to publish the audio from the microphone and the video from the camera.
+- Set `autoSubscribeAudio` and `autoSubscribeVideo` to `true` to automatically subscribe to all audio and video streams.
+
+
+```c#
+// Fill in your channel name
+private string _channelName = "";
+// Fill in a temporary token
+private string _token = "";
+
+public void Join() {
+    // Set channel media options
+    ChannelMediaOptions options = new ChannelMediaOptions();
+    // Start video rendering
+    LocalView.SetEnable(true);
+    // Automatically subscribe to all audio streams
+    options.autoSubscribeAudio.SetValue(true);
+    // Automatically subscribe to all video streams
+    options.autoSubscribeVideo.SetValue(true);
+    // Set the channel profile to live broadcast
+    options.channelProfile.SetValue(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
+    //Set the user role as host
+    options.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+    // Set the audience latency level
+    options.audienceLatencyLevel.SetValue(AUDIENCE_LATENCY_LEVEL_TYPE.AUDIENCE_LATENCY_LEVEL_LOW_LATENCY);
+    // Join a channel
+    RtcEngine.JoinChannel(_token, _channelName, 0, options);
+}
+```
+</ProductWrapper>
+<ProductWrapper product="video-calling">
+### Join a channel
+
+Call `JoinChannel` to join a channel. Configure the following in `ChannelMediaOptions`:
+
+- Set the channel profile to `CHANNEL_PROFILE_COMMUNICATION` (communication profile) and the user role to `BROADCASTER`.
+- Set `publishMicrophoneTrack` and `publishCameraTrack` to `true` to publish the audio from the microphone and the video from the camera.
+- Set `autoSubscribeAudio` and `autoSubscribeVideo` to `true` to automatically subscribe to all audio and video streams.
+
+
+```c#
+// Fill in your channel name
+private string _channelName = "";
+// Fill in a temporary token
+private string _token = "";
+
+public void Join()
+{
+    // Set channel media options
+    ChannelMediaOptions options = new ChannelMediaOptions();
+    // Publish the audio stream collected from the microphone
+    options.publishMicrophoneTrack.SetValue(true);
+    // Publish the video stream collected from the camera
+    options.publishCameraTrack.SetValue(true);
+    // Automatically subscribe to all audio streams
+    options.autoSubscribeAudio.SetValue(true);
+    // Automatically subscribe to all video streams
+    options.autoSubscribeVideo.SetValue(true);
+    // Set the channel profile to live broadcasting
+    options.channelProfile.SetValue(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
+    // Set the user role to broadcaster
+    options.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+    // Join the channel
+    RtcEngine.JoinChannel(_token, _channelName, 0, options);
+}
+```
+</ProductWrapper>
+<ProductWrapper product="voice-calling">
+
+### Join a channel and publish the audio stream
+
+Call `JoinChannel` [2/2] to join the channel. Configure the `ChannelMediaOptions`, as follows:
+
+- Set the channel profile to `CHANNEL_PROFILE_LIVE_BROADCASTING` and set the user role to `BROADCASTER` (host).
+- Set `publishMicrophoneTrack` to `true` to publish the audio stream captured by the microphone.
+- Set `autoSubscribeAudio` to `true`, to automatically subscribe to all audio streams.
+
+```csharp
+// Fill in your channel name
+private string _channelName = "";
+// Fill in a temporary token
+private string _token = "";
+
+public void Join()
+{
+    Debug.Log("Joining _channelName");
+    // Enable the audio module
+    RtcEngine.EnableAudio();
+    // Set channel media options
+    ChannelMediaOptions options = new ChannelMediaOptions();
+    // Publish the audio stream captured by the microphone
+    options.publishMicrophoneTrack.SetValue(true);
+    // Automatically subscribe to all audio streams
+    options.autoSubscribeAudio.SetValue(true);
+    // Set the channel profile to live broadcast
+    options.channelProfile.SetValue(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
+    // Set the user role to broadcaster
+    options.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+    // Join the channel
+    RtcEngine.JoinChannel(_token, _channelName, 0, options);
+}
+```
+</ProductWrapper>
+
+<ProductWrapper notAllowed="voice-calling">
+
+###  Display remote video
+When a remote user joins the channel, the `OnUserJoined` callback is triggered. Call  `SetForUser` set the remote video display and call `SetEnable(true)` to render the video.
+
+```c#
+internal VideoSurface RemoteView;
+// When the SDK receives the first frame of a remote video stream and successfully decodes it, the OnUserJoined callback is triggered.
+public override void OnUserJoined(RtcConnection connection, uint uid, int elapsed) {
+    // Set the remote video display
+    _videoSample.RemoteView.SetForUser(uid, connection.channelId, VIDEO_SOURCE_TYPE.VIDEO_SOURCE_REMOTE);
+    // Start video rendering
+    _videoSample.RemoteView.SetEnable(true);
+    Debug.Log("Remote user joined");
+}
+```
+</ProductWrapper>
+
+### Leave the channel
+
+<ProductWrapper notAllowed="voice-calling">
+
+When the local user clicks **Leave**, call `LeaveChannel` to leave the current channel. 
+
+    ```c#
+    public void Leave() {
+        Debug.Log("Leaving " + _channelName);
+        // Leave the channel
+        RtcEngine.LeaveChannel();
+        // Disable the video module
+        RtcEngine.DisableVideo();
+        // Stop remote video rendering0
+        RemoteView.SetEnable(false);
+        // Stop local video rendering
+        LocalView.SetEnable(false);
+    }
+    ```
+</ProductWrapper>
+
+<ProductWrapper product="voice-calling">
+When a user clicks **Leave**, call `LeaveChannel` to leave the current channel and `DisableAudio` to turn off the audio module. 
+
+    ```c#
+    public void Leave() {
+        Debug.Log("Leaving " + _channelName);
+        // Leave the channel
+        RtcEngine.LeaveChannel();
+        // Disable the audio module
+        RtcEngine.DisableAudio();
+    }
+    ```
+</ProductWrapper>
+
+### Start and stop your <Vpl k="CLIENT" />
+
+1. When the <Vpl k="CLIENT" /> starts, check whether device permissions have been granted. 
+
+    ```c#
+    void Update() {
+        CheckPermissions();
+    }
+    ```
+
+1. To start <Vpd k = "PRODUCT"/>, in <code>Assets/Agora-Unity-RTC-SDK/Code/Rtc/{props.fileName}</code>, replace the `Start` method with the following:
+
+    <ProductWrapper notAllowed="voice-calling">
+    ```c#
+    void Start()
+    {
+        SetupVideoSDKEngine();
+        InitEventHandler();
+        PreviewSelf();
+    }
+    ```
+    </ProductWrapper>
+
+    <ProductWrapper product="voice-calling">
+    ```c#
+    void Start() {
+        SetupAudioSDKEngine();
+        InitEventHandler();
+    }
+    ```
+    </ProductWrapper>
+
+1. To clean up all session-related resources when a user exits the <Vpl k="CLIENT" />, call the `Dispose` method of the `IRtcEngine`.
+
+    ```c#
+    void OnApplicationQuit() {
+        if (RtcEngine != null) {
+            Leave();
+            // Destroy IRtcEngine
+            RtcEngine.Dispose();
+            RtcEngine = null;
+        }
+    }
+    ```
+
+    <Admonition type="info" info="info">
+    After calling `Dispose`, you can no longer use any methods or callbacks of the SDK. To use <Vpd k="PRODUCT"/> features again, you must create a new engine instance. 
+    </Admonition>
+
+### Complete sample code
+
+A complete code sample demonstrating the basic process of real-time interaction is provided for your reference. To quickly implement the basic functions of real-time Video Calling, copy the following sample code into your project:
 
 <ProductWrapper product="voice-calling">
 <details>
 <summary>Sample code to implement voice calling in your <Vpl k="CLIENT"/></summary>
+
 <CodeBlock language="csharp" showLineNumbers>
 {`using System.Collections;
 using System.Collections.Generic;
@@ -151,17 +631,17 @@ private ArrayList permissionList = new ArrayList() { Permission.Microphone };
         {
             _audioSample = audioSample;
         }
-        // This callback is triggered when the local user successfully joins the channel
+        // Triggered when the local user successfully joins a channel
         public override void OnJoinChannelSuccess(RtcConnection connection, int elapsed)
         {
             Debug.Log("OnJoinChannelSuccess _channelName");
         }
-        // This callback is triggered when a remote user successfully joins the channel
+        // Triggered when a remote user successfully joins a channel
         public override void OnUserJoined(RtcConnection connection, uint uid, int elapsed)
         {
             Debug.Log("Remote user joined");
         }
-        // This callback is triggered when a remote user leaves the current channel
+        // Triggered when a remote user leaves the current channel
         public override void OnUserOffline(RtcConnection connection, uint uid, USER_OFFLINE_REASON_TYPE reason)
         {
         }
@@ -359,521 +839,4 @@ public class JoinChannelVideo : MonoBehaviour
 </details>
 </ProductWrapper>
 
-<Admonition info="info" type="info">
-In the `_appId`, `_token`, and `_channelName` fields, enter the App ID, temporary token, and channel name that you obtained from the Agora Console when generating the temporary token.
-</Admonition>
-
-### Implement the system logic
-
-This section shows you how to import the libraries required to implement <Vpd k="NAME" /> and obtain the necessary device permissions.
-
-1. Create a new script and import the UI library:
-
-    1. In the **Project** tab, navigate to **Assets > Agora-Unity-RTC-SDK > Code > Rtc**, right-click and select **Create > C# Script**. A new file named `NewBehaviourScript.cs` appears in your Assets.
-
-    1. Rename the file to <code>{props.fileName}</code> and open it.
-
-    1. Import the Unity namespaces to access UI components by adding the following code at the top of the file:
-
-        ```c#
-        using UnityEngine;
-        using UnityEngine.UI;
-        ```
-
-2. Get device permissions:
-
-    <Tabs>
-    <TabItem value="tab1" label="Android" default>
-    Since version 2018.3, Unity does not actively obtain device permissions from the user. You call the `CheckPermission` method to obtain permissions. This step is only required for the Android platform.
-
-    1. Include the `UnityEngine.Android` namespace, which contains Android-specific classes for interacting with Android devices from Unity:
-
-        ```c#
-        #if (UNITY_2018_3_OR_NEWER && UNITY_ANDROID)
-        using UnityEngine.Android;
-        #endif
-        ```
-
-    2. Create a list of permissions to be obtained. 
-        
-        <ProductWrapper notAllowed="voice-calling">
-        ```c#
-        #if (UNITY_2018_3_OR_NEWER && UNITY_ANDROID)
-        private ArrayList permissionList = new ArrayList() { Permission.Camera, Permission.Microphone };
-        #endif
-        ```
-        </ProductWrapper>    
-        <ProductWrapper product="voice-calling">
-        ```c#
-        #if (UNITY_2018_3_OR_NEWER && UNITY_ANDROID)
-        private ArrayList permissionList = new ArrayList() { Permission.Microphone };
-        #endif
-        ```
-        </ProductWrapper>    
-
-    3. Check whether permissions have been granted. 
-
-        ```c#
-        private void CheckPermissions() {
-            #if (UNITY_2018_3_OR_NEWER && UNITY_ANDROID)
-            foreach (string permission in permissionList) {
-                if (!Permission.HasUserAuthorizedPermission(permission)) {
-                    Permission.RequestUserPermission(permission);
-                }
-            }
-            #endif
-        }
-        ```
-    </TabItem>
-    <TabItem value="tab2" label="iOS and macOS" default>
-    If your target platform is iOS or macOS, the <Vpd k="SDK"/> provides a post-build script in the `BL_BuildPostProcess.cs` folder. After you build and export your project from the Unity Editor as an iOS project, the script automatically adds camera and microphone permissions to the `Info.plist` file without manual processing.
-    </TabItem>
-    </Tabs>
-
-1. Bind the script to the Canvas. 
-
-    In `Assets/Agora-Unity-RTC-SDK/Code/Rtc` , select the <code>{props.fileName}</code> file, and drag it to the Canvas. 
-    
-        In the **Inspector** panel, ensure that the file is bound to the Canvas.
-    
-
-### Import Agora classes​
-
-Import the `Agora.Rtc` namespace, which contains various classes and interfaces required to implement real-time audio and video functions.
-
-```c#
-using Agora.Rtc;
-```
-
-### Declare variables​
-
-Pass the App ID, temporary token from the <Vg k="COMPANY"/> console, and the channel name used when generating the token. These will initialize the engine and join the channel. 
-
-<ProductWrapper notAllowed="voice-calling">
-```c#
-// Fill in your app ID
-private string _appID= "";
-// Fill in your channel name
-private string _channelName = "";
-// Fill in a temporary token
-private string _token = "";
-internal VideoSurface LocalView;
-internal VideoSurface RemoteView;
-internal IRtcEngine RtcEngine;
-```
-</ProductWrapper>
-<ProductWrapper product="voice-calling">
-```csharp
-// Fill in your app ID
-private string _appID = "";
-// Fill in your channel name
-private string _channelName = "";
-// Fill in a temporary token
-private string _token = "";
-internal IRtcEngine RtcEngine;
-````
-</ProductWrapper>
-
-### Initialize an `IRtcEngine` instance
-
-Before calling other Agora APIs, create and initialize an `IRtcEngine` instance. Call `CreateAgoraRtcEngine` to create the `IRtcEngine` instance. 
-
-<ProductWrapper notAllowed="voice-calling">
-```c#
-private void SetupVideoSDKEngine() 
-{
-    // Create an IRtcEngine instance
-    RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
-    RtcEngineContext context = new RtcEngineContext();
-    context.appId = _appID;
-    context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
-    context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
-    // Initialize the instance
-    RtcEngine.Initialize(context);
-}
-```
-</ProductWrapper>
-<ProductWrapper product="voice-calling">
-```c#
-private void SetupAudioSDKEngine()
-{
-    // Create an IRtcEngine instance
-    RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
-    RtcEngineContext context = new RtcEngineContext();
-        context.appId = _appID;
-        context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
-        context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
-    // Initialize the IRtcEngine
-    RtcEngine.Initialize(context);
-}
-```
-</ProductWrapper>
-
-<Admonition type="caution" title="Note">
-Before initializing the SDK, ensure that the user fully understands and agrees to the relevant privacy policy.
-</Admonition>
-
-### Set up an event handler
-<ProductWrapper notAllowed="voice-calling">
-Define necessary callbacks based on your use-case. The following sample shows the callbacks for when a local user joins a channel, or when a remote user joins or leaves a channel.
-
-```c#
-// Implement your own callback class by inheriting from the IRtcEngineEventHandler interface
-internal class UserEventHandler : IRtcEngineEventHandler
-{
-    private readonly JoinChannelVideo _videoSample;
-    internal UserEventHandler(JoinChannelVideo videoSample)
-    {
-        _videoSample = videoSample;
-    }
-
-    // This callback is triggered when the local user successfully joins the channel
-    public override void OnJoinChannelSuccess(RtcConnection connection, int elapsed)
-    {
-    }
-
-    // The OnUserJoined callback is triggered when the SDK receives and successfully decodes the first frame of remote video
-    public override void OnUserJoined(RtcConnection connection, uint uid, int elapsed)
-    {
-        // Set the display for the remote video
-        _videoSample.RemoteView.SetForUser(uid, connection.channelId, VIDEO_SOURCE_TYPE.VIDEO_SOURCE_REMOTE);
-        // Start video rendering
-        _videoSample.RemoteView.SetEnable(true);
-        Debug.Log("Remote user joined");
-    }
-
-    // This callback is triggered when the remote user leaves the current channel
-    public override void OnUserOffline(RtcConnection connection, uint uid, USER_OFFLINE_REASON_TYPE reason)
-    {
-        _videoSample.RemoteView.SetEnable(false);
-    }
-}
-```
-</ProductWrapper>
-
-<ProductWrapper product="voice-calling">
-Create an instance of the user event handler class and set it as the engine event handler. You can implement additional functions during initialization, such as callbacks for users joining and leaving channels. 
-
-```csharp
-// Create an instance of the user callback class and set the callback
-private void InitEventHandler() {
-    UserEventHandler handler = new UserEventHandler(this);
-    RtcEngine.InitEventHandler(handler);
-}
-
-// Implement your own callback class by inheriting the IRtcEngineEventHandler interface class
-internal class UserEventHandler : IRtcEngineEventHandler
-{
-    private readonly JoinChannelAudio _audioSample;
-    internal UserEventHandler(JoinChannelAudio audioSample)
-    {
-        _audioSample = audioSample;
-    }
-    // This callback is triggered when the local user successfully joins the channel
-    public override void OnJoinChannelSuccess(RtcConnection connection, int elapsed)
-    {
-        Debug.Log("OnJoinChannelSuccess _channelName");
-    }
-    // This callback is triggered when a remote user successfully joins the channel
-    public override void OnUserJoined(RtcConnection connection, uint uid, int elapsed)
-    {
-        Debug.Log("Remote user joined");
-    }
-    // This callback is triggered when a remote user leaves the current channel
-    public override void OnUserOffline(RtcConnection connection, uint uid, USER_OFFLINE_REASON_TYPE reason) {
-    }
-}
-```
-</ProductWrapper>
-
-### Set up the UI
-<ProductWrapper notAllowed="voice-calling">
-UI elements are referenced in <code>Assets/Agora-Unity-RTC-SDK/Code/Rtc/{props.fileName}</code>. To set up the user interface, use the following code:
-
-```c#
-private void SetupUI() {
-    GameObject go = GameObject.Find("LocalView");
-    LocalView = go.AddComponent<VideoSurface>();
-    go.transform.Rotate(0.0f, 0.0f, -180.0f);
-    go = GameObject.Find("RemoteView");
-    RemoteView = go.AddComponent<VideoSurface>();
-    go.transform.Rotate(0.0f, 0.0f, -180.0f);
-    go = GameObject.Find("Leave");
-    go.GetComponent<Button>().onClick.AddListener(Leave);
-    go = GameObject.Find("Join");
-    go.GetComponent<Button>().onClick.AddListener(Join);
-}
-```
-</ProductWrapper>
-<ProductWrapper product="voice-calling">
-UI elements are referenced in <code>Assets/Agora-Unity-RTC-SDK/Code/Rtc/{props.fileName}</code>. To set up the user interface:
-
-```csharp
-private void SetupUI() {
-    GameObject go = GameObject.Find("Leave");
-    go.GetComponent<Button>().onClick.AddListener(Leave);
-    go = GameObject.Find("Join");
-    go.GetComponent<Button>().onClick.AddListener(Join);
-}
-```
-</ProductWrapper>
-
-<ProductWrapper notAllowed="voice-calling">
-### Set up the local video view
-
-To enable the local video, do the following:
-
-- To init the local camera, call to `EnableVideo`.
-- To preview local vide, call `StartPreview`.
-- To set the local video source, call `SetForUser` .
-- To render the local video, call to `SetEnable`.
-
-```csharp
-private void PreviewSelf()
-{
-    // Enable the video module
-    RtcEngine.EnableVideo();
-    // Enable local video preview
-    RtcEngine.StartPreview();
-    // Set up local video display
-    LocalView.SetForUser(0, "");
-    // Render the video
-    LocalView.SetEnable(true);
-}
-```
-</ProductWrapper>
-<ProductWrapper product="interactive-live-streaming">
-### Join a channel
-
-Call `JoinChannel` to join the channel. Configure the following in `ChannelMediaOptions`:
-
-- Set the channel profile to `CHANNEL_PROFILE_LIVE_BROADCASTING` (live broadcast profile) and the user role to `BROADCASTER`.
-- Set `publishMicrophoneTrack` and `publishCameraTrack` to `true` to publish the audio from the microphone and the video from the camera.
-- Set `autoSubscribeAudio` and `autoSubscribeVideo` to `true` to automatically subscribe to all audio and video streams.
-
-```c#
-public void Join() {
-    // Set channel media options
-    ChannelMediaOptions options = new ChannelMediaOptions();
-    // Start video rendering
-    LocalView.SetEnable(true);
-    // Automatically subscribe to all audio streams
-    options.autoSubscribeAudio.SetValue(true);
-    // Automatically subscribe to all video streams
-    options.autoSubscribeVideo.SetValue(true);
-    // Set the channel profile to live broadcast
-    options.channelProfile.SetValue(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
-    //Set the user role as host
-    options.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
-    // Set the audience latency level
-    options.audienceLatencyLevel.SetValue(AUDIENCE_LATENCY_LEVEL_TYPE.AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY);
-    // Join a channel
-    RtcEngine.JoinChannel(_token, _channelName, 0, options);
-}
-```
-</ProductWrapper>
-
-<ProductWrapper product="broadcast-streaming">
-### Join a channel
-
-Call `JoinChannel` to join the channel. Configure the following in `ChannelMediaOptions`:
-
-- Set the channel profile to `CHANNEL_PROFILE_LIVE_BROADCASTING` (live broadcast profile) and the user role to `BROADCASTER`.
-- Set `publishMicrophoneTrack` and `publishCameraTrack` to `true` to publish the audio from the microphone and the video from the camera.
-- Set `autoSubscribeAudio` and `autoSubscribeVideo` to `true` to automatically subscribe to all audio and video streams.
-
-
-```c#
-public void Join() {
-    // Set channel media options
-    ChannelMediaOptions options = new ChannelMediaOptions();
-    // Start video rendering
-    LocalView.SetEnable(true);
-    // Automatically subscribe to all audio streams
-    options.autoSubscribeAudio.SetValue(true);
-    // Automatically subscribe to all video streams
-    options.autoSubscribeVideo.SetValue(true);
-    // Set the channel profile to live broadcast
-    options.channelProfile.SetValue(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
-    //Set the user role as host
-    options.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
-    // Set the audience latency level
-    options.audienceLatencyLevel.SetValue(AUDIENCE_LATENCY_LEVEL_TYPE.AUDIENCE_LATENCY_LEVEL_LOW_LATENCY);
-    // Join a channel
-    RtcEngine.JoinChannel(_token, _channelName, 0, options);
-}
-```
-</ProductWrapper>
-<ProductWrapper product="video-calling">
-### Join a channel
-
-Call `JoinChannel` to join the channel. Configure the following in `ChannelMediaOptions`:
-
-- Set the channel profile to `CHANNEL_PROFILE_COMMUNICATION` (communication profile) and the user role to `BROADCASTER`.
-- Set `publishMicrophoneTrack` and `publishCameraTrack` to `true` to publish the audio from the microphone and the video from the camera.
-- Set `autoSubscribeAudio` and `autoSubscribeVideo` to `true` to automatically subscribe to all audio and video streams.
-
-
-```c#
-public void Join()
-{
-    // Set channel media options
-    ChannelMediaOptions options = new ChannelMediaOptions();
-    // Publish the audio stream collected from the microphone
-    options.publishMicrophoneTrack.SetValue(true);
-    // Publish the video stream collected from the camera
-    options.publishCameraTrack.SetValue(true);
-    // Automatically subscribe to all audio streams
-    options.autoSubscribeAudio.SetValue(true);
-    // Automatically subscribe to all video streams
-    options.autoSubscribeVideo.SetValue(true);
-    // Set the channel profile to live broadcasting
-    options.channelProfile.SetValue(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
-    // Set the user role to broadcaster
-    options.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
-    // Join the channel
-    RtcEngine.JoinChannel(_token, _channelName, 0, options);
-}
-```
-</ProductWrapper>
-<ProductWrapper product="voice-calling">
-
-### Join a channel and publish the audio stream
-
-Call `JoinChannel` [2/2] to join the channel. Configure the `ChannelMediaOptions`, as follows:
-
-- Set the channel profile to `CHANNEL_PROFILE_LIVE_BROADCASTING` and set the user role to `BROADCASTER` (host).
-- Set `publishMicrophoneTrack` to `true` to publish the audio stream captured by the microphone.
-- Set `autoSubscribeAudio` to `true`, to automatically subscribe to all audio streams.
-
-```csharp
-public void Join()
-{
-    Debug.Log("Joining _channelName");
-    // Enable the audio module
-    RtcEngine.EnableAudio();
-    // Set channel media options
-    ChannelMediaOptions options = new ChannelMediaOptions();
-    // Publish the audio stream captured by the microphone
-    options.publishMicrophoneTrack.SetValue(true);
-    // Automatically subscribe to all audio streams
-    options.autoSubscribeAudio.SetValue(true);
-    // Set the channel profile to live broadcast
-    options.channelProfile.SetValue(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
-    // Set the user role to broadcaster
-    options.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
-    // Join the channel
-    RtcEngine.JoinChannel(_token, _channelName, 0, options);
-}
-```
-</ProductWrapper>
-
-<ProductWrapper notAllowed="voice-calling">
-
-###  Display remote video
-When a remote user joins the channel, the `OnUserJoined` callback is triggered. Call  `SetForUser` set the remote video display and call `SetEnable(true)` to render the video.
-
-```c#
-// When the SDK receives the first frame of a remote video stream and successfully decodes it, the OnUserJoined callback is triggered.
-public override void OnUserJoined(RtcConnection connection, uint uid, int elapsed) {
-    // Set the remote video display
-    _videoSample.RemoteView.SetForUser(uid, connection.channelId, VIDEO_SOURCE_TYPE.VIDEO_SOURCE_REMOTE);
-    // Start video rendering
-    _videoSample.RemoteView.SetEnable(true);
-    Debug.Log("Remote user joined");
-}
-```
-</ProductWrapper>
-
-### Leave the channel
-
-<ProductWrapper notAllowed="voice-calling">
-1.  The `OnUserOffline` callback is triggered when a remote user leaves the channel. Call `SetEnable(false)` to stop displaying the video.
-
-    ```c#
-    // This callback is triggered when a remote user leaves the current channel
-    public override void OnUserOffline(RtcConnection connection, uint uid, USER_OFFLINE_REASON_TYPE reason) {
-        _videoSample.RemoteView.SetEnable(false);
-    }
-    ```
-
-1. When the local user clicks **Leave**, call `LeaveChannel` to leave the current channel. 
-
-    ```c#
-    public void Leave() {
-        Debug.Log("Leaving " + _channelName);
-        // Leave the channel
-        RtcEngine.LeaveChannel();
-        // Disable the video module
-        RtcEngine.DisableVideo();
-        // Stop remote video rendering0
-        RemoteView.SetEnable(false);
-        // Stop local video rendering
-        LocalView.SetEnable(false);
-    }
-    ```
-</ProductWrapper>
-<ProductWrapper product="voice-calling">
-1. When a user clicks **Leave**, call `LeaveChannel` to leave the current channel and `DisableAudio` to turn off the audio module. 
-
-    ```c#
-    public void Leave() {
-        Debug.Log("Leaving " + _channelName);
-        // Leave the channel
-        RtcEngine.LeaveChannel();
-        // Disable the audio module
-        RtcEngine.DisableAudio();
-    }
-    ```
-</ProductWrapper>
-
-### Start and stop your <Vpl k="CLIENT" />
-
-1. When the <Vpl k="CLIENT" /> starts, check whether device permissions have been granted. 
-
-    ```c#
-    void Update() {
-        CheckPermissions();
-    }
-    ```
-
-1. To start <Vpd k = "PRODUCT"/>, in <code>Assets/Agora-Unity-RTC-SDK/Code/Rtc/{props.fileName}</code>, replace the `Start` method with the following:
-
-    <ProductWrapper notAllowed="voice-calling">
-    ```c#
-    void Start()
-    {
-        SetupVideoSDKEngine();
-        InitEventHandler();
-        SetupUI();
-        PreviewSelf();
-    }
-    ```
-    </ProductWrapper>
-
-    <ProductWrapper product="voice-calling">
-    ```c#
-    void Start() {
-        SetupAudioSDKEngine();
-        InitEventHandler();
-        SetupUI();
-    }
-    ```
-    </ProductWrapper>
-
-1. To clean up all session-related resources when a user leaves the channel, call the `Dispose` method of `IRtcEngine`.
-
-    ```c#
-    void OnApplicationQuit() {
-        if (RtcEngine != null) {
-            Leave();
-            // Destroy IRtcEngine
-            RtcEngine.Dispose();
-            RtcEngine = null;
-        }
-    }
-    ```
-    <Admonition type="info" info="info">
-    After calling `Dispose`, you can no longer use any methods or callbacks of the SDK. To use <Vpd k="PRODUCT"/> features again, you must create a new engine. 
-    </Admonition>
 </PlatformWrapper>

@@ -8,6 +8,7 @@ const data = {
     BETA_API_FOLDER: 'video-call-4.x-beta',
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
     STREAM: 'interactive live streaming or broadcast streaming',
+    MEDIA: 'audio and video',
   },
 
   'voice-calling': {
@@ -17,6 +18,7 @@ const data = {
     SDK: 'Voice SDK',
     PRODUCT: 'Voice Calling',
     STREAM: 'interactive live streaming or broadcast streaming',
+    MEDIA: 'audio',
   },
 
   'interactive-live-streaming': {
@@ -27,6 +29,17 @@ const data = {
     PRODUCT: 'Interactive Live Streaming',
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
     STREAM: 'interactive live streaming',
+    MEDIA: 'audio and video',
+  },
+
+  'broadcast-streaming': {
+    NAME: 'Broadcast Streaming',
+    SDK_LITE: 'Lite SDK',
+    PATH: 'broadcast-streaming',
+    SDK: 'Video SDK',
+    PRODUCT: 'Broadcast Streaming',
+    STREAM: 'broadcast streaming',
+    MEDIA: 'audio and video',
   },
 
   'agora-analytics': {
@@ -69,15 +82,6 @@ const data = {
       SDK: 'Server Gateway SDK',
       PRODUCT: 'Server Gateway',
       STREAM: 'interactive live streaming or broadcast streaming',
-  },
-
-  'broadcast-streaming': {
-    NAME: 'Broadcast Streaming',
-    SDK_LITE: 'Lite SDK',
-    PATH: 'broadcast-streaming',
-    SDK: 'Video SDK',
-    PRODUCT: 'Broadcast Streaming',
-    STREAM: 'broadcast streaming',
   },
 
   'iot': {

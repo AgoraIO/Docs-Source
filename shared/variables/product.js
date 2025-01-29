@@ -9,6 +9,7 @@ const data = {
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
     STREAM: 'interactive live streaming or broadcast streaming',
     MEDIA: 'audio and video',
+    MEDIA_DEVICES: 'camera and microphone',
   },
 
   'voice-calling': {
@@ -19,6 +20,7 @@ const data = {
     PRODUCT: 'Voice Calling',
     STREAM: 'interactive live streaming or broadcast streaming',
     MEDIA: 'audio',
+    MEDIA_DEVICES: 'microphone',
   },
 
   'interactive-live-streaming': {
@@ -30,6 +32,7 @@ const data = {
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
     STREAM: 'interactive live streaming',
     MEDIA: 'audio and video',
+    MEDIA_DEVICES: 'camera and microphone',
   },
 
   'broadcast-streaming': {
@@ -40,6 +43,7 @@ const data = {
     PRODUCT: 'Broadcast Streaming',
     STREAM: 'broadcast streaming',
     MEDIA: 'audio and video',
+    MEDIA_DEVICES: 'camera and microphone',
   },
 
   'agora-analytics': {

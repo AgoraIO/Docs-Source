@@ -1,0 +1,163 @@
+<PlatformWrapper platform="android">
+
+```java
+private String userId = "<User ID of the local user>";
+private String token = "<Your authentication token>";
+private String appKey = "<App key from Agora console>";
+
+private ChatClient agoraChatClient;
+private boolean isJoined = false;
+
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+
+    // Fetch the token from the server when the app starts
+    fetchAndInitializeToken();
+    
+    setupChatClient(); // Initialize the ChatClient
+    setupListeners(); // Add event listeners
+}
+
+private void fetchAndInitializeToken() {
+    // Define the expiration time (1 hour, for example)
+    int expireSeconds = 3600;
+
+    // Fetch the token from the server
+    String newToken = fetchNewToken(userId, expireSeconds);
+
+    if (newToken != null) {
+        token = newToken;
+        System.out.println("Token fetched successfully: " + token);
+
+    } else {
+        System.out.println("Failed to fetch token.");
+        // Handle token fetching failure (e.g., show an error message)
+    }
+}
+
+private void setupChatClient() {
+    ChatOptions options = new ChatOptions();
+    if (appKey.isEmpty()) {
+        showLog("You need to set your AppKey");
+        return;
+    }
+    options.setAppKey(appKey); // Set your app key in options
+    agoraChatClient = ChatClient.getInstance();
+    agoraChatClient.init(this, options); // Initialize the ChatClient
+    agoraChatClient.setDebugMode(true); // Enable debug info output
+}
+
+private void setupListeners() {
+    // Add connection event callbacks
+    agoraChatClient.addConnectionListener(new ConnectionListener() {
+
+        @Override
+        public void onTokenExpired() {
+            // The token has expired
+            System.out.println("Token expired. You need to log in again or fetch a new token.");
+            // You can handle token expiration here by prompting a user to log in again, or automatically request a new token
+        }
+
+        @Override
+        public void onTokenWillExpire() {
+            // The token is about to expire. Get a new token from the token server and renew the token.
+            System.out.println("Token is about to expire. Fetching a new token...");
+
+            // Fetch a new token
+            int expireSeconds = 3600;       // Token expiration time, e.g., 1 hour
+
+            // Assuming you have a method to get a new token
+            String newToken = fetchNewToken(userId, expireSeconds);
+
+            if (newToken != null) {
+                // Renew the token with Agora Chat client
+                agoraChatClient.renewToken(newToken);
+                System.out.println("Token renewed successfully.");
+            } else {
+                System.out.println("Failed to fetch a new token.");
+            }
+        }
+    });
+}
+
+/**
+* A method to fetch a new token from the server.
+*
+* @param userId The userId for which the token is requested.
+* @param expireSeconds The expiration time for the token in seconds.
+* @return A new token as a String, or null if the request fails.
+*/
+
+private String fetchNewToken(String userId, int expireSeconds) {
+    // Implement the logic to fetch a new token from your token server
+    // This could be an HTTP call to your server that generates the token
+
+    try {
+        // Example of a basic HTTP request to fetch a new token
+        String url = "http://localhost:8080/token/generate?userId=" + userId + "&expireSeconds=" + expireSeconds + "&tokenType=user";
+        
+        // You can use libraries like HttpClient to make the request
+        // Example using HttpURLConnection
+        URL tokenUrl = new URL(url);
+        HttpURLConnection connection = (HttpURLConnection) tokenUrl.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+        // Read response
+        BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+        StringBuilder response = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            response.append(line);
+        }
+        reader.close();
+
+        // Assuming the response contains the new token
+        return response.toString();
+    } catch (IOException e) {
+        e.printStackTrace();
+        return null;
+    }
+}
+
+public void joinLeave(View view) {
+    Button button = findViewById(R.id.btnJoinLeave);
+
+    if (isJoined) {
+        agoraChatClient.logout(true, new CallBack() {
+            @Override
+            public void onSuccess() {
+                showLog("Sign out success!");
+                runOnUiThread(() -> button.setText("Join"));
+                isJoined = false;
+            }
+            @Override
+            public void onError(int code, String error) {
+                showLog(error);
+            }
+        });
+    } else {
+        agoraChatClient.loginWithAgoraToken(userId, token, new CallBack() {
+            @Override
+            public void onSuccess() {
+                showLog("Signed in");
+                isJoined = true;
+                runOnUiThread(() -> button.setText("Leave"));
+            }
+            @Override
+            public void onError(int code, String error) {
+                if (code == 200) { // Already joined
+                    isJoined = true;
+                    runOnUiThread(() -> button.setText("Leave"));
+                } else {
+                    showLog(error);
+                }
+            }
+        });
+    }
+}
+```
+
+</PlatformWrapper>

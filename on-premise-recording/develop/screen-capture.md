@@ -18,7 +18,7 @@ You can use the `getVideoFrame` parameter to set the format of the recording fil
 
 The following sections describe the `getVideoFrame` and `captureInterval` parameters in details.
 
-<div class="alert note">Currently, only capture screenshots in individual recording mode is supported. </div>
+<Admonition type="info">Currently, only capture screenshots in individual recording mode is supported. </Admonition>
 
 ### Set the format of the recording files
 

@@ -44,7 +44,7 @@ Follow these steps to use the cloud proxy service.
  | UDP  | 52.52.84.170  | 1080, 8000, 25000, 9700 | Edge node communication |
  | UDP  | 47.96.234.219 | 1080, 8000, 25000, 9700 | Edge node communication |
 
- <div class="alert note">These IP addresses and ports are for testing purposes only. In a production environment, apply for the dedicated IP addresses and ports.</div>
+<Admonition type="info">These IP addresses and ports are for testing purposes only. In a production environment, apply for the dedicated IP addresses and ports.</Admonition>
 
 3. When the recording server joins a channel, set `enableCloudProxy` in `RecordingConfig` as `true` to enable the cloud proxy service. Agora will configure the default domain of the cloud proxy service for you. If you can not resolve the domain name to an IP address, take the following steps to directly configure a list of proxy server IP addresses:
 

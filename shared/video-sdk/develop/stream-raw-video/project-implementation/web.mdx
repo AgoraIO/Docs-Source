@@ -5,77 +5,106 @@
     1. Create a local video track to capture the raw video stream from the camera.
     1. Assign the local video stream to a hidden `<video>` element to enable frame extraction.
     1. Call `processFrame` on `onplay` to modify frames before rendering or publishing.
-    1. Create a canvas to process the extracted video frames.
-    1. Obtain a 2D drawing context from the canvas to manipulate pixel data.
+    1. Create a `canvas` to process the extracted video frames.
+    1. Obtain a 2D drawing context from the `canvas` to manipulate pixel data.
 
         ```js
+        // Declare global variables for video processing
         let cameraTrack, canvas, ctx;
+        let isProcessing = false;
 
         async function extractVideoFrames() {
+            // Create a video track from the camera
             cameraTrack = await AgoraRTC.createCameraVideoTrack();
 
+            // Create a hidden video element to play the camera feed
             const videoElement = document.createElement("video");
             videoElement.srcObject = new MediaStream([cameraTrack.getMediaStreamTrack()]);
             videoElement.autoplay = true;
             videoElement.playsInline = true;
-            videoElement.style.display = "none"; // Hide the raw video
+            videoElement.style.display = "none"; // Hide the raw video element
             document.body.appendChild(videoElement);
 
-            isProcessing = true;
-            // Call processFrame to modify frames when the video is played
-            videoElement.onplay = () => processFrame();
+            isProcessing = true; // Enable frame processing
+
+            // Set canvas size once the video metadata (dimensions) is loaded
+            videoElement.onloadedmetadata = () => {
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+            };
+
+            // Start processing frames when the video starts playing
+            videoElement.onplay = () => processFrame(videoElement);
             
+            // Create a canvas element to manipulate video frames
             canvas = document.createElement("canvas");
-            ctx = canvas.getContext("2d", { willReadFrequently: true });
+            ctx = canvas.getContext("2d", { willReadFrequently: true }); // Optimize for frequent pixel reads
             document.body.appendChild(canvas);
-        }
+        }        
         ```
 
 1. **Process video frames**:
 
     To modify video frames in real time, follow these steps:
 
-        1. Draw the video frame onto the canvas to capture pixel data.
-        1. Retrieve the pixel data from the canvas and modify it as needed.
-        1. Apply the modified pixel data back to the canvas.
+        1. Draw the video frame onto the `canvas` to capture pixel data.
+        1. Retrieve the pixel data from the `canvas` and modify it as needed.
+        1. Apply the modified pixel data back to the `canvas`.
         1. Call `requestAnimationFrame` to continuously process frames in a loop.
 
         ```js
         function processFrame() {
+            // Exit if processing is stopped or required elements are missing
             if (!isProcessing || !canvas || !ctx) return;
 
+            // Select the video element if it hasn't been assigned
             if (!video) video = document.querySelector("video");
+
+            // Ensure the video has loaded and has valid dimensions
             if (!video.videoWidth || !video.videoHeight) return;
 
+            // Update canvas size to match video dimensions if necessary
             if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
             }
 
+            // Draw the current video frame onto the canvas
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
+
+            // Get pixel data from the canvas
             const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            
+            // Iterate through each pixel and remove the green channel
             for (let i = 0; i < frame.data.length; i += 4) {
-                frame.data[i + 1] = 0;
+                frame.data[i + 1] = 0; // Set green channel (G) to 0
             }
+
+            // Apply the modified pixel data back to the canvas
             ctx.putImageData(frame, 0, 0);
 
+            // Request the next frame to continue processing in a loop
             requestAnimationFrame(processFrame);
         }
         ```
 
 1.  **Publish processed frames**:
 
-    To publish the processed frame in the channel:
+    To publish the processed frame to the channel:
 
-    1. Generate a custom video track from the modified frames using `createCustomVideoTrack`.
-    1. Publish the custom track using `publish`.
+    1. Create a custom video track from the modified frames using `createCustomVideoTrack`.
+
+    1. Publish the custom track.
 
         ```js
         async function extractVideoFrames() {
+            // Create a custom video track from the canvas stream
             const processedTrack = await AgoraRTC.createCustomVideoTrack({
+                // Capture video frames from the canvas at 30 FPS and extract the video track
                 mediaStreamTrack: canvas.captureStream(30).getVideoTracks()[0],
             });
+
+            // Publish the processed video track to the RTC channel
             await rtc.client.publish([processedTrack]);
         }
         ```

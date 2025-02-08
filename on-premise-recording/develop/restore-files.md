@@ -23,7 +23,7 @@ The Agora Recording SDK generates recording files in TS format during the record
 | [Composite recording](./develop/composite-mode)   | Video (no audio) | <li>`-- isVideoOnly 1`</li><li>`-- isMixingEnabled 1`</li>    | One video file in TS format                                  | One video file in MP4 format                                 |
 | [Composite recording](./develop/composite-mode)           | Audio and video  | <li>`-- isMixingEnabled 1`</li><li>`-- mixedVideoAudio 2`</li> | One file in TS format containing both audio and video        | One file in MP4 format containing both audio and video       |
 
-<div class="alert note"><li>This table shows the files generated when there are no crashes during recording. If crashes occur during recording, multiple TS files are generated (based on the number of crashes; each crash creates a new one), and therefore multiple MP4 files will also be generated once the recording is complete.</li><li>The files in AAC or WebM format can still be played even if the recording crashes.</li></div>
+<Admonition type="info"><li>This table shows the files generated when there are no crashes during recording. If crashes occur during recording, multiple TS files are generated (based on the number of crashes; each crash creates a new one), and therefore multiple MP4 files will also be generated once the recording is complete.</li><li>The files in AAC or WebM format can still be played even if the recording crashes.</li></Admonition>
 
 ## Implementation
 

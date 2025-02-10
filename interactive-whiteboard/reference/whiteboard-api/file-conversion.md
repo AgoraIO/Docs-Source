@@ -10,7 +10,7 @@ description: >
 
 <div class="alert info">This page applies to the new version of file conversion. For the main differences between the old and new versions, see [Version comparison](/en/interactive-whiteboard/develop/file-conversion-overview#version-comparison). If you use the old file conversion, see [Old File Conversion RESTful API Reference](/en/interactive-whiteboard/reference/whiteboard-api/file-conversion-deprecated). </div>
 
-<div class="alert note">Before calling the RESTful API for file conversion, ensure that you have done the following:<ul><li>You have enabled <b>Docs to Picture</b> or <b>Docs to Web</b> and configured storage settings in <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>. See [Enable server-side supporting features](/en/interactive-whiteboard/get-started/enable-whiteboard#enable-whiteboard-server-side-features).</li> <li>You have generated a URL address for the file you want to convert, and the address is publicly accessible.</li></ul></div>
+<Admonition type="info">Before calling the RESTful API for file conversion, ensure that you have done the following:<ul><li>You have enabled <b>Docs to Picture</b> or <b>Docs to Web</b> and configured storage settings in <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>. See [Enable server-side supporting features](/en/interactive-whiteboard/get-started/enable-whiteboard#enable-whiteboard-server-side-features).</li> <li>You have generated a URL address for the file you want to convert, and the address is publicly accessible.</li></ul></Admonition>
 
 
 ## Start file conversion
@@ -376,7 +376,7 @@ If the status code is not `200`, the request fails. The response body includes a
 
 Call this callback to receive reports on the progress and operating status of file-conversion tasks from the server. You can call this callback by passing in the relevant parameters in the [request body](#request-body) when launching a file-conversion task. 
 
-<div class="alert note">The Webhook callback could be repeated multiple times. To ensure that the app server processes identical responses in the same manner, you need to apply idempotent processing. </div>
+<Admonition type="info">The Webhook callback could be repeated multiple times. To ensure that the app server processes identical responses in the same manner, you need to apply idempotent processing. </Admonition>
 
 ### HTTP response
 

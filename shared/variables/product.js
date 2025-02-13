@@ -129,11 +129,13 @@ const data = {
     SDK: 'Whiteboard SDK',
     PRODUCT: 'Interactive Whiteboard',
   },
+
   'conversational-ai': {
-    NAME: 'Conversational AI Agent',
+    NAME: 'Conversational AI Engine',
     PATH: 'conversational-ai',
     SDK: 'Conversational AI SDK',
-    PRODUCT: 'Conversational AI Agent',
+    AGENT: 'Conversational AI Agent',
+    PRODUCT: 'Conversational AI Engine',
   }
 };
 

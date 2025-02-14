@@ -7,7 +7,7 @@ description: >
    Estimate your monthly Cloud Recording cost.
 ---
 
-import PricingCalculator from '@site/src/components/PricingCalculator.jsx';
+{/* import PricingCalculator from '@site/src/components/PricingCalculator.jsx'; */}
 
 This page explains how <Vg k="COMPANY" /> calculates your monthly bill for Cloud Recording. 
 

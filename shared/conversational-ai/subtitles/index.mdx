@@ -1,0 +1,321 @@
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+
+This page describes how to use the subtitle generation feature of <Vpd k="NAME" /> to implement subtitles in your app.
+
+## Understand the tech
+
+<Vpd k="NAME" /> automates the subtitle generation process. 
+
+- The following steps are automatically implemented by the <Vpd k="NAME" />:
+
+    1. **Generate subtitles**: The interaction between the agent and users automatically generates raw subtitle content in [JSON format](#subtitle-json-description).
+    1. **Encoding**: The original subtitle content is encoded in Base64 for transmission.
+    1. **Packetization**: Encoded data larger than 1 KB is automatically packetized according to specific rules.
+    1. **Publish data stream**: A data stream is created for each data packet and published to the channel.
+
+- To display the subtitles, you implement the following:
+
+    1. **Receive data stream**: Receive the encoded data through the data stream message callback provided by the SDK..
+    1. **Parse subtitles**: Unpack, check, and merge the received data stream to extract the complete subtitle content.
+    1. **Render subtitles**: Display the parsed subtitle content on the user interface.
+
+## Prerequisites
+
+Before you begin, make sure you have implemented:
+
+- The <Vpd k="NAME" /> [REST quickstart](../get-started/quickstart).
+- The [voice](/voice-calling/get-started/get-started-sdk) or [video](/video-calling/get-started/get-started-sdk) calling SDK quickstart.
+
+## Implementation
+
+This section describes how to receive the data stream through the SDK's remote data stream message callback, parse the data packets to obtain the original subtitle content, and display it on the App UI.
+
+### Receive data stream
+
+<Tabs groupId="language">
+<TabItem value="android" label="Android" default>
+
+Override the [`onStreamMessage`](https://api-ref.agora.io/en/voice-sdk/android/4.x/API/class_irtcengineeventhandler.html#callback_irtcengineeventhandler_onstreammessage) callback of the `IRtcEngineEventHandler` to receive the encoded data stream messages. Refer to the following sample code:
+
+<CodeBlock language="kotlin">{`val rtcEventHandler = (object : IRtcEngineEventHandler() {  
+    // Callback for receiving remote data stream messages  
+    override fun onStreamMessage(uid: Int, streamId: Int, data: ByteArray?) {  
+        data?.let { streamBytes ->  
+            try {  
+                // Convert the byte array to a string and parse the message  
+                val rawString = String(streamBytes, Charsets.UTF_8)  
+                val formattedMessage = parser.parseStreamMessage(rawString)  
+                // Handle the parsed message  
+            } catch (e: Exception) {  
+                // Handle exceptions  
+            }  
+        }  
+    }  
+})`}</CodeBlock>
+</TabItem>
+
+<TabItem value="swift" label="iOS/macOS">
+
+Implement the [`rtcEngine(_:receiveStreamMessageFromUid:streamId:data:)`](https://api-ref.agora.io/en/voice-sdk/ios/4.x/documentation/agorartckit/agorartcenginedelegate/rtcengine(_:receivestreammessagefromuid:streamid:data:)?language=objc) callback of `AgoraRtcEngineDelegate` to receive encoded data stream messages from remote users.
+
+<CodeBlock language="swift">{`extension ViewController: AgoraRtcEngineDelegate {  
+    // Callback for receiving remote data stream messages  
+    func rtcEngine(_ engine: AgoraRtcEngineKit, receiveStreamMessageFromUid uid: UInt, streamId: Int, data: Data) {  
+        // Convert data to a string  
+        guard let rawString = String(data: data, encoding: .utf8) else {  
+            print("Failed to convert data to string")  
+            return  
+        }  
+        // Parse the message content  
+        if let message = messageParser.parseMessage(rawString) {  
+            // Handle the parsed message  
+        }  
+    }  
+}`}</CodeBlock>
+</TabItem>
+</Tabs>
+
+### Parse subtitles
+
+Each data packet with a size greater than 1k is encoded as follows: 
+
+```
+message_id | id | total | chunked_data
+```
+Where:
+
+- `message_id` is the unique identifier of each subtitle message.
+- `id`: is the segment serial number, starting from 1.
+- `total` is the total number of segments.
+- `chunked_data` is the Base64-encoded segment data.
+
+The following example shows a subtitle message divided into 5 segments:
+
+```plaintext
+abcdefgh|1|5|ewoJImlzX2Zpb...
+abcdefgh|2|5|ZWF2aW5nI...
+abcdefgh|3|5|BoZWFydCByYW...
+abcdefgh|4|5|G8ga25vdyBt...
+abcdefgh|5|5|d24gcGF0aHMgY...
+```
+
+After unpacking, verify that the packets belong to the same message, merge the segmented packets, and then parse the data packets to obtain the original subtitle content.
+
+Refer to the following sample code:
+
+<Tabs groupId="language">
+<TabItem value="android" label="Android" default>
+<CodeBlock language="kotlin">{`import com.google.gson.Gson\n
+class MessageParser {
+    // Use Map<Int, String> as the message storage structure for a more intuitive way 
+    // to store fragment indexes and content
+    private val messageMap = mutableMapOf<String, MutableMap<Int, String>>()
+    private val gson = Gson()
+    // Maximum message lifespan: 5 minutes
+    private val maxMessageAge = 5 * 60 * 1000 
+    // Record the last access timestamp of each message
+    private val lastAccessMap = mutableMapOf<String, Long>()\n
+    /**
+     \* Parses a data stream message
+     \* @param string The raw message string
+     \* @return The parsed message content, or null if parsing fails
+     */
+    fun parseStreamMessage(string: String): Map<String, Any>? {
+        try {
+            // Clean up expired messages
+            cleanExpiredMessages()\n
+            // Parse message format: messageId|partIndex|totalParts|base64Content
+            val parts = string.split("|")
+            if (parts.size != 4) {
+                throw IllegalArgumentException("Invalid message format")
+            }\n
+            val messageId = parts[0]
+            val partIndex = parts[1].toIntOrNull() ?: throw NumberFormatException("Invalid fragment index")
+            val totalParts = parts[2].toIntOrNull() ?: throw NumberFormatException("Invalid total parts count")
+            val base64Content = parts[3]\n
+            // Validate fragment index and total parts count
+            if (partIndex < 1 || partIndex > totalParts) {
+                throw IllegalArgumentException("Fragment index out of range")
+            }\n
+            // Update message access time
+            lastAccessMap[messageId] = System.currentTimeMillis()\n
+            // Store message fragments in a Map to easily manage fragment indexes and content
+            val messageParts = messageMap.getOrPut(messageId) { mutableMapOf() }
+            messageParts[partIndex] = base64Content\n
+            // Check if all fragments are received
+            if (messageParts.size == totalParts) {
+                // Merge all fragments in order
+                val completeMessage = (1..totalParts).joinToString("") { 
+                    messageParts[it] ?: throw IllegalStateException("Missing fragment \$it")
+                }\n
+                // Base64 decoding
+                val decodedBytes = try {
+                    android.util.Base64.decode(completeMessage, android.util.Base64.DEFAULT)
+                } catch (e: IllegalArgumentException) {
+                    throw IllegalArgumentException("Invalid Base64 content", e)
+                }\n
+                // Parse JSON content
+                val jsonString = String(decodedBytes, Charsets.UTF_8)
+                val result = try {
+                    gson.fromJson(jsonString, Map::class.java) as Map<String, Any>
+                } catch (e: Exception) {
+                    throw IllegalArgumentException("Invalid JSON format", e)
+                }\n
+                // Clean up processed message data
+                messageMap.remove(messageId)
+                lastAccessMap.remove(messageId)\n
+                return result
+            }
+        } catch (e: Exception) {
+            println("Error parsing message: \${e.message}")
+        }
+        return null
+    }\n
+    /**
+     \* Cleans up expired messages
+     \* Removes message data that has exceeded the maximum lifespan
+     \*/
+    private fun cleanExpiredMessages() {
+        val currentTime = System.currentTimeMillis()
+        val expiredIds = lastAccessMap.filter { currentTime - it.value > maxMessageAge }.keys
+        expiredIds.forEach {
+            messageMap.remove(it)
+            lastAccessMap.remove(it)
+        }
+    }
+}`}</CodeBlock>
+</TabItem>
+
+<TabItem value="swift" label="iOS/macOS">
+<CodeBlock language="swift">{`import Foundation\n
+class MessageParser {
+    // Message cache: Stores fragmented data, where the key is the message ID and the value is an array of fragments
+    private var messageBuffer: [String: [String]] = [:]
+    // Records the last access time of each message
+    private var lastAccessTime: [String: Date] = [:]
+    // Maximum message lifespan: 5 minutes
+    private let maxMessageAge: TimeInterval = 5 * 60\n    
+    /**
+     \* Parses a data stream message
+     \* @param rawMessage The raw message string
+     \* @return The parsed message content, or nil if parsing fails
+     \*/\n     
+    func parseMessage(_ rawMessage: String) -> [String: Any]? {
+        // Clean up expired messages
+        cleanExpiredMessages()\n        
+        // Parse message format: messageId|partIndex|totalParts|base64Content
+        let components = rawMessage.split(separator: "|")
+        guard components.count == 4 else {
+            print("Invalid message format")
+            return nil
+        }\n        
+        // Extract and validate message components
+        let messageId = String(components[0])
+        guard let partIndex = Int(components[1]),
+            let totalParts = Int(components[2]),
+            let base64Content = String(components[3]).base64Decoded else {
+            print("Failed to parse message components")
+            return nil
+        }\n        
+        // Validate fragment index range
+        if partIndex < 1 || partIndex > totalParts {
+            print("Fragment index out of range")
+            return nil
+        }\n        
+        // Update message access time
+        lastAccessTime[messageId] = Date()\n        
+        // Initialize or update fragment data
+        if messageBuffer[messageId] == nil {
+            messageBuffer[messageId] = Array(repeating: "", count: totalParts)
+        }
+        messageBuffer[messageId]?[partIndex - 1] = base64Content\n        
+        // Check if all fragments are received and process the message
+        if let parts = messageBuffer[messageId], parts.contains("") == false {
+            // Combine the complete message
+            let fullContent = parts.joined()
+            // Clean up processed message data
+            messageBuffer.removeValue(forKey: messageId)
+            lastAccessTime.removeValue(forKey: messageId)
+            // Parse JSON content
+            return parseJsonContent(fullContent)
+        }\n        
+        return nil
+    }\n    
+    /**
+     \* Cleans up expired messages
+     \* Removes message data that has exceeded the maximum lifespan
+     */
+    private func cleanExpiredMessages() {
+        let currentTime = Date()
+        var keysToRemove: [String] = []\n        
+        // Find expired messages
+        for (messageId, accessTime) in lastAccessTime {
+            if currentTime.timeIntervalSince(accessTime) > maxMessageAge {
+                keysToRemove.append(messageId)
+            }
+        }\n        
+        // Remove expired message data
+        for key in keysToRemove {
+            messageBuffer.removeValue(forKey: key)
+            lastAccessTime.removeValue(forKey: key)
+        }
+    }\n
+    /**
+     \* Parses JSON-formatted message content
+     \* @param content JSON string
+     \* @return The parsed dictionary object, or nil if parsing fails
+     */
+    private func parseJsonContent(_ content: String) -> [String: Any]? {
+        guard let data = content.data(using: .utf8),
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            print("Failed to parse JSON content: \\(content)")
+            return nil
+        }
+        return json
+    }
+}\n
+// String extension: Provides Base64 decoding functionality
+extension String {
+    var base64Decoded: String? {
+        guard let data = Data(base64Encoded: self) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+}`}</CodeBlock>
+</TabItem>
+</Tabs>
+
+### Render subtitles
+
+Add your own logic to display the parsed subtitle content on your app's user interface.
+
+## Reference
+
+This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
+
+### Subtitle JSON description
+
+The subtitle JSON message contains the following fields:
+
+| Field       | Type          | Description |
+|:------------|:--------------|:-------------|
+| `is_final`   | Boolean      | Indicates whether the text will change, that is, the ASR result of the human voice (always True). |
+| `stream_id`  | Integer      | The user ID corresponding to the subtitle. The uid of the agent is `0`, and the uid of other users is non-zero. |
+| `message_id` | String       | Unique identifier of each subtitle message. |
+| `data_type`  | String       | Data type, default is `transcribe`. |
+| `text_ts`    | Integer      | Subtitle generation timestamp. |
+| `text`       | String       | Subtitle content. |
+
+
+```json
+{
+    "is_final": true,
+    "stream_id": 0,
+    "message_id": "abcdefgh",
+    "data_type": "transcribe",
+    "text_ts": 1111111111,
+    "text": "Once upon a time, there was a mysterious forest known as the Whispering Woods. "
+}
+```

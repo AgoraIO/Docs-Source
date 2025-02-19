@@ -7,27 +7,24 @@ description:
    Use the Cloud Recording RESTful API to make a web page recording and push media stream to the CDN during a web page recording.
 ---
 
-## Overview
-
-This guide includes the key steps in using the Cloud Recording RESTful API to make a web page recording.
-
 Agora Cloud Recording supports three recording modes:
 
 - Individual recording
 - Composite recording
 - Web page recording
 
-In web page recording mode, the content and audio of a specified web page are recorded in a single file.
+This guide outlines the key steps for using the Cloud Recording RESTful API to record a web page.
+In this recording mode, the content and audio of the specified web page are captured in a single file.
 
-![](https://web-cdn.agora.io/docs-files/1640248515342)
+![](/images/cloud-recording/web-page-recording.svg)
 
-You can use web page recording to reproduce scenarios such as online classes and video conferences. For example, if your web application integrates both the Agora SDK and a third-party whiteboard SDK, web page recording can record everything on the web page instead of only the audio and video streams.
+You can use web page recording to reproduce use-cases such as online classes and video conferences. For example, if your web application integrates both the Agora SDK and a third-party whiteboard SDK, web page recording can record everything on the web page instead of only the audio and video streams.
 
-![](https://web-cdn.agora.io/docs-files/1640248552826)
+![](/images/cloud-recording/web-page-layout.svg)
 
 In web page recording mode, you can also convert the content and audio of the page into a media stream and push it to the CDN during the recording process.
 
-![](https://web-cdn.agora.io/docs-files/1640247686729)
+![](/images/cloud-recording/web-page-push-cdn.svg)
 
 ## Prerequisites
 
@@ -137,7 +134,7 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>
 
 ### Stop recording    
 
-The charging will continue until the web page recording stops. You should set a reasonable `maxRecordingHour` based on the actual business scenario or actively stop the web page recording.
+The charging will continue until the web page recording stops. You should set a reasonable `maxRecordingHour` based on the actual business use-case or actively stop the web page recording.
 
 When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the [`acquire`](../reference/restful-api#acquire) method for a new resource ID.
 

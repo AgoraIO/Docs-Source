@@ -14,7 +14,7 @@ To improve application robustness, Agora recommends that you do the following wh
 ## Failover
 In response to network failures, as well as risks that arise from factors such as non-Agora cloud services, non-Agora software, infrastructure, and force majeure, Agora cloud recording provides high-availability automatic task migration services. When the fault is confirmed, the migration is completed in the shortest possible time (estimated to be within 90 seconds). During this period, there are risks such as recording interruption and recording file loss.
 
-For scenarios with a large number of viewers in the channel or extremely high requirements for high availability, consider whether you can accept the impact of high availability migration based on your own business characteristics, and decide whether to adopt higher quality assurance measures, such as [Multi-channel task assurance](#multi-channel-task-assurance), or [Monitor service status during a recording](#monitor-service-status-during-a-recording) through periodic channel query and message notification service, and re-initiate new recording tasks in a timely manner using a different `uid`.
+For use-cases with a large number of viewers in the channel or extremely high requirements for high availability, consider whether you can accept the impact of high availability migration based on your own business characteristics, and decide whether to adopt higher quality assurance measures, such as [Multi-channel task assurance](#multi-channel-task-assurance), or [Monitor service status during a recording](#monitor-service-status-during-a-recording) through periodic channel query and message notification service, and re-initiate new recording tasks in a timely manner using a different `uid`.
 
 ## Multi-channel task assurance
 If you need higher quality assurance than failover, use a multi-tasking assurance strategy. Each cloud recording task is billed separately. Please see [Pricing](../overview/pricing) for details on the billing method. Take the following steps to implement this strategy:
@@ -118,7 +118,7 @@ In composite recording mode, call `query` 15 seconds after the cloud recording s
 
 ## Avoid frequent quits of the recording service
 
-The default value of `maxIdleTime` in the `start` method is 30 seconds. If the host frequently goes online and offline, a brief `maxIdleTime` value causes the recording service to join and exit the channel frequently. For scenarios that require the recording service to be in the channel all the time, it is necessary to increase `maxIdleTime` in case the recording quits after a short idle time.
+The default value of `maxIdleTime` in the `start` method is 30 seconds. If the host frequently goes online and offline, a brief `maxIdleTime` value causes the recording service to join and exit the channel frequently. For use-cases that require the recording service to be in the channel all the time, it is necessary to increase `maxIdleTime` in case the recording quits after a short idle time.
 
 For example, if there is a fixed 5-minute break in each class, you can set `maxIdleTime` to 10 minutes to ensure uninterrupted recording of the entire class.
 

@@ -16,7 +16,7 @@ All requests are sent to the domain named `api.netless.link`.
 
 The `Content-Type` field in all HTTP request headers is `application/json`. All requests and responses are in JSON format. All request URLs and request bodies are case-sensitive.
 
-<div class="alert note">Agora's server for the whiteboard service will allow more data formats but cannot guarantee full compatibility. If all request parameters are filled in correctly, but the request still fails, please check the data format of the request.</div>
+<Admonition type="info">Agora's server for the whiteboard service will allow more data formats but cannot guarantee full compatibility. If all request parameters are filled in correctly, but the request still fails, please check the data format of the request.</Admonition>
 
 ## Core features
 

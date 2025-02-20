@@ -12,7 +12,7 @@ Agora provides an open source [netless-token](https://github.com/netless-io/netl
 
 This article introduces how to generate tokens from your app server using these code samples and [your access keys (the AK and SK)](../get-started/enable-whiteboard#get-security-credentials-for-your-whiteboard-project).
 
-<div class="alert note">To enhance security, do not save or send the AK and SK to your app clients. You should save the AK and SK on the app server, and issue tokens from the app server according to the actual needs of your app scenarios.</div>
+<Admonition type="info">To enhance security, do not save or send the AK and SK to your app clients. You should save the AK and SK on the app server, and issue tokens from the app server according to the actual needs of your app use-cases.</Admonition>
 
 ## Prerequisites
 

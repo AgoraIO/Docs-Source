@@ -136,6 +136,14 @@ const data = {
     PATH: 'interactive-whiteboard',
     SDK: 'Whiteboard SDK',
     PRODUCT: 'Interactive Whiteboard',
+  },
+
+  'conversational-ai': {
+    NAME: 'Conversational AI Engine',
+    PATH: 'conversational-ai',
+    SDK: 'Conversational AI SDK',
+    AGENT: 'Conversational AI agent',
+    PRODUCT: 'Conversational AI Engine',
   }
 };
 

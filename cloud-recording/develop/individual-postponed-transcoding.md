@@ -7,11 +7,21 @@ description:
   Make an individual audio recording with postponed transcoding
 ---
 
-If the individual transcoding recording does not meet your business needs, you can set up postponed transcoding. When set, Cloud Recording transcodes the recording file to generate an MP4 file within 24 hours after recording (or within 48 hours in special cases) and uploads it to the third-party cloud storage you specify.
+Postponed transcoding generates a single MP4 file containing both audio and video, unlike individual recording, which produces separate audio and video files for each UID. With postponed transcoding, Cloud Recording processes the files within 24 hours (or 48 hours in special cases) after recording and uploads the MP4 file to your specified third-party cloud storage. This option is ideal for use-cases where combining audio and video streams into one file is preferred and immediate transcoding is unnecessary.
 
-<Admonition type="caution" title="Note">In the postponed transcoding scenario, the recorded files are cached on the Agora edge server for no longer than 24 hours. If your business is sensitive to information security, carefully consider whether to use the postponed transcoding in view of data compliance. If you have any questions, contact [Agora technical support](mailtosupport@agora.io).</Admonition>
+<Admonition type="caution" title="Note"> 
+In postponed transcoding, recorded files are cached on Agora's edge server for up to 24 hours. If data security is important to your business, consider this when deciding whether to use postponed transcoding. For questions, contact [Agora technical support](mailto:support@agora.io). 
+</Admonition>
 
-The request example is as follows:
+## Implementation
+
+To set up postponed transcoding, use the following `clientRequest` configuration:
+
+- Set the `appsCollection.combinationPolicy` field to `postpone_transcoding`.
+- Set the `transcodeOptions.transConfig.transMode` field to `postponeTranscoding`.
+- Set the field format as needed. For supported values, see the [API documentation](../reference/restful-api#transcodeoptions).
+
+The following request example shows how to enable postponed transcoding:
 
 ```json
 {
@@ -68,8 +78,3 @@ The request example is as follows:
 }
 ```
 
-Set up the following `clientRequest` configurations:
-
-- Set the `appsCollection.combinationPolicy` field to `postpone_transcoding`.
-- Set the `transcodeOptions.transConfig.transMode` field to `postponeTranscoding`.
-- Set the field format as needed. For supported values, see the [API documentation](../reference/restful-api#transcodeoptions).

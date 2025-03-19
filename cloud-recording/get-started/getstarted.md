@@ -5,113 +5,106 @@ platform_selector: false
 description: >
   Start cloud recording, query cloud recording status, and stop cloud recording by sending a RESTful API request.
 ---
+import Prerequisites from '@docs/shared/cloud-recording/prerequisites.mdx'
 
-The command-line examples in this article are for demonstration only and should not be used in a production environment. In a production environment, you need to send RESTful API requests through your application server.
+Cloud Recording enables you to record and store real-time audio and video streams from channels. To implement Cloud Recording, you set up a self-hosted backend that interacts with Agora servers to manage recording tasks. This guide introduces the essential Cloud Recording RESTful APIs you use to manage the recording process.
+
+<Admonition type="info">
+The command-line examples in this guide are for demonstration purposes only. Do not use them directly in a production environment. Implement RESTful API requests through your application server or use <Vg k="COMPANY"/>'s [Go backend middleware](https://github.com/AgoraIO-Community/agora-go-backend-middleware). For details, see [Quickstart using middleware](../get-started/middleware-quickstart)
+</Admonition>
 
 ## Understand the tech
 
-The complete process of implementing a cloud recording is as follows:
-![](https://web-cdn.agora.io/docs-files/1627889715871)
+The basic process of implementing Cloud Recording is as follows:
+![](/images/cloud-recording/cloud-recording-tech.svg)
 
-**1. Get a resource ID**
-Before starting a cloud recording, you must call the [`acquire`](#acquire) method to obtain a cloud recording resource. After calling this method successfully, you can get a resource ID in the response body.
+1. Get a resource ID
 
-**2. Start a cloud recording**
-Call the [`start`](#start) method to join the channel and start a cloud recording. After calling this method successfully, you can get a recording ID from the response body to mark the current recording process.
+    Before starting a cloud recording, call the [`acquire`](#acquire) method to obtain a cloud recording resource ID. After calling this method successfully, you get a resource ID in the response body.
 
-**3. Query the recording status**
-Call the [`query`](#query) method to check the recording status during the recording.
+2. Start cloud recording
 
-**4. Stop the cloud recording**
-Call the [`stop`](#stop) method to stop the cloud recording.
+    Call the [`start`](#start) method to join the channel and start a cloud recording. After calling this method successfully, you get a recording ID from the response body to identify the current recording process.
 
-**5. Upload the recording file**
-After the recording is over, the cloud recording service uploads the recording file to the [third-party cloud storage](../reference/restful-api#storageconfig) you specify.
+3. Query the recording status
+
+    Call the [`query`](#query) method to check the recording status during the recording.
+
+4. Stop cloud recording
+
+    Call the [`stop`](#stop) method to stop the cloud recording.
+
+5. Upload the recording file
+
+    After the recording ends, the cloud recording service uploads the recording file to the [third-party cloud storage](../reference/restful-api#storageconfig) you specify.
 
 ## Prerequisites
 
-- A valid <Link to="{{Global.AGORA_CONSOLE_URL}}">Agora Account</Link>.
-- A valid Agora project with an App ID and a temporary token. For details, see [Get Started with Agora](../get-started/manage-agora-account#get-the-app-id).
-- A computer with access to the internet. If your network has a firewall, follow the instructions in [Firewall Requirements](../reference/firewall).
-- Ensure that a third-party cloud storage service has been enabled. The currently supported third-party cloud storage service providers are as follows:
-  - [Qiniu Cloud](https://www.qiniu.com/en/products/kodo)
-  - [Amazon S3](https://aws.amazon.com/s3/?nc1=h_ls)
-  - [Alibaba Cloud](https://www.alibabacloud.com/product/object-storage-service)
-  - [Tencent Cloud](https://intl.cloud.tencent.com/product/cos)
-  - [Kingsoft Cloud](https://en.ksyun.com/nv/product/KS3)
-  - [Microsoft Azure](https://azure.microsoft.com/en-us/services/storage/blobs/)
-  - [Google Cloud](https://cloud.google.com/storage)
-  - [Huawei Cloud](https://www.huaweicloud.com/intl/en-us/product/obs)
-  - [Baidu AI Cloud](https://intl.cloud.baidu.com/product/bos.html)
-- Ensure that you have joined the <Vg k="VSDK" /> channel and have users in the channel and are streaming.
+<Prerequisites />
 
-## Project setup
+## Implement cloud recording
 
-Enable the cloud recording service before using Agora Cloud Recording for the first time.
+The following figure shows the API call sequence to start and manage cloud recording:
 
-1. Log in to <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>, and click the **Project Management** icon on the left navigation panel.
-2. On the **Project Management** page, find the project for which you want to enable the cloud recording service, and click the edit icon. 
-3. On the **Edit Project** page, find **Cloud Recording**, and click **Enable**.
-![](https://web-cdn.agora.io/docs-files/1638866909361)
+![](/images/cloud-recording/cloud-recording-sequence.svg)
 
-4. Click **Enable Cloud Recording**.
-![](https://web-cdn.agora.io/docs-files/1636367386978)
-5. Click **Apply**.
+The following APIs are optional and can be called multiple times. However, they must be called during a recording session, that is, after recording starts and before it ends:
 
-Now, you can use Agora Cloud Recording and see the usage statistics in the **Usage** page.
+- [`query`](#query): Query the recording status 
+- [`update`](#update): Update the subscription list
+- [`updateLayout`](#update-video-layout): Update the video layout  
 
-## Implement the cloud recording
 
-The following figure shows the API call sequence of a cloud recording:
-Querying the recording status ([`query`](#query)), updating the subscription list ([`update`](#update)), and updating the video layout ([`updateLayout`](#update-video-layout)) are optional and can be called multiple times, but they must be called during the recording process, that is, after the recording starts and before the recording ends.
-![](https://web-cdn.agora.io/docs-files/1627527945942)
+### Use basic HTTP authentication
 
-### Pass the basic HTTP authentication
-
-The RESTful APIs require basic HTTP authentication. You need to set the `Authorization` parameter in every HTTP request header. For how to get the value for Authorization, see [basic HTTP authentication](../reference/restful-authentication).
+The <Vpd k="NAME" /> RESTful APIs require basic HTTP authentication. You need to set the `Authorization` parameter in every HTTP request header. For details, see [Basic HTTP authentication](../reference/restful-authentication).
 
 <a name="acquire"></a>
-### acquire: Get a resource ID
+### Get a resource ID
 
-Call the [`acquire`](../reference/restful-api#acquire) method to request a resource ID for cloud recording.
+Call the [`acquire`](../reference/restful-api#acquire) method to request a resource ID for <Vpd k="NAME" />.
 
-After calling this method successfully, you can get a resource ID in the response body. The resource ID is valid for five minutes, so you need to start recording with this resource ID within five minutes. One resource ID can only be used for one recording session.
+After calling this method successfully, you receive a resource ID in the response body. The resource ID is valid for five minutes. Start recording with this resource ID within the validity period. One resource ID can only be used for a single recording session.
 
-- The recording service is equivalent to a non-streaming client in the channel. The `uid`parameter in the request body is used to identify the recording service and cannot be the same as any existing user ID in the channel. For example, if there are two users already in the channel and their user IDs are 123 and 456, the `uid` cannot be `"123"` or `"456"`.
-- Agora Cloud Recording does not support user IDs in string format, that is, User Accounts. Ensure that every user in the channel has an integer user ID. The string content of the`uid` parameter must also be an integer.
+- The recording service is equivalent to a non-streaming client in the channel. The `uid` parameter in the request body is used to identify the recording service and cannot be the same as any existing user ID in the channel. For example, if there are two users already in the channel and their user IDs are 123 and 456, the `uid` cannot be `"123"` or `"456"`.
+
+- <Vg k="COMPANY"/> <Vpd k="NAME" /> does not support user IDs in string format (User Accounts). Ensure that every user in the channel has an integer user ID. The string content of the `uid` parameter must also be an integer.
 
 #### Sample code
 
-You can use the command-line tool to send the following command to call the `acquire` method. 
+For testing purposes, use the following command in the terminal to call the `acquire` method.
 
-```json
+``` bash
 # Replace <appid> with the App ID of your Agora project
 curl --location --request POST 'https://api.agora.io/v1/apps/<appid>/cloud_recording/acquire' \
 # Replace <Authorization> with the Base64-encoded credential in basic HTTP authentication
 --header 'Authorization: Basic <Authorization>' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  # Replace <YourChannelName> with the name of the channel you need to record
-  "cname": "<YourChannelName>",
-  # Replace <YourRecordingUID> with your user ID
-  "uid": "<YourRecordingUID>",
-  "clientRequest":{
-  }
+    # Replace <YourChannelName> with the name of the channel you need to record
+    "cname": "<YourChannelName>",
+    # Replace <YourRecordingUID> with your user ID
+    "uid": "<YourRecordingUID>",
+    "clientRequest":{}
 }'
 ```
 
 <a name="start"></a>
 ### Start recording
 
-Call the [`start`](../reference/restful-api#start) method within five minutes after getting the resource ID to join a channel and start the recording. You can choose either [individual recording](../develop/individual-mode) or [composite recording](../develop/composite-mode) as the recording mode.
+Call the [`start`](../reference/restful-api#start) method within five minutes of getting a resource ID to join a channel and start recording. You can choose either [individual recording](../develop/individual-mode) or [composite recording](../develop/composite-mode) as the recording mode.
 
-If this method call succeeds, you get a recording ID (sid) from the HTTP response body. This ID is the unique identification of the current recording.
+If this method call succeeds, you receive a recording ID (sid) in the HTTP response body. This ID identifies the current recording.
+
+<Admonition type="info">
+After you obtain the recording ID `sid`, you can call the `query`, `updateLayout`, and `stop` methods before the time set (in hours) by `resourceExpiredHour` has passed.
+</Admonition>
 
 #### Sample code
 
-You can use the command-line tool to send the following commands to call the `start` method. 
+For testing purposes, use the following command in the terminal to call the `start` method. 
 
-```shell
+``` bash
 # Replace <appid> with the App ID of your Agora project
 # Replace <resourceid> with the resource ID obtained through the acquire method
 # Replace "<mode>" with "individual" for individual recording or "composite" for composite recording
@@ -142,21 +135,21 @@ curl --location --request POST  'https://api.agora.io/v1/apps/<appid>/cloud_reco
         }
     }
 }'
-
 ```
 
+
 <a name="query"></a>
-### query: Query recording status
+### Query recording status
 
-During the recording, you can call the [`query`](../reference/restful-api#query) method to query the recording status multiple times.
+During a recording session, can call the [`query`](../reference/restful-api#query) method to query the recording status. You can call this API multiple times.
 
-After calling this method successfully, you can get the current recording status and related information about the recording file from the response body. See *Best Practices in Integrating Cloud Recording* for details about how to [Monitor service status during a recording](../best-practices/integration-best-practices#monitor-service-status-during-a-recording) and[ Obtain the M3U8 file name](../best-practices/integration-best-practices#obtain-the-m3u8-file-name).
+When you call this method successfully, you receive the current recording status and related information about the recording file in the response body. See [Best Practices in Integrating Cloud Recording](../best-practices/integration-best-practices) for details about how to [Monitor service status during a recording](../best-practices/integration-best-practices#monitor-service-status-during-a-recording) and[ Obtain the M3U8 file name](../best-practices/integration-best-practices#obtain-the-m3u8-file-name).
 
 #### Sample code
 
-You can use the command-line tool to send the following commands to call the `query` method. 
+For testing purposes, use the following command in the terminal to call the `query` method. 
 
-```shell
+```bash
 # Replace <appid> with the App ID of your Agora project
 # Replace <resourceid> with the resource ID obtained through the acquire method
 # Replace <sid> with the sid obtained through the start method
@@ -164,21 +157,21 @@ You can use the command-line tool to send the following commands to call the `qu
 curl --location --request GET 'https://api.agora.io/v1/apps/<appid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/<mode>/query' \
 # Replace <Authorization> with the Base64-encoded credential in basic HTTP authentication
 --header 'Authorization: Basic <Authorization>' \
---header 'Content-Type: application/json' \
+--header 'Content-Type: application/json'
 ```
 
 <a name="stop"></a>
-### stop: Stop recording
+### Stop recording
 
-Call the [`stop`](../reference/restful-api#stop) the recording.
+Call the [`stop`](../reference/restful-api#stop) API to end the recording session.
 
-After calling this method successfully, you can get the status of the recording file upload and information about the recording file from the response body.
+When you call this method successfully, you receive the status of the recording file upload and information about the recording file in the response body.
 
 #### Sample code
 
-You can use the command-line tool to send the following command to call the `stop` method. 
+For testing purposes, use the following command in the terminal to call the `stop` method. 
 
-```shell
+```bash
 # Replace <appid> with the App ID of your Agora project
 # Replace <resourceid> with the resource ID obtained through the acquire method
 # Replace <sid> with the sid obtained through the start method
@@ -196,64 +189,53 @@ curl --location --request POST
 	"clientRequest":{
     }
 }'
-
 ```
 
-## Considerations
+<Admonition type="info" title="Parameter settings">
 
-### Parameter settings
+- If the `uid` parameter in the request body is the same as a user ID in the channel, or if you use a non-integer user ID, the recording fails. For details, see the notes on the `uid` parameter in the section [Get a cloud recording resource](#acquire).
+- When the `start` request returns `200`, it only means that the RESTful API request is successful. To ensure that the recording has started successfully and continues normally, call `query` to check the recording status. Errors such as unreasonable `transcodingConfig` parameter settings, incorrect third-party cloud storage information, or incorrect token information cause the `query` method to return `404`. See [Why do I get a 404 error when I call query after successfully starting a cloud recording? ](../reference/common-errors#errors).
+- Set the `maxIdleTime` parameter based on your business needs. Within the time range set by `maxIdleTime`, the recording continues and billing is generated even if the channel is idle.
+</Admonition>
 
-- If the `uid` parameter in the request body is the same as the user ID in the channel, or if a non-integer user ID is used, the recording fails. For details, see the notes on the `uid` parameter in the section [Get a cloud recording resource](#acquire).
-- When the `start` request returns 200, it means only that the RESTful API request is successful. To ensure that the recording starts successfully and goes on normally, you also need to call query to query the recording status. Errors such as uUnreasonable `transcodingConfig` parameter settings, incorrect third-party cloud storage information, or incorrect token information cause the `query` method to return 404. See [Why do I get a 404 error when I call query after successfully starting a cloud recording? ](../reference/common-errors#errors).
-- Set `maxIdleTime` reasonably according to your actual business needs. Within the time range set by `maxIdleTime`, even if the channel is idle, the recording continues and billing is generated.
+## Reference
 
-### API call
-
-- After obtaining the resource ID, you must call the `start`method within 5 minutes to start a recording. After the timeout, you need to request a resource ID again.
-- After obtaining the `sid` (recording ID), after the time set by `resourceExpiredHour` has passed, you are not able to call the `query`, `updateLayout`, and `stop` methods.
-
-## Next steps
-
-### Manage recorded files
-
-After the recording starts, the Agora server splits the recorded content into multiple TS/WebM files and keeps uploading them to the third-party cloud storage until the recording stops. You can refer to [Manage Recorded Files](../develop/manage-files) to learn about the naming rules, file sizes, and slicing rules of recording files.
-
-### Token authentication
-
-To ensure communication security, in a formal production environment, you need to generate tokens on your app server. See [Authenticate Your Users with Token](../develop/authentication-workflow).
-
-## See also
-
-<a name="update"></a>
-### Update subscription lists
-
-During the recording, you can call [`update`](../reference/restful-api#update) to update the subscription lists multiple times. See [Set up subscription lists](../develop/subscription) for details.
-
-<a name="updateLayout"></a>
-### Update video layout
-
-During the recording, you can call the [`updateLayout`](../reference/restful-api#updatelayout) method to set or update the video layout. See [Set Video Layout](../develop/layout) for details.
+This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
 
 ### Sample project
 
-Agora provides a [Postman collection](https://documenter.getpostman.com/view/6319646/SVSLr9AM), which contains sample requests of RESTful API for a cloud recording. You can use the collection to quickly grasp the basic functionalities of the Cloud Recording RESTful APIs. You only need to import the collection to Postman and set your environment variables.
+<Vg k="COMPANY"/> provides a [Postman collection](https://documenter.getpostman.com/view/6319646/SVSLr9AM), which contains sample requests of RESTful API for a cloud recording. You can use the collection to quickly grasp the basic functionalities of the Cloud Recording RESTful APIs. You only need to import the collection to Postman and set your environment variables.
 
 You can also use Postman to generate code snippets written in various programming languages. To do so, select a request, click **Code**, and select the desired language in **GENERATE CODE SNIPPETS**.
 
 ![img](https://web-cdn.agora.io/docs-files/1588737379230)
 
-### REST API middleware 
+### See also
 
-[Agora Go Backend Middleware](https://github.com/AgoraIO-Community/agora-go-backend-middleware) is an open-source microservice that exposes a RESTful API designed to simplify <Vpd k="NAME" /> interactions with Agora. Written in Golang and powered by the Gin framework, this community project serves as a middleware to bridge front-end applications using Agora's <Vg k="VSDK" /> or <Vg k="ASDK" /> with Agora's RESTful APIs.
+- To streamline the use of Agora RESTful APIs within your infrastructure, see
+[Quickstart using middleware](../get-started/middleware-quickstart). The community middleware project provides RESTful APIs for tasks such as token generation and cloud recording management.
 
-### Reference documents
+<a name="update"></a>
+- To update the subscription lists during the recording, call [`update`](../reference/restful-api#update). You can call this method multiple times. See [Set up subscription lists](../develop/subscription) for details.
+
+<a name="updateLayout"></a>
+- To set or update the video layout during the recording, call the [`updateLayout`](../reference/restful-api#updatelayout) method. See [Set Video Layout](../develop/layout) for details.
 
 - [Common errors in cloud recording](../reference/common-errors) lists common error codes and error messages in the response body.
 
-- [Agora Cloud Recording RESTful API Callback Service](../reference/rest-api-overview) lists all the callback events of cloud recording.
+- [<Vg k="COMPANY"/> Cloud Recording RESTful API Callback Service](../reference/rest-api-overview) lists all the callback events of cloud recording.
 - To learn more about the implementation steps and details of basic functions, you can refer to the following documents:
   - [Individual recording](../develop/individual-mode)
   - [Composite recording](../develop/composite-mode)
   - [Web page recording](../develop/webpage-mode)
   - [Capture screenshots](../develop/screen-capture)
 
+## Next steps
+
+### Manage recorded files
+
+After the recording starts, the <Vg k="COMPANY"/> server splits the recorded content into multiple TS/WebM files and keeps uploading them to the third-party cloud storage until the recording stops. You can refer to [Manage Recorded Files](../develop/manage-files) to learn about the naming rules, file sizes, and slicing rules of recording files.
+
+### Token authentication
+
+To ensure communication security, in a formal production environment, you need to generate tokens on your app server. See [Authenticate Your Users with Token](../develop/authentication-workflow).

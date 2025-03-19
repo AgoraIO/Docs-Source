@@ -8,6 +8,8 @@ const data = {
     BETA_API_FOLDER: 'video-call-4.x-beta',
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
     STREAM: 'interactive live streaming or broadcast streaming',
+    MEDIA: 'audio and video',
+    MEDIA_DEVICES: 'camera and microphone',
   },
 
   'voice-calling': {
@@ -17,6 +19,8 @@ const data = {
     SDK: 'Voice SDK',
     PRODUCT: 'Voice Calling',
     STREAM: 'interactive live streaming or broadcast streaming',
+    MEDIA: 'audio',
+    MEDIA_DEVICES: 'microphone',
   },
 
   'interactive-live-streaming': {
@@ -27,6 +31,19 @@ const data = {
     PRODUCT: 'Interactive Live Streaming',
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
     STREAM: 'interactive live streaming',
+    MEDIA: 'audio and video',
+    MEDIA_DEVICES: 'camera and microphone',
+  },
+
+  'broadcast-streaming': {
+    NAME: 'Broadcast Streaming',
+    SDK_LITE: 'Lite SDK',
+    PATH: 'broadcast-streaming',
+    SDK: 'Video SDK',
+    PRODUCT: 'Broadcast Streaming',
+    STREAM: 'broadcast streaming',
+    MEDIA: 'audio and video',
+    MEDIA_DEVICES: 'camera and microphone',
   },
 
   'agora-analytics': {
@@ -69,15 +86,6 @@ const data = {
       SDK: 'Server Gateway SDK',
       PRODUCT: 'Server Gateway',
       STREAM: 'interactive live streaming or broadcast streaming',
-  },
-
-  'broadcast-streaming': {
-    NAME: 'Broadcast Streaming',
-    SDK_LITE: 'Lite SDK',
-    PATH: 'broadcast-streaming',
-    SDK: 'Video SDK',
-    PRODUCT: 'Broadcast Streaming',
-    STREAM: 'broadcast streaming',
   },
 
   'iot': {
@@ -128,6 +136,14 @@ const data = {
     PATH: 'interactive-whiteboard',
     SDK: 'Whiteboard SDK',
     PRODUCT: 'Interactive Whiteboard',
+  },
+
+  'conversational-ai': {
+    NAME: 'Conversational AI Engine',
+    PATH: 'conversational-ai',
+    SDK: 'Conversational AI SDK',
+    AGENT: 'Conversational AI agent',
+    PRODUCT: 'Conversational AI Engine',
   }
 };
 

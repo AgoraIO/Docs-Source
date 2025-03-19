@@ -1,0 +1,171 @@
+<PlatformWrapper platform="flutter">
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:agora_chat_sdk/agora_chat_sdk.dart';
+import 'package:http/http.dart' as http; // Add this for HTTP requests
+import 'dart:convert';
+
+class MyHomePage extends StatefulWidget {
+  @override
+  _MyHomePageState createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  final String appKey = "YOUR_APP_KEY";
+  final String tokenServerUrl = "YOUR_TOKEN_SERVER_URL"; // Replace with your server URL
+  String userId = "YOUR_USER_ID";
+  String token = "";
+  bool isJoined = false;
+
+  late ChatClient agoraChatClient;
+
+  @override
+  void initState() {
+    super.initState();
+    setupChatClient();
+    setupListeners();
+  }
+
+  /// Initializes the Agora Chat SDK client.
+  void setupChatClient() async {
+    ChatOptions options = ChatOptions(
+      appKey: appKey,
+      autoLogin: false,
+    );
+    agoraChatClient = ChatClient.getInstance;
+    await agoraChatClient.init(options);
+
+    // Notify the SDK that the UI is ready.
+    await ChatClient.getInstance.startCallback();
+  }
+
+  /// Sets up event listeners for the chat client.
+  void setupListeners() {
+    agoraChatClient.addConnectionEventHandler(
+      "CONNECTION_HANDLER",
+      ConnectionEventHandler(
+        onTokenWillExpire: onTokenWillExpire,
+        onTokenDidExpire: onTokenDidExpire,
+      ),
+    );
+  }
+
+  /// Fetches a new token from the server.
+  Future<void> fetchToken() async {
+    try {
+      final response = await http.post(
+        Uri.parse(tokenServerUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({"userId": userId}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          token = data["token"];
+        });
+        showLog("Token fetched successfully");
+      } else {
+        showLog("Failed to fetch token: ${response.statusCode}");
+      }
+    } catch (e) {
+      showLog("Error fetching token: $e");
+    }
+  }
+
+  /// Callback for token expiration warning.
+  void onTokenWillExpire() async {
+    showLog("Token will expire soon. Fetching a new token...");
+    await fetchToken();
+    // Renew the token
+    await agoraChatClient.renewToken(token);
+    showLog("Token renewed successfully");
+  }
+
+  /// Callback for token expiration.
+  void onTokenDidExpire() async {
+    showLog("Token expired. Fetching a new token...");
+    await fetchToken();
+    // Re-login with the new token
+    try {
+      await agoraChatClient.loginWithAgoraToken(userId, token);
+      showLog("Re-logged in successfully with the new token");
+    } catch (e) {
+      showLog("Failed to re-login: $e");
+    }
+  }
+
+  /// Handles user join or leave (login/logout).
+  void joinLeave() async {
+    if (!isJoined) {
+      // Log in
+      try {
+        if (token.isEmpty) {
+          await fetchToken(); // Fetch token before logging in
+        }
+        await agoraChatClient.loginWithAgoraToken(userId, token);
+        showLog("Logged in successfully as $userId");
+        setState(() {
+          isJoined = true;
+        });
+      } on ChatError catch (e) {
+        if (e.code == 200) {
+          // Already logged in
+          setState(() {
+            isJoined = true;
+          });
+        } else {
+          showLog("Login failed, code: ${e.code}, desc: ${e.description}");
+        }
+      }
+    } else {
+      // Log out
+      try {
+        await agoraChatClient.logout(true);
+        showLog("Logged out successfully");
+        setState(() {
+          isJoined = false;
+        });
+      } on ChatError catch (e) {
+        showLog("Logout failed, code: ${e.code}, desc: ${e.description}");
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    agoraChatClient.chatManager.removeEventHandler("MESSAGE_HANDLER");
+    agoraChatClient.removeConnectionEventHandler("CONNECTION_HANDLER");
+    super.dispose();
+  }
+
+  /// Utility method to log messages in the app.
+  void showLog(String message) {
+    // You can implement a logging mechanism, such as a SnackBar or debug console log.
+    debugPrint(message);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Agora Chat Example"),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: joinLeave,
+              child: Text(isJoined ? "Leave" : "Join"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+```
+</PlatformWrapper>

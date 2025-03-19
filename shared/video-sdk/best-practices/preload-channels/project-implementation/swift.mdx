@@ -1,254 +1,259 @@
-### API calls before using the VideoLoader API
+Follow these steps to implement fast channel joining and switching:
 
-This section shows the preparations before implementing the second-on and second-off functions.
+### Prepare to use the VideoLoader API
 
-1. Initialize `RtcEngine` and `VideoLoader`
+Take the following steps before using the fast joining and fast switching features:
 
-In the default `ViewController` of the project file, call `sharedEngineWithConfig` in the <Vg k="COMPANY" /> RTC SDK to create and initialize the `AgoraRtcEngineKit` object and initialize the `VideoLoader`.
+1. Initialize `AgoraRtcEngineKit` and `VideoLoader` instances.
 
-```swift
-func prepareEngine() {
-    // Creating an Instance of AgoraRtcEngineKit
-    let engine = _createRtcEngine()
-    // Get an instance of VideoLoaderApiImpl
-    let loader = VideoLoaderApiImpl.shared
-    loader.addListener(listener: self)
-    // Creating a VideoLoaderConfig instance
-    let config = VideoLoaderConfig()
-    // Setting up an AgoraRtcEngineKit instance
-    config.rtcEngine = engine
-    // Initialize VideoLoader
-    loader.setup(config: config)
-}
+    In the default `ViewController` of the project file, call the `sharedEngine(with:)` method of <Vg k="VSDK" /> to create and initialize an `AgoraRtcEngineKit` instance. Then, initialize the `VideoLoader`.
 
-// Initializing AgoraRtcEngineKit
-private func _createRtcEngine() ->AgoraRtcEngineKit {
-    let config = AgoraRtcEngineConfig()
-    // Pass in the APP ID of the soundnet project you got from the console
-    config.appId = KeyCenter.AppId
-    config.channelProfile = .liveBroadcasting
-    config.audioScenario = .gameStreaming
-    config.areaCode = .global
-    let engine = AgoraRtcEngineKit.sharedEngine(with: config,
-                                                delegate: nil)
-    return engine
-}
-```
+    ```swift
+    func prepareEngine() {
+        // Create an Instance of AgoraRtcEngineKit
+        let engine = _createRtcEngine()
+        // Obtain a shared instance of VideoLoaderApiImpl
+        let loader = VideoLoaderApiImpl.shared
+        loader.addListener(listener: self)
+        // Creating a VideoLoaderConfig instance
+        let config = VideoLoaderConfig()
+        // Setting up an AgoraRtcEngineKit instance
+        config.rtcEngine = engine
+        // Initialize VideoLoader
+        loader.setup(config: config)
+    }
 
-2. Use a wildcard token
+    // Initializing AgoraRtcEngineKit
+    private func _createRtcEngine() -> AgoraRtcEngineKit {
+        let config = AgoraRtcEngineConfig()
+        // Use the App Id of your project from the console
+        config.appId = KeyCenter.AppId
+        config.channelProfile = .liveBroadcasting
+        config.audioScenario = .gameStreaming
+        config.areaCode = .global
+        let engine = AgoraRtcEngineKit.sharedEngine(with: config,
+                                                    delegate: nil)
+        return engine
+    }
+    ```
 
-You need to generate a Token on the server first, and then pass in the Token parameter for authentication in the subsequent client implementation steps.
+2. Use a wildcard token.
 
-To speed up the process of users joining a channel, use a [wildcard token](../token-authentication/authentication-workflow#generate-wildcard-tokens).
+    To speed up the process of users joining a channel, use a [wildcard token](../token-authentication/deploy-token-server#generate-wildcard-tokens). Generate the token on your server and pass it to the client for authentication.
 
-<Admonition type="info" title="Note">The use of wildcard tokens will bring risks such as "room bombing". Please decide whether to use wildcard tokens based on specific needs.</Admonition>
+    <Admonition type="info" title="Note">
+    Using wildcard tokens carries security risks, such as room bombing. Evaluate whether wildcard tokens are appropriate for your use case before implementation.
+    </Admonition>
 
-### Open in seconds
+### Fast channel joining
 
-This section describes how to achieve a smooth, instant-opening experience for viewers in live broadcast scenarios.
+This section explains how to create a seamless, instant-opening experience in live broadcast scenarios.
 
-1. Implement the live broadcast room list UI module
+1. Add a UI component for the live broadcast room list.
 
-Implement a UI module that displays a list of live broadcasts, A `UICollectionView` example is given below:
+    Implement a UI component to display a list of live broadcast rooms. The following example uses a `UICollectionView`:
 
-```swift
-private lazy var listView: UICollectionView = {
-    let layout = UICollectionViewFlowLayout()
-    layout.minimumLineSpacing = 5
-    layout.minimumInteritemSpacing = 5
-    layout.sectionInset = .zero
+    ```swift
+    private lazy var listView: UICollectionView = {
+        let layout = UICollectionViewFlowLayout()
+        layout.minimumLineSpacing = 5
+        layout.minimumInteritemSpacing = 5
+        layout.sectionInset = .zero
 
-    let w = view.bounds.width / 2 - 5
-    layout.itemSize = CGSize(width: w, height: w * 1.5)
+        let w = view.bounds.width / 2 - 5
+        layout.itemSize = CGSize(width: w, height: w * 1.5)
 
-    let collectionView = UICollectionView(frame: self.view.bounds, collectionViewLayout: layout)
-    collectionView.backgroundColor = .white
-    collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "videoloader_listcell")
-    collectionView.scrollsToTop = false
-    collectionView.delegate = self.delegateHandler
-    collectionView.dataSource = self
-    collectionView.contentInsetAdjustmentBehavior = .never
-    collectionView.showsVerticalScrollIndicator = false
+        let collectionView = UICollectionView(frame: self.view.bounds, collectionViewLayout: layout)
+        collectionView.backgroundColor = .white
+        collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "videoloader_listcell")
+        collectionView.scrollsToTop = false
+        collectionView.delegate = self.delegateHandler
+        collectionView.dataSource = self
+        collectionView.contentInsetAdjustmentBehavior = .never
+        collectionView.showsVerticalScrollIndicator = false
 
-    return collectionView
-}()
-```
-
-2. Listen for scrolling events
-
-Create an `AGCollectionLoadingDelegateHandler` object and register it with the live room list UI as a proxy for the live room list sliding event. When creating the `AGCollectionLoadingDelegateHandler` object, you need to pass the `uid` of the local user in the `localUid` parameter of the constructor.
-
-After the `AGCollectionLoadingDelegateHandler` object listens to the scroll event of the live broadcast room list, it will drive the best practices encapsulated within the `AGCollectionLoadingDelegateHandler` class and preload the channels of the live broadcast rooms that appear on the screen (`preloadChannel`).
-
-```swift
-// The code snippet comes from the ViewController for the room list.
-class ShowRoomListVC: UIViewController {
-    // Create AGCollectionLoadingDelegateHandler
-    private lazy var delegateHandler: AGCollectionLoadingDelegateHandler = {
-        let handler = AGCollectionLoadingDelegateHandler(localUid: localUid)
-
-        return handler
+        return collectionView
     }()
-    // Own business service modules
-    private lazy var service: ShowServiceProtocol = AppContext.showServiceImp("")
-    // Room List
-    private var roomList = [ShowRoomListModel]() {
-        didSet {
-            delegateHandler.roomList = AGRoomArray(roomList: roomList)
-            collectionView.reloadData()
-        }
-    }
+    ```
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        // You can do other additional operations after loading the view
-        ...
+1. Listen for scrolling events.
 
-        prepareEngine()
+    Create an instance of `AGCollectionLoadingDelegateHandler` and assign it as the delegate for the live room list UI to handle scrolling events. When initializing the `AGCollectionLoadingDelegateHandler` instance, pass the local user's `uid` in the `localUid` parameter of the constructor.
 
-        listView.delegate = self.delegateHandler
-        listView.dataSource = self
+    The `AGCollectionLoadingDelegateHandler` listens for scrolling events in the live broadcast room list and automatically preloads the live room channels that come into view (`preloadChannel`). This improves loading speed and enhances the user experience.
 
-        service.getRoomList(page: 1) { [weak self] error, roomList in
-            self?.roomList = roomList ?? []
-        }
-    }
-    ...
-}
-```
-
-3. Listen for touch events
-
-In the `DataSource` protocol of the native `listView`, you can create a Cell by creating it in the `cellForItemAt` method. When creating a Cell, add the `ag_addPreloadTap` method to listen to the touch events of a single live broadcast room. When adding the `ag_addPreloadTap` method, you need to pass in the following parameters:
-
-    - `roomInfo`: `VideoLoader.RoomInfo` object.
-    - `localUid`: `uid` of the local user.
-    - `enableProcess`: the callback function triggered by the click event. You can execute the corresponding business logic according to the click status in the callback, such as checking whether the Token is successfully obtained.
-    - `onRequireRenderVideo`: The callback function for the best time to render the anchor screen. It is recommended that you create the container for the anchor screen ahead of time and fill the container object with the return value of that callback function when notified of the `onRequireRenderVideo` event. This way, `ag_addPreloadTap` will automatically add and render the anchor screen on that container.
-    - `completion`: Callback function to enter the live page.
-
-When a touch event of a single live broadcast room is triggered, `ag_addPreloadTap` automatically executes the internally encapsulated best practices and joins the clicked live broadcast channel so you do not need to call `joinChannelByToken` or similar methods for joining the channel in the business.
-
-```swift
-// The code snippet comes from the ViewController for the list of live streams.
-extension ShowRoomListVC: UICollectionViewDataSource {
-    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        // Returns the number of rooms in the room list
-        return roomList.count
-    }
-
-    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell: ShowRoomListCell = collectionView.dequeueReusableCell(withReuseIdentifier: NSStringFromClass(ShowRoomListCell.self), for: indexPath) as! ShowRoomListCell
-        // Get the room data corresponding to the index
-        let room = roomList[indexPath.item]
-
-        // Setting Cell Contents
-        ...
-
-        // Adding a touch event
-        cell.ag_addPreloadTap(roomInfo: room, localUid: delegateHandler.localUid) { [weak self] state in
-            if AppContext.shared.rtcToken?.count ?? 0 == 0 {
-                // If no Token is obtained
-                if state == .began {
-                    // If it's a case of pressing down, you can try to get the Token again
-                    self?.preGenerateToken()
-                } else if state == .ended {
-                    // If the click is completed, but the token is still not obtained, prohibit the execution of the action to enter the live room
-                    ToastView.show(text: "Token is not exit, try again!")
-                }
-                return false
+    ```swift
+    // The following code is from the ViewController for the live room list.
+    class ShowRoomListVC: UIViewController {
+        // Create an instance of AGCollectionLoadingDelegateHandler.
+        private lazy var delegateHandler: AGCollectionLoadingDelegateHandler = {
+            let handler = AGCollectionLoadingDelegateHandler(localUid: localUid)
+            return handler
+        }()
+        // Business service module for managing room data.
+        private lazy var service: ShowServiceProtocol = AppContext.showServiceImp("")
+        // List of live rooms
+        private var roomList = [ShowRoomListModel]() {
+            didSet {
+                // Update delegateHandler with the latest room list
+                delegateHandler.roomList = AGRoomArray(roomList: roomList)
+                collectionView.reloadData()
             }
-            return true
-        } onRequireRenderVideo: { _ in
-            // The best time for anchor screen rendering
-            return nil
-        } completion: { [weak self] in
-            // Go inside the live stream
-            self?.joinRoom(room)
         }
 
-        return cell
+        override func viewDidLoad() {
+            super.viewDidLoad()
+            // Perform any additional setup after loading the view.
+            // ...
+
+            prepareEngine()
+
+            // Set delegate and data source for the room list UI.
+            listView.delegate = self.delegateHandler
+            listView.dataSource = self
+
+            // Fetch the live room list from the service.
+            service.getRoomList(page: 1) { [weak self] error, roomList in
+                self?.roomList = roomList ?? []
+            }
+        }
     }
-}
-```
+    ```
 
-### Switch in seconds
+3. Listen for touch events.
 
-This section describes how to enable viewers to switch live broadcast rooms within seconds to watch live broadcasts.
+    In the `DataSource` protocol of the native `listView`, create a Cell inside the `cellForItemAt` method. When initializing the Cell, use the `ag_addPreloadTap` method to listen for touch events on a specific live broadcast room.
 
-1. Implement the live broadcast room slide switch UI module
+    When calling `ag_addPreloadTap`, provide the following parameters:
 
-Implement a slide switching module for the list of live broadcasts using `UICollectionView` as an example:
+    - `roomInfo`: A `VideoLoader.RoomInfo` instance containing details of the live room.
+    - `localUid`: The uid of the local user.
+    - `enableProcess`: A callback function triggered when the user taps the Cell. Use this function to implement business logic, such as verifying whether the token has been successfully obtained.
+    - `onRequireRenderVideo`: A callback function that handles rendering the host's video feed. It is recommended to create the video container in advance and assign the returned object to it when the `onRequireRenderVideo` event is triggered. This ensures that `ag_addPreloadTap` automatically attaches and renders the host’s video on the designated container.
+    - `completion`: A callback function executed when the user enters the live broadcast page.
+    
+    When a user taps a live broadcast room, `ag_addPreloadTap` automatically follows best practices, including joining the selected live broadcast channel. Consequently, you do not need to manually call `joinChannelByToken` or similar methods to handle channel joining within your business logic.
 
-```swift
-private lazy var collectionView: UICollectionView = {
-    let layout = UICollectionViewFlowLayout()
-    layout.minimumLineSpacing = 0
-    layout.minimumInteritemSpacing = 0
-    layout.sectionInset = .zero
-    layout.itemSize = self.view.bounds.size
-    let collectionView = UICollectionView(frame: self.view.bounds, collectionViewLayout: layout)
-    collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: NSStringFromClass(UICollectionViewCell.self))
-    collectionView.scrollsToTop = false
-    collectionView.isPagingEnabled = true
-    collectionView.contentInsetAdjustmentBehavior = .never
-    collectionView.bounces = false
-    collectionView.showsVerticalScrollIndicator = false
-    return collectionView
-}()
-```
+    ```swift
+    // The code snippet comes from the ViewController for the list of live streams.
+    extension ShowRoomListVC: UICollectionViewDataSource {
+        func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+            // Return the total number of rooms in the room list
+            return roomList.count
+        }
 
-2. Listen for live room switching events
+        func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+            let cell: ShowRoomListCell = collectionView.dequeueReusableCell(withReuseIdentifier: NSStringFromClass(ShowRoomListCell.self), for: indexPath) as! ShowRoomListCell
+            // Get the room data corresponding to the current index
+            let room = roomList[indexPath.item]
 
-Create an `AGCollectionSlicingDelegateHandler` object and register it as the slide event proxy for the `CollectionView` live broadcast room. To create the `AGCollectionSlicingDelegateHandler` object, you need to pass the following in the constructor's parameters:
+            // Configure the Cell with room details
+            // ...
+
+            // Add a touch event to handle user interaction
+            cell.ag_addPreloadTap(roomInfo: room, localUid: delegateHandler.localUid) { [weak self] state in
+                if AppContext.shared.rtcToken?.count ?? 0 == 0 {
+                    // If no token has been obtained
+                    if state == .began {
+                        // If the touch event starts (pressing down), retrieve a new token
+                        self?.preGenerateToken()
+                    } else if state == .ended {
+                        // If the touch event completes but the token is still unavailable, prevent the user from entering the live room
+                        ToastView.show(text: "Token does not exist, try again!")
+                    }
+                    return false
+                }
+                return true
+            } onRequireRenderVideo: { _ in
+                // Provide a container for rendering the host's video feed (if available)
+                return nil
+            } completion: { [weak self] in
+                // Enter the live stream
+                self?.joinRoom(room)
+            }
+
+            return cell
+        }
+    }
+    ```
+
+### Fast channel switching
+
+This section explains how to enable viewers to switch live broadcast channels quickly.
+
+1. Implement a UI component for sliding between live broadcast rooms.
+
+    The following example uses a `UICollectionView`:
+
+    ```swift
+    private lazy var collectionView: UICollectionView = {
+        let layout = UICollectionViewFlowLayout()
+        layout.minimumLineSpacing = 0
+        layout.minimumInteritemSpacing = 0
+        layout.sectionInset = .zero
+        layout.itemSize = self.view.bounds.size
+        let collectionView = UICollectionView(frame: self.view.bounds, collectionViewLayout: layout)
+        collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: NSStringFromClass(UICollectionViewCell.self))
+        collectionView.scrollsToTop = false
+        collectionView.isPagingEnabled = true
+        collectionView.contentInsetAdjustmentBehavior = .never
+        collectionView.bounces = false
+        collectionView.showsVerticalScrollIndicator = false
+        return collectionView
+    }()
+    ```
+
+1. Listen for live room switching events.
+
+    Create an `AGCollectionSlicingDelegateHandler` instance and register it as the slide event delegate for the `CollectionView` live broadcast room. To create the `AGCollectionSlicingDelegateHandler` instance, pass the following parameters to the constructor:
 
     - `localUid`: `uid` of the local user.
-    - `needPreJoin`: Set whether to join the upper and lower live broadcast rooms of the live broadcast room in advance. If set to yes ( true), it will bring better instant switching effect, but it will also increase the cost.
+    - `needPreJoin`: Determines whether to prejoin the adjacent live broadcast rooms (above and below the current one). Setting this to `true` improves instant switching but increases resource consumption.
     - `videoType`: Switch the timing of live broadcast room video display.
     - `audioType`: Switch the timing of the live broadcast room audio display.
-    - `onRequireRenderVideo`: The best time to render the anchor view of the corresponding live broadcast room. At this time, you must pass in the container for the anchor screen of the corresponding live broadcast room, and the `AGCollectionSlicingDelegateHandler` object will add and render the anchor screen on that container.
+    - `onRequireRenderVideo`:  The callback function to render the host view of the corresponding live broadcast room. At this time, pass in the container for the host screen of the corresponding live broadcast room. The `AGCollectionSlicingDelegateHandler` instance adds and renders the host screen on that container.
 
-After the `AGCollectionSlicingDelegateHandler` object listens to the `CollectionView` slide event of the live broadcast room, it will drive the best practices encapsulated inside the `AGCollectionSlicingDelegateHandler` class and switch the audio/video subscription behavior of different live broadcast rooms at the best time.
+    The `AGCollectionSlicingDelegateHandler` instance listens to the `CollectionView` slide event of the live broadcast room. It implements the best practices encapsulated in the `AGCollectionSlicingDelegateHandler` class and switches the audio/video subscription behavior of different live broadcast rooms at the best time.
 
-Also, when creating the `ViewController`, you need to call the `roomList` method to pass the initial live broadcast room list information to the `AGCollectionSlicingDelegateHandler` object.
+    When creating the `ViewController`, call the `roomList` method to pass the initial live broadcast room list information to the `AGCollectionSlicingDelegateHandler` instance.
 
-```swift
-// The code snippet comes from the ViewController for the room list
-class ShowLivePagesViewController: ViewController {
-    // Creating an AGCollectionSlicingDelegateHandler object
-    private lazy var delegateHandler = {
-        let handler = AGCollectionSlicingDelegateHandler(localUid: localUid, needPrejoin: needPrejoin)
-        handler.videoSlicingType = videoType
-        handler.audioSlicingType = audioType
-        handler.onRequireRenderVideo = { [weak self] info, cell, indexPath in
-            // Perform the appropriate action at the optimal time to render the anchor screen
-            return ...
+    ```swift
+    // The code snippet comes from the ViewController for the room list
+    class ShowLivePagesViewController: ViewController {
+        // Creating an AGCollectionSlicingDelegateHandler instance
+        private lazy var delegateHandler = {
+            let handler = AGCollectionSlicingDelegateHandler(localUid: localUid, needPrejoin: needPrejoin)
+            handler.videoSlicingType = videoType
+            handler.audioSlicingType = audioType
+            handler.onRequireRenderVideo = { [weak self] info, cell, indexPath in
+                // Perform the appropriate action at the optimal time to render the host screen
+                return ...
+            }
+            return handler
+        }()
+
+        // Pass the initial live room list information to the AGCollectionSlicingDelegateHandler instance
+        var roomList: [ShowRoomListModel]? {
+            didSet {
+                delegateHandler.roomList = AGRoomArray(roomList: roomList)
+            }
         }
-        return handler
-    }()
 
-    // Pass the initial live room list information to the AGCollectionSlicingDelegateHandler object
-    var roomList: [ShowRoomListModel]? {
-        didSet {
-            delegateHandler.roomList = AGRoomArray(roomList: roomList)
+        // Register the delegateHandler instance as the slide event proxy for the CollectionView in the live streaming room
+        override func viewDidLoad() {
+            super.viewDidLoad()
+
+            // Setting up a proxy
+            collectionView.delegate = delegateHandler
+            collectionView.dataSource = self
+            ...
         }
     }
-
-    // Register the delegateHandler object as the slide event proxy for the CollectionView in the live streaming room
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
-        // Setting up a proxy
-        collectionView.delegate = delegateHandler
-        collectionView.dataSource = self
-        ...
-    }
-}
-```
+    ```
 
 ### Release resources
 
-After using the <Vg k="COMPANY" /> scenario-based API (VideoLoader API), when you leave the live broadcast scene you don't need to call `leaveChannel` in the business layer. You can release resources according to the following sample code:
+After using the `VideoLoaderAPI`, you do not need to call `leaveChannel` in the business layer to leave the live broadcast. To release resources, refer to the following sample code:
 
 ```swift
 VideoLoaderApiImpl.shared.cleanCache()

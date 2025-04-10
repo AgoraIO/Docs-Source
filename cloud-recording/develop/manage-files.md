@@ -51,25 +51,8 @@ Where:
 - `<type>` is the file type (`audio`).
 - `<utc>` is the UTC time when the slice file starts. The time zone is UTC+0, and the timestamp consists of the year, month, day, hour, minute, second, and millisecond. When `utc` is `20190611073246073`, for example, the slice file starts at 07:32:46.073 a.m., June 11, 2019.
 
-### Individual audio non-transcoding recording and postpone audio mixing
-
-The naming conventions of [postpone audio mixing](../develop/individual-nontranscoding#implement-an-postpone-audio-mixing) are as follows:
-
-- M3U8 file: `<sid>_<cname>__uid_s_<uid>__uid_e_<type>.m3u8`
-- TS file: `<sid>_<cname>__uid_s_<uid>__uid_e_<type>_utc.ts`
-- MP3/M4A/AAC file: `<sid>_<cname>_<index>.mp3/m4a/aac`
-
-Where:
-- `<sid>` is the recording ID.
-- `<cname>` is the channel name.
-- `<uid>` is the user ID.
-- `<type>` is the file type (`audio`).
-- `<utc>` is the UTC time when the slice file starts. The time zone is UTC+0, and the timestamp consists of the year, month, day, hour, minute, second, and millisecond. When `utc` is `20190611073246073`, for example, the slice file starts at 07:32:46.073 a.m., June 11, 2019.
-- `<index>` is the index number of the MP3/M4A/AAC file. The index number of the first MP3/M4A/AAC file is `0`.
-
 <Admonition type="info">
-- In individual audio non-transcoding recording, only M3U8 and TS files are generated and uploaded to the third-party cloud storage in real time.
-- Only MP3/M4A/AAC files are generated after enabling postpone audio mixing and uploaded to the third-party cloud storage within 24 hours.
+In individual audio non-transcoding recording, only M3U8 and TS files are generated and uploaded to the third-party cloud storage in real time.
 </Admonition>
 
 ### Composite recording

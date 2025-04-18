@@ -147,9 +147,9 @@ const data = {
   },
 
   'convo-ai-device-kit': {
-    NAME: 'ConvoAI Device Kit',
+    NAME: 'ConvoAI Device Kit R1',
     PATH: 'convo-ai-device-kit',
-    PRODUCT: 'ConvoAI Device Kit',
+    PRODUCT: 'ConvoAI Device Kit R1',
   }
 };
 

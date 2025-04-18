@@ -144,6 +144,12 @@ const data = {
     SDK: 'Conversational AI SDK',
     AGENT: 'Conversational AI agent',
     PRODUCT: 'Conversational AI Engine',
+  },
+
+  'convo-ai-device-kit': {
+    NAME: 'ConvoAI Device Kit R1',
+    PATH: 'convo-ai-device-kit',
+    PRODUCT: 'ConvoAI Device Kit R1',
   }
 };
 

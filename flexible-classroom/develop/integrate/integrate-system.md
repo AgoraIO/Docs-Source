@@ -10,7 +10,7 @@ description: >
 
 ## Understand the tech
 
-![Image](/images/flexible-classroom/integrate-systems-flexible-classroom.png)
+![Image](https://agora-doc.s3.us-east-1.amazonaws.com/images/flexible-classroom/integrate-systems-flexible-classroom.png)
 
 As shown in the figure above, if you need to integrate <Vg k="FC"/> with your user system and course scheduling system, implement the following business logic:
 

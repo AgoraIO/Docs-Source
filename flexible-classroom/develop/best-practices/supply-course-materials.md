@@ -188,7 +188,7 @@ To ensure that Flexible Classroom can access your cloud storage, configure your 
       * Configure Source and Allow Headers according to your actual situation.
       * Exposure Headers must be filled in according to the figure below:
 
-     ![alibaba-cloud-storage-config](/images/flexible-classroom/alibaba-cloud-storage-config.png)
+     ![alibaba-cloud-storage-config](https://agora-doc.s3.us-east-1.amazonaws.com/images/flexible-classroom/alibaba-cloud-storage-config.png)
 
 * AWS S3 accounts
 

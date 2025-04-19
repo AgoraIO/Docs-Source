@@ -16,15 +16,15 @@ Agora Cloud Recording supports three recording modes:
 This guide outlines the key steps for using the Cloud Recording RESTful API to record a web page.
 In this recording mode, the content and audio of the specified web page are captured in a single file.
 
-![](/images/cloud-recording/web-page-recording.svg)
+![](https://agora-doc.s3.us-east-1.amazonaws.com/images/cloud-recording/web-page-recording.svg)
 
 You can use web page recording to reproduce use-cases such as online classes and video conferences. For example, if your web application integrates both the Agora SDK and a third-party whiteboard SDK, web page recording can record everything on the web page instead of only the audio and video streams.
 
-![](/images/cloud-recording/web-page-layout.svg)
+![](https://agora-doc.s3.us-east-1.amazonaws.com/images/cloud-recording/web-page-layout.svg)
 
 In web page recording mode, you can also convert the content and audio of the page into a media stream and push it to the CDN during the recording process.
 
-![](/images/cloud-recording/web-page-push-cdn.svg)
+![](https://agora-doc.s3.us-east-1.amazonaws.com/images/cloud-recording/web-page-push-cdn.svg)
 
 ## Prerequisites
 

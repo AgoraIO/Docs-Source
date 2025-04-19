@@ -16,7 +16,7 @@ The command-line examples in this guide are for demonstration purposes only. Do 
 ## Understand the tech
 
 The basic process of implementing Cloud Recording is as follows:
-![](/images/cloud-recording/cloud-recording-tech.svg)
+![](https://agora-doc.s3.us-east-1.amazonaws.com/images/cloud-recording/cloud-recording-tech.svg)
 
 1. Get a resource ID
 
@@ -46,7 +46,7 @@ The basic process of implementing Cloud Recording is as follows:
 
 The following figure shows the API call sequence to start and manage cloud recording:
 
-![](/images/cloud-recording/cloud-recording-sequence.svg)
+![](https://agora-doc.s3.us-east-1.amazonaws.com/images/cloud-recording/cloud-recording-sequence.svg)
 
 The following APIs are optional and can be called multiple times. However, they must be called during a recording session, that is, after recording starts and before it ends:
 

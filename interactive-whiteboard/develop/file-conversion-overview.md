@@ -93,15 +93,15 @@ Refer to the following steps:
 
 3. On the **Services Configuration** view, select a data center and click **Configure** ✎. The data center must be the same as the one you fill in the `region` field when calling the [Create a room](../reference/whiteboard-api/room-management#create-a-room-post) API; otherwise, the service configurations does not take effect.
 
-    ![](/images/interactive-whiteboard/console-services-configuration.png)
+    ![](https://agora-doc.s3.us-east-1.amazonaws.com/images/interactive-whiteboard/console-services-configuration.png)
 
 4. On the **Services configuration** page, , select **Enabled** for **Docs to Picture** or **Docs to web** to see **Storage** settings.
-    ![](/images/interactive-whiteboard/console-configure-service.png)
+    ![](https://agora-doc.s3.us-east-1.amazonaws.com/images/interactive-whiteboard/console-configure-service.png)
 
 5. Set up the storage space:
     - Click the **Storage** dropdown and select a previously configured storage space in the drop-down list or click **Create** to add a new storage space. 
     
-    ![](/images/interactive-whiteboard/console-storage.png)
+    ![](https://agora-doc.s3.us-east-1.amazonaws.com/images/interactive-whiteboard/console-storage.png)
 
     To add a new storage space, fill in the following information:
     - **Name**: (Required) The name of your storage space.
@@ -203,14 +203,14 @@ This section contains information that completes the information on this page, o
 To set up cloud storage and obtain configuration information for Google Cloud Platform, take the following steps:
 
 1. Create an account on [Google Cloud](https://cloud.google.com/) and assign permissions on the settings page of Google Cloud storage. 
-    ![](/images/interactive-whiteboard/gcp-settings.png)
+    ![](https://agora-doc.s3.us-east-1.amazonaws.com/images/interactive-whiteboard/gcp-settings.png)
 
-1. After creation, click on the ![](/images/interactive-whiteboard/ellipses.png) button in the upper right corner and select **Project settings**.
+1. After creation, click on the ![](https://agora-doc.s3.us-east-1.amazonaws.com/images/interactive-whiteboard/ellipses.png) button in the upper right corner and select **Project settings**.
 
-1. Under **IAM and Admin**, select **Service Accounts**. In the service account list, click on the ![](/images/interactive-whiteboard/ellipses.png) button for the account just added, and select **Manage keys**.
+1. Under **IAM and Admin**, select **Service Accounts**. In the service account list, click on the ![](https://agora-doc.s3.us-east-1.amazonaws.com/images/interactive-whiteboard/ellipses.png) button for the account just added, and select **Manage keys**.
 
 1. Click **ADD KEY** > **Create new key**. Select **JSON** in the pop-up box and click **CREATE**. A `json` file is downloaded with the name format `projectId-xxxxxxxx.json`. 
-    ![](/images/interactive-whiteboard/gcp-create-private-key.png)    
+    ![](https://agora-doc.s3.us-east-1.amazonaws.com/images/interactive-whiteboard/gcp-create-private-key.png)    
 
 1. Open the downloaded json file, which looks like the following example:
 

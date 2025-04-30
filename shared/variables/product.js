@@ -144,6 +144,13 @@ const data = {
     SDK: 'Conversational AI SDK',
     AGENT: 'Conversational AI agent',
     PRODUCT: 'Conversational AI Engine',
+  },
+
+  'ten-framework': {
+    NAME: 'TEN Framework',
+    PATH: 'ten-framework',
+    SDK: 'TEN Framework',
+    PRODUCT: 'TEN Framework',
   }
 };
 

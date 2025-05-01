@@ -116,6 +116,7 @@ export const VSDK_LATEST_RELEASE = '4.1.0';
 
 export const AV = 'Audio/Video';
 export const SCR_SHR = 'screen sharing';
+export const RTEE_BEAUTY = 'Advanced Beauty';
 
 export const MESS = 'Signaling';
 export const MESS_SDK = `${MESS} SDK`;

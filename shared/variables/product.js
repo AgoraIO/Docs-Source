@@ -151,6 +151,13 @@ const data = {
     PATH: 'ten-framework',
     SDK: 'TEN Framework',
     PRODUCT: 'TEN Framework',
+  },
+
+  'ten-agent': {
+    NAME: 'TEN Agent',
+    PATH: 'ten-agent',
+    SDK: 'TEN Agent',
+    PRODUCT: 'TEN Agent',
   }
 };
 

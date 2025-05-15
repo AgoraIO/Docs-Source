@@ -1,10 +1,27 @@
 ---
-title: 'Create an extension with a predefined type'
+title: 'Create typed extensions'
 sidebar_position: 2
 type: docs
 description: >
-  Deploy your customized agent by creating a release docker image.
+ Build extensions using predefined base classes for common patterns.
 ---
+
+<Vpd k="NAME" /> provides predefined extension types that simplify development for common use cases. For example, extensions for Gemini and OpenAI share similar implementation patterns but differ in specific details. Instead of building from scratch, you can inherit from base classes that capture these common patterns and implement only the unique functionality you need.
+
+<Vpd k="NAME" /> currently supports the following extension types:
+
+- **AsyncLLMBaseExtension**: For large language model integrations like OpenAI or Gemini
+- **AsyncLLMToolBaseExtension**: For function-calling tools that extend LLM capabilities
+
+## Prerequisites
+
+- Complete [Build your first extension](../develop/create-extension) to understand basic extension concepts
+- Install the base class library in your TEN project:
+
+    ```bash
+    # Run inside Docker container
+    tman install system ten_ai_base@0.1.0
+    ```
 
 ## Extension types
 
@@ -25,41 +42,60 @@ tman install system ten_ai_base@0.1.0
 
 ## Extension behavior
 
-### LLM Extension and LLMTool Extension
+LLM extensions and Tool extensions work together as follows:
 
-Any LLMTool Extension can be connected with an LLM Extension. When the LLMTool is started, it will automatically connect to the LLM Extension.
+1. Tool extensions connect to LLM extensions automatically on startup
+1. When an LLM detects a function call, it delegates to the connected Tool extension
+1. The Tool extension processes the request and returns results to the LLM
+1. The LLM incorporates the tool results into its response
 
-When the LLM Extension detects a Function Call, it will pass the Function Call to the LLMTool Extension for processing. Once the LLMTool Extension has completed the processing, it will return the result to the LLM Extension.
+## Create an LLM extension
 
+### Generate the extension
 
-## LLM Extension
+    ```bash
+    # Run inside Docker container
+    tman install extension default_async_llm_extension_python \
+      --template-mode \
+      --template-data package_name=my_llm_extension \
+      --template-data class_name_prefix=LLMExtension
+    ```
 
-### Creating AsyncLLMBaseExtension using tman
+### Implement required methods
 
-Run the following command,
+Your LLM extension must implement these methods:
 
-```bash
-tman install extension default_async_llm_extension_python --template-mode --template-data package_name=llm_extension --template-data class_name_prefix
-=LLMExtension
-```
+- `on_data_chat_completion(self, ten_env: TenEnv, **kargs: LLMDataCompletionArgs) -> None`
 
-### Abstract APIs to implement
+    - Handles streaming data completion requests
+    - Processes data received via the data protocol
+    - Used for real-time streaming responses
 
-`on_data_chat_completion(self, ten_env: TenEnv, **kargs: LLMDataCompletionArgs) -> None`
+- `on_call_chat_completion(self, ten_env: TenEnv, **kargs: LLMCallCompletionArgs) -> any`
 
-This method is called when the LLM Extension receives a data completion request. It's used when data is passed in via data protocol in streaming mode.
+    - Handles non-streaming completion requests
+    - Processes data received via the call protocol
+    - Returns complete responses
 
-`on_call_chat_completion(self, ten_env: TenEnv, **kargs: LLMCallCompletionArgs) -> any`
+- `on_tools_update(self, ten_env: TenEnv, tool: LLMToolMetadata) -> None`
 
-This method is called when the LLM Extension receives a call completion request. It's used when data is passed in via call protocol in non-streaming mode.
+    - Handles tool registration updates
+    - Maintains available tools list
+    - Called when tools are added or removed
 
-This method is called when the LLM Extension receives a call completion request.
+### Available APIs
 
-`on_tools_update(self, ten_env: TenEnv, tool: LLMToolMetadata) -> None`
+Your LLM extension provides these APIs:
 
-This method is called when the LLM Extension receives a tool update request.
+**Input commands**
 
-### APIs
+- **`cmd_in: tool_register`**  
+ Receives tool registration requests from connected Tool extensions. Accepts an array of `LLMToolMetadata` objects that are automatically added to `self.available_tools`.
+
+**Output commands**
+
+- **`cmd_out: tool_call`**  
+ Sends function call requests to Tool extensions. Connect this to any LLMTool extension to execute tool functions and receive results.
 
 #### `cmd_in: tool_register`
 
@@ -69,34 +105,45 @@ This API is used to consume the tool registration request. An array of LLMToolMe
 
 This API is used to send the tool call request. You can connect this API to any LLMTool extension destination to get the tool call result.
 
-## LLM Tool Extension
+## Create a Tool extension
 
+### Generate the extension
 
-### Creating AsyncLLMToolBaseExtension by using tman
+Run the following command:
 
-Run the following command,
+    ```bash
+    tman install extension default_async_llm_tool_extension_python \
+      --template-mode \
+      --template-data package_name=llm_tool_extension \
+      --template-data class_name_prefix=LLMToolExtension
+    ```
 
-```bash
-tman install extension default_async_llm_tool_extension_python --template-mode --template-data package_name=llm_tool_extension --template-data class_name_prefix
-=LLMToolExtension
-```
+### Implement required methods
 
-### Abstract APIs to implement
+Your Tool extension must implement the following methods:
 
-`get_tool_metadata(self, ten_env: TenEnv) -> list[LLMToolMetadata]`
+- `get_tool_metadata(self, ten_env: TenEnv) -> list[LLMToolMetadata]`
 
-This method is called when the LLM Extension is going to register itself to any connected LLM. It should return a list of LLMToolMetadata.
+    - Defines the tool's capabilities
+    - Returns metadata for LLM registration
+    - Called during initialization
 
-`run_tool(self, ten_env: AsyncTenEnv, name: str, args: dict) -> LLMToolResult`
+- `run_tool(self, ten_env: AsyncTenEnv, name: str, args: dict) -> LLMToolResult`
 
-This method is called when the LLM Extension receives a tool call request. It should execute the tool function and return the result.
+    - Executes the tool's functionality
+    - Processes function call arguments
+    - Returns results to the LLM
 
-### APIs
+### Available APIs
 
-#### `cmd_out: tool_register`
+Your Tool extension provides these APIs:
 
-This API is used to send the tool registration request. An array of LLMToolMetadata returned from `get_tool_metadata` will be sent as output.
+**Output commands**
 
-#### `cmd_in: tool_call`
+- **`cmd_out: tool_register`**  
+ Sends tool metadata to LLM extensions during registration. Automatically transmits the `LLMToolMetadata` array returned by `get_tool_metadata()`.
 
-This API is used to consume the tool call request. The `run_tool` will be executed when the cmd_in is received.
+**Input commands**
+
+- **`cmd_in: tool_call`**  
+ Receives function call requests from LLM extensions. Triggers execution of `run_tool()` with the provided arguments.

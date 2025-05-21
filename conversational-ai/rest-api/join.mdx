@@ -69,11 +69,17 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
     <Parameter name="idle_timeout" type="integer" defaultValue="30" required={false}>
       Sets the timeout after all the users specified in <code>remote_rtc_uids</code> are detected to have left the channel. When the timeout value is exceeded, the agent automatically stops and exits the channel. A value of <code>0</code> means that the agent does not exit until it is stopped manually.
     </Parameter>
-  
-    <Parameter name="agent_rtm_uid" type="string" required={false}>
-      The agent's user ID in the Signaling channel. Only valid when `advanced_features.enable_rtm` is set to `true`.
-    </Parameter>
 
+    <Parameter name="silence_timeout" type="integer" defaultValue="0" possibleValues="0 to 60" required={false}>
+      <Admonition type="info">This field is deprecated; use `parameters.silence_config` instead.</Admonition>
+      Specifies the maximum silent time of the agent, in seconds.
+
+      After the agent is successfully created and the user joins the channel, any period during which the agent is not listening, thinking, or speaking is considered silent time. When the silent time reaches the configured value, the agent broadcasts the silent prompt message specified in `llm.silence_message`, and then restarts the silent time countdown.
+
+      - `0` : Disables the silent prompt feature.
+      - `(0, 60]`: Enables the silent prompt feature. You must also configure `llm.silence_message` to play the prompt message; otherwise, this setting does not take effect.
+    </Parameter>
+ 
     <Parameter name="advanced_features" type="object" required={false}>
       Advanced features configuration.
 
@@ -82,7 +88,10 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
       </Parameter>
 
       <Parameter name="enable_rtm" type="boolean" defaultValue="false" required={false}>
-        Whether to enable the Signaling service. When enabled, the agent can combine the capabilities provided by Signaling to implement advanced functions, such as delivering [custom information](../develop/custom-information).
+        Whether to enable the Signaling (RTM) service. When enabled, the agent can combine the capabilities provided by Signaling to implement advanced functions, such as delivering [custom information](../develop/custom-information).
+        <Admonition type="info">
+        Before enabling the Signaling service, make sure the token includes both RTC and RTM privileges. When an agent joins an RTM channel, it reuses the token specified in the `token` field. For more information, see ["How can I generate a token with both RTC and Signaling privileges?"](/help/integration-issues/rtc_rtm_token).
+        </Admonition>
       </Parameter>
     </Parameter>
 
@@ -131,11 +140,16 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
     </Parameter>
 
     <Parameter name="input_modalities" type="array[string]" defaultValue='["text"]' required={false}>
-      LLM input modalities. Supports `["text"]`, `["text", "image"]`.
+      LLM input modalities: 
+      - `["text"]`: Text only
+      - `["text", "image"]`: Text plus image; requires the selected LLM to support visual input
     </Parameter>
 
     <Parameter name="output_modalities" type="array[string]" defaultValue='["text"]' required={false}>
-      LLM output modalities. Supports <code>["audio"]</code>, <code>["text"]</code>, <code>["text", "audio"]</code>.
+      LLM output modalities: 
+      - `["text"]`: The output text is converted to speech by the TTS module and then published to the RTC channel.
+      - `["audio"]`: Voice only. Voice is published directly to the RTC channel.
+      - `["text", "audio"]`: Text plus voice. Write your own logic to process the output of LLM as needed.
     </Parameter>
 
     <Parameter name="greeting_message" type="string" required={false}>
@@ -144,6 +158,27 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
 
     <Parameter name="failure_message" type="string" required={false}>
       Prompt for agent activation failure. If provided, it is returned through TTS when the custom LLM call fails.
+    </Parameter>
+
+    <Parameter name="silence_message" type="string" defaultValue="" required={false}>
+      <Admonition type="info">This field is deprecated; use `parameters.silence_config` instead.</Admonition>
+      Specifies the silent reminder message. Default is an empty string.
+
+      After the agent is successfully created and the user joins the channel, any period during which the agent is not listening, thinking, or speaking is considered silent time. When the silent time reaches the value set in `silence_timeout`, the agent broadcasts the specified silent reminder message.
+
+      This parameter is ignored if `silence_timeout` is set to `0`.
+    </Parameter>
+
+    <Parameter name="vendor" type="string" required={false}>
+      LLM provider, supports the following settings:
+      - Commercial LLM providers:
+        - `aliyun`: Alibaba Cloud
+        - `bytedance`: ByteDance
+        - `deepseek`: Deep Exploration
+        - `tencent`: Tencent
+      - `custom`: Custom LLM. When you set this option, the agent includes the following fields, in addition to `role` and `content` when making requests to the custom LLM:
+        - `turn_id`: A unique identifier for each conversation turn. It starts from `0` and increments with each turn. One user-agent interaction corresponds to one `turn_id`.
+        - `timestamp`: The request timestamp, in milliseconds.
     </Parameter>
 
     <Parameter name="style" type="string" defaultValue="openai" possibleValues="openai,gemini" required={false}>
@@ -170,6 +205,40 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
       Identification sensitivity determines the level of sound in the audio signal that is considered voice activity. The value range is <code>(0.0, 1.0)</code>. Lower values make it easier for the agent to detect speech, and higher values ignore weak sounds.
     </Parameter>
   </Parameter>
+
+  <Parameter name="turn_detection" type="object" required={false}>
+    Conversation turn detection settings.
+    <Parameter name="interrupt_mode" type="string" defaultValue="interrupt" required={false}>
+      Sets the agent's behavior when human voice interrupts the agent while it is interacting (speaking or thinking). Choose from the following values:
+
+        - `interrupt`: The agent immediately stops the current interaction and processes the human voice input.
+        - `append`: The agent completes the current interaction, then processes the human voice input.
+        - `ignore`: The agent discards the human voice input without processing or storing it in the context.
+    </Parameter>  
+  </Parameter>
+
+  <Parameter name="parameters" type="object" required={false}>
+    Agent configuration parameters.
+    <Parameter name="silence_config" type="object" required={false}>
+      Settings related to agent silence behavior.
+      <Parameter name="timeout_ms" type="integer" possibleValues="0 to 60000" defaultValue="0" required={false}>
+        Specifies the maximum duration (in milliseconds) that the agent can remain silent. 
+        After the agent is successfully created and the user joins the channel, any time during which the agent is not listening, thinking, or speaking is considered silent time. When the silent time reaches the specified value, the agent broadcasts a silent reminder message. This feature is useful for prompting users when they become inactive.
+        - `0`: Disables the silent reminder feature.
+        - `(0, 60000]`: Enables the silent reminder. You must also set `content`; otherwise, the configuration is invalid.
+      </Parameter>
+      <Parameter name="action" type="string" defaultValue="speak" required={false}>
+        Specifies how the agent behaves when the silent timeout is reached. Valid values:
+        - `speak`: Uses the TTS module to announce the silent prompt (`content`).
+        - `think`: Appends the silent prompt (`content`) to the context and passes it to the LLM.
+      </Parameter>
+      <Parameter name="content" type="string" required={false}>
+        Specifies the silent prompt message. The message use depends on the value of `action` parameter.
+      </Parameter>
+
+    </Parameter>
+  </Parameter>
+
 </ParameterList>
 
 ## Response

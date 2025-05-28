@@ -1,0 +1,271 @@
+---
+title: 'Migrate from Real-Time STT 6.x to 7.x'
+sidebar_position: 1
+type: docs
+platform_selector: false
+description: >
+  How to migrate from real-time STT 6.x and 6.x to 7.x.
+---
+
+export const toc = [{}];
+
+This document guides you through migrating from version 6.x of <Vpd k="NAME" /> to the latest version 7.x. The updated architecture delivers improved stability, a simplified API workflow, and enhanced functionality to support a broader range of scenarios.
+
+<Admonition type="info">
+Thoroughly test your implementation during the migration process and prepare a fallback plan. Complete verification in a test environment before deploying it to production.
+</Admonition>
+
+## Version differences and upgrade advantages
+
+### Version history
+
+Version 7.x is the latest recommended release. It offers several key improvements over version 6.x:
+
+- **Simplified API workflow**: Removes the need to obtain a `builderToken` through the `acquire` interface.
+- **Consistent API naming**: Aligns AI product APIs with the Convo AI RESTful API naming conventions.
+- **Extended functionality**: Adds improved language recognition configuration at the UID level.
+- **Standardized URL paths**: Keeps the domain `api.agora.io` and standardizes the path structure.
+
+
+### Major changes
+
+#### API endpoint and method name changes
+
+| 6.x   | 7.x   | Summary |
+|---------|---------|---------|
+| `acquire` | This method has been removed. | The process of obtaining a `builderToken` through the `acquire` interface has been removed in version 7.x. |
+| `start` | `join` | The method for starting an STT task has been renamed to `join`. |
+| `query` | `get` | The method for querying task status has been renamed to `get`. |
+| `stop` | `leave` | Method for stopping a task has been renamed to `leave`. |
+| `update` | `update` | The method name remains unchanged. |
+
+
+#### URL path changes
+
+| API | 6.x URL | 7.x URL |
+|---------|---------|---------|
+| Start task  | `https://api.agora.io/v1/projects/{{appId}}/rtsc/speech-to-text/tasks?builderToken={{tokenName}}`  | `https://api.agora.io/api/speech-to-text/v1/projects/{appid}/join` |
+| Query status  | `https://api.agora.io/v1/projects/{{appId}}/rtsc/speech-to-text/tasks/{{taskId}}?builderToken={{tokenName}}`  | `https://api.agora.io/api/speech-to-text/v1/projects/{appid}/agents/{agent_id}` |
+| Stop task  | `https://api.agora.io/v1/projects/{{appId}}/rtsc/speech-to-text/tasks/{{taskId}}?builderToken={{tokenName}}`  | `https://api.agora.io/api/speech-to-text/v1/projects/{appid}/agents/{agent_id}/leave` |
+| Update configuration | `https://api.agora.io/v1/projects/{{appId}}/rtsc/speech-to-text/tasks/{{taskId}}?builderToken={{tokenName}}`	| `https://api.agora.io/api/speech-to-text/v1/projects/{appid}/agents/{agent_id}/update` |
+
+#### Parameter changes
+
+- Task identifier changes
+    - 6.x: Uses `taskId to` identify tasks
+    - 7.x: Uses `agent_id` to identify tasks
+
+- Authentication method changes
+    - 6.x: Need to call `acquire` to obtain a `builderToken` first. Subsequent requests were passed through URL parameters.
+    - 7.x: Removes the process of obtaining a `builderToken` through the `acquire` interface, simplifying the API call process.
+
+#### Request parameter changes  
+
+- Parameters added to the `join` method (formerly `start`):
+
+    - `name`: Required. A unique task name of up to 64 characters. This parameter is used for task deduplication to ensure that only one speech-to-text task runs in the same channel. To run multiple speech-to-text tasks in a channel, set different `name` values.
+
+#### Other changes
+
+- URL path standardization: Version 7.x uses the same domain name `api.agora.io` but introduces a more standardized path structure, such as `/api/speech-to-text/v1/projects/{appid}/`.
+- HTTP method standardization: The `stop` method now uses `POST` instead of `DELETE` to better comply with RESTful conventions.
+- Return value format: Version 7.x return values include more detailed task status information.
+
+## Migrate to 7.x
+
+This section guides you through the migration process.
+
+### Migration steps
+
+The migration steps are as follows:
+
+#### Update the API call process
+
+In version 5.x, the basic process was as follows:
+
+1. Call `acquire` to get a `builderToken`.
+2. Use the `builderToken` to call `start` and begin the task.
+3. Call `query` to check the task status.
+4. Call `stop` to end the task.
+5. Call `update` to modify the task configuration (optional).
+
+For version 7.x, modify the API call sequence as follows:
+
+1. Call `join` to start the task and get the `agent_id`.
+2. Call `get` to check the task status.
+3. Call `leave` to stop the task.
+4. Call `update` to modify the task configuration (optional).
+
+#### Update the URL and authentication method
+
+1. Remove all calls to `acquire` and the `builderToken` processing logic.
+2. Update the API path from `/v1/projects/{{appId}}/rtsc/speech-to-text/` to `/api/speech-to-text/v1/projects/{appid}/`.
+3. Update the request path and parameters according to the new API specification.
+4. Add the `name` parameter to the `join` request (required). 
+
+#### Update the task identifier
+
+Update all uses of `taskId` in the code to `agent_id` and ensure that subsequent operations use the correct task identifier.
+
+#### Update response processing
+
+Update the response processing logic to adapt to the new return format:
+
+- Successful calls to `join`, `get`, and `update` return an object containing `status`, `create_ts` and `agent_id`.
+- Failed calls to `join`, `get`, and `update` return `reason` and `detail` fields.
+
+### Code comparison
+
+Comparison between 6.x and 7.x code:
+
+#### 6.x 
+
+```js
+// 1. Get builderToken
+const acquireResponse = await fetch(`https://api.agora.io/v1/projects/${appId}/rtsc/speech-to-text/builderTokens`, {
+ method: 'POST',
+ body: JSON.stringify({ "instanceId": "your-instance-id" })
+});
+const { tokenName } = await acquireResponse.json();
+
+// 2. Start task
+const startResponse = await fetch(`https://api.agora.io/v1/projects/${appId}/rtsc/speech-to-text/tasks?builderToken=${tokenName}`, {
+ method: 'POST',
+ body: JSON.stringify({
+   "languages": ["zh-CN"],
+   "rtcConfig": {
+     "channelName": "your-channel",
+     "subBotUid": "123",
+     "subBotToken": "your-sub-token",
+     "pubBotUid": "456",
+     "pubBotToken": "your-pub-token"
+   }
+ })
+});
+const { taskId } = await startResponse.json();
+
+// 3. Query task status
+const queryResponse = await fetch(`https://api.agora.io/v1/projects/${appId}/rtsc/speech-to-text/tasks/${taskId}?builderToken=${tokenName}`, {
+ method: 'GET'
+});
+const status = await queryResponse.json();
+
+// 4. Stop task
+await fetch(`https://api.agora.io/v1/projects/${appId}/rtsc/speech-to-text/tasks/${taskId}?builderToken=${tokenName}`, {
+ method: 'DELETE'
+});
+```
+
+#### 7.x code
+
+```js
+// 1. Start task
+const joinResponse = await fetch(`https://api.agora.io/api/speech-to-text/v1/projects/${appId}/join`, {
+ method: 'POST',
+ headers: headers,
+ body: JSON.stringify({
+   "name": "my-stt-task",  // New parameter, required
+   "languages": ["zh-CN"],
+   "rtcConfig": {
+     "channelName": "your-channel",
+     "subBotUid": "123",
+     "subBotToken": "your-sub-token",
+     "pubBotUid": "456",
+     "pubBotToken": "your-pub-token",
+     "subscribeAudioUids": ["789"]  // New parameter, optional
+   }
+ })
+});
+
+// Error handling
+if (!joinResponse.ok) {
+ const errorData = await joinResponse.json();
+ console.error('Task start failed:', errorData);
+ throw new Error(`Task start failed: ${errorData.message || joinResponse.status}`);
+}
+
+const { agent_id } = await joinResponse.json();
+
+// 2. Query task status
+const getResponse = await fetch(`https://api.agora.io/api/speech-to-text/v1/projects/${appId}/agents/${agent_id}`, {
+ method: 'GET',
+ headers: headers
+});
+
+// Task status parsing and handling
+if (getResponse.ok) {
+ const status = await getResponse.json();
+ console.log('Task status:', status.status);
+} else {
+ console.error('Failed to get task status:', await getResponse.json());
+}
+
+// 3. Stop task
+const leaveResponse = await fetch(`https://api.agora.io/api/speech-to-text/v1/projects/${appId}/agents/${agent_id}/leave`, {
+ method: 'POST',  // Note: POST in 7.x instead of DELETE
+ headers: headers
+});
+
+if (!leaveResponse.ok) {
+ console.error('Task stop failed:', await leaveResponse.json());
+}
+```
+
+### Migration checklist
+
+- Remove all code related to the `acquire` method.
+- Update all API calls to use the latest URLs.
+- Replace `start` with `join`.
+- Replace `query` with `get` .
+- Replace `stop` with `leave` and change the HTTP method from `DELETE` to `POST`.
+- Update the task identifier from `taskId` to `agent_id`.
+- Update request parameters, add the `name` field required for start
+- Update the response-handling logic.
+- Add error-handling mechanisms.
+- Test all updated API calls.
+- Prepare a fallback plan.
+
+### Troubleshooting
+If you encounter problems during the migration process, refer to the following table:
+
+| Error description             | Possible cause    | Recommended action        |
+|-------------|---------------|----------------|
+| Authentication failed        | Missing or incorrect authentication header or incorrect parameters.   | Check that the auth configuration is correct and that the app ID is enabled for the new service. |
+| Task cannot be started       | Incorrect request parameter format.  | Verify the parameter format against the documentation; ensure `languages` is an array. |
+| Task status cannot be queried| Incorrect `agent_id` or the task has already ended.     | Use the correct `agent_id` returned by the `join` interface.     |
+| Audio subscription issues | Subscription config doesn't match UID in the channel.   | Check that `subscribeAudioUids` matches actual UIDs in the channel.       |
+| Recognition result problem   | Incorrect language configuration.  | Ensure that the `languages` array includes a valid language code, such as `["en-US"]`    |
+
+## FAQs
+
+#### Is version 7.x compatible with version 6.x?
+No, version 7.x is not compatible with version 6.x. Version 7.x refactored the API to provide more stable services, simplified API processes, and added new features such as language identification at the UID level. Code migration is required following this guide.
+
+#### Do I need to keep the logic to obtain a `builderToken` from version 6.x?
+No. Version 7.x removes the process of obtaining `builderToken` through the acquire interface, and this parameter is no longer required for API calls.
+
+#### Does version 7.x support string-type UIDs?
+String-type UIDs are not supported. The current version still uses integer-type UIDs, but they are passed as strings in the API for future compatibility.
+
+#### Are there any changes to the task status field?
+The status field values remain the same, but the API method and response format for obtaining task status have changed.
+
+#### Do I need to update call frequency or limits?
+Basic call rates and limits remain the same. Refer to the latest documentation for detailed limit specifications.
+
+#### Are there changes to error codes returned by API requests?
+Yes, version 7.x has standardized error codes. See [Update response processing](#update-response-processing) for details.
+
+#### How can I verify that the new API works correctly after migration?
+Follow these steps to validate functionality after migration:
+1. Start a task and obtain the `agent_id`
+2. Query the task status to confirm it is running properly
+3. Conduct speech recognition tests and compare recognition results
+4. Test task stopping and configuration update functions
+
+#### How can I ensure smooth migration?
+Use the following approach to ensure smooth migration:
+- Complete migration and testing in a staging environment
+- Prepare a fallback plan and temporarily maintain the old version code
+- Use a phased rollout, starting with non-critical services
+- Monitor the new API's performance and error rate before full deployment

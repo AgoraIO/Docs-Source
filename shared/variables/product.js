@@ -151,6 +151,8 @@ const data = {
     PATH: 'ten-framework',
     SDK: 'TEN Framework',
     PRODUCT: 'TEN Framework',
+    MANAGER: 'TEN Manager',
+    DESIGNER: 'TEN Designer',
   },
 
   'ten-agent': {
@@ -158,6 +160,8 @@ const data = {
     PATH: 'ten-agent',
     SDK: 'TEN Agent',
     PRODUCT: 'TEN Agent',
+    MANAGER: 'TEN Manager',
+    DESIGNER: 'TEN Designer',
   }
 };
 

@@ -61,7 +61,7 @@ Before recording, call the [`acquire`](../reference/restful-api#acquire) method 
 
 To enable individual recording mode, set `mode` to `individual` when calling [`start`](../reference/restful-api#start). Use `recordingConfig` to configure individual recording, and use `storageConfig` to configure your third-party cloud storage.
 
-Agora recommends that you use the standard mode when you start recording, that is, set the `streamMode` field in the `recordingConfig` parameterto `standard` to generate combined audio and video files that can be played directly.
+Agora recommends that you use the standard mode when you start recording, that is, set the `streamMode` field in the `recordingConfig` parameter to `standard` to generate combined audio and video files that can be played directly.
 
 In individual recording mode, you can configure the following parameters in `clientRequest`:
 

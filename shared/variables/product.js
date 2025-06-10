@@ -144,7 +144,13 @@ const data = {
     SDK: 'Conversational AI SDK',
     AGENT: 'Conversational AI agent',
     PRODUCT: 'Conversational AI Engine',
-  }
+  },
+  'pstn-gateway': {
+    NAME: 'PSTN and SIP Gateway',
+    PATH: 'pstn-gateway',
+    SDK: 'PSTN and SIP Gateway',
+    PRODUCT: 'PSTN and SIP Gateway',
+  },
 };
 
 export default data;

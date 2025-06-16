@@ -47,8 +47,6 @@ Configure ABR encoding in stream configuration templates using the `settings.tra
 
 ### Request example
 
-### Example request
-
 The following example creates a transcoding template with ABR encoding. It configures a main stream (1080p) and four additional layers with decreasing quality:
 
 ```bash
@@ -209,3 +207,161 @@ The `transcoding.video.simulcastStreamLayers` array shows the active ABR layers 
     }
 }
 ```
+
+## Subscriber-side ABR stream
+
+This section explains how to implement ABR streaming on the subscriber side using Agora Native and Web SDKs. ABR automatically adjusts video quality based on network conditions to ensure smooth playback.
+
+### Integration guidelines
+
+The following <Vg k="VSDK" /> versions include the necessary ABR APIs and optimizations. Using the recommended versions ensures access to the latest performance improvements and bug fixes.
+
+- **Web SDK**:  
+    - **Minimum version**: 4.22.1 or later
+    - **Recommended**: Use the latest SDK from the [official website](https://docs.agora.io/en/sdks)
+    - **Note**: To use the latest Agora Web FLS Player, contact [technical support](mailto:support@agora.io)
+
+- **Native SDK**:  
+    - **Minimum version**: 4.3.2 or later
+    - **Recommended**: Use the latest SDK from the [official website](https://docs.agora.io/en/sdks)
+
+### Stream quality levels
+
+ABR uses multiple quality layers to adapt to different network conditions. The table below shows how RTMPG layer IDs correspond to SDK-specific stream types:
+
+| RTMPG Layer ID | Native SDK (`VideoStreamType`) | Web SDK (`RemoteStreamType`) |
+|----------------|-------------------------------|-------------------------------|
+| 1              | `VIDEO_STREAM_LAYER_1`         | `HIGH_STREAM_LAYER1`          |
+| 2              | `VIDEO_STREAM_LAYER_2`         | `HIGH_STREAM_LAYER2`          |
+| 3              | `VIDEO_STREAM_LAYER_3`         | `HIGH_STREAM_LAYER3`          |
+| 4              | `VIDEO_STREAM_LAYER_4`         | `HIGH_STREAM_LAYER4`          |
+| 5              | `VIDEO_STREAM_LAYER_5`         | `HIGH_STREAM_LAYER5`          |
+| 6              | `VIDEO_STREAM_LAYER_6`         | `HIGH_STREAM_LAYER6`          |
+| 7              | `VIDEO_STREAM_LOW`             | `LOW_STREAM`                  |
+| Push streaming | `VIDEO_STREAM_HIGH`            | `HIGH_STREAM`                 |
+
+### Native SDK: Subscriber-side APIs
+
+These APIs enable you manage how video streams are handled under varying network conditions.
+
+#### Configure remote subscriber fallback
+
+- **API**: `setRemoteSubscribeFallbackOption(StreamFallbackOptions option)`
+- **Description**: Sets the fallback option for subscribed audio and video streams under poor network conditions. In suboptimal network environments, real-time audio and video quality may degrade. Use this method to set a `StreamFallbackOptions` value. When the downlink network is weak and the quality is severely affected, the SDK automatically reduces the video stream to a lower layer to maintain smooth playback. The SDK continuously monitors the network and restores the higher layer when conditions improve.
+
+    Specify the minimum acceptable fallback level:
+
+    - To fall back to a lower video stream, use `STREAM_FALLBACK_OPTION_VIDEO_STREAM_LOW`.
+    - To fall back to audio only, use `STREAM_FALLBACK_OPTION_AUDIO_ONLY`.
+
+- **Enum: `StreamFallbackOptions`**
+
+    ```ts
+    enum StreamFallbackOptions {
+        STREAM_FALLBACK_OPTION_DISABLED,
+        STREAM_FALLBACK_OPTION_VIDEO_STREAM_LOW,
+        STREAM_FALLBACK_OPTION_AUDIO_ONLY,
+        STREAM_FALLBACK_OPTION_VIDEO_STREAM_LAYER_1,
+        STREAM_FALLBACK_OPTION_VIDEO_STREAM_LAYER_2,
+        STREAM_FALLBACK_OPTION_VIDEO_STREAM_LAYER_3,
+        STREAM_FALLBACK_OPTION_VIDEO_STREAM_LAYER_4,
+        STREAM_FALLBACK_OPTION_VIDEO_STREAM_LAYER_5,
+        STREAM_FALLBACK_OPTION_VIDEO_STREAM_LAYER_6
+    }
+    ```
+
+#### Manual stream selection
+
+- **API**: `setRemoteVideoStreamType(int uid, VideoStreamType streamType)`  
+- **Description**: Sets the specified video stream type for subscription
+
+#### Set the default stream type
+
+- **API**: `setRemoteDefaultVideoStreamType(VideoStreamType streamType)`  
+- **Description**: Sets the default video stream type for subscription
+- **Enum: `VideoStreamType`**
+
+    ```ts
+    enum VideoStreamType {
+        VIDEO_STREAM_HIGH,
+        VIDEO_STREAM_LOW,
+        VIDEO_STREAM_LAYER_1,
+        VIDEO_STREAM_LAYER_2,
+        VIDEO_STREAM_LAYER_3,
+        VIDEO_STREAM_LAYER_4,
+        VIDEO_STREAM_LAYER_5,
+        VIDEO_STREAM_LAYER_6;
+    }
+    ```
+
+### Web SDK: Subscriber-side APIs
+
+These APIs enables subscribers to control stream behavior and optimize performance based on network conditions.
+
+#### Enable bandwidth estimation
+
+- **API**: `.setParameter("ENABLE_AUT_CC", true);`
+- **Description**: AUT-CC is a server-side Bandwidth Estimation (BWE) mechanism that relies on packet loss. Its main inputs include the number of packets, packet size, feedback on packet loss, and the timing of that feedback. The output is the currently available bandwidth.
+
+#### Configure remote subscriber fallback
+
+- **API**: `setStreamFallbackOption(uid: UID, fallbackType: RemoteStreamFallbackType): Promise<void>`
+- **Description**: Enable automatic switching, the subscriber side adapts to the network conditions.
+
+- **Example**:
+
+    ```js
+    // the range supports up to LOW_STREAM
+    client.setStreamFallbackOption(uid, 1); 
+    ```
+
+#### Manual stream selection
+
+- **API**: `setRemoteVideoStreamType(uid: UID, streamType: RemoteStreamType): Promise<void>`
+- **Description**: Manual switching, set the specified video stream type for subscription.
+- **Example**:
+
+    ```js
+    client.setRemoteVideoStreamType(uid, 0); // HIGH_STREAM = 0
+    ```
+
+- **Enum: `VideoStreamType`**
+
+    ```js
+    enum VideoStreamType {
+        HIGH_STREAM,
+        LOW_STREAM,
+        HIGH_STREAM_LAYER1,
+        HIGH_STREAM_LAYER2,
+        HIGH_STREAM_LAYER3,
+        HIGH_STREAM_LAYER4,
+        HIGH_STREAM_LAYER5,
+        HIGH_STREAM_LAYER6;
+    }
+    ```
+
+For manual switching, consider the network conditions. The following example shows how to obtain the network status：
+
+    ```js
+    const NetworkQualityDesc = [
+            "Unknown",
+            "Excellent",
+            "Good",
+            "Poor",
+            "Bad",
+            "Very Bad",
+            "Down",
+    ];
+    client.on("network-quality", (quality) => {
+            uplinkQuality = NetworkQualityDesc[quality.uplinkNetworkQuality];
+            downlinkQuality = NetworkQualityDesc[quality.downlinkNetworkQuality];
+            console.log(uplinkQuality, downlinkQuality);
+    });
+    ```
+
+#### Set the default stream type
+
+- **API**: `setRemoteDefaultVideoStreamType(streamType: RemoteStreamType): Promise<void>`
+- **Description**: Set the default video stream type for subscription
+
+

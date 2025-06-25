@@ -16,29 +16,22 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
-  StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
 } from 'react-native';
-
 import {
   createAgoraRtmClient,
   RtmConfig,
-  MessageEvent,
   RTM_AREA_CODE,
+  RTMProvider,
+  useRtm,
+  useLogin,
+  MessageEvent,
   RTM_CHANNEL_TYPE,
-  RTMClient,
-  RTM_LINK_STATE,
   RTM_MESSAGE_TYPE,
+  useRtmEvent,
 } from 'agora-react-native-rtm';
-
-// Message data structure
-interface ChatMessage {
-  id: number;
-  text: string;
-  sender: string;
-  timestamp?: number;
-}
 
 // Configuration constants
 const APP_ID = 'YOUR_APP_ID';
@@ -46,114 +39,69 @@ const CHANNEL_ID = 'TYPE_CHANNEL_ID';
 const TOKEN = 'AUTH_TOKEN'; // You can use the token builder app to generate a token
 const USER_ID = 'A_UNIQUE_UID';
 
-export default function Signaling(): React.JSX.Element {
-  // Refs to hold the signaling engine instance and the FlatList
-  const engineRef = useRef<RTMClient | null>(null);
+interface ChatMessage {
+  id: number;
+  text: string;
+  sender: string;
+  timestamp?: number;
+}
+
+export default function SignalingEngine() {
+  const client = createAgoraRtmClient(
+    new RtmConfig({
+      userId: USER_ID,
+      appId: APP_ID,
+      useStringUserId: true,
+      areaCode: RTM_AREA_CODE.RTM_AREA_CODE_AS,
+    })
+  );
+
+  return (
+    <RTMProvider client={client}>
+      <Signaling />
+    </RTMProvider>
+  );
+}
+
+function Signaling() {
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
-
-  // State management
-  const [uid, setUid] = useState<string>('');
-  const [message, setMessage] = useState<string>('');
+  const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [engineReady, setEngineReady] = useState<boolean>(false);
 
-  useEffect(() => {
-    const init = async () => {
-      if (!APP_ID) {
-        console.warn('Please provide a valid APP_ID');
-        return;
-      }
+  const engine = useRtm();
+  useLogin(engine, { token: TOKEN });
 
-      // Initialize the Signaling client
-      engineRef.current = createAgoraRtmClient(
-        new RtmConfig({
-          userId: USER_ID,
-          appId: APP_ID,
-          useStringUserId: true,
-          areaCode: RTM_AREA_CODE.RTM_AREA_CODE_AS,
-        })
-      );
+  useRtmEvent(engine, 'message', (evt) => {
+    const msg = new MessageEvent(evt);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        text: msg.message ?? '',
+        sender: msg.publisher || 'remote',
+        timestamp: msg.timestamp,
+      },
+    ]);
+  });
 
-      setEngineReady(true);
+  useRtmEvent(engine, 'linkState', (eventData) => {
+    console.log('Link state changed:', eventData);
+  });
 
-      // Listen to messages received via Signaling channel
-      engineRef.current.addEventListener('message', (evt) => {
-        const messageEvent = new MessageEvent(evt);
-
-        setMessages(prev => [
-          ...prev,
-          {
-            id: Date.now(),
-            text: messageEvent.message ?? '',
-            sender: messageEvent.publisher || 'remote',
-            timestamp: messageEvent.timestamp,
-          },
-        ]);
-      });
-
-      // Listen to Signaling link state changes
-      engineRef.current.addEventListener('linkState', (eventData) => {
-        if (eventData.currentState === RTM_LINK_STATE.RTM_LINK_STATE_CONNECTED) {
-          console.log('[Signaling] Connected to channel:', CHANNEL_ID);
-          setIsLoggedIn(true);
-        } else if (
-          eventData.currentState === RTM_LINK_STATE.RTM_LINK_STATE_DISCONNECTED ||
-          eventData.currentState === RTM_LINK_STATE.RTM_LINK_STATE_FAILED ||
-          eventData.currentState === RTM_LINK_STATE.RTM_LINK_STATE_SUSPENDED
-        ) {
-          console.log('[Signaling] Disconnected from channel:', CHANNEL_ID);
-          setIsLoggedIn(false);
-        } else {
-            const statusMessage = \`Link state changed: \${eventData.previousState} → \${\eventData.currentState} at \${new Date().toLocaleTimeString()}.\nReason: \${\eventData.reason || 'N/A'}\`;
-            console.log('[Signaling] LinkStateChanged:', statusMessage);
-        }
-      });
-    };
-
-    init();
-
-    // Logout function on component unmount
-    return () => {
-      const logout = async () => {
-        if (engineRef.current) {
-          engineRef.current.removeAllListeners();
-          await unSubscribe(); // Unsubscribe from the channel
-          await engineRef.current.logout(); // Logout from Signaling
-          await engineRef.current.release();
-        }
-      };
-      logout();
-    };
-  }, []);
-
-  // Handles login to Signaling network with provided UID
-  const handleLogin = async () => {
-    if (!uid.trim()) {
-      return;
-    }
-    try {
-      const result = await engineRef.current?.login({ token: TOKEN });
-      console.log('Login result:', result);
-      setIsLoggedIn(true);
-      await subscribe(); // Subscribe to channel messages
-    } catch (err) {
-      console.warn('Login error:', err);
-    }
-  };
-
-  // Sends a message through the Signaling channel
   const sendMessage = async () => {
-    if (!message.trim()) {
+    if (!message.trim())
+    {
       return;
     }
+
+    // Subscribe to the channel before sending a message
+    await subscribe();
+
     try {
-      await engineRef.current?.publish(CHANNEL_ID, message, {
+      await engine.publish(CHANNEL_ID, message, {
         channelType: RTM_CHANNEL_TYPE.RTM_CHANNEL_TYPE_MESSAGE,
         messageType: RTM_MESSAGE_TYPE.RTM_MESSAGE_TYPE_STRING,
       });
-
-      // Append sent message to local chat view
       setMessages((prev) => [
         ...prev,
         { id: Date.now(), text: message, sender: 'local' },
@@ -167,60 +115,28 @@ export default function Signaling(): React.JSX.Element {
   // Subscribes to messages from the Signaling channel
   const subscribe = async () => {
     try {
-      await engineRef.current?.subscribe(CHANNEL_ID, { withMessage: true });
+      await engine.subscribe(CHANNEL_ID, { withMessage: true });
     } catch (err) {
       console.warn('Subscribe error:', err);
     }
   };
 
-  // Unsubscribes from the Signaling channel
-  const unSubscribe = async () => {
-    try {
-      await engineRef.current?.unsubscribe(CHANNEL_ID);
-    } catch (err) {
-      console.warn('Unsubscribe error:', err);
-    }
+  const unsubscribe = async () => {
+    engine.unsubscribe(CHANNEL_ID).then(() => {
+      console.log('Subscribed to: ', CHANNEL_ID);
+    }).catch((err) => {
+      console.error('Unsubscribe error:', err);
+    });
   };
 
-  // Renders a single chat message
-  const renderItem = ({ item }: { item: ChatMessage }) => (
-    <View
-      style={[
-        styles.messageBubble,
-        item.sender === 'local' ? styles.localBubble : styles.remoteBubble,
-      ]}
-    >
-      <Text style={styles.messageText}>{item.text}</Text>
-    </View>
-  );
+  useEffect(() => {
+    return () => {
+      unsubscribe();
+      engine.logout();
+      engine.release();
+    };
+  }, []);
 
-  // UI: Login screen if not connected to Signaling yet
-  if (!isLoggedIn) {
-    return (
-      <View style={styles.loginContainer}>
-        <View style={styles.loginBox}>
-          <TextInput
-            style={styles.loginInput}
-            placeholder="Enter your UID"
-            value={uid}
-            onChangeText={setUid}
-          />
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              { backgroundColor: engineReady ? '#007AFF' : '#ccc' },
-            ]}
-            onPress={handleLogin}
-            disabled={!engineReady}
-          >
-            <Text style={styles.sendButtonText}>Login</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  // UI: Chat interface once logged into Signaling
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -230,7 +146,18 @@ export default function Signaling(): React.JSX.Element {
       <FlatList
         ref={flatListRef}
         data={messages}
-        renderItem={renderItem}
+        renderItem={({ item }) => (
+          <View
+            style={[
+              styles.messageBubble,
+              item.sender === 'local'
+                ? styles.localBubble
+                : styles.remoteBubble,
+            ]}
+          >
+            <Text style={styles.messageText}>{item.text}</Text>
+          </View>
+        )}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.messageList}
         onContentSizeChange={() =>
@@ -254,113 +181,78 @@ export default function Signaling(): React.JSX.Element {
       </View>
     </KeyboardAvoidingView>
   );
-}`}
-</CodeBlock>
-</details>
+}
 
-Follow the implementation steps to understand the core API calls in the sample code or use the snippets in your own code.
- 
-### Import Agora modules
-
-To use <Vg k="SIG" /> APIs in your project, import the relevant Agora modules:
-
-<CodeBlock language="tsx" showLineNumbers>
-{`import {
-  createAgoraRtmClient,
-  RtmConfig,
-  MessageEvent,
-  RTM_AREA_CODE,
-  RTM_CHANNEL_TYPE,
-  RTMClient,
-  RTM_LINK_STATE,
-  RTM_MESSAGE_TYPE,
-} from 'agora-react-native-rtm';`}
-</CodeBlock>
-
-### Add the required variables
-
-1. Add the following state variables to your code:
-
-   ```tsx
-   // Reference to hold the Signaling engine instance
-   const engineRef = useRef<RTMClient | null>(null);
-
-   // State variable to manage the user ID
-   const [uid, setUid] = useState<string>('');
-   ```
-
-2. Add the following constants to configure authentication and log in to <Vg k="SIG" />:
-
-   ```tsx
-   // Configuration constants
-   const APP_ID = 'YOUR_APP_ID';
-   const CHANNEL_ID = 'YOUR_CHANNEL_ID';
-   const TOKEN = 'AUTH_TOKEN'; // Use the Token Builder app to generate a token
-   const USER_ID = 'A_UNIQUE_UID';
-   ```
-
-### Initialize the <Vpd k="PRODUCT"/> engine
-
-Before calling any other <Vg k="SIG" /> SDK API, initialize an `RTMClient` object instance.
-
-<CodeBlock language="tsx" showLineNumbers>
-{`// Initialize the Signaling client
-engineRef.current = createAgoraRtmClient(
-    new RtmConfig({
-        userId: USER_ID,
-        appId: APP_ID,
-        useStringUserId: true,
-        areaCode: RTM_AREA_CODE.RTM_AREA_CODE_AS,
-    })
-);`}
-</CodeBlock>
-
-### Add an event listener
-
-The event listener enables you to implement the processing logic in response to <Vg k="SIG" /> events. Use the following code to handle event notifications or display received messages:
-
-<CodeBlock language="tsx" showLineNumbers>
-{` // Listen to messages received via Signaling channel
-engineRef.current.addEventListener('message', (evt) => {
-    const messageEvent = new MessageEvent(evt);
-    console.log('[You] received a message:', messageEvent.message);
-});
-// Listen to Signaling link state changes
-engineRef.current.addEventListener('linkState', (eventData) => {
-    if (eventData.currentState === RTM_LINK_STATE.RTM_LINK_STATE_CONNECTED) {
-        console.log('[Signaling] Connected to channel:', CHANNEL_ID);
-    } else if (
-        eventData.currentState === RTM_LINK_STATE.RTM_LINK_STATE_DISCONNECTED ||
-        eventData.currentState === RTM_LINK_STATE.RTM_LINK_STATE_FAILED ||
-        eventData.currentState === RTM_LINK_STATE.RTM_LINK_STATE_SUSPENDED
-    ) {
-        console.log('[Signaling] Disconnected from channel:', CHANNEL_ID);
-    } else {
-        const statusMessage =\`Link state changed: \${eventData.previousState} → \${eventData.currentState} at \${new Date().toLocaleTimeString()}.Reason: \${eventData.reason || 'N/A'}\`;
-        console.log('[Signaling] LinkStateChanged:', statusMessage);
-    }
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f4f4f4' },
+  messageList: { padding: 10 },
+  inputRow: {
+    flexDirection: 'row',
+    padding: 10,
+    borderTopWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  input: {
+    flex: 1,
+    backgroundColor: '#eee',
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  sendButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#007AFF',
+  },
+  sendButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  messageBubble: {
+    padding: 10,
+    borderRadius: 15,
+    marginVertical: 4,
+    maxWidth: '75%',
+  },
+  localBubble: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#DCF8C6',
+  },
+  remoteBubble: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  messageText: {
+    fontSize: 16,
+  },
+  loginContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 20,
+  },
+  loginInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    marginBottom: 15,
+    backgroundColor: '#fff',
+  },
 });`}
 </CodeBlock>
-
-### Log in to Signaling
-
-To connect to <Vg k="SIG" /> and access <Vg k="SIG" /> network resources, such as sending messages, and subscribing to channels, call `login`.
-
-During a login operation, the client attempts to establish a connection with <Vg k="SIG" />. Once the connection is established, the client transmits heartbeat information to the <Vg k="SIG" /> server at fixed intervals to keep the client active until the client actively logs out or is disconnected. The connection is interrupted when timeout occurs. During this period, users may freely access the <Vg k="SIG" /> network resources subject to their own permissions and usage restrictions.
-
-<CodeBlock language="tsx" showLineNumbers>
-{`// Handles login to Signaling network with provided UID
-const handleLogin = async () => {
-    try {
-      const result = await engineRef.current?.login({ token: TOKEN });
-      console.log('Login result:', result);
-      await subscribe(); // Subscribe to channel messages
-    } catch (err) {
-      console.warn('Login error:', err);
-    }
-};`}
-</CodeBlock>
-
+</details>
 
 To confirm that login is successful, use the `login` return value, or listen to the `linkState` event notification which provides the error code and reason for the login failure. When performing a login operation, the client's network connection state is `CONNECTING`. After a successful login, the state is updated to `CONNECTED`. 
 
@@ -372,20 +264,100 @@ To continuously monitor the network connection state of the client, best practic
 After a user successfully logs into <Vg k="SIG"/>, the application's PCU increases, which affects your billing data.
 </Admonition>
 
+### Import Agora modules
+
+To use <Vg k="SIG"/> APIs in your project, import the relevant Agora classes and interfaces:
+
+```tsx
+import {
+  createAgoraRtmClient,
+  RtmConfig,
+  RTM_AREA_CODE,
+  RTMProvider,
+  useRtm,
+  useLogin,
+  MessageEvent,
+  RTM_CHANNEL_TYPE,
+  RTM_MESSAGE_TYPE,
+  useRtmEvent,
+} from 'agora-react-native-rtm';
+```
+
+### Initialize the Signaling engine
+
+To initialize the <Vg k="SIG" /> SDK, create an instance with `createAgoraRtmClient`. Then, pass this instance to the `RTMProvider` so that child components can access it using the `useRtm` hook.
+
+```tsx
+export default function SignalingEngine() {
+  const client = createAgoraRtmClient(
+    new RtmConfig({
+      userId: '<Add your UID here>',
+      appId: '<Add your APP ID from Agora console>',
+      useStringUserId: true,
+    })
+  );
+
+  return (
+    <RTMProvider client={client}>
+      <Signaling />
+    </RTMProvider>
+  );
+}
+```
+
+### Add event listeners
+
+The event listeners enable you to implement the processing logic in response to Signaling events. Use the following code to handle event notifications or display received messages:
+
+```tsx
+// Get the SDK instance
+const engine = useRtm();
+
+useRtmEvent(engine, 'message', (evt) => {
+  const msg = new MessageEvent(evt);
+  setMessages((prev) => [
+    ...prev,
+    {
+      id: Date.now(),
+      text: msg.message ?? '',
+      sender: msg.publisher || 'remote',
+      timestamp: msg.timestamp,
+    },
+  ]);
+});
+
+useRtmEvent(engine, 'linkState', (eventData) => {
+  console.log('Link state changed:', eventData);
+});
+```
+
+### Log in to <Vg k="SIG"/>
+
+To connect to <Vg k="SIG"/> and access <Vg k="SIG"/> network resources, such as sending messages, and subscribing to channels, use the `useLogin` hook.
+
+During a login operation, the client attempts to establish a connection with <Vg k="SIG"/>. Once the connection is established, the client transmits heartbeat information to the <Vg k="SIG"/> server at fixed intervals to keep the client active until the client actively logs out or is disconnected. The connection is interrupted when timeout occurs. During this period, users may freely access the <Vg k="SIG"/> network resources subject to their own permissions and usage restrictions.
+
+```tsx
+useLogin(engine, { token: TOKEN });
+```
+
 ### Publish a message
 
 To distribute a message to all subscribers of a message channel, call `publish`. The following code sends a string type message.
 
 <CodeBlock language="tsx" showLineNumbers>
 {`const sendMessage = async () => {
-    try {
-      await engineRef.current?.publish(CHANNEL_ID, message, {
-        channelType: RTM_CHANNEL_TYPE.RTM_CHANNEL_TYPE_MESSAGE,
-        messageType: RTM_MESSAGE_TYPE.RTM_MESSAGE_TYPE_STRING,
-      });
-    } catch (err) {
-      console.warn('Send error:', err);
-    }
+  // Subscribes to messages from the Signaling channel
+  await subscribe();
+  // Send a message
+  try {
+    await engine.publish(CHANNEL_ID, message, {
+      channelType: RTM_CHANNEL_TYPE.RTM_CHANNEL_TYPE_MESSAGE,
+      messageType: RTM_MESSAGE_TYPE.RTM_MESSAGE_TYPE_STRING,
+    });
+  } catch (err) {
+    console.warn('Send error:', err);
+  }
 };`}
 </CodeBlock>
 
@@ -400,11 +372,11 @@ To subscribe to a channel, call `subscribe`. When you subscribe to a channel, yo
 <CodeBlock language="tsx" showLineNumbers>
 {`// Subscribes to messages from the Signaling channel
 const subscribe = async () => {
-    try {
-      await engineRef.current?.subscribe(CHANNEL_ID, { withMessage: true });
-    } catch (err) {
-      console.warn('Subscribe error:', err);
-    }
+  try {
+    await engine.subscribe(CHANNEL_ID, { withMessage: true });
+  } catch (err) {
+    console.warn('Subscribe error:', err);
+  }
 };`}
 </CodeBlock>
 
@@ -414,7 +386,7 @@ When you no longer need to receive messages from a channel, call `unsubscribe` t
 {`// Unsubscribes from the Signaling channel
 const unSubscribe = async () => {
     try {
-      await engineRef.current?.unsubscribe(CHANNEL_ID);
+      await engine.unsubscribe(CHANNEL_ID);
     } catch (err) {
       console.warn('Unsubscribe error:', err);
     }
@@ -428,13 +400,13 @@ For more information about subscribing and sending messages, see [Message channe
 When a user no longer needs to use <Vg k="SIG" />, call `logout`. Logging out means closing the connection between the client and <Vg k="SIG" />. The user is automatically logged out or unsubscribed from all message and stream channels. Other users in the channel receive an `onPresenceEvent` notification of the user leaving the channel.
 
 <CodeBlock language="tsx" showLineNumbers>
-{`const logout = async () => {
-    if (engineRef.current) {
-        engineRef.current.removeAllListeners();
-        await engineRef.current.logout(); // Logout from Signaling
-        await engineRef.current.release();
-    }
-};`}
+{`useEffect(() => {
+  return () => {
+    unsubscribe();
+    engine.logout();
+    engine.release();
+  };
+}, []);`}
 </CodeBlock>
 
 

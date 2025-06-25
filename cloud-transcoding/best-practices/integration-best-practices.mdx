@@ -1,0 +1,95 @@
+---
+title: "Check cloud transcoding service status"
+sidebar_position: 1
+type: docs
+platform_selector: false
+description: >
+   Check cloud transcoder startup and running status.
+---
+
+This article explains how to check whether the transcoding service has started and is running properly.
+
+## Check service startup status
+
+Follow these steps to verify that the transcoding service has started successfully:
+
+### 1. Verify the timing of `Acquire` and `Create` requests
+
+Ensure that you send a [`Create`](/cloud-transcoding/reference/rest-api/create-transcoding-task) request within 2 seconds of each [`Acquire`](/cloud-transcoding/reference/rest-api/fetch-a-token) request. This ensures proper use of the `builderToken`.
+
+<Admonition type="info" info="info">
+If you acquire `builderToken`s in bulk and send `Create` requests in batches, the requests may fail.
+</Admonition>
+
+### 2. Check the `Create` request response
+
+A successful `Create` request returns an HTTP status code of `200`. If the status code is not `200`, handle it based on the returned code:
+
+* **`206` (Partial Success):** Request timed out. Use a backoff strategy before retrying:
+
+  * Wait 3 seconds, then retry
+  * Wait 6 seconds, then retry again
+  * Wait 9 seconds, then retry a third time
+    If all retries fail, generate a new UID, call `Acquire` again to get a new `builderToken`, and retry `Create`.
+
+* **`409` (Conflict):** The transcoding task has already started. No retry is needed.
+
+* **`40x` (except `409`):** Parameter error. Check and correct the request parameters.
+
+* **`50x` (Server Error):** Temporary server issue. Retry using the backoff strategy above. If all retries fail, change the UID and re-initiate the process.
+
+* **Error code `65`:** Retry `Create` with the same parameters. Use a backoff strategy:
+
+  * Retry after 3 seconds
+  * Retry again after 6 seconds
+
+### 3. Set the appropriate `idleTimeout`
+
+The `idleTimeout` parameter in the `Create` request defaults to 300 seconds. This defines how long the transcoder stays active after all streamers leave the channel.
+
+If streamers may temporarily leave and rejoin, set a larger `idleTimeout` to prevent the transcoder from shutting down too early. This ensures stable operation and avoids frequent restarts.
+
+### 4. Query the startup status
+
+After receiving a `taskId` from a successful `Create` request, wait 5 seconds and then call the [`Query`](/cloud-transcoding/reference/rest-api/fetch-a-token) method using a backoff strategy. Make sure the backoff interval is shorter than the `idleTimeout`.
+
+* If the `Query` response includes `status` values `4` or `5`, the transcoder has successfully started.
+* If the `status` is still not `4` or `5` 90 seconds after receiving the `taskId`, consider the startup failed due to timeout.
+
+<Admonition type="caution" title="Caution">
+When retrying:
+- UIDs in the same channel must be unique. Prepare a backup UID for the transcoder in case you need to restart the task.
+- Alternate between the primary and backup UIDs as needed.
+</Admonition>
+
+## Check service running status
+
+To confirm that the transcoder is still running, periodically call the `Query` method. If you need high reliability, Agora recommends calling `Query` every 2 minutes and taking appropriate action based on the HTTP response:
+
+* **`40x` (Parameter Error):** Check and fix the request parameters.
+
+* **`404` (Not Found):** If parameters are correct, this means the transcoder never started or exited prematurely. Retry `Query` using a backoff strategy (e.g., 5s, 10s, 15s intervals) for confirmation.
+
+* **`50x` (Server Error):** Indicates a temporary error, not necessarily that the transcoder has exited. Retry using increasing intervals (e.g., 5s, 10s, 15s, 30s).
+
+For more information, see [Status values](#status-values).
+
+## Reference
+
+This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
+
+### Status values
+
+The `Query` response includes the `status` field, which indicates the current state of the service:
+
+| Service status              | Description                                      |
+| --------------------------- | ------------------------------------------------ |
+| `"serviceIdle"`             | The service is not started.                      |
+| `"serviceStarted"`          | The service has started.                         |
+| `"serviceReady"`            | The service is ready.                            |
+| `"serviceInProgress"`       | The transcoding task is running.                 |
+| `"serviceCompleted"`        | All tasks completed and the service has stopped. |
+| `"servicePartialCompleted"` | The service has stopped with partial completion. |
+| `"serviceValidationFailed"` | Parameter validation failed.                     |
+| `"serviceAbnormal"`         | The service exited abnormally.                   |
+| `"serviceUnknown"`          | The service status is unknown.                   |

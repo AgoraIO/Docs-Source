@@ -1,0 +1,119 @@
+---
+title: 'Interrupt handling'
+sidebar_position: 3
+type: docs
+description: >
+  Implement and customize interrupt detection and response in TEN Agent.
+---
+
+The interrupt handling extension manages conversation flow by detecting when to stop ongoing processing and clean up system state. Like other <Vpd k="NAME" /> extensions, it can be easily added or removed through the designer to customize your agent's behavior. This document explains how the interrupt mechanism works and how to configure or replace it with your own implementation to suit specific use cases.
+
+## Understand the tech
+
+<Vpd k="NAME" />'s interrupt mechanism uses a chain processing pattern to ensure orderly cleanup of all extensions in the AI agent graph. When an interrupt occurs, each extension first cleans up its own state and then forwards the `flush` command to downstream extensions, ensuring a clean system state for subsequent operations.
+
+The interrupt system consists of two main components that work together:
+
+- **Interrupt Detection**: Monitors input to determine when to trigger an interrupt
+- **Interrupt Response**: Propagates cleanup commands through the extension chain
+
+## Interrupt detection
+
+The default interrupt detection mechanism monitors text input to determine when to halt ongoing processing.
+
+### Current implementation
+
+The [interrupt_detector_python](https://github.com/TEN-framework/ten-framework/tree/main/ai_agents/agents/ten_packages/extension/interrupt_detector_python) extension implements text-based interrupt detection:
+
+```py
+def on_data(self, ten: TenEnv, data: Data) -> None:
+    text = data.get_property_string(TEXT_DATA_TEXT_FIELD)
+    final = data.get_property_bool(TEXT_DATA_FINAL_FIELD)
+ 
+    # Trigger interrupt when text is final or reaches threshold length
+    if final or len(text) >= 2:
+        self.send_flush_cmd(ten)
+```
+
+The detector triggers interrupts based on the following conditions:
+
+- When receiving final text with `is_final = true`
+- When text length reaches a threshold of 2 or more characters
+
+### Customize interrupt detection
+
+To create custom interrupt detection:
+
+1. Study the [Current implementation](#current-implementation)
+2. Create your own extension with custom detection criteria
+3. Replace the default detector in your graph configuration
+
+Common customization scenarios include:
+- Voice activity detection
+- Keyword-based interrupts
+- Gesture or visual triggers
+- Time-based thresholds
+
+## Interrupt response
+
+When an interrupt is detected, a cleanup command propagates through the extension chain to ensure orderly system reset.
+
+### Chain processing pattern
+
+The interrupt command (`flush`) follows this typical flow through the AI agent graph:
+
+```
+Interrupt Detector
+       ↓
+    LLM/ChatGPT
+       ↓
+      TTS
+       ↓
+   agora_rtc
+```
+
+Each extension in the chain handles the `flush` command by:
+
+1. Cleaning up internal resources and state
+2. Forwarding the command to downstream extensions
+
+This pattern ensures:
+- Extensions clean up in the correct order
+- No residual data remains in the pipeline
+- Each component returns to a ready state
+
+### Chain Processing in AI Agent Graph
+
+In a typical AI agent graph, the interrupt command (`flush`) follows a chain
+processing pattern:
+
+```text
+Interrupt Detector
+       ↓
+    LLM/ChatGPT
+       ↓
+      TTS
+       ↓
+   agora_rtc
+```
+
+Each extension in the chain follows two key steps when receiving a `flush`
+command:
+
+1. Clean up its own resources and internal state
+2. Forward the `flush` command to downstream extensions
+
+This ensures that:
+
+- Extensions are cleaned up in the correct order
+- No residual data flows through the system
+- Each extension returns to a clean state before the next operation
+
+## Best practices
+
+Follow these guidelines when working with interrupts:
+
+- Always forward `flush` commands to maintain chain integrity
+- Clean up resources before forwarding to prevent memory leaks
+- Handle interrupts gracefully to avoid cutting off responses mid-word
+- Test interrupt behavior under various conditions

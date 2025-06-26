@@ -1,0 +1,221 @@
+---
+title: 'Test extensions and applications'
+sidebar_position: 6
+type: docs
+description: >
+ Test TEN framework applications and extensions using unit tests, smoke tests, integration tests, and standalone extension testing.
+---
+
+Testing ensures the reliability and correctness of TEN framework applications and extensions. This guide covers comprehensive testing approaches for both TEN framework developers and users building applications with the framework.
+
+The TEN framework supports multiple testing strategies depending on your role and testing needs:
+
+**For framework developers:**
+- **Unit tests**: Test individual components and functions using `gtest`
+- **Smoke tests**: Verify basic functionality and system stability using `gtest`  
+- **Integration tests**: Validate end-to-end scenarios using `pytest`
+
+**For application developers:**
+- **Standalone extension testing**: Test individual extensions in isolation without requiring full TEN app setup
+
+Each testing approach provides specific tools and workflows to help you validate functionality, catch regressions, and ensure your TEN applications work correctly across different scenarios and environments.
+
+## Framework development tests
+
+### Unit tests
+
+Unit tests are located in `tests/ten_runtime/unit`. To add new unit test cases, place them in this directory.
+
+After the build completes, navigate to the output directory for your target platform such as `out/linux/x64/tests/standalone` and run:
+
+```shell
+./ten_runtime_unit_test
+```
+
+### Smoke tests
+
+Smoke tests are located in `tests/ten_runtime/smoke`. To add new test cases, place them in this directory.
+
+After the build completes, navigate to the output directory for your target platform such as `out/linux/x64/tests/standalone` and run:
+
+```shell
+./ten_runtime_smoke_test
+```
+
+### Loop tests
+
+Run multiple rounds of testing to catch intermittent issues and verify stability. These commands execute tests 100 times and stop on the first failure.
+
+- **Unit tests only:**
+
+    ```shell
+    failed=0; for i in {1..100}; do if [ ${failed} != 0 ]; then echo "error occurred:" ${failed}; break; fi; ./ten_runtime_unit_test; failed=$?; done;
+    ```
+
+- **Smoke tests only:**
+
+    ```shell
+    failed=0; for i in {1..100}; do if [ ${failed} != 0 ]; then echo "error occurred:" ${failed}; break; fi; ./ten_runtime_smoke_test; failed=$?; done;
+    ```
+
+- **Both unit and smoke tests:**
+
+    ```shell
+    failed=0; for i in {1..100}; do if [ ${failed} != 0 ]; then echo "error occurred:" ${failed}; break; fi; ./ten_runtime_unit_test; failed=$?; if [ ${failed} != 0 ]; then echo "error occurred:" ${failed}; break; fi; ./ten_runtime_smoke_test; failed=$?; done;
+    ```
+
+### Integration tests
+
+Integration tests validate real-world execution scenarios using black-box testing approaches. Tests are located in `tests/ten_runtime/integration` with each test case in its own directory:
+
+```text
+tests/ten_runtime/integration/
+ ├── test_1/
+ │    ├── test_case.py
+ │    └── ...
+ ├── test_2/
+ │    ├── test_case.py
+ │    └── ...
+ └── ...
+```
+
+To execute the integration tests, navigate to your output directory and run:
+
+```shell
+cd path/to/out/
+pytest tests/ten_runtime/integration/
+```
+
+### Advanced testing
+
+#### Debug timing issues on Linux
+
+Slow down TEN execution to expose timing-related bugs and race conditions:
+
+```shell
+sudo apt install util-linux
+cpulimit -f -l 50 -- taskset 0x3 ...
+```
+
+**CPU core options:**
+- `taskset 0x1`: Limits execution to 1 CPU core
+- `taskset 0x3`: Limits execution to 2 CPU cores
+
+This technique helps identify concurrency issues that may not appear under normal execution speeds.
+
+
+## Application development tests
+
+### Standalone extension tests 
+
+The TEN framework provides a standalone extension testing mechanism that allows you to test individual extensions without relying on other TEN components, such as other extensions, graphs, or apps. This is especially useful when you need to verify an extension's behavior without running the entire TEN app.
+
+The standalone testing framework follows three key principles:
+
+- **Works with any native testing framework used by the extension's language**  
+  For example, if an extension is written in C++, you can use the Google gtest/gmock framework together with the standalone testing framework to test it independently.
+
+- **Requires no changes to the extension code under test**  
+  You can test the exact same code used at runtime without modification.
+
+- **Provides a consistent design and usage model across languages**  
+  Once you learn the testing workflow for one language, you can apply the same concepts to test extensions written in other languages.
+
+#### Core components
+
+The TEN extension standalone testing framework introduces two main concepts:
+
+- **extension_tester**
+    
+    Serves as a testing driver, responsible for setting up and executing the entire testing process.
+
+- **ten_env_tester**  
+    
+    Acts like a typical TEN extension's `ten_env` instance, enabling you to invoke functionalities within the standalone testing framework such as sending messages to and receiving messages from the extension under test.
+
+#### Design philosophy
+
+The API design of `extension_tester` and `ten_env_tester` mirrors that of TEN extension and `ten_env`, which is intentional. This design helps users familiar with extension development quickly adapt to the standalone testing framework and efficiently develop test cases for their extensions.
+
+However, certain APIs and features are dedicated exclusively to testing. To prevent these test-specific functionalities from affecting the runtime API set, the standalone testing framework introduces types and APIs exclusive to testing. This separation ensures that runtime and testing APIs remain independent, avoiding potential conflicts.
+
+### How standalone testing works
+
+The standalone testing framework automatically starts a test app and creates a graph with two extensions:
+
+- **Extension under test**: The extension you want to validate
+- **Testing proxy extension**: Handles message routing and test interactions
+
+All input and output messages from the extension under test are redirected to the testing proxy, allowing you to customize inputs and verify outputs during the testing process.
+
+![](/images/ten-framework/testing-framework.png)
+
+The testing proxy acts as an intermediary between your extension and the test framework, facilitating message exchanges using the TEN environment's standard communication patterns.
+
+### Basic testing process
+
+The standalone testing workflow follows these steps:
+
+1. Create an extension tester to manage the testing process
+2. Set the testing mode, such as single extension testing
+3. Start the test execution
+
+- **C++**
+
+    Following is an example of TEN extension standalone testing using Google `gtest`:
+
+    ```cpp
+    class `extension_tester`_basic : public ten::extension_tester_t {
+    public:
+        void on_start(ten::ten_env_tester_t &ten_env) override {
+            auto new_cmd = ten::cmd_t::create("hello_world");
+            ten_env.send_cmd(std::move(new_cmd),
+                            [](ten::ten_env_tester_t &ten_env,
+                            std::unique_ptr<ten::cmd_result_t> result) {
+                                if (result->get_status_code() == TEN_STATUS_CODE_OK) {
+                                    ten_env.stop_test();
+                                }
+                            });
+        }
+    };
+
+    TEST(Test, Basic) {
+        // 1. Create an extension tester to manage the entire standalone testing process.
+        auto *tester = new extension_tester_basic();
+        // 2. Set a testing mode, such as a mode for testing a single extension.
+        tester->set_test_mode_single("default_extension_cpp");
+        // 3. Start the testing.
+        tester->run();
+        delete tester;
+    }
+    ```
+
+- **Python**
+
+    ```python
+    class ExtensionTesterBasic(ExtensionTester):
+        def check_hello(self, ten_env: TenEnvTester, result: CmdResult):
+            statusCode = result.get_status_code()
+            print("receive hello_world, status:" + str(statusCode))
+            if statusCode == StatusCode.OK:
+                ten_env.stop_test()
+                
+        def on_start(self, ten_env: TenEnvTester) -> None:
+            new_cmd = Cmd.create("hello_world")
+            print("send hello_world")
+            ten_env.send_cmd(
+                new_cmd,
+                lambda ten_env, result: self.check_hello(ten_env, result),
+            )
+            print("tester on_start_done")
+            ten_env.on_start_done()
+
+
+    def test_basic():
+        # 1. Create an extension tester to manage the entire standalone testing process.
+        tester = ExtensionTesterBasic()
+        # 2. Set a testing mode, such as a mode for testing a single extension.
+        tester.set_test_mode_single("default_extension_python")
+        # 3. Start the testing.
+        tester.run()
+    ```

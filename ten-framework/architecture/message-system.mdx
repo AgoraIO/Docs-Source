@@ -1,0 +1,210 @@
+---
+title: 'Message system'
+sidebar_position: 10
+platform_selector: false
+description: >
+  TEN framework message system guide: message types, communication patterns, API definitions, and thread-safe data exchange between extensions.
+---
+
+Messages are the primary communication mechanism in the TEN framework, enabling extensions to exchange data, commands, and media content. The message system provides a structured, type-safe way for different components in your application to interact with each other.
+
+The TEN message system offers several key benefits:
+
+- **Type safety and validation**: Each message type has defined schemas that ensure data integrity and prevent communication errors between extensions.
+
+- **Asynchronous communication**: Extensions can send and receive messages without blocking, enabling efficient parallel processing and responsive applications.
+
+- **Clear interface definitions**: Message APIs in manifest files provide explicit contracts between extensions, making it easier to understand how components interact.
+
+- **Thread safety**: The framework's ownership model ensures that messages can be safely passed between extensions running in different threads.
+
+Messages in TEN work similarly to function calls in traditional programming, where message names act like function names, properties serve as parameters, and the framework handles routing and delivery between extensions.
+
+## Message types and categories
+
+The TEN framework supports four message types, each serving different communication needs:
+
+- **Command**: Request-response messages that expect a result. For example, configuration requests and status queries
+- **Data**: One-way messages for streaming content, events, and application data
+- **Video Frame**: Specialized messages for video content and metadata
+- **Audio Frame**: Specialized messages for audio content and metadata
+
+The following diagram shows this categorization:
+
+```text
+┌── Has result (expects response)
+│   └── Command
+│       ├── TEN framework built-in command (name starts with `ten:`)
+│       └── Custom command (name does not start with `ten:`)
+└── No result (one-way communication)
+   ├── Data
+   │   ├── TEN framework built-in data (name starts with `ten:`)
+   │   └── Custom data (name does not start with `ten:`)
+   ├── Video Frame
+   │   ├── TEN framework built-in video frame (name starts with `ten:`)
+   │   └── Custom video frame (name does not start with `ten:`)
+   └── Audio Frame
+       ├── TEN framework built-in audio frame (name starts with `ten:`)
+       └── Custom audio frame (name does not start with `ten:`)
+```       
+
+The key distinction is that commands expect a response, while data, video, and audio messages are one-way communications.
+
+### Built-in vs custom messages
+
+- **Built-in messages** start with `ten:` and provide core framework functionality.
+- **Custom messages** use any other naming pattern and implement your application-specific logic.
+
+### Message handling callbacks
+
+Extensions handle messages through specific callback methods:
+- `OnCmd` for commands
+- `OnData` for data messages  
+- `OnVideoFrame` for video frames
+- `OnAudioFrame` for audio frames
+
+## Message naming and identification
+
+The TEN framework uses message names to differentiate between messages of the same type but with different purposes. Extensions use these names to determine what actions to take when receiving messages.
+
+### Naming rules
+
+Message names must follow these requirements:
+
+- First character must be a letter (`a-z`, `A-Z`) or underscore (`_`)
+- Subsequent characters can be letters (`a-z`, `A-Z`), digits (`0-9`), or underscores (`_`)
+- Names starting with `ten:` are reserved for framework built-in messages
+
+### Message pairing
+
+The message pairing mechanism between extensions works like function calls in traditional programming:
+
+- **Message name** acts as the function name - pairing relies solely on matching names
+- **Message properties** serve as function parameters
+- **Routing** occurs when an output message from one extension matches an input message name in another extension
+
+The framework does not support message overloading - multiple messages with the same name but different properties are not allowed.
+
+## Message flow patterns
+
+The TEN framework supports the following message flow patterns to handle different communication scenarios:
+
+| Pattern | Description | Suitable for |
+|---------|-------------|---------------|
+| **One message, one result** | A single command produces a single response | <li>Simple queries that return specific information</li><li>Configuration updates that need confirmation</li><li>Operations with clear success/failure outcomes</li> |
+| **One message, multiple results** | A single command generates multiple responses over time | <li>Long-running operations that provide progress updates</li><li>Queries that return streaming data</li><li>Operations that produce incremental results</li> |
+| **Multiple messages** | Multiple messages sent without expecting results | <li>Event notifications and broadcasts</li><li>Streaming data flows</li><li>Fire-and-forget operations</li> |
+
+![Message Flow](/images/ten-framework/message_flow.png)
+
+### API field types
+
+The manifest API includes the following message direction specifications:
+
+- `cmd_in`: Commands the extension can receive
+- `cmd_out`: Commands the extension can send
+- `data_in`: Data messages the extension can receive  
+- `data_out`: Data messages the extension can send
+- `video_frame_in`: Video frames the extension can receive
+- `video_frame_out`: Video frames the extension can send
+- `audio_frame_in`: Audio frames the extension can receive
+- `audio_frame_out`: Audio frames the extension can send
+
+### API definition structure
+
+Each message definition includes the message name and property schema. Following is a sample API definition:
+
+```json
+{
+ "api": {
+   "cmd_in": [
+     {
+       "name": "process_data",
+       "property": {
+         "input_file": {
+           "type": "string"
+         },
+         "quality": {
+           "type": "int8"
+         }
+       },
+       "result": {
+         "property": {
+           "output_path": {
+             "type": "string"
+           },
+           "status": {
+             "type": "string"
+           }
+         }
+       }
+     }
+   ],
+   "data_out": [
+     {
+       "name": "processing_progress",
+       "property": {
+         "percentage": {
+           "type": "int8"
+         },
+         "current_step": {
+           "type": "string"
+         }
+       }
+     }
+   ]
+ }
+}
+```
+
+## Message ownership and thread safety
+
+The TEN framework uses an ownership model to ensure thread safety and prevent data races when messages are passed between extensions. Once a message is sent, the sending extension can no longer use it.
+
+### Ownership transfer to extensions
+
+When the TEN framework delivers a message to an extension through `OnCmd`, `OnData`, `OnVideoFrame`, or `OnAudioFrame` callbacks, ownership transfers to the receiving extension. The framework guarantees that only the receiving extension has access to the message, ensuring safety across different threads.
+
+The extension can freely use the message but must return ownership to the framework when finished. After returning ownership, the extension must not interact with the message.
+
+![Message Processing Follows the Concept of Ownership](/images/ten-framework/message_ownership.png)
+
+### Ownership transfer to the framework
+
+When an extension sends a message using APIs like `SendCmd`, `ReturnResult`, `SendData`, `SendVideoFrame`, or `SendAudioFrame`, ownership transfers back to the TEN framework. The sending extension can no longer access the message after successful transmission.
+
+### Resource ownership
+
+The ownership concept extends to all resources associated with a message, including buffers and data structures. Only one extension can own these resources at a time, mirroring the message ownership to maintain safety.
+
+### Copy semantics by default
+
+To prevent data races from multiple extensions handling the same resource simultaneously, the TEN framework uses **copy semantics** by default when transmitting data across boundaries. Copying ensures ownership separation and maintains safety.
+
+### Borrowing semantics
+
+The framework also supports **borrowing semantics** for enhanced resource utilization while maintaining safety. Extensions can temporarily use resources without taking ownership through borrowing APIs, but must use GiveBack APIs to return borrowed resources.
+
+When returning message ownership to the runtime, all associated borrowed resources must also be returned. If an extension fails to return borrowed resources, the runtime rejects the message. For example, `SendData` will fail.
+
+## Commands and results
+
+Commands are special messages that follow a request-response pattern, where the sending extension expects to receive a result back from the receiving extension.
+
+### Command structure
+
+Commands can be sent by TEN clients and TEN extensions to other TEN extensions. You can also use commands in situations where the result isn't required - the TEN runtime automatically discards any unnecessary results.
+
+### Result format
+
+A result is the response to a command. When extension A sends command X to extension B, extension B processes the command and sends a result back to extension A. Results can include meaningful details about the execution outcome.
+
+The JSON representation of a typical result includes a status code:
+
+```json
+{
+  "ten": {
+    "status_code": 200
+  }
+}
+```

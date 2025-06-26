@@ -55,7 +55,10 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
     </Parameter>
 
     <Parameter name="remote_rtc_uids" type="array[string]" required={true}>
-      The list of user IDs that the agent subscribes to in the channel. Only subscribed users can interact with the agent. <code>"*"</code> means that the agent subscribes to all users in the channel.
+      A list of user IDs that the agent subscribes to in the channel. Only subscribed users can interact with the agent.  Use `"*"` to subscribe to all users in the channel.
+      <Admonition type="info">
+      The `"*"` selector includes all UIDs present in the channel, which may include other AI agents. If you're running multiple agents in the same channel, review the best practices under the `idle_timeout` parameter to avoid unintended behavior and unnecessary usage costs.
+      </Admonition>
     </Parameter>
 
     <Parameter name="enable_string_uid" type="boolean" defaultValue="false" required={false}>
@@ -68,10 +71,13 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
 
     <Parameter name="idle_timeout" type="integer" defaultValue="30" required={false}>
       Sets the timeout after all the users specified in <code>remote_rtc_uids</code> are detected to have left the channel. When the timeout value is exceeded, the agent automatically stops and exits the channel. A value of <code>0</code> means that the agent does not exit until it is stopped manually.
-    </Parameter>
-  
-    <Parameter name="agent_rtm_uid" type="string" required={false}>
-      The agent's user ID in the Signaling channel. Only valid when `advanced_features.enable_rtm` is set to `true`.
+      <Admonition type="caution" title="Multi-agent use cases">
+        If multiple AI agents are active in the same channel and are configured to subscribe to all users using `remote_rtc_uids: ["*"]`, they detect each other's presence.
+        As a result, the `idle_timeout` condition, when all other users have left, might never be triggered. This can cause agents to run indefinitely and lead to significant unintended usage.
+      </Admonition>
+      <Admonition type="tip" title="Agent lifecycle best practice">
+        For precise and reliable control over the agent's lifecycle, use the [`leave`](../rest-api/leave) API to terminate the agent as soon as its task is complete.
+      </Admonition>
     </Parameter>
 
     <Parameter name="advanced_features" type="object" required={false}>
@@ -82,7 +88,10 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
       </Parameter>
 
       <Parameter name="enable_rtm" type="boolean" defaultValue="false" required={false}>
-        Whether to enable the Signaling service. When enabled, the agent can combine the capabilities provided by Signaling to implement advanced functions, such as delivering [custom information](../develop/custom-information).
+        Whether to enable the Signaling (RTM) service. When enabled, the agent can combine the capabilities provided by Signaling to implement advanced functions, such as delivering [custom information](../develop/custom-information).
+        <Admonition type="info">
+        Before enabling the Signaling service, make sure the token includes both RTC and RTM privileges. When an agent joins an RTM channel, it reuses the token specified in the `token` field. For more information, see ["How can I generate a token with both RTC and Signaling privileges?"](/help/integration-issues/rtc_rtm_token).
+        </Admonition>
       </Parameter>
     </Parameter>
 
@@ -93,117 +102,169 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
         The language used by users to interact with the agent. The following languages are in Beta: <ul><li>`es-ES`: Spanish - Spain</li><li> `ja-JP`: Japanese</li><li> `ko-KR`: Korean</li><li> `ar-AE`: Arabic - UAE</li><li> `hi-IN`: Hindi - India</li></ul>
       </Parameter>
     </Parameter>
-  </Parameter>
+  
 
-  <Parameter name="tts" type="object" required={true}>
-    Text-to-speech (TTS) module configuration.
+    <Parameter name="tts" type="object" required={true}>
+      Text-to-speech (TTS) module configuration.
 
-    <Parameter name="vendor" type="string" required={true} possibleValues="microsoft,elevenlabs">
-      TTS provider. <ul><li>`microsoft`: Microsoft Azure</li><li> `elevenlabs`: ElevenLabs</li></ul>
+      <Parameter name="vendor" type="string" required={true} possibleValues="microsoft,elevenlabs">
+        TTS provider. <ul><li>`microsoft`: Microsoft Azure</li><li> `elevenlabs`: ElevenLabs</li></ul>
+      </Parameter>
+
+      <Parameter name="params" type="object" required={true}>
+        The configuration parameters for the TTS vendor. See [TTS vendor configuration](#tts-vendor-configuration) for details.
+      </Parameter>
+
+      <Parameter name="skipPatterns" type="array[integer]" required={false}>
+        Controls whether the TTS module skips bracketed content when reading LLM response text. This prevents the agent from vocalizing structural prompt information like tone indicators, action descriptions, and system prompts, creating a more natural and immersive listening experience. Enable this feature by specifying one or more values:
+        
+        - `1`: Skip content in Chinese parentheses `（）`
+        - `2`: Skip content in Chinese square brackets `【】`
+        - `3`: Skip content in parentheses `( )`
+        - `4`: Skip content in square brackets `[ ]`
+        - `5`: Skip content in curly braces `{ }`
+
+        <Admonition type="info">
+        - **Nested brackets**: When input text contains nested brackets and multiple bracket types are configured to be skipped, the system processes only the outermost brackets. The system matches from the beginning of the text and skips the first outermost bracket pair that meets the skip rule, including all nested content.
+        - **Agent memory**: The agent's short-term memory always contains the complete, unfiltered LLM text, regardless of live captioning settings.
+        - **Real-time subtitles**: When enabled, subtitles exclude filtered content during TTS playback but restore the complete text after each sentence finishes.
+        </Admonition>
+      </Parameter>
     </Parameter>
 
-    <Parameter name="params" type="object" required={true}>
-      The configuration parameters for the TTS vendor. See [TTS vendor configuration](#tts-vendor-configuration) for details.
-    </Parameter>
-  </Parameter>
+    <Parameter name="llm" type="object" required={true}>
+      Large language model (LLM) configuration.
 
-  <Parameter name="llm" type="object" required={true}>
-    Large language model (LLM) configuration.
+      <Parameter name="url" type="string" required={true}>
+        The LLM callback address.
+      </Parameter>
 
-    <Parameter name="url" type="string" required={true}>
-      The LLM callback address.
-    </Parameter>
+      <Parameter name="api_key" type="string" defaultValue="" required={false}>
+        The LLM verification API key. The default value is an empty string. Ensure that you enable the API key in a production environment.
+      </Parameter>
 
-    <Parameter name="api_key" type="string" defaultValue="" required={false}>
-      The LLM verification API key. The default value is an empty string. Ensure that you enable the API key in a production environment.
-    </Parameter>
+      <Parameter name="system_messages" type="array[object]" required={false}>
+        A set of predefined information used as input to the LLM, including prompt words and examples.
+      </Parameter>
 
-    <Parameter name="system_messages" type="array[object]" required={false}>
-      A set of predefined information used as input to the LLM, including prompt words and examples.
-    </Parameter>
+      <Parameter name="params" type="object" required={false}>
+        Additional LLM information transmitted in the message body, such as the <code>model</code> used, and the maximum token limit.
+      </Parameter>
 
-    <Parameter name="params" type="object" required={false}>
-      Additional LLM information transmitted in the message body, such as the <code>model</code> used, and the maximum token limit.
-    </Parameter>
+      <Parameter name="max_history" type="integer" defaultValue="32" required={false}>
+        The number of conversation history messages cached in the custom LLM. The minimum value is `1`. History includes user and agent dialog messages, tool call information, and timestamps. Agent and user messages are recorded separately.
+      </Parameter>
 
-    <Parameter name="max_history" type="integer" defaultValue="32" required={false}>
-      The number of conversation history messages cached in the custom LLM. The minimum value is `1`. History includes user and agent dialog messages, tool call information, and timestamps. Agent and user messages are recorded separately.
-    </Parameter>
+      <Parameter name="input_modalities" type="array[string]" defaultValue='["text"]' required={false}>
+        LLM input modalities: 
+        - `["text"]`: Text only
+        - `["text", "image"]`: Text plus image; requires the selected LLM to support visual input
+      </Parameter>
 
-    <Parameter name="input_modalities" type="array[string]" defaultValue='["text"]' required={false}>
-      LLM input modalities. Supports `["text"]`, `["text", "image"]`.
-    </Parameter>
+      <Parameter name="output_modalities" type="array[string]" defaultValue='["text"]' required={false}>
+        LLM output modalities: 
+        - `["text"]`: The output text is converted to speech by the TTS module and then published to the RTC channel.
+        - `["audio"]`: Voice only. Voice is published directly to the RTC channel.
+        - `["text", "audio"]`: Text plus voice. Write your own logic to process the output of LLM as needed.
+      </Parameter>
 
-    <Parameter name="output_modalities" type="array[string]" defaultValue='["text"]' required={false}>
-      LLM output modalities. Supports <code>["audio"]</code>, <code>["text"]</code>, <code>["text", "audio"]</code>.
-    </Parameter>
+      <Parameter name="greeting_message" type="string" required={false}>
+        Agent greeting. If provided, the first user in the channel is automatically greeted with the message upon joining.
+      </Parameter>
 
-    <Parameter name="greeting_message" type="string" required={false}>
-      Agent greeting. If provided, the first user in the channel is automatically greeted with the message upon joining.
-    </Parameter>
+      <Parameter name="failure_message" type="string" required={false}>
+        Prompt for agent activation failure. If provided, it is returned through TTS when the custom LLM call fails.
+      </Parameter>
 
-    <Parameter name="failure_message" type="string" required={false}>
-      Prompt for agent activation failure. If provided, it is returned through TTS when the custom LLM call fails.
-    </Parameter>
+      <Parameter name="vendor" type="string" required={false}>
+        LLM provider, supports the following settings:
+        - `custom`: Custom LLM. When you set this option, the agent includes the following fields, in addition to `role` and `content` when making requests to the custom LLM:
+          - `turn_id`: A unique identifier for each conversation turn. It starts from `0` and increments with each turn. One user-agent interaction corresponds to one `turn_id`.
+          - `timestamp`: The request timestamp, in milliseconds.
+      </Parameter>
 
-    <Parameter name="style" type="string" defaultValue="openai" possibleValues="openai,gemini" required={false}>
-      The request style for chat completion. <br/> <code>openai</code> includes OpenAI compatible APIs.
-    </Parameter>
-  </Parameter>
-
-  <Parameter name="vad" type="object" required={false}>
-    Voice Activity Detection (VAD) configuration.
-
-    <Parameter name="interrupt_duration_ms" type="number" defaultValue="160" required={false}>
-      The amount of time in milliseconds that the user's voice must exceed the VAD threshold before an interruption is triggered.
-    </Parameter>
-
-    <Parameter name="prefix_padding_ms" type="integer" defaultValue="300" required={false}>
-      The extra forward padding time in milliseconds before the processing system starts to process the speech input. This padding helps capture the beginning of the speech.
+      <Parameter name="style" type="string" defaultValue="openai" possibleValues="openai,gemini,anthropic" required={false}>
+        The request style for chat completion. <br/> Use `openai` for OpenAI-compatible APIs or [custom LLM](../develop/custom-llm).
+      </Parameter>
     </Parameter>
 
-    <Parameter name="silence_duration_ms" type="integer" defaultValue="640" required={false}>
-      The duration of audio silence in milliseconds. If no voice activity is detected during this period, the agent assumes that the user has stopped speaking.
+    <Parameter name="vad" type="object" required={false}>
+      Voice Activity Detection (VAD) configuration.
+
+      <Parameter name="interrupt_duration_ms" type="number" defaultValue="160" required={false}>
+        The amount of time in milliseconds that the user's voice must exceed the VAD threshold before an interruption is triggered.
+      </Parameter>
+
+      <Parameter name="prefix_padding_ms" type="integer" defaultValue="800" required={false}>
+        The extra forward padding time in milliseconds before the processing system starts to process the speech input. This padding helps capture the beginning of the speech.
+      </Parameter>
+
+      <Parameter name="silence_duration_ms" type="integer" defaultValue="640" required={false}>
+        The duration of audio silence in milliseconds. If no voice activity is detected during this period, the agent assumes that the user has stopped speaking.
+      </Parameter>
+
+      <Parameter name="threshold" type="number" defaultValue="0.5" required={false}>
+        Identification sensitivity determines the level of sound in the audio signal that is considered voice activity. The value range is <code>(0.0, 1.0)</code>. Lower values make it easier for the agent to detect speech, and higher values ignore weak sounds.
+      </Parameter>
     </Parameter>
 
-    <Parameter name="threshold" type="number" defaultValue="0.5" required={false}>
-      Identification sensitivity determines the level of sound in the audio signal that is considered voice activity. The value range is <code>(0.0, 1.0)</code>. Lower values make it easier for the agent to detect speech, and higher values ignore weak sounds.
+    <Parameter name="turn_detection" type="object" required={false}>
+      Conversation turn detection settings.
+      <Parameter name="interrupt_mode" type="string" defaultValue="interrupt" required={false}>
+        Sets the agent's behavior when human voice interrupts the agent while it is interacting (speaking or thinking). Choose from the following values:
+
+          - `interrupt`: The agent immediately stops the current interaction and processes the human voice input.
+          - `append`: The agent completes the current interaction, then processes the human voice input.
+          - `ignore`: The agent discards the human voice input without processing or storing it in the context.
+      </Parameter>  
     </Parameter>
+
+    <Parameter name="parameters" type="object" required={false}>
+      Agent configuration parameters.
+      <Parameter name="silence_config" type="object" required={false}>
+        Settings related to agent silence behavior.
+        <Parameter name="timeout_ms" type="integer" possibleValues="0 to 60000" defaultValue="0" required={false}>
+          Specifies the maximum duration (in milliseconds) that the agent can remain silent. 
+          After the agent is successfully created and the user joins the channel, any time during which the agent is not listening, thinking, or speaking is considered silent time. When the silent time reaches the specified value, the agent broadcasts a silent reminder message. This feature is useful for prompting users when they become inactive.
+          - `0`: Disables the silent reminder feature.
+          - `(0, 60000]`: Enables the silent reminder. You must also set `content`; otherwise, the configuration is invalid.
+        </Parameter>
+        <Parameter name="action" type="string" defaultValue="speak" required={false}>
+          Specifies how the agent behaves when the silent timeout is reached. Valid values:
+          - `speak`: Uses the TTS module to announce the silent prompt (`content`).
+          - `think`: Appends the silent prompt (`content`) to the context and passes it to the LLM.
+        </Parameter>
+        <Parameter name="content" type="string" required={false}>
+          Specifies the silent prompt message. The message use depends on the value of `action` parameter.
+        </Parameter>
+
+      </Parameter>
+    </Parameter>    
   </Parameter>
 </ParameterList>
 
 ## Response
 
-- If the returned status code is `200`, the request was successful. The response body contains the result of the request.
-
-  <ParameterList title="OK">
-    <Parameter name="agent_id" type="string">
-      Unique id of the agent instance
-    </Parameter>
+<ParameterList title="OK" >
+  <Parameter name="result" type="string" required={true}>
+    Request result.
     
-    <Parameter name="create_ts" type="integer">
-      Timestamp of when the agent was created
-    </Parameter>
-    
-    <Parameter 
-      name="status" 
-      type="string" 
-      possibleValues="IDLE, STARTING, RUNNING, STOPPING, STOPPED, RECOVERING, FAILED"
-    >
-      Current status.
-      <ul>
-        <li>`IDLE` (0): Agent is idle.</li>
-        <li>`STARTING` (1): The agent is being started.</li>
-        <li>`RUNNING` (2): The agent is running.</li>
-        <li>`STOPPING` (3): The agent is stopping.</li>
-        <li>`STOPPED` (4): The agent has exited.</li>
-        <li>`RECOVERING` (5): The agent is recovering.</li>
-        <li>`FAILED` (6): The agent failed to execute.</li>
-      </ul>
-    </Parameter>
-  </ParameterList>
+    - `success`: The request succeeds.
+    - `failed`: The request fails.
+  </Parameter>
 
-- If the returned status code is not `200`, the request failed. The response body includes the `detail` and `reason` for failure. Refer to [status codes](../rest-api/reference#response-status-codes) to understand the possible reasons for failure.
+  <Parameter name="request_id" type="string" >
+    Unique ID to identify this request.
+  </Parameter>
+
+  <Parameter name="code" type="string" >
+    Message status.
+    
+    - `message_sent`: The message is sent.
+    - `message_delivered`: The message is received.
+    - `message_offline`: The receiver is offline.
+  </Parameter>
+</ParameterList>
 
 ## Reference
 
@@ -223,7 +284,7 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
   <Parameter name="voice_name" type="string">  
   The identifier for the selected voice for speech synthesis.
   </Parameter>
-  <Parameter name="rate" type="number">
+  <Parameter name="speed" type="number">
   Indicates the speaking rate of the text. The rate can be applied at the word or sentence level and should be between 0.5 and 2.0 times the original audio speed.
   </Parameter>
   <Parameter name="volume" type="number" defaultValue="100">  
@@ -236,7 +297,7 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
 
 For further details, refer to [Microsoft TTS](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/text-to-speech).
 
-**Sample configuration**
+##### Sample configuration
 
 ```json
 {
@@ -245,7 +306,7 @@ For further details, refer to [Microsoft TTS](https://learn.microsoft.com/en-us/
         "key": "<your_microsoft_key>",
         "region": "eastus",
         "voice_name": "en-US-AndrewMultilingualNeural",
-        "rate": 1.0,
+        "speed": 1.0,
         "volume": 70
     }
 }
@@ -279,7 +340,7 @@ For further details, refer to [Microsoft TTS](https://learn.microsoft.com/en-us/
 
 For further details, refer to [Elevenlabs TTS](https://elevenlabs.io/docs/capabilities/text-to-speech).
 
-**Sample configuration**
+##### Sample configuration
 
 ```json
 {
@@ -314,11 +375,10 @@ This endpoint requires [Basic Auth](../rest-api/restful-authentication).
           "properties": {
               "channel": "channel_name",
               "token": "token",
-              "agent_rtc_uid": "friday",
+              "agent_rtc_uid": "1001",
               "remote_rtc_uids": [
-                  "*"
+                  "1002"
               ],
-              "enable_string_uid": true,
               "idle_timeout": 120,
               "advanced_features": {
                   "enable_aivad": true
@@ -369,9 +429,8 @@ This endpoint requires [Basic Auth](../rest-api/restful-authentication).
         "properties": {
             "channel": "channel_name",
             "token": "token",
-            "agent_rtc_uid": "friday",
-            "remote_rtc_uids": ["*"],
-            "enable_string_uid": True,
+            "agent_rtc_uid": "1001",
+            "remote_rtc_uids": ["1002"],
             "idle_timeout": 120,
             "advanced_features": {
                 "enable_aivad": True
@@ -429,9 +488,8 @@ This endpoint requires [Basic Auth](../rest-api/restful-authentication).
       properties: {
         channel: "channel_name",
         token: "token",
-        agent_rtc_uid: "friday",
-        remote_rtc_uids: ["*"],
-        enable_string_uid: true,
+        agent_rtc_uid: "1001",
+        remote_rtc_uids: ["1002"],
         idle_timeout: 120,
         advanced_features: {
           enable_aivad: true

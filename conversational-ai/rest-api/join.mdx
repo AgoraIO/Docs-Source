@@ -55,7 +55,10 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
     </Parameter>
 
     <Parameter name="remote_rtc_uids" type="array[string]" required={true}>
-      The list of user IDs that the agent subscribes to in the channel. Only subscribed users can interact with the agent. <code>"*"</code> means that the agent subscribes to all users in the channel.
+      A list of user IDs that the agent subscribes to in the channel. Only subscribed users can interact with the agent.  Use `"*"` to subscribe to all users in the channel.
+      <Admonition type="info">
+      The `"*"` selector includes all UIDs present in the channel, which may include other AI agents. If you're running multiple agents in the same channel, review the best practices under the `idle_timeout` parameter to avoid unintended behavior and unnecessary usage costs.
+      </Admonition>
     </Parameter>
 
     <Parameter name="enable_string_uid" type="boolean" defaultValue="false" required={false}>
@@ -68,6 +71,13 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
 
     <Parameter name="idle_timeout" type="integer" defaultValue="30" required={false}>
       Sets the timeout after all the users specified in <code>remote_rtc_uids</code> are detected to have left the channel. When the timeout value is exceeded, the agent automatically stops and exits the channel. A value of <code>0</code> means that the agent does not exit until it is stopped manually.
+      <Admonition type="caution" title="Multi-agent use cases">
+        If multiple AI agents are active in the same channel and are configured to subscribe to all users using `remote_rtc_uids: ["*"]`, they detect each other's presence.
+        As a result, the `idle_timeout` condition, when all other users have left, might never be triggered. This can cause agents to run indefinitely and lead to significant unintended usage.
+      </Admonition>
+      <Admonition type="tip" title="Agent lifecycle best practice">
+        For precise and reliable control over the agent's lifecycle, use the [`leave`](../rest-api/leave) API to terminate the agent as soon as its task is complete.
+      </Admonition>
     </Parameter>
 
     <Parameter name="advanced_features" type="object" required={false}>
@@ -191,7 +201,7 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
         The amount of time in milliseconds that the user's voice must exceed the VAD threshold before an interruption is triggered.
       </Parameter>
 
-      <Parameter name="prefix_padding_ms" type="integer" defaultValue="300" required={false}>
+      <Parameter name="prefix_padding_ms" type="integer" defaultValue="800" required={false}>
         The extra forward padding time in milliseconds before the processing system starts to process the speech input. This padding helps capture the beginning of the speech.
       </Parameter>
 
@@ -241,35 +251,114 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
 
 ## Response
 
-- If the returned status code is `200`, the request was successful. The response body contains the result of the request.
-
-  <ParameterList title="OK">
-    <Parameter name="agent_id" type="string">
-      Unique id of the agent instance
-    </Parameter>
+<ParameterList title="OK" >
+  <Parameter name="result" type="string" required={true}>
+    Request result.
     
-    <Parameter name="create_ts" type="integer">
-      Timestamp of when the agent was created
-    </Parameter>
-    
-    <Parameter 
-      name="status" 
-      type="string" 
-      possibleValues="IDLE, STARTING, RUNNING, STOPPING, STOPPED, RECOVERING, FAILED"
-    >
-      Current status.
-      <ul>
-        <li>`IDLE` (0): Agent is idle.</li>
-        <li>`STARTING` (1): The agent is being started.</li>
-        <li>`RUNNING` (2): The agent is running.</li>
-        <li>`STOPPING` (3): The agent is stopping.</li>
-        <li>`STOPPED` (4): The agent has exited.</li>
-        <li>`RECOVERING` (5): The agent is recovering.</li>
-        <li>`FAILED` (6): The agent failed to execute.</li>
-      </ul>
-    </Parameter>
-  </ParameterList>
+    - `success`: The request succeeds.
+    - `failed`: The request fails.
+  </Parameter>
 
+  <Parameter name="request_id" type="string" >
+    Unique ID to identify this request.
+  </Parameter>
+
+  <Parameter name="code" type="string" >
+    Message status.
+    
+    - `message_sent`: The message is sent.
+    - `message_delivered`: The message is received.
+    - `message_offline`: The receiver is offline.
+  </Parameter>
+</ParameterList>
+
+## Reference
+
+### TTS vendor configuration
+
+<Vpd k="NAME" /> supports the following TTS vendors:
+
+#### Microsoft
+
+<ParameterList title="params" required={true}>
+  <Parameter name="key" type="string" required={true}>  
+  The API key used for authentication.
+  </Parameter>
+  <Parameter name="region" type="string" required={true}>
+  The Azure region where the speech service is hosted.
+  </Parameter>
+  <Parameter name="voice_name" type="string">  
+  The identifier for the selected voice for speech synthesis.
+  </Parameter>
+  <Parameter name="speed" type="number">
+  Indicates the speaking rate of the text. The rate can be applied at the word or sentence level and should be between 0.5 and 2.0 times the original audio speed.
+  </Parameter>
+  <Parameter name="volume" type="number" defaultValue="100">  
+   Specifies the audio volume as a number between 0.0 and 100.0, where 0.0 is the quietest and 100.0 is the loudest. For example, a value of 75 sets the volume to 75% of the maximum.
+  </Parameter>
+  <Parameter name="sample_rate" type="integer" defaultValue="24000">
+  Specifies the audio sampling rate in Hz.
+  </Parameter>
+</ParameterList>
+
+For further details, refer to [Microsoft TTS](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/text-to-speech).
+
+##### Sample configuration
+
+```json
+{
+    "vendor": "microsoft",
+    "params": {
+        "key": "<your_microsoft_key>",
+        "region": "eastus",
+        "voice_name": "en-US-AndrewMultilingualNeural",
+        "speed": 1.0,
+        "volume": 70
+    }
+}
+```
+
+#### Elevenlabs
+
+<ParameterList title="params" required={true}>
+  <Parameter name="key" type="string" required={true}>  
+  The API key used for authentication.
+  </Parameter>
+  <Parameter name="model_id" type="string" required={true}>
+  Identifier of the model to be used,
+  </Parameter>
+  <Parameter name="voice_id" type="string" required={true}>  
+  The identifier for the selected voice for speech synthesis.
+  </Parameter>
+  <Parameter name="sample_rate" type="integer" defaultValue="24000">
+  Specifies the audio sampling rate in Hz.
+  </Parameter>  
+  <Parameter name="stability" type="number">
+  The stability for voice settings.
+  </Parameter>
+  <Parameter name="similarity_boost" type="number">  
+  </Parameter>
+  <Parameter name="style" type="number">
+  </Parameter>
+  <Parameter name="use_speaker_boost" type="boolean">  
+  </Parameter>
+</ParameterList>
+
+For further details, refer to [Elevenlabs TTS](https://elevenlabs.io/docs/capabilities/text-to-speech).
+
+##### Sample configuration
+
+```json
+{
+  "vendor": "elevenlabs",
+  "params": {
+    "key": "<your_elevenlabs_key>",
+    "model_id": "eleven_flash_v2_5",
+    "voice_id": "pNInz6obpgDQGcFmaJgB"
+  }
+}
+```
+      
 - If the returned status code is not `200`, the request failed. The response body includes the `detail` and `reason` for failure. Refer to [status codes](../rest-api/reference#response-status-codes) to understand the possible reasons for failure.
      
 </LeftColumn>
@@ -294,11 +383,10 @@ This endpoint requires [Basic Auth](../rest-api/restful-authentication).
           "properties": {
               "channel": "channel_name",
               "token": "token",
-              "agent_rtc_uid": "friday",
+              "agent_rtc_uid": "1001",
               "remote_rtc_uids": [
-                  "*"
+                  "1002"
               ],
-              "enable_string_uid": true,
               "idle_timeout": 120,
               "advanced_features": {
                   "enable_aivad": true
@@ -349,9 +437,8 @@ This endpoint requires [Basic Auth](../rest-api/restful-authentication).
         "properties": {
             "channel": "channel_name",
             "token": "token",
-            "agent_rtc_uid": "friday",
-            "remote_rtc_uids": ["*"],
-            "enable_string_uid": True,
+            "agent_rtc_uid": "1001",
+            "remote_rtc_uids": ["1002"],
             "idle_timeout": 120,
             "advanced_features": {
                 "enable_aivad": True
@@ -409,9 +496,8 @@ This endpoint requires [Basic Auth](../rest-api/restful-authentication).
       properties: {
         channel: "channel_name",
         token: "token",
-        agent_rtc_uid: "friday",
-        remote_rtc_uids: ["*"],
-        enable_string_uid: true,
+        agent_rtc_uid: "1001",
+        remote_rtc_uids: ["1002"],
         idle_timeout: 120,
         advanced_features: {
           enable_aivad: true

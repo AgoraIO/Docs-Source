@@ -1,0 +1,99 @@
+---
+title: Manage agent lifecycle
+sidebar_position: 2
+platform_selector: false
+description: >
+  Best practices for managing conversational AI agent lifecycle and preventing runaway costs.
+---
+
+Proper agent lifecycle management is crucial for ensuring reliable operation of your conversational AI applications and controlling costs. This guide covers best practices for agent timeout configuration, multi-agent scenarios, and manual cleanup strategies.
+
+## Understand the tech
+
+The `idle_timeout` parameter controls when an agent automatically exits a channel after all subscribed users leave. While this provides automatic cleanup, certain configurations can prevent timeouts from working as expected.
+
+When you [start a conversational AI agent](../rest-api/join.mdx), configure timeout as follows:
+
+```json
+{
+  "idle_timeout": 30,
+  "remote_rtc_uids": ["1001", "1002"]
+}
+```
+
+<Admonition type="info">
+Setting `idle_timeout` to `0` disables automatic cleanup entirely and is not recommended.
+</Admonition>
+
+## Multi-agent challenges
+
+### Wildcard subscription prevents idle timeout
+
+When you configure multiple agents in a channel with wildcard subscriptions, they detect each other as "users" and prevent idle timeout:
+
+```json
+{
+  "idle_timeout": 30,
+  "remote_rtc_uids": ["*"]  // ⚠️ Problematic in multi-agent scenarios
+}
+```
+
+This configuration may lead to the following sequence of events:
+
+1. Human users leave the channel
+2. Multiple agents remain active
+3. Each agent sees other agents as "subscribed users"
+4. `idle_timeout` never triggers
+5. Agents run indefinitely, increasing costs
+
+### Prevention strategies
+
+1. **Use specific user IDs**
+
+   ```json
+   {
+     "idle_timeout": 30,
+     "remote_rtc_uids": ["1001", "1002", "1003"]  // ✅ Specific human users only
+   }
+   ```
+
+2. **Implement application-level monitoring**
+
+   Track channel activity in your application and proactively manage the agent lifecycle. When your application logic determines the session is complete, call the leave API to [Stop a conversational AI agent](../rest-api/leave).
+
+   ```javascript
+   // Example: Monitor channel and terminate agents
+   async function monitorChannelActivity(channelName) {
+       const activeUsers = await getChannelUsers(channelName);
+       const humanUsers = activeUsers.filter(user => !user.isAgent);
+       
+       if (humanUsers.length === 0) {
+           await terminateChannelAgents(channelName); // Call leave API
+       }
+   }
+   ```   
+
+## Emergency cleanup strategies
+
+When agents get stuck running indefinitely, use one of the following approaches:
+
+### List and stop agents (recommended)
+
+This approach uses the Conversational AI agent APIs directly:
+
+1. [Retrieve a list of agents](../rest-api/list) using the REST API.
+
+2. [Stop](../rest-api/leave) idle agents using the `leave` REST API.
+   
+**Advantages:**
+- Purpose-built for agent management
+- Graceful agent termination
+- Preserves agent logs and cleanup processes
+
+### Clean up using a kicking rule
+
+Use the [Create rule](/video-calling/channel-management-api/endpoint/ban-user-privileges/create-rules) channel management API to create a banning rule that removes the agents from the channel.
+
+**Advantages:**
+- Immediate channel clearing
+- Useful for emergency situations

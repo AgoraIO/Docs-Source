@@ -1,0 +1,176 @@
+<PlatformWrapper platform="linux-cpp, windows">
+
+### Create a stream channel
+
+To use stream channel functionality, call `createStreamChannel` to create an `IStreamChannel` object instance. 
+
+```cpp
+int errorCode = 0;
+IStreamChannel* stream_channel = rtm_client->createStreamChannel("channel_name", errorCode);
+if (stream_channel == nullptr || errorCode != 0) {
+    printf("create stream channel failed");
+} else {
+    printf("create stream channel success");
+}
+```
+
+This method creates only one `IStreamChannel` instance at a time. If you need to create multiple instances, call the method multiple times.
+
+```cpp
+int errorCode = 0;
+IStreamChannel* stream_channel1 = rtm_client->createStreamChannel("chat_room1", errorCode);
+if (stream_channel1 == nullptr || errorCode != 0) {
+    printf("create stream channel failed");
+} else {
+    printf("create stream channel success");
+}
+
+IStreamChannel* stream_channel2 = rtm_client->createStreamChannel("chat_room2", errorCode);
+if (stream_channel2 == nullptr || errorCode != 0) {
+    printf("create stream channel failed");
+} else {
+    printf("create stream channel success");
+}
+```
+
+<Admonition type="info">
+<Vg k="SIG" /> enables you to create unlimited stream channel instances in a single <Vpl k="CLIENT"/>. However, best practice is to create channels based on your actual requirements to maintain optimal client-side performance. For instance, if you hold multiple stream channel instances, destroy the ones that are no longer in use to prevent resource blocking, and recreate them when they are needed again.
+</Admonition>
+
+### Join a stream channel
+
+Call the `join` method on the `IStreamChannel` instance with appropriate options as follows:
+
+```cpp
+JoinChannelOptions options;
+options.token = "your_token";
+
+uint64_t requestId;
+stream_channel->join(options, requestId);
+```
+
+When joining a channel, set the `token` parameter in `JoinChannelOptions` with a temporary token from <Vg k="CONSOLE" />. When you call this method, the SDK triggers the `onJoinResult` callback and returns the call result.
+
+```cpp
+// Triggered when you call the join method
+class RtmEventHandler : public IRtmEventHandler {
+    void onJoinResult(const uint64_t requestId, const char *channelName, const char *userId, RTM_ERROR_CODE errorCode) {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("join rtm channel failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("join rtm channel %s success\n", channelName);
+        }
+    }
+};
+```
+
+When joining a channel, set the notification subscription parameters in `JoinChannelOptions`:
+
+```cpp
+JoinChannelOptions options;
+options.token = "your_token";
+options.withLock = false;  // Disable lock event notifications
+options.withMetadata = false; // Disable storage event notifications 
+options.withPresence = true; // Subscribe to presence event notifications
+
+uint64_t requestId;
+stream_channel->join(options, requestId);
+```
+
+In stream channels, message flow is managed using topics. Even if you configure a global message listener, you must still join a topic to send messages. Similarly, to receive messages you must subscribe to a topic. See [Topics](../core-functionality/topics) for more information.
+
+### Send a message 
+
+To send a message to a stream channel:
+
+- Create an `IStreamChannel` instance.
+- Use the `join` method to join a channel.
+- Call `joinTopic` to register as a message publisher for the specified topic. See [Topics](../core-functionality/topics).
+
+Call `publishTopicMessage` to publish a message to a topic. This method sends a message to a single topic at a time. To deliver messages to multiple topics, call the method separately for each topic.
+
+Refer to the following sample code for sending messages:
+
+* String message
+
+    ```cpp
+    // Sending a string message
+    std::string message = "Hello Agora!";
+    TopicMessageOptions options;
+    options.messageType = RTM_MESSAGE_TYPE_STRING;
+    options.customType = "PainTxt";
+    uint64_t requestId;
+    streamChannel.publishTopicMessage("topicName", message.c_str(), message.size(), options, requestId);
+    ```
+
+* Binary message
+
+    ```cpp
+    // Sending a binary message
+    char message[5] = {0x00, 0x01, 0x02, 0x03, 0x04};
+
+    TopicMessageOptions options;
+    options.messageType = RTM_MESSAGE_TYPE_BINARY;
+    options.customType = "ByteArray";
+    uint64_t requestId;
+    streamChannel.publishTopicMessage("topicName", message, 5, options, requestId);
+    ```
+
+When you this method, the SDK triggers the `onPublishTopicMessageResult` callback and returns the API call result.
+
+```cpp
+// Asynchronous callback
+class RtmEventHandler : public IRtmEventHandler {
+    void onPublishTopicMessageResult(const uint64_t requestId, const char* channelName, const char* topic, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            // publish topic message failed
+        } else {
+            // publish topic message success
+        }
+    }
+};
+```
+
+In <Vg k="SIG" />, a user may register as a message publisher for up to 8 topics concurrently. However, there are no limitations on the number of users a single topic can accommodate. You can achieve a message transmission frequency to a topic of up to 120 QPS. This capability is useful in use-cases that demand high-frequency and high-concurrency data processing, such as Metaverse location status synchronization, collaborative office sketchpad applications, and parallel control operation-instructions transmission.
+
+### Leave a stream channel
+
+To leave a channel, call the `leave` method on the `IStreamChannel` instance:
+
+```cpp
+// Leave the channel
+uint64_t requestId;
+streamChannel->leave(requestId);
+```
+
+When you call this method, the SDK triggers the `onLeaveResult` callback and returns the call result.
+
+```cpp
+// Triggered when you call the leave method
+class RtmEventHandler : public IRtmEventHandler {
+    void onLeaveResult(const uint64_t requestId, const char *channelName, const char *userId, RTM_ERROR_CODE errorCode) {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("leave rtm channel failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("leave rtm channel %s success\n", channelName);
+        }
+    }
+};
+```
+
+To rejoin a stream channel, call the `join` method again. You can join and leave as long as the corresponding `IStreamChannel` instance remains active and has not been destroyed.
+
+### Destroy the stream channel instance
+
+To destroy a stream channel instance, call `release`:
+
+```cpp
+stream_channel->release();
+stream_channel = null;
+```
+
+<Admonition type="info">
+Destroying a stream channel removes the `IStreamChannel` instance from your <Vpl k="CLIENT"/>. This action is local to your <Vpl k="CLIENT"/> and does not affect other users or the <Vg k="SIG" /> channel.
+</Admonition>
+
+</PlatformWrapper>

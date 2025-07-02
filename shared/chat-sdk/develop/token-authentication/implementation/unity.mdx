@@ -1,0 +1,176 @@
+<PlatformWrapper platform="unity">
+
+```csharp
+using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine.Networking;
+using AgoraChat;
+using System.Diagnostics;
+
+public class NewBehaviourScript : MonoBehaviour, IChatManagerDelegate, IConnectionDelegate
+{
+    private string userId = "your_user_id"; // Replace with your user ID
+    private string token = "";
+    private string appKey = "your_app_key"; // Replace with your app key
+    private bool isJoined = false;
+    private SDKClient agoraChatClient;
+
+    void Start()
+    {
+        setupChatSDK();
+    }
+
+    void setupChatSDK()
+    {
+        if (appKey == "")
+        {
+            Debug.Log("You should set your appKey first!");
+            return;
+        }
+        // Initialize the Agora Chat SDK
+        Options options = new Options(appKey);
+        options.UsingHttpsOnly = true;
+        options.DebugMode = true;
+        agoraChatClient = SDKClient.Instance;
+        agoraChatClient.InitWithOptions(options);
+        agoraChatClient.ChatManager.AddChatManagerDelegate(this);
+    }
+
+    public void sendMessage()
+    {
+        Message msg = Message.CreateTextSendMessage("recipient", Msg);
+        Debug.Log("Received message: " + Msg);
+        agoraChatClient.ChatManager.SendMessage(ref msg, new CallBack(
+            onSuccess: () =>
+            {
+                Debug.Log($"Send message succeed");
+            },
+            onError: (code, desc) =>
+            {
+                Debug.Log($"Send message failed, code: {code}, desc: {desc}");
+            }));
+    }
+
+    public void joinLeave()
+    {
+        if (isJoined)
+        {
+            agoraChatClient.Logout(true, callback: new CallBack(
+            onSuccess: () =>
+            {
+                Debug.Log("Logout succeed");
+                isJoined = false;
+            },
+            onError: (code, desc) =>
+            {
+                Debug.Log($"Logout failed, code: {code}, desc: {desc}");
+            }));
+        }
+        else
+        {
+            StartCoroutine(FetchToken((newToken) =>
+            {
+                if (!string.IsNullOrEmpty(newToken))
+                {
+                    token = newToken;
+                    agoraChatClient.LoginWithAgoraToken(userId, token, callback: new CallBack(
+                    onSuccess: () =>
+                    {
+                        Debug.Log("Login succeed");
+                        isJoined = true;
+                    },
+                    onError: (code, desc) =>
+                    {
+                        Debug.Log($"Login failed, code: {code}, desc: {desc}");
+                    }));
+                }
+            }));
+        }
+    }
+
+    public void OnTokenExpired()
+    {
+        Debug.Log("Token has expired. Fetching a new token...");
+        StartCoroutine(FetchToken((newToken) =>
+        {
+            if (!string.IsNullOrEmpty(newToken))
+            {
+                token = newToken;
+                agoraChatClient.RenewToken(token, new CallBack(
+                    onSuccess: () =>
+                    {
+                        Debug.Log("Token renewed successfully.");
+                    },
+                    onError: (code, desc) =>
+                    {
+                        Debug.Log($"Failed to renew token: {desc}");
+                    }
+                ));
+            }
+        }));
+    }
+
+    public void OnTokenWillExpire()
+    {
+        Debug.Log("Token will expire soon. Fetching a new token...");
+        StartCoroutine(FetchToken((newToken) =>
+        {
+            if (!string.IsNullOrEmpty(newToken))
+            {
+                token = newToken;
+                agoraChatClient.RenewToken(token, new CallBack(
+                    onSuccess: () =>
+                    {
+                        Debug.Log("Token renewed successfully.");
+                    },
+                    onError: (code, desc) =>
+                    {
+                        Debug.Log($"Failed to renew token: {desc}");
+                    }
+                ));
+            }
+        }));
+    }
+
+    private IEnumerator FetchToken(System.Action<string> callback)
+    {
+        string tokenServerUrl = "https://your-token-server-url"; // Replace with your token server URL
+        WWWForm form = new WWWForm();
+        form.AddField("userId", userId);
+
+        using (UnityWebRequest www = UnityWebRequest.Post(tokenServerUrl, form))
+        {
+            yield return www.SendWebRequest();
+
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                string newToken = www.downloadHandler.text; // Ensure the token server returns just the token as plain text
+                callback.Invoke(newToken);
+            }
+            else
+            {
+                Debug.LogError($"Failed to fetch token: {www.error}");
+                callback.Invoke(null);
+            }
+        }
+    }
+
+    void OnApplicationQuit()
+    {
+        agoraChatClient.ChatManager.RemoveChatManagerDelegate(this);
+        agoraChatClient.Logout(true, callback: new CallBack(
+            onSuccess: () =>
+            {
+                Debug.Log("Logout succeed");
+            },
+            onError: (code, desc) =>
+            {
+                Debug.Log($"Logout failed, code: {code}, desc: {desc}");
+            }));
+    }
+}
+```
+</PlatformWrapper>

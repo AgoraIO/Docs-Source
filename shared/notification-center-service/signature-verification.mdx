@@ -1,66 +1,63 @@
 To communicate securely between <Vg k="NCS_LONG" /> and your webhook,  <Vg k="AGORA_BACKEND" />  uses signatures for identity verification as follows:
 
-1. When you configure <Vg k="NCS_LONG" /> in <Vg k="CONSOLE" />,  <Vg k="AGORA_BACKEND" />  generates the secret you use for verification.
+1. When you configure <Vg k="NCS_LONG" /> in <Vg k="CONSOLE" />,  <Vg k="AGORA_BACKEND" />  generates a secret you use for verification.
 1. When sending a notification,  <Vg k="NCS_LONG" /> generates two signature values from the secret using `HMAC/SHA1` and `HMAC/SHA256` algorithms. These signatures are added as `Agora-Signature` and `Agora-Signature-V2` to the `HTTPS` request header.
-1. When your server receives a callback, you can verify `Agora-Signature` or `Agora-Signature-V2`. 
+1. When your server receives a callback, you can verify `Agora-Signature` or `Agora-Signature-V2`: 
 
-    * To verify `Agora-Signature`, use the secret, the raw request body, and the `HMAC/SHA1` algorithm. 
-    * To verify `Agora-Signature-V2`, use the secret, the raw request body, and the `HMAC/SHA2` algorithm.
-
+    * To verify `Agora-Signature`, use the secret, the raw request body, and the `crypto/sha1` algorithm. 
+    * To verify `Agora-Signature-V2`, use the secret, the raw request body, and the `crypto/sha256` algorithm.
+     
+The following sample code uses `crypto/sha1`. 
 
 To add signature verification to your server, take the following steps:
 
-1. In your JAVA project folder, add a new file named `Signature.java` containing the following code:
+1. In the `main.go` file, replace your imports with with the following:
+    
+    ```go
+    import (
+        "crypto/hmac"
+        "crypto/sha1"
+        "encoding/hex"
+        "encoding/json"
+        "fmt"
+        "io"
+        "log"
+        "net/http"	
+    )
+    ```
 
-    ```java
-    import javax.crypto.Mac;
-    import javax.crypto.spec.SecretKeySpec;
+1. Add the following code after the list of imports:
 
-    public class Signature { 
-        static String secret = "<your NCS secret>"; 
-        
-        public static String bytesToHex(byte[] bytes) {
-            // Convert an encrypted byte array into a hex string
-            StringBuffer sb = new StringBuffer();
-            for (int i = 0; i < bytes.length; i++) {
-                String hex = Integer.toHexString(bytes[i] & 0xFF);
-                if (hex.length() < 2) {
-                    sb.append(0);
-                }
-                sb.append(hex);
-            }
-            return sb.toString();
-        }
+    ```go
+    // Replace with your NCS secret
+    const secret = "<Replace with your secret code>"
 
-        // Use the HMAC/SHA1 algorithm and get the encrypted hex string
-        // To use the HMAC/SHA256 algorithm, replace "HmacSHA1" with "HmacSHA256"
-        public static String hmacSha1(String message) {
-            try {
-                SecretKeySpec signingKey = new SecretKeySpec(secret.getBytes(
-                    "utf-8"), "HmacSHA1");
-                Mac mac = Mac.getInstance("HmacSHA1");
-                mac.init(signingKey);
-                byte[] rawHmac = mac.doFinal(message.getBytes("utf-8"));
-                return bytesToHex(rawHmac);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
+    // calcSignatureV1 computes the HMAC/SHA256 signature for a given payload and secret
+    func calcSignatureV1(secret, payload string) string {
+        mac := hmac.New(sha1.New, []byte(secret))
+        mac.Write([]byte(payload))
+        return hex.EncodeToString(mac.Sum(nil))
+    }
 
-        public static boolean verify(String request_body, String signature) {
-            // Check the signature against the encrypted request body
-            // Returns true if the signature matches the encrypted hex string
-            return (hmacSha1(request_body).equals(signature));
-        }
+    // verify checks if the provided signature matches the HMAC/SHA256 signature of the request body
+    func verify(requestBody, signature string) bool {
+        calculatedSignature := calcSignatureV1(secret, requestBody)
+        fmt.Println("Calculated Signature:", calculatedSignature)
+        fmt.Println("Received Signature:", signature)
+        return calculatedSignature == signature
     }
     ```
 
-    Make sure you update your <Vg k="NCS_LONG" /> secret in the code. To verify authenticity using `Agora-Signature-V2`, replace `HmacSHA1` with `HmacSHA256` in the sample code.
+1. In `main.go`, add the following code after you read the request body:
 
-2. To verify data in the <Vg k="NCS_LONG" /> callback, add the following code to `NcsHandler`:
-    
-    ```java
-    // Pass the request body and the signature from the request header
-    boolean isVerified = Signature.verify(body, agoraSignature);  
-    System.out.println("Signature verified: " + isVerified);
+    ```go
+    // Verify the signature
+    if !verify(string(body), agoraSignature) {
+        http.Error(w, "Invalid signature", http.StatusUnauthorized)
+        return
+    }
     ```
+
+1. To test the server, follow the steps given in the [Enable notifications](#enable-notifications) section.
+
+1. When you receive an event from the console, and if the signature matches, the event details are displayed in your browser.

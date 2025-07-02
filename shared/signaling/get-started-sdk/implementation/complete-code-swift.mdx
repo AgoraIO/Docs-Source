@@ -1,0 +1,190 @@
+import CodeBlock from '@theme/CodeBlock';
+
+<CodeBlock language="swift" showLineNumbers>
+{`import SwiftUI
+import Combine
+import AgoraRtmKit
+
+struct Message: Identifiable, Equatable {
+    let id = UUID()
+    let content: String
+}
+
+class ChatViewModel: NSObject, ObservableObject, AgoraRtmClientDelegate {
+    var appid: String = <#YOUR APPID#>
+    var token: String = <#YOUR TOKEN#>
+    var rtmKit: AgoraRtmClientKit? = nil
+    @Published var username: String = ""
+    @Published var message: String = ""
+    @Published var channel: String = ""
+    @Published var messages: [Message] = []
+
+    override init() {
+        super.init()
+        initializeEngine()
+    }
+
+    // Initialization the engine 
+    func initializeEngine() {
+        if rtmKit == nil {
+            let config = AgoraRtmClientConfig(appId: appid)
+            rtmKit = try? AgoraRtmClientKit(config, delegate: self)
+        }
+    }
+
+    // Log in to Signaling
+    func login() {
+        if rtmKit != nil {
+            addToMessageList(str: "RTM already logged in! Logout first!")
+            return
+        }
+        
+        let config = AgoraRtmClientConfig(appId: appid, userId: username)
+        rtmKit = try! AgoraRtmClientKit(config, delegate: self)
+        
+        rtmKit?.login(token, userId: username, completion: { response, error in
+            if let error = error {
+                self.addToMessageList(str: "Login failed. Error code: \\(error.errorCode.rawValue), reason: \\(error.reason)")
+            } else {
+                self.addToMessageList(str: "\\(self.username) logged in successfully.")
+            }
+        })
+    }
+
+    // Log out from the RTM server
+    func logout() {
+        guard let rtmKit = rtmKit else {
+            addToMessageList(str: "RTM is already logged out!")
+            return
+        }
+
+        rtmKit.logout()
+        rtmKit.destroy()
+        self.rtmKit = nil
+        addToMessageList(str: "RTM logged out!")
+    }
+
+    // Subscribe to a channel
+    func subscribe() {
+        guard let rtmKit = rtmKit else { return }
+        rtmKit.subscribe(channelName: channel, option: nil) { response, error in
+            if let error = error {
+                self.addToMessageList(str: "Subscribe to channel '\\(self.channel)' failed. Error code: \\(error.errorCode.rawValue), reason: \\(error.reason)")
+            } else {
+                self.addToMessageList(str: "Subscribed to channel: \\(self.channel) successfully.")
+            }
+        }
+    }
+
+    // Unsubscribe from a channel
+    func unsubscribe() {
+        guard let rtmKit = rtmKit else { return }
+        rtmKit.unsubscribe(channel) { response, error in
+            if let error = error {
+                self.addToMessageList(str: "Unsubscribe from channel '\\(self.channel)' failed. Error code: \\(error.errorCode.rawValue), reason: \\(error.reason)")
+            } else {
+                self.addToMessageList(str: "Unsubscribed from channel: \\(self.channel) successfully.")
+            }
+        }
+    }
+
+    // Publish a message
+    func sendMessage() {
+        guard !message.isEmpty, let rtmKit = rtmKit else { return }
+        rtmKit.publish(channelName: channel, message: message, option: nil) { response, error in
+            if let error = error {
+                self.addToMessageList(str: "Publish failed. Error code: \\(error.errorCode.rawValue), reason: \\(error.reason)")
+            } else {
+                self.addToMessageList(str: "Message published to channel: \\(self.channel) successfully.")
+            }
+        }
+        message = ""
+    }
+
+    func addToMessageList(str: String) {
+        messages.append(Message(content: str))
+    }
+
+    // AgoraRtmClientDelegate methods
+    func rtmKit(_ rtmKit: AgoraRtmClientKit, didReceiveLinkStateEvent event: AgoraRtmLinkStateEvent) {
+        addToMessageList(str: "RTM link state changed. Current state: \\(event.currentState.rawValue), previous state: \\(event.previousState.rawValue)")
+    }
+
+    func rtmKit(_ rtmKit: AgoraRtmClientKit, didReceiveMessageEvent event: AgoraRtmMessageEvent) {
+        addToMessageList(str: "Message received. Channel: \\(event.channelName), Publisher: \\(event.publisher), Message: \\(event.message.stringData!)")
+    }
+}
+
+// User Interface
+struct ContentView: View {
+    @StateObject private var viewModel = ChatViewModel()
+
+    var body: some View {
+        VStack {
+            TextField("Enter username", text: $viewModel.username)
+                .padding()
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .font(.title)
+
+            HStack {
+                Button("Login") {
+                    viewModel.login()
+                }
+
+                Button("Logout") {
+                    viewModel.logout()
+                }
+            }
+
+            TextField("Channel name", text: $viewModel.channel)
+                .padding()
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .font(.title)
+
+            HStack {
+                Button("Subscribe") {
+                    viewModel.subscribe()
+                }
+
+                Button("Unsubscribe") {
+                    viewModel.unsubscribe()
+                }
+            }
+
+            TextField("Enter message", text: $viewModel.message)
+                .padding()
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .font(.title)
+
+            Button("Send") {
+                viewModel.sendMessage()
+            }
+            .buttonStyle(SendButtonStyle())
+
+            // Display messages
+            ScrollViewReader { scrollProxy in
+                List(viewModel.messages) { message in
+                    Text(message.content)
+                        .id(message.id)
+                }
+                .onChange(of: viewModel.messages) { _ in
+                    if let lastMessage = viewModel.messages.last {
+                        withAnimation {
+                            scrollProxy.scrollTo(lastMessage.id, anchor: .bottom)
+                        }
+                    }
+                }
+            }
+            .padding()
+        }
+        .padding()
+    }
+}
+
+// Preview
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
+}`}
+</CodeBlock>

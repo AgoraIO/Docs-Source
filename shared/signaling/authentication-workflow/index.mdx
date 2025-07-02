@@ -1,84 +1,235 @@
 import Setup from '@docs/shared/common/project-setup/index.mdx';
 import Prerequisites from '@docs/shared/common/prerequities.mdx';
 import CreateRunTokenServer from '@docs/shared/common/_create-run-token-server.mdx';
-import Implement from '@docs/shared/signaling/authentication-workflow/project-implementation/poc3.mdx';
-import Test from '@docs/shared/signaling/authentication-workflow/project-test/index.mdx';
-import Reference from '@docs/shared/signaling/get-started-sdk/reference/index.mdx';
+import Implement from '@docs/shared/signaling/authentication-workflow/project-implementation/index.mdx';
 
-Authentication is the act of validating the identity of each user before they access a system. <Vg k="COMPANY" />
-uses digital tokens to authenticate users and their privileges before they access <Vg k="MESS" />. Each token is valid
-for a limited period and works for a specific UID only. For example, you cannot use a token generated for UID
-`john` for UID `doe`.
+Authentication is the act of validating the identity of a user before they access a system. <Vg k="COMPANY" />
+uses digital tokens to authenticate users and their privileges before they access <Vpd k="NAME" />. A token is a string used to verify user privileges when logging in or joining a channel. When a user connects to <Vg k="COMPANY" /> and passes in the token, the server verifies the user's identity and permissions based on the information in the token.
 
-This page shows you how to quickly set up an authentication token server, retrieve a token from the server, and use
-it to connect securely to <Vg k="MESS" /> as a specific user. You use this server for development
-purposes. To see how to develop your own token generator and integrate it into your production IAM system, read
-[Token generators](/signaling/get-started/integrate-token-generation).
+This page shows you how to set up a token server, and use it to connect securely to <Vpd k="NAME" />.
 
 ## Understand the tech
 
-An authentication token is a dynamic key that is valid for a maximum of 24 hours. On request, a token server returns an authentication token that is valid for a specific user. A token server generates two types of tokens:
+<Vg k="SIG" /> provides two types of channels: 
 
-* To initialize the <Vg k="MESS_ENGINE" />, you use an RTM token. An RTM token is valid only for the user Id that you use to generate it.
-* To join a stream channel, you use an RTC token. An RTC token is valid only for the channel name and the user Id that you use to generate it.
+- **Message channels**: To join a message channel, you only need to use an RTM token when calling the login method. An RTM token is valid only for the user Id that you use to generate it.
+- **Stream channels**: To join a stream channel, you use an RTC token when calling the join method. An RTC token is valid only for the channel name and the user Id that you used to generate it.
 
-The following figure shows the call flow you need to implement to create step-up-authentication with <Vg k="MESS"/>:
+The following figure shows the call flow you implement to create step-up-authentication with <Vpd k="NAME" />:
+
+<details>
+<summary>Authentication workflow</summary>
 
 ![token authentication flow](/images/signaling/authentication-workflow.svg)
+</details>
 
-To initiate the <Vg k="MESS" /> engine, your <Vpl k="CLIENT" /> retrieves an RTM token from the token server in your security infrastructure. Your <Vpl k="CLIENT" /> then sends this token  to <Vg k="AGORA_BACKEND" /> for authentication. <Vg k="AGORA_BACKEND" /> validates the token and reads the user and project information stored in the token. 
-
-To join a stream channel you request an RTC token from the server by supplying a user Id and a channel name. You do not need an authentication token to subscribe to a message channel. 
+To log in to <Vg k="SIG" />, your <Vpl k="CLIENT" /> retrieves an RTM token from the token server in your security infrastructure. Your <Vpl k="CLIENT" /> then sends this token  to <Vg k="AGORA_BACKEND" /> for authentication. <Vg k="AGORA_BACKEND" /> validates the token and reads the user and project information stored in the token. To join a stream channel you request an RTC token from the server by supplying a user Id and a channel name. You do not need an authentication token to subscribe to a message channel. 
 
 A token contains the following information:
 
--   The [App ID](../reference/manage-agora-account#get-the-app-id) of your <Vg k="COMPANY" /> project
-
--   The [App certificate](../reference/manage-agora-account#get-the-app-certificate) of your <Vg k="COMPANY" /> project
-
--   The User Id of the user to be authenticated
-
--   The Unix timestamp showing when the token will expire
-
--   The channel name (only for RTC tokens)
-
-When the token is about to expire, <Vg k="AGORA_BACKEND" /> sends an event to your <Vpl k="CLIENT" /> and you renew the session with a new token.
+- The [App ID](../get-started/manage-agora-account#get-the-app-id) of your <Vg k="COMPANY" /> project
+- The user Id of the user to be authenticated
+- The stream channel name (RTC token only)
+- The Unix timestamp indicating when the token will expire
 
 ## Prerequisites
 
-To follow this page, you must have:
+Ensure that you have:
 
-- Set up the [<Vg k="MESS_SDK"/> reference app](/en/signaling/develop/get-started-sdk#project-setup).
--  Created a cloud platform account that is verified through your GitHub account. The following platforms are
-currently supported:
-    - [Render](https://render.com/)
-    - [Railway](https://railway.app/)
-    - [Heroku](https://www.heroku.com/)
+- Integrated the <Vpd k="SDK" /> in your project, and implemented the framework functionality from the [SDK quickstart](../get-started/sdk-quickstart) page.
 
-To integrate a token generator directly into your security infrastructure, see [Token generators](/signaling/get-started/integrate-token-generation).
+- The following information from <Vg k="CONSOLE" />:
 
-## Implement the authentication workflow
+    - App ID: A unique string provided by <Vg k="COMPANY" /> that identifies your project.
+    - App certificate: A string generated using <Vg k="CONSOLE" /> to enable token authentication. To obtain the App certificate for your project, enable primary certificate.
 
-In the <Vg k="GET_STARTED"/>, the <Vpl k="CLIENT" /> uses an authentication token obtained manually to join a channel. In a production environment, your <Vpl k="CLIENT" /> retrieves this token from a token server. This section shows you how to:
+## Implement basic authentication
 
-1.  [Create and run a token server](#create-and-run-a-token-server)
-2.  [Retrieve and use tokens from a token server](#authentication-using-the-sdk)
+In the [<Vg k="GET_STARTED"/>](../get-started/sdk-quickstart/), the <Vpl k="CLIENT" /> uses an authentication token obtained from <Vg k="CONSOLE" /> to join a channel. In a production environment, your <Vpl k="CLIENT" /> retrieves this token from a token server.
 
-### Create and run a token server
+### Token generation code
 
-<CreateRunTokenServer/>
+<Vg k="COMPANY" /> provides an open source token generator code repository on [GitHub](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey). The repository contains code samples, based on the `HMAC-SHA256` algorithm, in the following languages ​​to generate tokens on your own server:
 
-### Authenticate your <Vg k="MESS"/> session
+| Language |  Core method | Sample code |
+|:---------|:-------------|:------------|
+| Go | [buildToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/go/src/rtmtokenbuilder2/rtmtokenbuilder.go) | [sample.go](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/go/sample/rtmtokenbuilder2/sample.go) |
+| PHP | [buildToken](hhttps://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/php/src/RtmTokenBuilder2.php) | [RtmTokenBuilder2Sample.php](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/php/sample/RtmTokenBuilder2Sample.php) |
+| Python 2 | [buildToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python/src/RtmTokenBuilder2.py) | [RtmTokenBuilder2Sample.py](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python/sample/RtmTokenBuilder2Sample.py) |
+| Python 3 | [buildToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python3/src/RtmTokenBuilder2.py) | [RtmTokenBuilder2Sample.py](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python3/sample/RtmTokenBuilder2Sample.py) |
+| C++ | [buildToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/cpp/src/RtmTokenBuilder2.h) | [RtmTokenBuilder2Sample.cpp](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/cpp/sample/RtmTokenBuilder2Sample.cpp) |
+| Java | [buildToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/java/src/main/java/io/agora/rtm/RtmTokenBuilder2.java) | [RtmTokenBuilder2Sample.java](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/java/src/main/java/io/agora/sample/RtmTokenBuilder2Sample.java) |
+
+### Generate a token
+
+This section shows you how to generate an RTM token using Go language AccessToken2 code from the GitHub repository. To use another language refer to the code samples and READMEs in the [Github](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey) repository. To generate an RTC token refer to [Generate an RTC token](../../video-calling/get-started/authentication-workflow#generate-a-token).
+
+Before proceeding, make sure that you have:
+
+- [Installed Go](https://golang.org/) 1.14 or above
+- If you are using a Go version lower than 1.16, set the `GO111MODULE` environment variable to `on`.
+
+Take the following steps to set up a token generation server:
+
+1. Create a `server.go` file containing the following code. Replace `Your_App_ID` and `Your_App_Certificate` with your app ID and app certificate from <Vg k="CONSOLE" />.
+
+    ```go
+    package main
+
+    import (
+        rtmtokenbuilder "github.com/AgoraIO/Tools/DynamicKey/AgoraDynamicKey/go/src/rtmtokenbuilder2"
+        "fmt"
+        "log"
+        "net/http"
+        "time"
+        "encoding/json"
+        "errors"
+        "strconv"
+    )
+
+    type rtm_token_struct struct{
+        Uid_rtm string `json:"uid"`
+    }
+
+    var rtm_token string
+    var rtm_uid string
+
+    // Use RtmTokenBuilder to generate an RTM Token
+    func generateRtmToken(rtm_uid string){
+
+        appID := "Your_App_ID"
+        appCertificate := "Your_App_Certificate"
+        // Token expiration time in seconds
+        expireTimeInSeconds := uint32(3600)
+        currentTimestamp := uint32(time.Now().UTC().Unix())
+        expireTimestamp := currentTimestamp + expireTimeInSeconds
+
+        result, err := rtmtokenbuilder.BuildToken(appID, appCertificate, rtm_uid, expireTimestamp)
+        if err != nil {
+            fmt.Println(err)
+        } else {
+            fmt.Printf("Rtm Token: %s\n", result)
+
+        rtm_token = result
+
+        }
+    }
+
+    func rtmTokenHandler(w http.ResponseWriter, r *http.Request){
+        w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+            w.Header().Set("Access-Control-Allow-Origin", "*")
+            w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS");
+            w.Header().Set("Access-Control-Allow-Headers", "*");
+
+            if r.Method == "OPTIONS" {
+                w.WriteHeader(http.StatusOK)
+                return
+            }
+
+            if r.Method != "POST" && r.Method != "OPTIONS" {
+                http.Error(w, "Unsupported method. Please check.", http.StatusNotFound)
+                return
+            }
+
+
+            var t_rtm_str rtm_token_struct
+            var unmarshalErr *json.UnmarshalTypeError
+            str_decoder := json.NewDecoder(r.Body)
+            rtm_err := str_decoder.Decode(&t_rtm_str)
+
+            if (rtm_err == nil) {
+                rtm_uid = t_rtm_str.Uid_rtm
+            }
+
+            if (rtm_err != nil) {
+                if errors.As(rtm_err, &unmarshalErr){
+                errorResponse(w, "Bad request. Please check your params.", http.StatusBadRequest)
+                } else {
+                errorResponse(w, "Bad request.", http.StatusBadRequest)
+            }
+            return
+        }
+
+            generateRtmToken(rtm_uid)
+            errorResponse(w, rtm_token, http.StatusOK)
+            log.Println(w, r)
+    }
+
+
+    func errorResponse(w http.ResponseWriter, message string, httpStatusCode int){
+        w.Header().Set("Content-Type", "application/json")
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.WriteHeader(httpStatusCode)
+        resp := make(map[string]string)
+        resp["token"] = message
+        resp["code"] = strconv.Itoa(httpStatusCode)
+        jsonResp, _ := json.Marshal(resp)
+        w.Write(jsonResp)
+
+    }
+
+    func main(){
+        // Use an int type uid to generate an RTM Token
+        http.HandleFunc("/fetch_rtm_token", rtmTokenHandler)
+
+        fmt.Printf("Starting server at port 8082\n")
+
+        if err := http.ListenAndServe(":8082", nil); err != nil {
+            log.Fatal(err)
+        }
+    }
+    ```
+
+    Refer to the [`BuildToken` API reference](#buildtoken-api-reference) for parameter descriptions.
+
+1. The `go.mod` file defines the import paths and dependencies. To create this file for your token server, run the following command:
+
+    ```shell
+    go mod init sampleServer
+    ```
+
+1. To install the dependencies, run the following command:
+
+    ```shell
+    go get
+    ```
+
+1. To start the server, execute:
+
+    ```shell
+    go run server.go
+    ```
+
+<Admonition type="caution" title="Important">
+This sample server is for development purposes only. It should not be used in a production environment.
+</Admonition >
 
 <Implement />
 
-
-## Test authentication
-
-<Test />
-
 ## Reference
 
-This section contains information that completes the information in this page, or points you to documentation that explains other aspects to this product.
+This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
 
-<Reference />
+
+### BuildToken API reference
+
+This section explains the API parameters and descriptions for generating `AccessToken2` using Golang as an example:
+
+```go
+func BuildToken(appId string, appCertificate string, userId string, expire uint32) (string, error) {
+    token := accesstoken.NewAccessToken(appId, appCertificate, expire)
+
+    serviceRtm := accesstoken.NewServiceRtm(userId)
+    serviceRtm.AddPrivilege(accesstoken.PrivilegeLogin, expire)
+    token.AddService(serviceRtm)
+
+    return token.Build()
+}
+```
+
+| Parameter        | Description        |
+|:-----------------|:-------------------|
+| `appId`  | The app ID generated when you create a project in <Vg k="CONSOLE" />.       |
+| `appCertificate`  | Your app certificate.               |
+| `userId` | The user ID, used to identify a user or device. To differentiate between users and devices, ensure that the `userId` is globally unique and remains unchanged for the lifetime of the user or device. |
+| `expire` | The validity period of the token (in seconds). The maximum validity period is 24 hours.  |

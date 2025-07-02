@@ -1,0 +1,304 @@
+---
+title: 'Secure authentication with tokens'
+sidebar_position: 1
+type: docs
+description: >
+  Create a token server and use a token for authentication
+---
+
+
+export const toc = [{}];
+
+Authentication is the act of validating the identity of each user before they access your system. Agora uses digital tokens to authenticate users and their privileges before they access an Agora service, for example, join a classroom.
+
+In order to provide a better authentication experience and security guarantee, on August 18, 2022, Agora launched a new version of the token, AccessToken2. We recommend using AccessToken2, which is compatible with AccessToken.
+
+This page explains how to use AccessToken2 to deploy a token generator on the server and use token authentication on the client, as well as providing reference information.
+
+## Understand the tech
+
+The following figure shows the steps in the authentication flow:
+
+![FCR authentication flow](/images/flexible-classroom/authentication-flow.svg)
+
+An <Vg k="COMPANY" /> token is a dynamic key generated on your app server that is valid for 24 hours or less. When your users log in to <Vg k="FC" /> from your app client, the <Vg k="COMPANY" /> platform validates the token and reads the user and project information stored in the token. A token contains the following information:
+
+-   The app ID of your <Vg k="COMPANY" /> project
+
+-   The <Vg k="FCR" /> user ID
+
+-   The Unix timestamp for when the token expires
+
+## Prerequisites
+
+<Admonition type="info" title="Note">This page provides an example procedure using Go. You can use another language or platform for the same purpose.</Admonition>
+
+In order to follow this example procedure, you must have the following:
+
+-   A valid [<Vg k="COMPANY" /> account](../get-started/manage-agora-account#create-an-agora-account).
+
+-   An <Vg k="COMPANY" /> project with the [app certificate](../get-started/manage-agora-account#get-the-app-certificate) enabled.
+
+-   [Golang](https://golang.org/) 1.14+ with GO111MODULE set to on.
+
+    <Admonition type="info" title="Note">If you are using Go 1.16+, GO111MODULE is on by default. See [this blog post](https://blog.golang.org/go116-module-changes) for details.</Admonition>
+
+-   [npm](https://www.npmjs.com/get-npm) and a [supported browser](../reference/supported-platforms#supported_platform_browsers).
+
+## Implement the authentication flow
+
+This section shows you how to use a [token generator](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey) to generate tokens and authenticate users.
+
+### Get the app ID and app certificate
+
+This section shows you how to get the security information needed to generate a token, including the app ID and app certificate of your project.
+
+#### 1. Get the app ID
+
+<Vg k="COMPANY" /> automatically assigns each project an app ID as a unique identifier.
+
+To copy this app ID, find your project on the <Link to="{{Global.AGORA_CONSOLE_URL}}/project-management">Project Management</Link> page in <Vg k="CONSOLE" />, and click the copy icon in the app ID column.
+
+#### 2. Get the app certificate
+
+To get an app certificate, do the following:
+
+1.  On the <Link to="{{Global.AGORA_CONSOLE_URL}}/project-management">Project Management</Link> page, click **Config** for the project you want to use.
+
+    ![1641971710869](https://web-cdn.agora.io/docs-files/1641971710869)
+
+1.  Click the copy icon under **Primary Certificate**.
+
+    ![1637660100222](https://web-cdn.agora.io/docs-files/1637660100222)
+
+### Deploy a token server for AccessToken2
+
+Token generators create the tokens requested by your client app to enable secure access to <Vg k="COMPANY" /> Platform. To serve these tokens you deploy a generator in your security infrastructure.
+
+In order to show the authentication workflow, this section shows how to build and run a token server written in Golang on your local machine.
+
+<Admonition type="caution" title="Note">This sample server is for demonstration purposes only. Do not use it in a production environment.</Admonition>
+
+1.  Create a file, `server.go`, with the following content. Then replace `<Your App ID>` and `<Your App Certificate>` with your app ID and app certificate.
+
+    ```go
+    package main
+
+    import (
+        educationtokenbuilder "github.com/AgoraIO/Tools/DynamicKey/AgoraDynamicKey/go/src/educationtokenbuilder"
+        "fmt"
+        "log"
+        "net/http"
+        "time"
+        "encoding/json"
+        "errors"
+        "strconv"
+    )
+
+    type education_token_struct struct {
+        roomUuid string `json:"roomUuid"`
+        userUuid string `json:"userUuid"`
+        role int `json:"role"`
+    }
+
+    var educationToken string
+
+    func generateEducationToken(roomUuid string, userUuid string, role int) {
+        // Replace "Your_App_ID" with your app ID
+        appID := "Your_App_ID"
+        // Replace "Your_Certificate" with your app certificate
+        appCertificate := "Your_Certificate"
+        expire := uint32(3600)
+
+        result, err := educationtokenbuilder.BuildRoomUserToken(appID, appCertificate, roomUuid, userUuid, role, expire)
+
+        if err != nil {
+            fmt.Println(err)
+        } else {
+            fmt.Printf("EducationToken: %s\n", result)
+            educationToken = result
+        }
+    }
+
+    func educationTokenHandler(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS");
+        w.Header().Set("Access-Control-Allow-Headers", "*");
+
+        if r.Method == "OPTIONS" {
+            w.WriteHeader(http.StatusOK)
+            return
+        }
+
+        if r.Method != "POST" && r.Method != "OPTIONS" {
+            http.Error(w, "Unsupported method. Please check.", http.StatusNotFound)
+            return
+        }
+
+        var t_education_str education_token_struct
+        var unmarshalErr *json.UnmarshalTypeError
+        str_decoder := json.NewDecoder(r.Body)
+        education_err := str_decoder.Decode(&t_education_str)
+
+        if (education_err != nil) {
+            if errors.As(education_err, &unmarshalErr) {
+                errorResponse(w, "Bad request. Please check your params.", http.StatusBadRequest)
+            } else {
+                errorResponse(w, "Bad request.", http.StatusBadRequest)
+            }
+            return
+        }
+
+        generateRtmToken(t_education_str.roomUuid,t_education_str.userUuid,t_education_str.role)
+        errorResponse(w, educationToken, http.StatusOK)
+        log.Println(w, r)
+    }
+
+    func errorResponse(w http.ResponseWriter, message string, httpStatusCode int) {
+        w.Header().Set("Content-Type", "application/json")
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.WriteHeader(httpStatusCode)
+        resp := make(map[string]string)
+        resp["token"] = message
+        resp["code"] = strconv.Itoa(httpStatusCode)
+        jsonResp, _ := json.Marshal(resp)
+        w.Write(jsonResp)
+    }
+
+    func main() {
+        // Handle routing
+        http.HandleFunc("/fetch_education_token", educationTokenHandler)
+
+        fmt.Printf("Starting server at port 8082\n")
+
+        if err := http.ListenAndServe(":8082", nil); err != nil {
+            log.Fatal(err)
+        }
+    }
+    ```
+
+2.  A `go.mod` file defines this module’s import path and dependency requirements. To create the `go.mod` for your token server, run the following command:
+
+    ```shell
+       $ go mod init sampleServer
+    ```
+
+3.  Get dependencies by running the following command:
+
+    ```shell
+       $ go get
+    ```
+
+4.  Start the server by running the following command:
+
+    ```shell
+       $ go run server.go
+    ```
+
+### Use AccessToken2 for authentication
+
+This section uses the Web client as an example to show how to use a token for client-side user authentication.
+The following reference code comes from the [<Vg k="FC" /> web source code](https://github.com/AgoraIO-Community/flexible-classroom-desktop/blob/release/2.8.30/packages/agora-demo-app/src/pages/home/index.tsx).
+
+1.  Initiate a token request to the server integrated with the <Vg k="COMPANY" /> token generator:
+
+    ```typescript
+    const { token, appId } = await roomApi.getCredentialNoAuth({
+        userUuid,
+        roomUuid,
+        role: userRole,
+    });
+    ```
+
+1.  Use the token obtained in this request to create a `launchOption` object:
+
+    ```typescript
+    const launchOption = {
+    appId,
+    sdkDomain,
+    pretest: true,
+    courseWareList: [],
+    language: language as LanguageEnum,
+    userUuid: `${userUuid}`,
+    rtmToken: token,
+    roomUuid: `${roomUuid}`,
+    roomType: roomType,
+    roomName: `${roomName}`,
+    userName: userName,
+    roleType: userRole,
+    region: region as EduRegion,
+    duration: +duration * 60,
+    latencyLevel: 2,
+    shareUrl,
+    };
+    ```
+
+1. Call `launch` and use the token to join the classroom:
+
+    ```typescript
+    AgoraEduSDK.launch(dom, launchOption);
+    ```
+
+## Reference
+
+This section introduces token generator libraries, version requirements, and related documents about tokens.
+
+### Token generator libraries
+
+<Vg k="COMPANY" /> provides an open-source [AgoraDynamicKey](https://github.com/AgoraIO/Tools/tree/master/DynamicKey/AgoraDynamicKey) repository on GitHub, which enables you to generate tokens on your server with programming languages such as C++, Java, and Go.
+
+#### AccessToken2
+
+-  App Global
+
+   The scope is global App operations, such as creating classrooms, setting and querying rooms, etc.
+
+    | Language | Algorithm   | Core method                                                                                                                                            | Sample code                                                                                                                                                         |
+    | -------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+    | C++ | HMAC-SHA256 | [BuildAppToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/cpp/src/EducationTokenBuilder2.h)                                   | N/A |
+    | Go | HMAC-SHA256 | [BuildAppToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/go/src/educationtokenbuilder/educationtokenbuilder.go)               | [sample.go](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/go/sample/educationtokenbuilder/sample.go) |
+    | Java | HMAC-SHA256 | [buildAppToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/java/src/main/java/io/agora/education/EducationTokenBuilder2.java) | [EducationTokenBuilder2Sample.java](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/java/src/main/java/io/agora/sample/EducationTokenBuilder2Sample.java) |
+    | Node.js| HMAC-SHA256 | [buildAppToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/nodejs/src/EducationTokenBuilder.js)                             | [EducationTokenSample.js](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/nodejs/sample/EducationTokenSample.js) |
+    | PHP | HMAC-SHA256 | [buildAppToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/php/src/EducationTokenBuilder.php)                                  | [EducationTokenBuilderSample.php](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/php/sample/EducationTokenBuilderSample.php) |
+    | Python 2 | HMAC-SHA256 | [build_app_token](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python/src/education_token_builder.py)                       | [education_token_builder_sample.py](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python/sample/education_token_builder_sample.py) |
+    | Python 3 | HMAC-SHA256 | [build_app_token](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python3/src/education_token_builder.py)                      | [education_token_builder_sample.py](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python3/sample/education_token_builder_sample.py) |
+
+-  Specify room and user (used by client)
+
+   The scope is the specified user in the specified room. This token packages two services, `ServiceEducation` and `ServiceRtm`, which are passed in when the client SDK is started. It can help users open the token for <Vg k="FC" /> and <Vg k="SIG" /> user login.
+
+    | Language | Algorithm   | Core method                                                                                                                                            | Sample code                                                                                                                                                         |
+    | -------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+    | C++ | HMAC-SHA256 | [BuildRoomUserToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/cpp/src/EducationTokenBuilder2.h)                                   | N/A |
+    | Go | HMAC-SHA256 | [BuildRoomUserToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/go/src/educationtokenbuilder/educationtokenbuilder.go)               | [sample.go](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/go/sample/educationtokenbuilder/sample.go) |
+    | Java | HMAC-SHA256 | [buildRoomUserToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/java/src/main/java/io/agora/education/EducationTokenBuilder2.java) | [EducationTokenBuilder2Sample.java](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/java/src/main/java/io/agora/sample/EducationTokenBuilder2Sample.java) |
+    | Node.js| HMAC-SHA256 | [buildRoomUserToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/nodejs/src/EducationTokenBuilder.js)                             | [EducationTokenSample.js](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/nodejs/sample/EducationTokenSample.js) |
+    | PHP | HMAC-SHA256 | [buildRoomUserToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/php/src/EducationTokenBuilder.php)                                  | [EducationTokenBuilderSample.php](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/php/sample/EducationTokenBuilderSample.php) |
+    | Python 2 | HMAC-SHA256 | [build_room_user_token](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python/src/education_token_builder.py)                       | [education_token_builder_sample.py](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python/sample/education_token_builder_sample.py) |
+    | Python 3 | HMAC-SHA256 | [build_room_user_token](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python3/src/education_token_builder.py)                      | [education_token_builder_sample.py](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python3/sample/education_token_builder_sample.py) |
+
+#### AccessToken
+
+-  If you are using AccessToken, you can refer to the following sample code:
+
+    | Language | Algorithm   | Core method                                                                                                                                | Sample code                                                                                                                                                         |
+    | -------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+    | C++      | HMAC-SHA256 | [buildToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/cpp/src/RtmTokenBuilder.h)                            | [RtmTokenBuilderSample.cpp](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/cpp/sample/RtmTokenBuilderSample.cpp)                           |
+    | Go       | HMAC-SHA256 | [buildToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/go/src/RtmTokenBuilder/RtmTokenBuilder.go)            | [sample.go](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/go/sample/RtmTokenBuilder/sample.go)                                            |
+    | Java     | HMAC-SHA256 | [buildToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/java/src/main/java/io/agora/rtm/RtmTokenBuilder.java) | [RtmTokenBuilderSample.java](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/java/src/main/java/io/agora/sample/RtmTokenBuilderSample.java) |
+    | Node.js  | HMAC-SHA256 | [buildToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/nodejs/src/RtmTokenBuilder.js)                        | [RtmTokenBuilderSample.js](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/nodejs/sample/RtmTokenBuilderSample.js)                          |
+    | PHP      | HMAC-SHA256 | [buildToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/php/src/RtmTokenBuilder.php)                          | [RtmTokenBuilderSample.php](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/php/sample/RtmTokenBuilderSample.php)                           |
+    | Python 2 | HMAC-SHA256 | [buildToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python/src/RtmTokenBuilder.py)                        | [RtmTokenBuilderSample.py](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python/sample/RtmTokenBuilderSample.py)                          |
+    | Python 3 | HMAC-SHA256 | [buildToken](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python3/src/RtmTokenBuilder.py)                       | [RtmTokenBuilderSample.py](https://github.com/AgoraIO/Tools/blob/master/DynamicKey/AgoraDynamicKey/python3/sample/RtmTokenBuilderSample.py)                         |
+
+### Considerations
+
+#### Parameter consistency
+
+The parameters used to generate the token need to be consistent with the ones you used to launch <Vg k="FC" />.
+
+#### App certificate and token
+
+To use the token for authentication, you need to enable the app certificate for your project on <Vg k="CONSOLE" />. Once a project has enabled the app certificate, you must use tokens to authenticate its users.
+

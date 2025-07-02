@@ -3,42 +3,12 @@ import * as storage from '../shared/_storage.mdx'
 import * as config from '../shared/_configuration.mdx'
 import * as lock from '../shared/_lock.mdx'
 import * as enumv from '../shared/_enumv.mdx'
-import Status from '../shared/_rtmstatus.mdx'
-
+import Status from '../shared/_rtmstatus-en.mdx'
 
 The storage feature provides a dynamic database mechanism that allows developers to dynamically set, store, update, and delete data such as channel metadata and user metadata.
 
 <span className="index-group-rtmstorage" style={{display: 'none'}}>IRtmStorage</span>
 <span className="index-desc-rtmstorage" style={{display: 'none'}}>Storage instance</span>
-
-### {storage.createmetadata[props.ag_platform]}
-
-#### Description
-
-<span className="index-desc-createmetadata">Before calling other Storage APIs, you need to call this method to create a pointer to an [`IMetadata`](#IMetadata) object.</span>
-
-#### Method
-
-You can call the <code>{storage.createmetadata[props.ag_platform]}</code> method as follows:
-
-
-```cpp 
-virtual IMetadata* createMetadata() = 0;
-```
-
-
-#### Basic usage
-
-
-```cpp 
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-```
-
-
-#### Synchronous return value
-
-- Success: Returns a pointer to the <code>{storage.metadata[props.ag_platform]}</code> object.
-- Failure: Returns `NULL`.
 
 ### {storage.setchannel[props.ag_platform]}
 
@@ -51,8 +21,8 @@ The <code>{storage.setchannel[props.ag_platform]}</code> method sets metadata fo
 - If you set metadata with the same `key`, the `value` of the last setting overwrites the previous one.
 </div>
 
-Channel metadata also introduces the version control logic CAS (Compare And Set). This method provides two independent version control fields, and you can set one or more of them according to your actual business scenario:
-- Enable version number verification for the entire set of channel metadata by setting the `revision` property through the <code>setMajorRevision</code> method in the <code>{storage.metadata[props.ag_platform]}</code> data type.
+Channel metadata also introduces the version control logic CAS (Compare And Set). This method provides two independent version control fields, and you can set one or more of them according to your actual business use-case:
+- Enable version number verification for the entire set of channel metadata by setting the `majorRevision` property in the <code>{storage.metadata[props.ag_platform]}</code> data type.
 - Enable version number verification for a single metadata item by setting the `revision` property in the <code>{storage.metadataitem[props.ag_platform]}</code> class.
 
 When setting channel metadata or metadata items, you can control whether to enable version number verification by specifying the revision property:
@@ -68,15 +38,17 @@ You can call the <code>{storage.setchannel[props.ag_platform]}</code> method as 
 
 
 ```cpp 
-virtual int setChannelMetadata(
-      const char* channelName, RTM_CHANNEL_TYPE channelType, const IMetadata* data, const MetadataOptions& options, const char* lockName, uint64_t& requestId) = 0;
+virtual void setChannelMetadata(
+    const char* channelName, RTM_CHANNEL_TYPE channelType,
+    const Metadata& data, const MetadataOptions& options,
+    const char* lockName, uint64_t& requestId) = 0;
 ```
 
 | Parameters | Type | Required | Default | Description |
 | :--------------: | :-------------------------------------------------------------: | :------: | :-----------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `channelName` | const char* | Required | - | Channel name. |
 | `channelType` | <code>{enumv.channeltype[props.ag_platform]}</code> | Required | - | Channel types. See <a href="#enumvchanneltypepropsag_platform"><code>{enumv.channeltype[props.ag_platform]}</code></a>. |
-| `data` | `const IMetadata*` | Required | - | Metadata item. See [`IMetadata`](#IMetadata). |
+| `data` | `const Metadata&` | Required | - | Metadata item. See <a href="#storagemetadatapropsag_platform"><code>{storage.metadata[props.ag_platform]}</code></a>. |
 | `options` | `const MetadataOptions&` | Required | - | Options for setting the channel metadata. |
 | `lockName` | const char* | Required | - | Lock name. If set, only users who call the <code>{lock.acquire[props.ag_platform]}</code> method to acquire the lock can perform operations. |
 | `requestId` | uint64_t& | Required | - | (Output) Request identifier. Use this parameter to identify and process the corresponding request. |
@@ -106,49 +78,32 @@ After calling this method, the SDK triggers the <code>{config.onsetchannelmetada
 
 ```cpp 
 // Method call
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(174298270);
-
-MetadataItem item0;
-item0.key = "Apple";
-item0.value = "100";
-item0.revision = 174298200;
-
-MetadataItem item1;
-item1.key = "Banana";
-item1.value = "200";
-item1.revision = 174298100;
-
-metadata->setMetadataItem(item0);
-metadata->setMetadataItem(item1);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-ret = rtm_client->getStorage()->setChannelMetadata("channel_name", RTM_CHANNEL_TYPE_STREAM, metadata, meta_opt, "lockName", req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("setChannelMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+Metadata metadata;
+metadata.majorRevision = 174298270;
+std::vector<agora::rtm::MetadataItem> items;
+items.emplace_back(MetadataItem("Apple", "100", 174298200));
+items.emplace_back(MetadataItem("Banana", "200", 174298100));
+metadata.items = items.data();
+metadata.itemCount = items.size();
+MetadataOptions options;
+options.recordTs = true;
+options.recordUserId = true;
+uint64_t requestId;
+rtmClient->getStorage()->setChannelMetadata("channelName", RTM_CHANNEL_TYPE_MESSAGE, metadata, options, "lockName", requestId);
 ```
 
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onSetChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("SetChannelMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("SetChannelMetadata success\n");
+    void onSetChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("SetChannelMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("SetChannelMetadata success\n");
+        }
     }
-  }
 };
 ```
-
-#### Synchronous return value
-
-- 0: Success.
-- < 0: Failure.
 
 ### {storage.getchannel[props.ag_platform]}
 
@@ -161,8 +116,8 @@ class RtmEventHandler : public IRtmEventHandler {
 You can call the <code>{storage.getchannel[props.ag_platform]}</code> method as follows:
 
 ```cpp 
-virtual int getChannelMetadata(
-      const char* channelName, RTM_CHANNEL_TYPE channelType, uint64_t& requestId) = 0;
+virtual void getChannelMetadata(
+    const char* channelName, RTM_CHANNEL_TYPE channelType, uint64_t& requestId) = 0;
 ```
 
 | Parameters | Type | Required | Default | Description |
@@ -181,7 +136,7 @@ After calling this method, the SDK triggers the <code>{config.ongetchannelmetada
 | `requestId` | const uint64_t | Request identifier. |
 | `channelName` | const char* | Channel name. |
 | `channelType` | <code>{enumv.channeltype[props.ag_platform]}</code> | Channel type. See <a href="#enumvchanneltypepropsag_platform"><code>{enumv.channeltype[props.ag_platform]}</code></a>. |
-| `data` | `const IMetadata*` | Metadata item. See [`IMetadata`](#IMetadata). |
+| `data` | `const Metadata&` | Metadata item. See <a href="#storagemetadatapropsag_platform"><code>{storage.metadata[props.ag_platform]}</code></a>. |
 | `errorCode` | <code>{code.errorcode[props.ag_platform]}</code> | [Error codes](#error-codes-table). |
 
 #### Basic usage
@@ -189,35 +144,25 @@ After calling this method, the SDK triggers the <code>{config.ongetchannelmetada
 
 ```cpp 
 // Method call
-ret = rtm_client->getStorage()->getChannelMetadata("channel_name", RTM_CHANNEL_TYPE_STREAM, req_id);
-if (ret != RTM_ERROR_OK) {
-    printf("getChannelMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->getChannelMetadata("channelName", RTM_CHANNEL_TYPE_MESSAGE, requestId);
 ```
 
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onGetChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, const IMetadata &data, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("GetChannelMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("GetChannelMetadata success %d channel: %s, channel type: %d\n");
-      const MetadataItem* items;
-      size_t size;
-      data.getMetadataItems(&items, &size);
-      for (int i = 0 ; i < size; i++) {
-        printf("key: %s value: %s revison: %lld\n", items[i].key, items[i].value, items[i].revision);
-      }
+    void onGetChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, const Metadata& data, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("GetChannelMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("GetChannelMetadata success %d channel: %s, channel type: %d\n");
+            for (int i = 0 ; i < data.itemCount; i++) {
+                printf("key: %s value: %s revision: %lld\n", data.items[i].key, data.items[i].value, data.items[i].revision);
+            }
+        }
     }
-  }
 };
 ```
-
-#### Synchronous return value
-
-- 0: Success.
-- < 0: Failure.
 
 ### {storage.removechannel[props.ag_platform]}
 
@@ -238,15 +183,17 @@ You can call the <code>{storage.removechannel[props.ag_platform]}</code> method 
 
 
 ```cpp 
-virtual int removeChannelMetadata(
-      const char* channelName, RTM_CHANNEL_TYPE channelType, const IMetadata* data, const MetadataOptions& options, const char* lockName, uint64_t& requestId) = 0;
+virtual void removeChannelMetadata(
+    const char* channelName, RTM_CHANNEL_TYPE channelType,
+    const Metadata& data, const MetadataOptions& options,
+    const char* lockName, uint64_t& requestId) = 0;
 ```
 
 | Parameters | Type | Required | Default | Description |
 | :--------------: | :-------------------------------------------------------------: | :------: | :-----------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `channelName` | const char* | Required | - | Channel name. |
 | `channelType` | <code>{enumv.channeltype[props.ag_platform]}</code> | Required | - | Channel types. See <a href="#enumvchanneltypepropsag_platform"><code>{enumv.channeltype[props.ag_platform]}</code></a>. |
-| `data` | `const IMetadata*` | Required | - | Metadata item. See [`IMetadata`](#IMetadata). |
+| `data` | `const Metadata&` | Required | - | Metadata item. See <a href="#storagemetadatapropsag_platform"><code>{storage.metadata[props.ag_platform]}</code></a>. |
 | `options` | `const MetadataOptions&` | Required | - | Options for setting the channel metadata. |
 | `lockName` | const char* | Required | - | Lock name. If set, only users who call the <code>{lock.acquire[props.ag_platform]}</code> method to acquire the lock can perform operations. |
 | `requestId` | uint64_t& | Required | - | (Output) Request identifier. Use this parameter to identify and process the corresponding request. |
@@ -276,42 +223,33 @@ After calling this method, the SDK triggers the <code>{config.onremovechannelmet
 
 ```cpp 
 // Method call
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(174298270);
+Metadata metadata;
+metadata.majorRevision = 174298270;
+std::vector<agora::rtm::MetadataItem> items;
+items.emplace_back(MetadataItem("Apple", "", 174298200));
+metadata.items = items.data();
+metadata.itemCount = items.size();
 
-MetadataItem item0;
-item0.key = "Apple";
-item0.revision = 174298200;
+MetadataOptions options;
+options.recordTs = true;
+options.recordUserId = true;
 
-metadata->setMetadataItem(item0);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-ret = rtm_client->getStorage()->removeChannelMetadata("channel_name", RTM_CHANNEL_TYPE_STREAM, metadata, meta_opt, "", req_id);
-if (ret != RTM_ERROR_OK) {
-    printf("removeChannelMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->removeChannelMetadata("channelName", RTM_CHANNEL_TYPE_MESSAGE, metadata, options, "lockName", requestId);
 ```
 
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onRemoveChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("RemoveChannelMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("RemoveChannelMetadata success\n");
+    void onRemoveChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("RemoveChannelMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("RemoveChannelMetadata success\n");
+        }
     }
-  }
 };
 ```
-
-#### Synchronous return value
-
-- 0: Success.
-- < 0: Failure.
 
 ### {storage.updatechannel[props.ag_platform]}
 
@@ -328,15 +266,17 @@ After successfully updating channel metadata, users who subscribe to the channel
 You can call the <code>{storage.updatechannel[props.ag_platform]}</code> method as follows:
 
 ```cpp 
-virtual int updateChannelMetadata(
-      const char* channelName, RTM_CHANNEL_TYPE channelType, const IMetadata* data, const MetadataOptions& options, const char* lockName, uint64_t& requestId) = 0;
+virtual void updateChannelMetadata(
+    const char* channelName, RTM_CHANNEL_TYPE channelType,
+    const Metadata& data, const MetadataOptions& options,
+    const char* lockName, uint64_t& requestId) = 0;
 ```
 
 | Parameters | Type | Required | Default | Description |
 | :--------------: | :-------------------------------------------------------------: | :------: | :-----------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `channelName` | const char* | Required | - | Channel name. |
 | `channelType` | <code>{enumv.channeltype[props.ag_platform]}</code> | Required | - | Channel types. See <a href="#enumvchanneltypepropsag_platform"><code>{enumv.channeltype[props.ag_platform]}</code></a>. |
-| `data` | `const IMetadata*` | Required | - | Metadata item. See [`IMetadata`](#IMetadata). |
+| `data` | `const Metadata&` | Required | - | Metadata item. See <a href="#storagemetadatapropsag_platform"><code>{storage.metadata[props.ag_platform]}</code></a>. |
 | `options` | `const MetadataOptions&` | Required | - | Options for setting the channel metadata. |
 | `lockName` | const char* | Required | - | Lock name. If set, only users who call the <code>{lock.acquire[props.ag_platform]}</code> method to acquire the lock can perform operations. |
 | `requestId` | uint64_t& | Required | - | (Output) Request identifier. Use this parameter to identify and process the corresponding request. |
@@ -365,43 +305,33 @@ After calling this method, the SDK triggers the <code>{config.onupdatechannelmet
 
 ```cpp 
 // Method call
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(174298270);
+Metadata metadata;
+metadata.majorRevision = 174298270;
+std::vector<agora::rtm::MetadataItem> items;
+items.emplace_back(MetadataItem("Apple", "120", 174298200));
+metadata.items = items.data();
+metadata.itemCount = items.size();
 
-MetadataItem item0;
-item0.key = "Apple";
-item0.value = "120";
-item0.revision = 174298200;
+MetadataOptions options;
+options.recordTs = true;
+options.recordUserId = true;
 
-metadata->setMetadataItem(item0);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-ret = rtm_client->getStorage()->updateChannelMetadata("channel_name", RTM_CHANNEL_TYPE_STREAM, metadata, meta_opt, "lockName", req_id);
-if (ret != RTM_ERROR_OK) {
-    printf("updateChannelMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->updateChannelMetadata("channelName", RTM_CHANNEL_TYPE_MESSAGE, metadata, options, "lockName", requestId);
 ```
 
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onUpdateChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("UpdateChannelMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("UpdateChannelMetadata success\n");
+    void onUpdateChannelMetadataResult(const uint64_t requestId, const char *channelName, RTM_CHANNEL_TYPE channelType, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("UpdateChannelMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("UpdateChannelMetadata success\n");
+        }
     }
-  }
 };
 ```
-
-#### Synchronous return value
-
-- 0: Success.
-- < 0: Failure.
 
 ### {storage.setuser[props.ag_platform]}
 
@@ -416,9 +346,9 @@ The <code>{storage.setuser[props.ag_platform]}</code> method can set metadata fo
 
 After successfully setting user metadata, users who subscribe to the user and enable event listeners can receive the <code>{enumv.storagetypeuser[props.ag_platform]}</code> type of the <code>{config.onstorageevent[props.ag_platform]}</code> event notification. See [Event listeners](#event-listeners).
 
-User metadata also introduces the version control logic CAS (Compare And Set). This method provides two independent version control fields, and you can set one or more of them according to your actual business scenario:
+User metadata also introduces the version control logic CAS (Compare And Set). This method provides two independent version control fields, and you can set one or more of them according to your actual business use-case:
 
-- Enable version number verification for the entire set of channel metadata by setting the `revision` property through the <code>setMajorRevision</code> method in the <code>{storage.metadata[props.ag_platform]}</code> data type.
+- Enable version number verification for the entire set of channel metadata by setting the `majorRevision` property in the <code>{storage.metadata[props.ag_platform]}</code> data type.
 - Enable version number verification for a single metadata item by setting the `revision` property in the <code>{storage.metadataitem[props.ag_platform]}</code> class.
 
 When setting user metadata or metadata items, you can control whether to enable version number verification by specifying the revision property:
@@ -433,14 +363,15 @@ After successfully setting user metadata, users who subscribe to the user and en
 You can call the <code>{storage.setuser[props.ag_platform]}</code> method as follows:
 
 ```cpp 
-virtual int setUserMetadata(
-      const char* userId, const IMetadata* data, const MetadataOptions& options, uint64_t& requestId) = 0;
+virtual void setUserMetadata(
+    const char* userId, const Metadata& data,
+    const MetadataOptions& options, uint64_t& requestId) = 0;
 ```
 
 | Parameters | Type | Required | Default | Description |
 | :--------------: | :-------------------------------------------------------------: | :------: | :-----------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `userId` | const char* | Required | - | User ID. |
-| `data` | `const IMetadata*` | Required | - | Metadata item. See [`IMetadata`](#IMetadata). |
+| `data` | `const Metadata&` | Required | - | Metadata item. See <a href="#storagemetadatapropsag_platform"><code>{storage.metadata[props.ag_platform]}</code></a>. |
 | `options` | `const MetadataOptions&` | Required | - | Options for setting the channel metadata. |
 | `requestId` | uint64_t& | Required | - | (Output) Request identifier. Use this parameter to identify and process the corresponding request. |
 
@@ -468,49 +399,34 @@ After calling this method, the SDK triggers the <code>{config.onsetusermetadatar
 
 ```cpp 
 // Method call
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(174298270);
+Metadata metadata;
+metadata.majorRevision = 174298270;
+std::vector<agora::rtm::MetadataItem> items;
+items.emplace_back(MetadataItem("Name", "Tony", 174298200));
+items.emplace_back(MetadataItem("Mute", "true", 174298100));
+metadata.items = items.data();
+metadata.items = items.size();
 
-MetadataItem item0;
-item0.key = "Name";
-item0.value = "Tony";
-item0.revision = 174298200;
+MetadataOptions options;
+options.recordTs = true;
+options.recordUserId = true;
 
-MetadataItem item1;
-item1.key = "Mute";
-item1.value = "true";
-item1.revision = 174298100;
-
-metadata->setMetadataItem(item0);
-metadata->setMetadataItem(item1);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-ret = rtm_client->getStorage()->setUserMetadata("Tony", metadata, meta_opt, req_id);
-if (ret != RTM_ERROR_OK) {
-    printf("setUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->setUserMetadata("Tony", metadata, options, requestId);
 ```
 
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onSetUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("SetUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("SetUserMetadata success\n");
+    void onSetUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("SetUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("SetUserMetadata success\n");
+        }
     }
-  }
 };
 ```
-
-#### Synchronous return value
-
-- 0: Success.
-- < 0: Failure.
 
 ### {storage.getuser[props.ag_platform]}
 
@@ -523,7 +439,7 @@ class RtmEventHandler : public IRtmEventHandler {
 You can call the <code>{storage.getuser[props.ag_platform]}</code> method as follows:
 
 ```cpp 
-virtual int getUserMetadata(const char* userId, uint64_t& requestId) = 0;
+virtual void getUserMetadata(const char* userId, uint64_t& requestId) = 0;
 ```
 
 | Parameters | Type | Required | Default | Description |
@@ -539,42 +455,32 @@ After calling this method, the SDK triggers the <code>{config.ongetusermetadatar
 | :--------------: | :--------------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `requestId` | const uint64_t | Request identifier. |
 | `userId` | const char* | User ID. |
-| `data` | `const IMetadata*` | Metadata item. See [`IMetadata`](#IMetadata). |
+| `data` | `const Metadata&` | Metadata item. See <a href="#storagemetadatapropsag_platform"><code>{storage.metadata[props.ag_platform]}</code></a>. |
 | `errorCode` | <code>{code.errorcode[props.ag_platform]}</code> | [Error codes](#error-codes-table). |
 
 #### Basic usage
 
 ```cpp 
 // Method call
-ret = rtm_client->getStorage()->getUserMetadata("Tony", req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("getUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->getUserMetadata("Tony", requestId);
 ```
 
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onGetUserMetadataResult(const uint64_t requestId, const char *userId, const IMetadata &data, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("GetUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("GetUserMetadata success user id: %s\n", userId);
-      const MetadataItem* items;
-      size_t size;
-      data.getMetadataItems(&items, &size);
-      for (int i = 0 ; i < size; i++) {
-          printf("key: %s value: %s revison: %lld\n", items[i].key, items[i].value, items[i].revision);
-      }
+    void onGetUserMetadataResult(const uint64_t requestId, const char *userId, const Metadata& data, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("GetUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("GetUserMetadata success user id: %s\n", userId);
+            for (int i = 0 ; i < data.itemCount; i++) {
+                printf("key: %s value: %s revision: %lld\n", data.items[i].key, data.items[i].value, data.items[i].revision);
+            }
+        }
     }
-  }
 };
 ```
-
-#### Synchronous return value
-
-- 0: Success.
-- < 0: Failure.
 
 ### {storage.removeuser[props.ag_platform]}
 
@@ -590,14 +496,15 @@ You can call the <code>{storage.removeuser[props.ag_platform]}</code> method as 
 
 
 ```cpp 
-virtual int removeUserMetadata(
-      const char* userId, const IMetadata* data, const MetadataOptions& options, uint64_t& requestId) = 0;
+virtual void removeUserMetadata(
+    const char* userId, const Metadata& data,
+    const MetadataOptions& options, uint64_t& requestId) = 0;
 ```
 
 | Parameters | Type | Required | Default | Description |
 | :--------------: | :-------------------------------------------------------------: | :------: | :-----------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `userId` | const char* | Required | - | User ID. |
-| `data` | `const IMetadata*` | Required | - | Metadata item. See [`IMetadata`](#IMetadata). |
+| `data` | `const Metadata&` | Required | - | Metadata item. See <a href="#storagemetadatapropsag_platform"><code>{storage.metadata[props.ag_platform]}</code></a>. |
 | `options` | `const MetadataOptions&` | Required | - | Options for setting the channel metadata. |
 | `requestId` | uint64_t& | Required | - | (Output) Request identifier. Use this parameter to identify and process the corresponding request. |
 
@@ -625,40 +532,32 @@ After calling this method, the SDK triggers the <code>{config.onremoveusermetada
 
 ```cpp 
 // Method call
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(174298270);
+Metadata metadata;
+metadata.majorRevision = 174298270;
+std::vector<MetadataItem> items;
+MetadataItem item;
+item.key = "Mute";
+item.revision = 174298200;
+items.emplace_back(item);
+metadata.items = items.data();
+metadata.itemCount = items.size();
 
-MetadataItem item0;
-item0.key = "Mute";
-item0.revision = 174298200;
-
-metadata->setMetadataItem(item0);
-
-MetadataOptions meta_opt;
-
-ret = rtm_client->getStorage()->removeUserMetadata("Tony", metadata, meta_opt, req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("removeUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->removeUserMetadata("Tony", metadata, MetadataOptions(), requestId);
 ```
 
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onRemoveUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-        printf("RemoveUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-        printf("RemoveUserMetadata success\n");
+    void onRemoveUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("RemoveUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("RemoveUserMetadata success\n");
+        }
     }
-  }
 };
 ```
-
-#### Synchronous return value
-
-- 0: Success.
-- < 0: Failure.
 
 ### {storage.updateuser[props.ag_platform]}
 
@@ -675,14 +574,15 @@ After successfully updating channel metadata, users who subscribe to the user an
 You can call the <code>{storage.updateuser[props.ag_platform]}</code> method as follows:
 
 ```cpp 
-virtual int updateUserMetadata(
-      const char* userId, const IMetadata* data, const MetadataOptions& options, uint64_t& requestId) = 0;
+virtual void updateUserMetadata(
+    const char* userId, const Metadata& data,
+    const MetadataOptions& options, uint64_t& requestId) = 0;
 ```
 
 | Parameters | Type | Required | Default | Description |
 | :--------------: | :-------------------------------------------------------------: | :------: | :-----------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `userId` | const char* | Required | - | User ID. |
-| `data` | `const IMetadata*` | Required | - | Metadata item. See [`IMetadata`](#IMetadata). |
+| `data` | `const Metadata&` | Required | - | Metadata item. See <a href="#storagemetadatapropsag_platform"><code>{storage.metadata[props.ag_platform]}</code></a>. |
 | `options` | `const MetadataOptions&` | Required | - | Options for setting the channel metadata. |
 | `requestId` | uint64_t& | Required | - | (Output) Request identifier. Use this parameter to identify and process the corresponding request. |
 
@@ -710,35 +610,31 @@ After calling this method, the SDK triggers the <code>{config.onupdateusermetada
 
 ```cpp 
 // Method call
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(174298270);
+Metadata metadata;
+metadata.majorRevision = 174298270;
+std::vector<MetadataItem> items;
+items.emplace_back(MetadataItem("Apple", "100", 174298200));
+metadata.items = items.data();
+metadata.itemCount = items.size();
 
-MetadataItem item0;
-item0.key = "Apple";
-item0.revision = 174298200;
+MetadataOptions options;
+options.recordTs = true;
+options.recordUserId = true;
 
-metadata->setMetadataItem(item0);
-
-MetadataOptions meta_opt;
-meta_opt.recordTs = true;
-meta_opt.recordUserId = true;
-
-ret = rtm_client->getStorage()->updateUserMetadata("Tony", metadata, meta_opt, req_id);
-if (ret != RTM_ERROR_OK) {
-    printf("updateUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->updateUserMetadata("Tony", metadata, options, requestId);
 ```
 
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onUpdateUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("UpdateUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("UpdateUserMetadata success\n");
+    void onUpdateUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("UpdateUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("UpdateUserMetadata success\n");
+        }
     }
-  }
 };
 ```
 
@@ -755,7 +651,7 @@ After successfully subscribing to the user metadata, you can receive the <code>{
 You can call the <code>{storage.subscribeuser[props.ag_platform]}</code> method as follows:
 
 ```cpp 
-virtual int subscribeUserMetadata(const char* userId, uint64_t& requestId) = 0;
+virtual void subscribeUserMetadata(const char* userId, uint64_t& requestId) = 0;
 ```
 
 | Parameters | Type | Required | Default | Description |
@@ -779,29 +675,22 @@ After calling this method, the SDK triggers the <code>{config.onupdateusermetada
 
 ```cpp 
 // Method call
-ret = rtm_client->getStorage()->subscribeUserMetadata("Tony", req_id);
-if (ret != RTM_ERROR_OK) {
-  printf("subscribeUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-}
+uint64_t requestId;
+rtmClient->getStorage()->subscribeUserMetadata("Tony", requestId);
 ```
 
 ```cpp
 // Asynchronous callback
 class RtmEventHandler : public IRtmEventHandler {
-  void onSubscribeUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
-    if (errorCode != RTM_ERROR_OK) {
-      printf("SubscribeUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
-    } else {
-      printf("SubscribeUserMetadata success\n");
+    void onSubscribeUserMetadataResult(const uint64_t requestId, const char *userId, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("SubscribeUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("SubscribeUserMetadata success\n");
+        }
     }
-  }
 };
 ```
-
-#### Synchronous return value
-
-- 0: Success.
-- < 0: Failure.
 
 ### {storage.unsubscribeuser[props.ag_platform]}
 
@@ -814,63 +703,54 @@ class RtmEventHandler : public IRtmEventHandler {
 You can call the <code>{storage.unsubscribeuser[props.ag_platform]}</code> method as follows:
 
 ```cpp 
-virtual int unsubscribeUserMetadata(const char* userId) = 0;
+virtual void unsubscribeUserMetadata(const char* userId, uint64_t& requestId) = 0;
 ```
 
 | Parameters | Type | Required | Default | Description |
 | :--------------: | :--------------------: | :------: | :-----------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `userId` | const char* | Required | - | User ID. |
+| `requestId` | uint64_t& | Required | - | (Output) Request identifier. Use this parameter to identify and process the corresponding request. |
+
+#### Asynchronous callback
+
+After calling this method, the SDK triggers the <code>{config.onunsubscribeusermetadataresult[props.ag_platform]}</code> callback and return the API execution result through the following parameters:
+
+| Parameters | Type |  Description |
+| :--------------: | :--------------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `requestId` | const uint64_t | Request identifier. |
+| `userId` | const char* | User ID. |
+| `errorCode` | <code>{code.errorcode[props.ag_platform]}</code> | [Error codes](#error-codes-table). |
 
 #### Basic usage
 
 ```cpp 
-ret = rtm_client->getStorage()->unsubscribeUserMetadata("Tony");
-if (ret != RTM_ERROR_OK) {
-    printf("unsubscribeUserMetadata failed error is %d reason is %s\n", ret, getErrorReason(ret));
-} else {
-    printf("unsubscribeUserMetadata success");
-}
+uint64_t requestId;
+rtm_client->getStorage()->unsubscribeUserMetadata("Tony", requestId);
 ```
 
-#### Synchronous return value
-
-- 0: Success.
-- < 0: Failure.
-
-### {storage.metadata[props.ag_platform]}
-<span className="index-group-metadata" style={{display: 'none'}}>IMetadata</span>
-<span className="index-desc-metadata" style={{display: 'none'}}>Metadata items.</span>
-
-#### Description
-
-The <code>{storage.metadata[props.ag_platform]}</code> data type provides methods for setting and getting metadata items and their versions.
-
-#### Method
-
-You can call the relevant methods in the following ways:
-
 ```cpp
-class IMetadata {
- public:
-  virtual void setMajorRevision(const int64_t revision) = 0;
-  virtual int64_t getMajorRevision() const = 0;
-  virtual void setMetadataItem(const MetadataItem& item) = 0;
-  virtual void getMetadataItems(const MetadataItem** items, size_t* size) const = 0;
-  virtual void clearMetadata() = 0;
-  virtual void release() = 0;
- protected:
-  virtual ~IMetadata() {}
+// Asynchronous callback
+class RtmEventHandler : public IRtmEventHandler {
+    void onUnsubscribeUserMetadataResult(const uint64_t requestId, const char* userId, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("UnsubscribeUserMetadata failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("UnsubscribeUserMetadata success\n");
+        }
+    }
 };
 ```
 
-| Methods | Description |
-| :------------------------------------------------------------------------------------------------------------------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <code className="index-group-item-metadata index-api-setmajorrevision" id="setmajorrevision">setMajorRevision</code> | <div class="index-desc-setmajorrevision">Sets the version control switch:<li> `-1`: Disable the version verification.</li><li>> `0`: Enable the version verification. The operation can only be performed if the target version number matches this value.</li></div> |
-| <code className="index-group-item-metadata index-api-getmajorrevision" id="getmajorrevision">getMajorRevision</code> | <span class="index-desc-getmajorrevision">Gets major revision.</span> |
-| <code className="index-group-item-metadata index-api-setmetadataitem" id="setmetadataitem">setMetadataItem</code> | <span class="index-desc-setmetadataitem">Sets metadata items.</span> |
-| <code className="index-group-item-metadata index-api-getmetadataitems" id="getmetadataitems">getMetadataItems</code> | <span class="index-desc-getmetadataitems">Gets metadata items.</span> |
-| <code className="index-group-item-metadata index-api-clearmetadata" id="clearmetadata">clearMetadata</code> | <span class="index-desc-clearmetadata">Removes metadata items.</span> |
-| <code className="index-group-item-metadata index-api-releasemetadata" id="releasemetadata">release</code> | <span class="index-desc-releasemetadata">Releases the <code>{storage.metadata[props.ag_platform]}</code> instance.</span> |
+
+### {storage.metadata[props.ag_platform]}
+
+Use the <code>{storage.metadata[props.ag_platform]}</code> data type to set and manage metadata, containing the following properties:
+
+| Properties | Type | Required | Default | Description |
+| :------------: | :----: | :------: | :----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `majorRevision` | int64_t | Optional | `-1` | The version control switch:<li> `-1`: Disable the version verification.</li><li>> `0`: Enable the version verification. The operation can only be performed if the target version number matches this value.</li> |
+| `items` | `MetadataItem*` | Optional | `NULL` |  Metadata items. |
+| `itemCount` | size_t | Optional | `0` | The number of metadata items. |
 
 The <code>MetadataItem</code> data type contains the following properties:
 
@@ -881,26 +761,3 @@ The <code>MetadataItem</code> data type contains the following properties:
 | `authorUserId` | const char* | Optional | - | The user ID of the editor. This value is read-only and does not support writing. |
 | `revision` | int64_t | Optional | `-1` | <li>Returns the real version number in read operations.</li><li>Serves as a version control switch in write operations:</li><ul><li> `-1`: Disable the version verification.</li><li>> `0`: Enable version verification, only perform the operation if the target version number matches this value.</li></ul> |
 | `updateTs` | int64_t | Optional | `0` | Update timestamp. This value is read-only and does not support writing. |
-
-#### Basic usage
-
-```cpp
-// Set metadata
-IMetadata* metadata = rtm_client->getStorage()->createMetadata();
-metadata->setMajorRevision(174298270);
-
-// new MetadataItem
-MetadataItem item0;
-item0.key = "Name";
-item0.value = "Tony";
-item0.revision = 174298200;
-metadata.setMetadataItem(item1);
-
-// Get metadata
-const MetadataItem* items;
-size_t size;
-data.getMetadataItems(&items, &size);
-for (int i = 0 ; i < size; i++) {
-    printf("key: %s value: %s revison: %lld\n", items[i].key, items[i].value, items[i].revision);
-}
-```

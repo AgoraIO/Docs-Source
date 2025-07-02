@@ -3,16 +3,18 @@ import * as config from '../shared/_configuration.mdx'
 import * as channel from '../shared/_channel.mdx'
 import * as message from '../shared/_message.mdx'
 import * as topic from '../shared/_topic.mdx'
-import Status from '../shared/_rtmstatus.mdx'
+import Status from '../shared/_rtmstatus-en.mdx'
 
 
 Sending and receiving messages is the most basic function of the Signaling service. Any message sent by the Signaling server can be delivered to any online subscribing user within 100 ms. Depending on your business requirements, you can send messages to one user only or broadcast messages to multiple users.
 
-Signaling offers two types of channels: message channels and stream channels. These channel types have the following differences in how messages are transmitted and methods are called:
-- Message Channel: The real-time channel. Messages are transmitted through the channel, and the channel is highly scalable. Local users can call the <code>{message.publish[props.ag_platform]}</code> method to send messages in the channel, and remote users can call the <code>{channel.subscribe[props.ag_platform]}</code> method to subscribe to the channel and receive messages.
+Signaling offers the following channel types: 
+
+- Message Channel: The real-time channel. Messages are transmitted through the channel, and the channel is highly scalable. Local users can call the <code>{message.publish[props.ag_platform]}</code> method, set the `channelType` parameter to <code>{enumv.channeltypemessage[props.ag_platform]}</code>, and set the `channelName` parameter to the channel name to send messages in the channel. The remote users can call the <code>{channel.subscribe[props.ag_platform]}</code> method to subscribe to the channel and receive messages.
+- User Channel: The real-time channel. Messages are transmitted to the specified user. Local users can call the <code>{message.publish[props.ag_platform]}</code> method, set the `channelType` parameter to <code>{enumv.channeltypeuser[props.ag_platform]}</code>, and set the `channelName` parameter to the user ID to send messages to the specified user. The specified remote users receive messages through the <code>{config.onmessageevent[props.ag_platform]}</code> event notifications.
 - Stream Channel: The streaming transmission channel. Messages are transmitted through the topic. Users need to join a channel first, and then join a topic. Local users can call the <code>{topic.publish[props.ag_platform]}</code> method to send messages in the topic, and remote users can call the <code>{topic.subscribe[props.ag_platform]}</code> method to subscribe to the topic and receive messages.
 
-This page introduces how to send and receive messages in a Message Channel.
+This section shows you how to send and receive messages in a message channel or a user channel.
 
 <span className="index-group-irtmclient" style={{display: 'none'}}>RtmClient</span>
 <span className="index-desc-irtmclient" style={{display: 'none'}}>Signaling client instance</span>
@@ -22,7 +24,7 @@ This page introduces how to send and receive messages in a Message Channel.
 
 <span className="index-desc-publish">You can directly call the <code>{message.publish[props.ag_platform]}</code> method to send messages to all online users subscribed to this channel. Even if you do not subscribe to the channel, you can still send messages in the channel.</span>
 
-<Admonition type="info" title="Information">The following practices can effectively improve the reliability of message transmission:<ul><li>The message payload should be within 32 KB; otherwise, the sending will fail.</li><li>The upper limit of the rate at which messages are sent to a single channel is 30 QPS. If the sending rate exceeds the limit, some messages will be discarded. A lower rate is better, as long as the requirements are met.</li></ul></Admonition>
+<Admonition type="info" title="Information">The following practices can effectively improve the reliability of message transmission:<ul><li>The message payload should be within 32 KB; otherwise, the sending will fail.</li><li>The upper limit of the rate at which messages are sent to a single channel is 60 QPS. If the sending rate exceeds the limit, some messages will be discarded. A lower rate is better, as long as the requirements are met.</li></ul></Admonition>
 
 After successfully calling this method, the SDK triggers a <code>{config.onmessageevent[props.ag_platform]}</code> event notification. Users who subscribe to the channel and enabled the event listener can receive this event notification. For details, see <a href="#event-listeners">Event Listeners</a>.
 
@@ -51,11 +53,11 @@ void publish(
 ```
 
 | Parameters | Type | Required | Default | Description |
-| :--------------: | :------------------------------------------------------------: | :------: | :----: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `channelName` | String | Required | - | Channel name. You can only send messages to one channel at a time. |
+| :--------------: | :------------------------------------------------------------: | :------: | :----: | ------------------------------------------------------------------------------- |
+| `channelName` | String | Required | - | Fill in a channel name to send messages to a specified channel, or fill in a user ID to send messages to a specified user. |
 | `message` | String\byte[] | Required | - | Message payload. |
 | `options` | <code>{message.publishoptions[props.ag_platform]}</code> | Required | - | Message options. |
-| `resultCallback` | `ResultCallback<Void>` | Required | - | Callback of invocation result:<li>Success: Executes the `onSuccess` method.</li><li>Failure: Executes the `onFailure` method.</li> |
+| `resultCallback` | `ResultCallback<Void>` | Required | - | Invocation result callback:<li>Success: Executes the `onSuccess` method.</li><li>Failure: Executes the `onFailure` method.</li> |
 
 The <code>options</code> parameter contains the following properties:
 
@@ -104,8 +106,84 @@ rtmClient.publish("my_channel", message, options, new ResultCallback<Void>() {
 });
 ```
 
+Example 3: Send string messages to a specified user.
+
+```java 
+PublishOptions options = new PublishOptions();
+options.setChannelType(RtmChannelType.USER);
+options.setCustomType("PlainText");
+rtmClient.publish("Tony", "Hello world", options, new ResultCallback<Void>() {
+    @Override
+    public void onSuccess(Void responseInfo) {
+        log(CALLBACK, "send message success");
+    }
+
+    @Override
+    public void onFailure(ErrorInfo errorInfo) {
+        log(ERROR, errorInfo.toString());
+    }
+});
+```
+
+Example 4: Send byte messages to a specified user.
+
+```java 
+byte[] message = new byte[] {1, 2, 3, 4};
+PublishOptions options = new PublishOptions();
+options.setChannelType(RtmChannelType.USER);
+options.setCustomType("ByteArray");
+rtmClient.publish("Tony", message, options, new ResultCallback<Void>() {
+    @Override
+    public void onSuccess(Void responseInfo) {
+        log(CALLBACK, "send message success");
+    }
+
+    @Override
+    public void onFailure(ErrorInfo errorInfo) {
+        log(ERROR, errorInfo.toString());
+    }
+});
+```
+
 ### Receive
 
-Signaling provides event notifications for messages, states, and event changes. By setting up event listeners, you can receive messages and events within subscribed channels.
+Signaling provides event notifications for messages, states, and event changes. By listening for callbacks, you can receive messages and events within subscribed channels. As an example, the code snippet below shows how to receive messages from the user channel.
+
+- Adding during initialization:
+
+  ```java
+  rtmConfig.eventListener = new RtmEventListener {
+      @Override
+      public void onMessageEvent(MessageEvent event) {
+          // User channel messages
+          if (event.getChannelType() == RtmChannelType.USER) {
+            log(CALLBACK, "receive message from " + event.getPublisherId() + ", message: " + event.getMessage().toString());
+          }
+      }
+      // ...
+  }
+  ```
+
+- Adding at any time:
+
+    ```java
+    RtmEventListener listener = new RtmEventListener() {
+        @Override
+        public void onMessageEvent(MessageEvent event) {
+            // User channel messages
+            if (event.getChannelType() == RtmChannelType.USER) {
+                log(CALLBACK, "receive message from " + event.getPublisherId() + ", message: " + event.getMessage().toString());
+            }
+        }
+
+        @Override
+        public void onConnectionStateChanged(String channelName, RtmConstants.RtmConnectionState state, RtmConstants.RtmConnectionChangeReason reason) {
+        }
+    };
+
+    rtmClient.addEventListener(listener);
+    // ...
+
+    ```
 
 For information on how to add and set event listeners, see [Event Listeners](#event-listeners).

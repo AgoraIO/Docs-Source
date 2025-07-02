@@ -3,7 +3,8 @@
 ### Retrieve a list of conversations from the server
 
 Call `fetchConversationsFromServerWithCursor` to retrieve conversations from the server with pagination. The SDK returns the conversation list in the reverse chronological order of when conversations are active (the timestamp of the last message in the conversation). In the conversation list, each conversation object contains the conversation ID, conversation type, whether the conversation is pinned, the pinned time (the value is 0 for an unpinned conversation), and the last message in the conversation. After the conversation list is retrieved from the server, the local conversation list will be updated accordingly. We recommend calling this method when the app is first installed, or when there is no conversation on the local device. Otherwise, you can call `getAllConversations` to retrieve conversations on the local device.
-The server stores 100 conversations for 7 days by default. To increase the two upper limits, contact support@agora.io. Agora Chat server can store up to 3,000 conversation per end user.
+
+For each end user, the server stores 100 conversations by default. When this limit is exceeded, new conversations will start overwriting the old ones. If the entire message history in a conversation expires, the conversation becomes empty. When pulling the conversation list from the server, these empty conversations are not included by default. To include them, set `ChatOptions#enableEmptyConversation` to `true` when initializing the SDK. In this case, empty conversations will occupy the conversations pull quota, regardless of whether they are needed when pulling. To change this, contact support@agoro.io.
 
 ```java
 // pageSize: The number of conversations that you expect to get on each page. The value range is [1,50].
@@ -38,6 +39,8 @@ For users to receive more offline messages, use the client API or a webhook to s
 
 To ensure data reliability, we recommend retrieving less than 50 historical messages for each method call. To retrieve more than 50 historical messages, call this method multiple times. Once the messages are retrieved, the SDK automatically updates these messages in the local database.
 
+We recommend that you retrieve 20 messages each time, with a maximum of 50. During paginated query, if the total number of messages that meet the query conditions is greater than the number of `pageSize`, the number of messages of `pageSize` will be returned. If it is less than the number of `pageSize`, the actual number will be returned. When the message query is completed, the number of returned messages is less than the number of `pageSize`.
+
 Refer to the following code sample:
 
 ```typescript
@@ -57,7 +60,7 @@ ChatClient.getInstance()
 
 ### Pin a conversation
 
-To keep track of an important conversation, you can pin it to the top of your conversation list. You can pin up to 50 conversations.  The pinned state is stored on the server. In a multi-device login scenario, if you pin or unpin a conversation, other login devices will receive the `CONVERSATION_PINNED` or `CONVERSATION_UNPINNED` events.
+To keep track of an important conversation, you can pin it to the top of your conversation list. You can pin up to 50 conversations.  The pinned state is stored on the server. In a multi-device login use-case, if you pin or unpin a conversation, other login devices will receive the `CONVERSATION_PINNED` or `CONVERSATION_UNPINNED` events.
 
 Refer to the following code example to pin a conversation:
 
@@ -95,12 +98,32 @@ ChatClient.getInstance()
   });
 ```
 
+### Pin a message
+
+You can call `ChatManager#pinMessage` to pin a message to the top of a one-to-one chat, chat group, or chat room. When the pinned status of a message changes, other members in the group or chat room conversation will receive the `MessageListener#onMessagePinChanged` event. In the case of multi-device login, the updated top status will be synchronized to other logged-in devices, and other devices will receive the `MessageListener#onMessagePinChanged` event, respectively.
+
+In group and chat room conversations, multiple users can pin the same message to the top. The latest pinned message will overwrite the earlier information. That is, the `ChatMessagePinInfo` user ID and pin time will correspond to the latest pinned message.
+
+For a single conversation, 20 messages can be pinned to the top by default.
+
+```typescript
+ChatClient.getInstance()
+  .chatManager.pinMessage(
+    messageId // message ID
+  )
+  .then(() => {
+    // todo: operation completed
+  })
+  .catch((error) => {
+    // todo: operation failed
+  });
+```
 
 ### Delete historical messages from the server unidirectionally
 
 Call `removeMessagesFromServerWithTimestamp` or `removeMessagesFromServerWithMsgIds` to delete historical messages one way from the server. You can remove a maximum of 50 messages from the server each time. Once the messages are deleted, you can no longer retrieve them from the server. The deleted messages are automatically removed from your local device. Other chat users can still get the messages from the server.
 
-<div class="alert note">To use this function, you need to contact [support@agora.io](mailto:support@agora.io) to enable it.</div>
+<Admonition type="info">To use this function, you need to contact [support@agora.io](mailto:support@agora.io) to enable it.</Admonition>
 
 ```typescript
 // Delete messages by message ID
@@ -134,7 +157,7 @@ Call `removeConversationFromServer` to delete conversations and their historical
 ```typescript
 // convId: conversation ID
 // convType: conversation type.
-// isDeleteMessage: Whether to delete historical messages from the server with the conversation.
+// isDeleteMessage: Whether to delete historical messages from the server and local storage with the conversation.
 ChatClient.getInstance()
   .chatManager.removeConversationFromServer(convId, convType, isDeleteMessage)
   .then(() => {

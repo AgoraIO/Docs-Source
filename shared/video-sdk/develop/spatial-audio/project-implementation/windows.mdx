@@ -1,122 +1,219 @@
 <PlatformWrapper platform="windows">
 
-### Spatial audio effects for users
+### Initialize the spatial audio engine
 
-To implement this workflow, take the following steps:
-
-1.  Initialize an `IRtcEngine` instance by calling its `createAgoraRtcEngine` and `initialize` methods with your app ID.
-1.  To initialize an instance of the `ILocalSpatialAudioEngine` class, call its `initialize` method.
-1.  To configure audio settings, call `setAudioProfile` and set the `profile` to `AUDIO_PROFILE_DEFAULT` and the scenario to `AUDIO_SCENARIO_GAME_STREAMING`.
-1.  Join a channel using an RTC token by calling `joinChannel`. Configure `options` to set the `channelProfile` to `CHANNEL_PROFILE_LIVE_BROADCASTING` and the `clientRoleType` to `CLIENT_ROLE_BROADCASTER`.
-1.  By default, <Vpd k="SDK" /> automatically subscribes to all remote audio streams. Unsubscribe from all streams by calling `muteAllRemoteAudioStreams(true)` on the `IRtcEngine` instance. This is necessary to set the audio receiving range in the next step or the changes won't apply.
-1.  Adjust the audio receiving range as follows:
-
-    1. Use `setMaxAudioRecvCount` to limit the number of receivable audio streams.
-    1. Call `setAudioRecvRange` to define the range in meters.
-    1. Call `setDistanceUnit` to specify the game engine's unit distance in meters.
-
-1. To experience spatial audio, update local and remote user spatial positions using `updateSelfPosition` and `updateRemotePosition` respectively.
-1. To stop using spatial audio, remove all remote spatial positions by calling`clearRemotePositions`. This method renders remote users inaudible to the local user.
-1. Finalize the `ILocalSpatialAudioEngine` instance by calling its `release` method.
-    <Admonition type="caution" title="Note">
-    You must destroy the `ILocalSpatialAudioEngine` object before you `release` the `IRtcEngine` instance.
-    </Admonition>
-1. Exit the channel using `leaveChannel` and `release` the `IRtcEngine` instance.
-
-### Spatial audio effects for media player
-
-To set up a spatial audio effect for media player:
-
-1. Follow the procedure to set up an instance of `IRtcEngine` and `ILocalSpatialAudioEngine` as for the users implementation described in the previous section. 
-
-1. Update the local user and media player spatial positions using `updateSelfPosition` and `updatePlayerPositionInfo` to experience spatial audio.
-
-To implement spatial audio effects for media player using a local Cartesian coordinate system calculation scheme, refer to the following example:
+Call the `initialize` method of the `ILocalSpatialAudioEngine` class to initialize spatial audio.
 
 ```cpp
-bool CAgoraSpatialAudioDlg::InitAgora()
-{
-    // Create IRtcEngine 
-    m_rtcEngine = createAgoraRtcEngine();
+m_localSpatial = nullptr;
 
-    RtcEngineContext context;
-    std::string strAppID = GET_APP_ID;
-    context.appId = strAppID.c_str();
-    context.eventHandler = &m_eventHandler;
-    // Initialize IRtcEngine
-    int ret = m_rtcEngine->initialize(context);
+m_rtcEngine->queryInterface(AGORA_IID_LOCAL_SPATIAL_AUDIO, (void**)&m_localSpatial);
+LocalSpatialAudioConfig config;
+config.rtcEngine = m_rtcEngine;
+m_localSpatial->initialize(config);
+```
 
-    // Set channel profile
-    m_rtcEngine->setChannelProfile(CHANNEL_PROFILE_LIVE_BROADCASTING);
-    // Set user role
-    m_rtcEngine->setClientRole(CLIENT_ROLE_BROADCASTER);
-    // Join channel
-    ChannelMediaOptions options;
-    options.channelProfile = CHANNEL_PROFILE_LIVE_BROADCASTING;
-    options.clientRoleType = CLIENT_ROLE_BROADCASTER;
-    m_rtcEngine->joinChannel("Your token", szChannelId.c_str(), 0, options);
-    // Enable spatial audio
-    m_rtcEngine->enableSpatialAudio(true);
+### Set the audio profile and scenario
+
+To set the desired audio encoding properties, call `setAudioProfile`.
+
+Call `setAudioScenario` to set the scenario to `AUDIO_SCENARIO_GAME_STREAMING` for the best sound quality effect.
+
+```cpp
+m_rtcEngine->setAudioProfile(AUDIO_PROFILE_MUSIC_STANDARD);
+m_rtcEngine->setAudioScenario(AUDIO_SCENARIO_GAME_STREAMING);
+```
+
+### Set the audio reception range
+
+To set the maximum number of audio streams that can be received within the audio receiving range, call `setMaxAudioRecvCount`. The recommended `maxCount` value is ≤ 16.
+
+To set the maximum range of receivable audio, in meters, call `setAudioRecvRange`. The recommended value range is ＞ 0.
+
+```cpp
+m_localSpatial->setMaxAudioRecvCount(2);
+m_localSpatial->setAudioRecvRange(AXIS_MAX_DISTANCE);
+```
+
+### Update spatial position
+In the user space audio scenario, call the `updateSelfPosition` and `updateRemotePosition` methods to update the positions of the local user and remote users respectively.
+
+In the media player spatial audio scenario, call the `updateSelfPosition` and `updatePlayerPositionInfo` methods to update the position of the local user and the media player, respectively.
+
+Typically, you call these methods when:
+
+- A new user joins the channel.
+- The relative positions of the local user, a remote user, or the media player changes.
+- There are other changes in your specific scenario.
+
+```cpp
+// Update local user position
+float pos[3] = { 0 };
+CaculateObjectPosition(m_staLocalMove, pos);
+float forward[3] = { 1.0f, 0, 0 };
+float right[3] = { 0, 1.0f, 0 };
+float up[3] = { 0, 0, 1.0f };
+m_localSpatial->updateSelfPosition(pos, forward, right, up);
+
+// Update the remote user's position
+if (remoteLeftUid == 0) {
+    remoteLeftUid = wParam;
+    m_staRemoteLeft.ShowWindow(TRUE);
+    RemoteVoicePositionInfo posInfo;
+    memset(&posInfo, 0, sizeof(RemoteVoicePositionInfo));
+    CaculateObjectPosition(m_staRemoteLeft, posInfo.position);
+    m_localSpatial->updateRemotePosition(remoteLeftUid, posInfo);
+} else if (remoteRightUid == 0) {
+    remoteRightUid = wParam;
+    m_staRemoteRight.ShowWindow(TRUE);
+    RemoteVoicePositionInfo posInfo;
+    memset(&posInfo, 0, sizeof(RemoteVoicePositionInfo));
+    CaculateObjectPosition(m_staRemoteRight, posInfo.position);
+    m_localSpatial->updateRemotePosition(remoteRightUid, posInfo);
 }
+```
 
-void CAgoraSpatialAudioDlg::UnInitAgora()
-{
-    if (m_rtcEngine) {
-        if (m_joinChannel)
-        // Leave channel
-        m_joinChannel = !m_rtcEngine->leaveChannel();
-        // Destroy IRtcEngine
-        m_rtcEngine->release(true);
-        m_rtcEngine = NULL;
-    }
-}
+### Set spatial audio parameters
 
-// Enable spatial audio for media player
-void CAgoraSpatialAudioDlg::SetSpatialAudioParam()
-{
-    POINT ptLocal = { rcLocal.left + localWidth / 2.0f, rcLocal.top + localWidth / 2.0f };
-    POINT ptRemote = { rcRemote.left + remoteWidth / 2.0f, rcRemote.top + remoteWidth / 2.0f };
+To set spatial audio parameters for the remote user or media player, call `setRemoteUserSpatialAudioParams` or `setSpatialAudioParams`. If you want to achieve specific sound effects, refer to the following parameter settings:
 
-    SpatialAudioParams spatial_audio_params;
-    int deltaX = ptRemote.x - ptLocal.x;
-    int deltaY = ptLocal.y - ptRemote.y;
+- Air attenuation effect
 
-    int tanAngle = 0;
-    float tanValue = 1;
-    if (deltaX == 0) {
-        if (deltaY > 0)
-            tanAngle = 360;
-        else if (deltaY < 0)
-            tanAngle = 180;
-    } else {
-        tanValue = fabs(deltaY) / fabs(deltaX);
-        tanAngle = atan(tanValue) * 180.0 / 3.1415926;
-    }
+  Set `enable_air_absorb` to `true` and set `speaker_attenuation` to the desired sound attenuation coefficient.
 
-    int spatialAngle = 0.0;
-    if (deltaX > 0 && deltaY > 0) {
-        spatialAngle = 270.0 + tanAngle;
-    }
-    else if (deltaX < 0 && deltaY > 0) {
-        spatialAngle = 90.0 - tanAngle;
-    }
-    else if (deltaX < 0 && deltaY < 0) {
-        spatialAngle = 90.0 + tanAngle;
-    }
-    else if (deltaX > 0 && deltaY < 0) {
-        spatialAngle = 270.0 - tanAngle;
-    }
+- Sound blur effect
 
-    CString str;
-    str.Format(_T("%d\n"), spatialAngle);
-    OutputDebugString(str);
-    int spatialDistance = sqrt(deltaX * deltaX + deltaY * deltaY) / distanceRate;
-    spatial_audio_params.speaker_distance = 0;
-    spatial_audio_params.speaker_azimuth = spatialAngle;
-    spatial_audio_params.speaker_elevation = 0;
-    spatial_audio_params.speaker_orientation = 0;
-    m_rtcEngine->setRemoteUserSpatialAudioParams(uid, spatial_audio_params);
-}
+  Set `enable_blur` to `true`
+
+```cpp
+// Enable air absorption effect
+spatialAudioParams.enable_air_absorb = true;
+
+// Enable sound blur effect
+spatialAudioParams.enable_blur = true;
+
+// Set spatial audio parameters for the media player
+m_mediaPlayerLeft->setSpatialAudioParams(spatialAudioParams);
+```
+
+### Set up sound isolation (optional)
+
+To define a sound isolation zone and set a sound attenuation coefficient call `setZones`. This feature simulates the real-world effect of sound attenuation when the sound source is inside a sound isolation zone while the receiver is outside or vice versa. It mimics how sound behaves when encountering obstacles like building partitions.
+
+Optionally, call `setRemoteAudioAttenuation` or `setPlayerAttenuation` to set the sound attenuation properties for the user and media player, respectively, and specify whether to use this setting to forcefully override the sound attenuation factor in `setZones`.
+
+```cpp
+SpatialAudioZone mediaPlayerLeftZone;
+memset(&mediaPlayerLeftZone, 0, sizeof(SpatialAudioZone));
+// Sound attenuation coefficient when the soundproof zone interacts with the external environment
+mediaPlayerLeftZone.audioAttenuation = 1.0f;
+
+// Spatial center point of the soundproof zone
+CaculateObjectPosition(m_staZone, mediaPlayerLeftZone.position);
+
+// Forward unit vector from the position
+mediaPlayerLeftZone.forward[0] = 1.0f;
+// Right unit vector from the position
+mediaPlayerLeftZone.right[1] = 1.0f;
+// Upward unit vector from the position
+mediaPlayerLeftZone.up[2] = 1.0f;
+
+RECT zoneSize;
+CaculateZoneRect(m_staZone, &zoneSize);
+// Forward length of the soundproof zone
+mediaPlayerLeftZone.forwardLength = zoneSize.bottom - zoneSize.top * 1.0f;
+// Rightward length of the soundproof zone
+mediaPlayerLeftZone.rightLength = zoneSize.right - zoneSize.left * 1.0f;
+// Upward length of the soundproof zone
+mediaPlayerLeftZone.upLength = AXIS_MAX_DISTANCE;
+
+m_localSpatial->setZones(&mediaPlayerLeftZone, 1);
+
+// Set sound attenuation for a remote user
+m_localSpatial->setRemoteAudioAttenuation(uid, 0.5f, false);
+// Set sound attenuation for the media player
+m_localSpatial->setPlayerAttenuation(mediaPlayer.getMediaPlayerId(), 0.5f, false);
+```
+
+### Set headphone equalization (optional)
+
+To optimize the audio experience, call `setHeadphoneEQPreset` to choose a preset headphone equalizer.
+
+If the preset values do not provide the desired effect, call `setHeadphoneEQParameters` to self-adjust headphone equalization. After you execute this method, the preset values set by `setHeadphoneEQPreset` are overwritten.
+
+```java
+m_rtcEngine->setHeadphoneEQPreset(HEADPHONE_EQUALIZER_OVEREAR);
+m_rtcEngine->setHeadphoneEQParameters(10, 10);
+```
+
+### Pause or turn off spatial audio
+
+During a session, pause or turn off spatial audio as follows.
+
+#### Pause spatial audio for a remote user
+To disable a remote user's spatial audio, or to remove a remote user who has exited the channel, call `removeRemotePosition` to delete the user's spatial position information amd save computing resources.
+
+<Admonition type="caution">
+When a remote user leaves the channel, call `removeRemotePosition` to delete the user's spatial position information. Otherwise, the local user may not be able to hear the spatial audio from other remote users.
+</Admonition>
+
+To restore the user's spatial audio, call `updateRemotePosition` to reset the remote user's position information.
+
+```cpp
+// Pause spatial audio for a specific remote user locally
+m_localSpatial->removeRemotePosition(uid)
+
+// Resume spatial audio for a specific remote user locally
+m_localSpatial->updateRemotePosition(uid, getVoicePositionInfo(remoteLeftTv));
+```
+
+#### Pause spatial audio for all remote users
+
+If you do not want to continue to experience local spatial audio, call `clearRemotePositions` to delete the spatial position information of all remote users.
+
+<Admonition type="caution">
+Calling this method prevents the local user from hearing the audio of all remote users. Agora recommends using this method with caution.
+</Admonition>
+
+To resume hearing the remote user's audio later, call `muteAllRemoteAudioStreams(false)` to subscribe to the remote audio streams again.
+
+```cpp
+// Remove all remote users' spatial positions
+m_localSpatial->clearRemotePositions();
+
+// Resume subscribing to remote users' audio streams
+m_localSpatial->muteAllRemoteAudioStreams(false);
+```
+
+#### Pause the local user's spatial audio
+
+To unpublish the local audio stream, call `muteLocalAudioStream(true)`.
+
+To enable spatial audio again, call the same method with the parameter set to `false`.
+
+
+```cpp
+// Mute the local audio stream
+m_localSpatial->muteLocalAudioStream(true);
+
+// Unmute the local audio stream
+m_localSpatial->muteLocalAudioStream(false);
+```
+
+#### Turn off spatial audio
+
+To turn off spatial audio, call the `enableSpatialAudio` method of the `IRtcEngine` instance and set the parameter to `false`. This resets all settings related to spatial audio.
+
+To enable spatial audio again, call this method again and set the parameter to `true`, and then call the relevant APIs again to set the spatial audio effect.
+
+Call the `release` method of the `IBaseSpatialAudioEngine` class to free up resources.
+
+```cpp
+// Disable spatial audio
+m_rtcEngine->enableSpatialAudio(false);
+
+// Destroy the ILocalSpatialAudioEngine object
+m_localSpatial->release(true);
 ```
 
 </PlatformWrapper>

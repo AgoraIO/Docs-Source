@@ -9,8 +9,6 @@ description: >
 
 This guide includes the key steps in using the Cloud Recording RESTful API to make an individual recording. For more information, see [Get started](../get-started/getstarted).
 
-## Overview
-
 Agora Cloud Recording supports three recording modes:
 
 -   Individual recording
@@ -26,8 +24,7 @@ Agora recommends that you use the standard mode when you start individual record
 For example, if a channel has two users and you choose to record both audio and video, the files generated for standard mode of individual recording is shown in the following diagram:
 
 
-
-![Image](/images/standard_mode.png)
+![Image](/images/cloud-recording/individual-mode.svg)
 
 
 ## Implementation
@@ -64,7 +61,7 @@ Before recording, call the [`acquire`](../reference/restful-api#acquire) method 
 
 To enable individual recording mode, set `mode` to `individual` when calling [`start`](../reference/restful-api#start). Use `recordingConfig` to configure individual recording, and use `storageConfig` to configure your third-party cloud storage.
 
-Agora recommends that you use the standard mode when you start recording, that is, set the `streamMode` field in the `recordingConfig` parameterto `standard` to generate combined audio and video files that can be played directly.
+Agora recommends that you use the standard mode when you start recording, that is, set the `streamMode` field in the `recordingConfig` parameter to `standard` to generate combined audio and video files that can be played directly.
 
 In individual recording mode, you can configure the following parameters in `clientRequest`:
 

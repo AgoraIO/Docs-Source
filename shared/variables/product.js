@@ -1,29 +1,49 @@
 const data = {
     'video-calling': {
     NAME: 'Video Calling',
+    SDK_LITE: 'Lite SDK',
     PATH: 'video-calling',
     SDK: 'Video SDK',
     PRODUCT: 'Video Calling',
     BETA_API_FOLDER: 'video-call-4.x-beta',
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
     STREAM: 'interactive live streaming or broadcast streaming',
+    MEDIA: 'audio and video',
+    MEDIA_DEVICES: 'camera and microphone',
   },
 
   'voice-calling': {
     NAME: 'Voice Calling',
+    SDK_LITE: 'Lite SDK',
     PATH: 'voice-calling',
     SDK: 'Voice SDK',
     PRODUCT: 'Voice Calling',
     STREAM: 'interactive live streaming or broadcast streaming',
+    MEDIA: 'audio',
+    MEDIA_DEVICES: 'microphone',
   },
 
   'interactive-live-streaming': {
     NAME: 'Interactive Live Streaming',
+    SDK_LITE: 'Lite SDK',
     PATH: 'interactive-live-streaming',
     SDK: 'Video SDK',
     PRODUCT: 'Interactive Live Streaming',
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
     STREAM: 'interactive live streaming',
+    MEDIA: 'audio and video',
+    MEDIA_DEVICES: 'camera and microphone',
+  },
+
+  'broadcast-streaming': {
+    NAME: 'Broadcast Streaming',
+    SDK_LITE: 'Lite SDK',
+    PATH: 'broadcast-streaming',
+    SDK: 'Video SDK',
+    PRODUCT: 'Broadcast Streaming',
+    STREAM: 'broadcast streaming',
+    MEDIA: 'audio and video',
+    MEDIA_DEVICES: 'camera and microphone',
   },
 
   'agora-analytics': {
@@ -68,14 +88,6 @@ const data = {
       STREAM: 'interactive live streaming or broadcast streaming',
   },
 
-  'broadcast-streaming': {
-    NAME: 'Broadcast Streaming',
-    PATH: 'broadcast-streaming',
-    SDK: 'Video SDK',
-    PRODUCT: 'Broadcast Streaming',
-    STREAM: 'broadcast streaming',
-  },
-
   'iot': {
     NAME: 'IoT SDK',
     PATH: 'iot',
@@ -97,13 +109,60 @@ const data = {
     PRODUCT: 'Media Push'
   },
 
+  'media-gateway': {
+    NAME: 'Media Gateway',
+    PATH: 'media-gateway',
+    SDK: 'Media Gateway',
+    PRODUCT: 'Media Gateway'
+  },
+
   'agora-chat': {
     NAME: 'Chat',
     PATH: 'agora-chat',
     SDK: 'Chat SDK',
     PRODUCT: 'Peer-to-Peer Messaging',
     IOS_PACKAGE_NAME: 'AgoraChat_iOS'
-}
+  },
+
+  'real-time-stt': {
+    NAME: 'Real-Time STT',
+    PATH: 'real-time-stt',
+    SDK: 'Real-Time STT',
+    PRODUCT: 'Real-Time STT'
+  },
+
+  'interactive-whiteboard': {
+    NAME: 'Interactive Whiteboard',
+    PATH: 'interactive-whiteboard',
+    SDK: 'Whiteboard SDK',
+    PRODUCT: 'Interactive Whiteboard',
+  },
+
+  'conversational-ai': {
+    NAME: 'Conversational AI Engine',
+    PATH: 'conversational-ai',
+    SDK: 'Conversational AI SDK',
+    AGENT: 'Conversational AI agent',
+    PRODUCT: 'Conversational AI Engine',
+  },
+
+  'ten-framework': {
+    NAME: 'TEN Framework',
+    PATH: 'ten-framework',
+    SDK: 'TEN Framework',
+    PRODUCT: 'TEN Framework',
+    MANAGER: 'TEN Manager',
+    DESIGNER: 'TEN Designer',
+  },
+
+  'ten-agent': {
+    NAME: 'TEN Agent',
+    PATH: 'ten-agent',
+    SDK: 'TEN Agent',
+    PRODUCT: 'TEN Agent',
+    MANAGER: 'TEN Manager',
+    DESIGNER: 'TEN Designer',
+  }
 };
 
 export default data;

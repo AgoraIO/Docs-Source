@@ -1,0 +1,332 @@
+<PlatformWrapper platform="linux-cpp, windows">
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+
+### Get channel users
+
+To obtain a list of online users in a channel, call `getOnlineUsers`. Depending on your parameter settings, this method returns a list of online user IDs in a channel and their temporary status data, or just the number of online users in the channel. You do not need to join a channel to call this method. This method is applicable to both message channels and stream channels. Use the `channelType` parameter to specify the channel type.
+
+After obtaining the initial online users list, update it in real time through `onPresenceEvent` event notifications.
+
+Refer to the following sample code to query the list of online users in a channel and their current status:
+
+```cpp
+PresenceOptions options;
+options.includeState = true;
+options.includeUserId =true;
+
+uint64_t requestId;
+rtmClient->getPresence()->getOnlineUsers("channelName", RTM_CHANNEL_TYPE_MESSAGE, options, requestId);
+```
+
+After you call this method, the SDK triggers the `onGetOnlineUsersResult` callback to return the call result.
+
+```cpp
+class RtmEventHandler : public IRtmEventHandler {
+    void onGetOnlineUsersResult(const uint64_t requestId, const UserState *userStateList, const size_t count, const char *nextPage, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("getOnlineUsers failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("getOnlineUsers success\n");
+            for (int i = 0 ;i < count; i++) {
+                printf("user: %s\n", userStateList[i].userId);
+                for (int j = 0 ; j < userStateList[i].statesCount; j++) {
+                    printf("key: %s value: %s\n", userStateList[i].states[j].key, userStateList[i].states[j].value);
+                }
+            }
+        }
+    }
+};
+```
+
+The `getOnlineUsers` method retrieves one page of data at a time. Each page contains up to 100 online users. If the channel has more than 100 users, the `nextPage` field in the returned result contains a bookmark for the next page. After each query, check if `nextPage` is not empty to determine if there is more data. To retrieve the next page, set the `page` field in `PresenceOptions` to the value of `nextPage`. Repeat this process until `nextPage` is null. Refer to the following code:
+
+```cpp
+PresenceOptions options;
+options.includeState = true;
+options.includeUserId =true;
+options.page = "your_Next_Page_Bookmark";
+
+uint64_t requestId;
+rtmClient->getPresence()->getOnlineUsers("channelName", RTM_CHANNEL_TYPE_MESSAGE, options, requestId);
+```
+
+When there is a large number of users in a channel, you may only care about the total number of online users, and not their identities or temporary status. To get the total channel occupancy, set `includeState` and `includeUserId` in `PresenceOptions` to `false`. 
+
+```cpp
+PresenceOptions options;
+options.includeState = false;
+options.includeUserId =false;
+
+uint64_t requestId;
+rtmClient->getPresence()->getOnlineUsers("channelName", RTM_CHANNEL_TYPE_MESSAGE, options, requestId);
+```
+
+In this case, only the `totalOccupancy` property in the result is valid while all other fields are empty. 
+<Admonition type="info">
+
+You cannot set `includeState` to `true` and `includeUserId` to `false` at the same time. To get the temporary status of users, you must also retrieve their user IDs. 
+</Admonition>
+
+### Get user channels
+
+The `getUserChannels` method enables you to query which channels a user is currently in. This includes the message channels a user has subscribed to and the stream channels they have joined. This method is particularly useful for tracking user paths. Refer to the following sample code:
+
+```cpp
+uint64_t requestId;
+rtmClient->getPresence()->getUserChannels("tony", requestId);
+```
+
+After you call this method, the SDK triggers the `onGetUserChannelsResult` callback to return the call result.
+
+```cpp
+class RtmEventHandler : public IRtmEventHandler {
+    void onGetUserChannelsResult(const uint64_t requestId, const ChannelInfo *channels, const size_t count, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("getUserChannels failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("getUserChannels success\n");
+            for (int i = 0; i < count; i++) {
+                printf("channel: %s channel type: %d\n", channels[i].channelName, channels[i].channelType);
+            }
+        }
+    }
+};
+```
+
+The `getUserChannels` method returns complete query results about the channels and their types that the queried user is in, without pagination.
+
+## User status management
+
+<Vg k="SIG" /> enables you to set and delete user status messages for the local user in each channel. The SDK notifies other online users in the channel of these changes through event notifications. This feature is useful in use-cases where user status sharing is required, such as real-time synchronization of the user's microphone status, mood, personal signature, score, and message input status.
+
+<Vg k="SIG" /> does not permanently save the status data. When a user unsubscribes from a channel, times out, or exits a channel, the data is deleted. To save user data permanently, use the [Store user metadata](../core-functionality/store-user-data) feature.
+
+When a user's temporary status changes, <Vg k="SIG" /> triggers an `RTM_PRESENCE_EVENT_TYPE_REMOTE_STATE_CHANGED` event notification in real-time. Users who set `withPresence = true` when joining the channel, receive the event notification.
+
+### Set status
+
+Using presence, you can set the temporary user status for the local user. When you set the status before subscribing to or joining a channel, the data is cached on the client and does not take effect immediately. The status is updated and corresponding event notifications are triggered when you subscribe to or join a channel. The `setState` method applies to both message and stream channels; use the `channelType` parameter to specify the channel type.
+
+```cpp
+std::vector<StateItem> items;
+StateItem item;
+item.key = "Mode";
+item.value = "Happy";
+items.emplace_back(item);
+
+uint64_t requestId;
+rtm_client->getPresence()->setState("channelName", RTM_CHANNEL_TYPE_MESSAGE, items.data(), items.size(), requestId);
+```
+
+After you call this method, the SDK triggers the `onPresenceSetStateResult` callback to return the API call result.
+
+```cpp
+class RtmEventHandler : public IRtmEventHandler {
+    void onPresenceSetStateResult(const uint64_t requestId, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("SetState failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("SetState success\n");
+        }
+    }
+};
+```
+
+When using `setState` to set temporary user status, if the specified key already exists, its value is overwritten by the new value. If the specified key does not exist, a new key/value pair is added.
+
+### Get status
+
+To obtain the temporary user status set by a user in a specified channel, use the `getState` method:
+
+```cpp
+uint64_t requestId;
+rtm_client->getPresence()->getState("channelName", RTM_CHANNEL_TYPE_MESSAGE, "tony", requestId);
+```
+
+After you call this method, the SDK triggers the `onPresenceGetStateResult` callback to return the API call result.
+
+```cpp
+class RtmEventHandler : public IRtmEventHandler {
+    void onPresenceGetStateResult(const uint64_t requestId, const UserState &state, RTM_ERROR_CODE errorCode) override {
+        if (errorCode != RTM_ERROR_OK) {
+            printf("GetState failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+        } else {
+            printf("GetState user id: %s success\n", state.userId);
+            for (int i = 0; i < state.statesCount; i++) {
+                printf("key: %s, value: %s\n", state.states[i].key, state.states[i].value);
+            }
+        }
+    }
+};
+```
+
+Use the `getState` method to obtain the temporary status of other online users in the channel. If the queried user is not present in the specified channel, an error message is returned by the SDK.
+
+### Delete status
+
+Each user can set up to 32 key/value pairs in a channel. To remove items that are no longer needed, call `removeState` with a list of keys. The `removeState` method only deletes temporary user status data for the local user.
+
+```cpp
+std::vector<const char*> keys;
+keys.push_back("Mode");
+keys.push_back("Mic");
+
+uint64_t requestId;
+rtmClient->getPresence()->removeState("channelName", RTM_CHANNEL_TYPE_MESSAGE, keys.data(), keys.size(), requestId);
+```
+
+After you call this method, the SDK triggers the `onPresenceRemoveStateResult` callback to return the API call result.
+
+```cpp
+class RtmEventHandler : public IRtmEventHandler {
+void onPresenceRemoveStateResult(const uint64_t requestId, RTM_ERROR_CODE errorCode) override {
+    if (errorCode != RTM_ERROR_OK) {
+        printf("RemoveState failed error is %d reason is %s\n", errorCode, getErrorReason(errorCode));
+    } else {
+        printf("RemoveState success\n");
+    }
+}
+};
+```
+
+Both the `setState` and `removeState` methods trigger `RTM_PRESENCE_EVENT_TYPE_REMOTE_STATE_CHANGED` event notifications. Users who join the channel with `withPresence` set to `true` receive event notifications containing full data of the user's temporary status.
+
+## Receive presence event notifications
+
+A presence event notification returns the [PresenceEvent](../reference/api#configpresenceeventpropsag_platform) data structure, which includes the [RTM_PRESENCE_EVENT_TYPE.](../reference/api?#enumvpresencetypepropsag_platform) parameter.
+
+To receive presence event notifications, implement an event listener. See [event listeners](../reference/api#event-listeners) for details. In addition, set the `withPresence` parameter to `true` when subscribing to or joining a channel. 
+
+### Event notification modes
+
+The presence event notification mode determines how subscribed users receive event notifications. There are two notification modes: 
+
+- `Announce`: Real-time notification mode  
+- `Interval`: Scheduled notification mode 
+
+You set the **Max number of instant event** value in <Vg k="CONSOLE" /> to specify the condition for switching between the two modes. The scheduled notification mode helps prevent event noise that results from a large number of online users in the channel. See [Presence configuration](../get-started/manage-agora-account#presence-configuration) for details.
+
+#### Real-time notification mode
+
+If the number of instant notifications in the channel is less than the **Max number of instant event** value, presence event notifications operate in real-time notification mode. In this mode, `RTM_PRESENCE_EVENT_TYPE_REMOTE_JOIN_CHANNEL`, `RTM_PRESENCE_EVENT_TYPE_REMOTE_LEAVE_CHANNEL`, `RTM_PRESENCE_EVENT_TYPE_REMOTE_TIMEOUT`, and `RTM_PRESENCE_EVENT_TYPE_REMOTE_STATE_CHANGED` notifications are sent to the client in real-time. 
+
+<Tabs>
+<TabItem value="join" label="Join" default>
+<CodeBlock language="js" showLineNumbers>
+{`{
+      type: RTM_PRESENCE_EVENT_TYPE_REMOTE_JOIN_CHANNEL;
+      channelType: RTM_CHANNEL_TYPE_MESSAGE;
+      channelName: "test_channel";
+      publisher: "publisher_name";
+      states: [];
+      interval: [];
+      snapshot: [];
+      timestamp: 1710487149497;
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="leave" label="Leave" default>
+<CodeBlock language="js" showLineNumbers>
+{`{
+      eventType: RTM_PRESENCE_EVENT_TYPE_REMOTE_LEAVE_CHANNEL;
+      channelType: RTM_CHANNEL_TYPE_MESSAGE;
+      channelName: "test_channel";
+      publisher: "publisher_name";
+      stateChanged: [];
+      interval: [];
+      snapshot: [];
+      timestamp: 1710487149497;
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="timeout" label="Timeout" default>
+<CodeBlock language="js" showLineNumbers>
+{`{
+      eventType: RTM_PRESENCE_EVENT_TYPE_REMOTE_TIMEOUT;
+      channelType: RTM_CHANNEL_TYPE_MESSAGE;
+      channelName: "test_channel";
+      publisher: "publisher_name";
+      stateChanged: [];
+      interval: [];
+      snapshot: [];
+      timestamp: 1710487149497;
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="snapshot" label="Snapshot" default>
+<CodeBlock language="js" showLineNumbers>
+{`{
+      eventType: RTM_PRESENCE_EVENT_TYPE_SNAPSHOT;
+      channelType: RTM_CHANNEL_TYPE_MESSAGE;
+      channelName: "test_channel";
+      publisher: "";
+      stateChanged: [];
+      interval: [];
+      snapshot: [
+          { userId: "user_a", states: {}},
+          { userId: "user_b", states: { key_1: "value_1" }},
+          { userId: "yourSelf", states: {}},
+      ];
+      timestamp: 1710487149497;
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="state-change" label="State change" default>
+<CodeBlock language="js" showLineNumbers>
+{`{
+      eventType: RTM_PRESENCE_EVENT_TYPE_REMOTE_STATE_CHANGED;
+      channelType: RTM_CHANNEL_TYPE_MESSAGE;
+      channelName: "test_channel";
+      publisher: "publisher_name";
+      states: {
+          "key_1": "value_1",
+      };
+      interval: [];
+      snapshot: [];
+      timestamp: 1710487149497;
+}`}
+</CodeBlock>
+</TabItem>      
+</Tabs>
+
+#### Scheduled notification mode
+
+When the number of online users in the channel exceeds the **Max number of instant event** value, the channel switches to the scheduled notification mode. In this mode, `RTM_PRESENCE_EVENT_TYPE_REMOTE_JOIN_CHANNEL`, `RTM_PRESENCE_EVENT_TYPE_REMOTE_LEAVE_CHANNEL`, `RTM_PRESENCE_EVENT_TYPE_REMOTE_TIMEOUT`, and `RTM_PRESENCE_EVENT_TYPE_REMOTE_STATE_CHANGED` events are replaced by `RTM_PRESENCE_EVENT_TYPE_INTERVAL` events and sent to all users in the channel at specific time intervals. Users receive the following notification:
+
+<CodeBlock language="js" showLineNumbers>
+{`{
+      "type": "RTM_PRESENCE_EVENT_TYPE_INTERVAL",
+      "channelType": "RTM_CHANNEL_TYPE_MESSAGE",
+      "channelName": "Chat_room",
+      "publisher": "Tony",
+      "interval": {
+          "remote_join": ["Tony", "Lily"],
+          "remote_leave": ["Jason"],
+          "remote_timeout": ["Wendy"],
+          "remote_state_change": [
+              {
+                  "userId": "Harvard",
+                  "states": [
+                      { "Mic": "False" },
+                      { "Position": "Washington" }
+                  ]
+              },
+              {
+                  "userId": "Harvard",
+                  "states": [
+                      { "Mic": "False" },
+                      { "Position": "Washington" }
+                  ]
+              }
+          ]
+      },
+      "snapshot": {
+          "userStateList": []
+      },
+      "timestamp": 1710487149497
+}`}
+</CodeBlock>
+
+</PlatformWrapper>

@@ -1,0 +1,370 @@
+<PlatformWrapper platform="android">
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+
+Choose one of the following methods to implement the Alpha transparency effect based on your specific business use-case.
+
+### Custom video capture use-case
+
+The implementation process for this use-case is illustrated in the figure below:
+
+
+<details>
+<summary>Alpha transparency custom video capture use-case</summary>
+
+![Custom Video Capture Process 1](/images/video-sdk/alpha-transparency-scenario-1.svg)
+</details>
+
+Take the following steps to implement this logic:
+
+1. Process the captured video frames and generate Alpha data. You can choose from the following methods:
+
+   - **Method 1**: Call the `pushExternalVideoFrame`[2/2] method and set the `alphaBuffer` parameter to specify Alpha channel data for the video frames. This data matches the size of the video frames, with each pixel value ranging from 0 to 255, where 0 represents the background and 255 represents the foreground.
+
+        <Admonition type="caution">
+        Ensure that `alphaBuffer` is exactly the same size as the video frame (width × height), otherwise the <Vpl k="CLIENT" /> may crash.
+        </Admonition>
+
+        <Tabs groupId="language">  
+        <TabItem value="java" label="Java">  
+        <CodeBlock language="java" showLineNumbers>  
+        {`JavaI420Buffer javaI420Buffer = JavaI420Buffer.wrap(width, height, dataY, width, dataU, strideUV, dataV, strideUV, null);
+     VideoFrame frame = new VideoFrame(javaI420Buffer, 0, timestamp);
+     ByteBuffer alphaBuffer = ByteBuffer.allocateDirect(width * height);
+     frame.fillAlphaData(alphaBuffer);
+     rtcEngine.pushExternalVideoFrame(frame);`}  
+        </CodeBlock>  
+        </TabItem>  
+
+        <TabItem value="kotlin" label="Kotlin" default>  
+        <CodeBlock language="kotlin" showLineNumbers>  
+        {`val javaI420Buffer = JavaI420Buffer.wrap(width, height, dataY, width, dataU, strideUV, dataV, strideUV, null)
+     val frame = VideoFrame(javaI420Buffer, 0, timestamp)
+     val alphaBuffer = ByteBuffer.allocateDirect(width * height)
+     frame.fillAlphaData(alphaBuffer)
+     rtcEngine.pushExternalVideoFrame(frame)`}  
+        </CodeBlock>  
+        </TabItem>  
+        </Tabs>
+
+   - **Method 2**: Call the `pushExternalVideoFrame` method and use the `setAlphaStitchMode` method in the `VideoFrame` class to set the Alpha stitching mode. Construct a `VideoFrame` with the stitched Alpha data.
+
+        <Tabs groupId="language">  
+        <TabItem value="java" label="Java">  
+        <CodeBlock language="java" showLineNumbers>  
+        {`JavaI420Buffer javaI420Buffer = JavaI420Buffer.wrap(width, height, dataY, width, dataU, strideUV, dataV, strideUV, null);
+     VideoFrame frame = new VideoFrame(javaI420Buffer, 0, timestamp);
+     // Set the Alpha stitching mode, in the example below, Alpha is set to be below the video image
+     frame.setAlphaStitchMode(Constants.VIDEO_ALPHA_STITCH_BELOW);
+     rtcEngine.pushExternalVideoFrame(frame);`}  
+        </CodeBlock>  
+        </TabItem>  
+
+        <TabItem value="kotlin" label="Kotlin" default>  
+        <CodeBlock language="kotlin" showLineNumbers>  
+        {`val javaI420Buffer = JavaI420Buffer.wrap(width, height, dataY, width, dataU, strideUV, dataV, strideUV, null)
+     val frame = VideoFrame(javaI420Buffer, 0, timestamp)
+     // Set the Alpha stitching mode, in the example below, Alpha is set to be below the video image
+     frame.setAlphaStitchMode(Constants.VIDEO_ALPHA_STITCH_BELOW)
+     rtcEngine.pushExternalVideoFrame(frame)`}  
+        </CodeBlock>  
+        </TabItem>  
+        </Tabs>
+
+2. Render the local view and implement the Alpha transparency effect.
+
+   - Create a `TextureView` object for rendering the local view.
+   - Call the `setupLocalVideo` method to set the local view:
+     - Set the `enableAlphaMask` parameter to `true` to enable alpha mask rendering.
+     - Set `TextureView` as the display window for the local video.
+
+        <Tabs groupId="language">  
+        <TabItem value="java" label="Java">  
+        <CodeBlock language="java" showLineNumbers>  
+        {`// Alpha data input on the sender side and Alpha transmission is enabled
+       VideoEncoderConfiguration config = new VideoEncoderConfiguration(...);
+       // Alpha transfer needs to be enabled when setting encoding parameters.
+       config.advanceOptions.encodeAlpha = true;
+       rtcEngine.setVideoEncoderConfiguration(videoEncoderConfiguration);
+
+       // Set the view to TextureView
+       TextureView textureView = new TextureView(context);
+       // Enable transparent mode, allowing transparent portions in the view background and content
+       textureView.setOpaque(false);
+       fl_local.addView(textureView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+       VideoCanvas local = new VideoCanvas(textureView, RENDER_MODE_FIT, 0);
+       local.enableAlphaMask = true;
+       rtcEngine.setupLocalVideo(local);`}  
+        </CodeBlock>  
+        </TabItem>  
+
+        <TabItem value="kotlin" label="Kotlin" default>  
+        <CodeBlock language="kotlin" showLineNumbers>  
+        {`// Alpha data input on the sender side and Alpha transmission is enabled
+       val config = VideoEncoderConfiguration(...)
+       // Alpha transfer needs to be enabled when setting encoding parameters.
+       config.advanceOptions.encodeAlpha = true
+       rtcEngine.setVideoEncoderConfiguration(videoEncoderConfiguration)
+
+       // Set the view to TextureView
+       val textureView = TextureView(context)
+       // Enable transparent mode, allowing transparent portions in the view background and content
+       textureView.isOpaque = false
+       fl_local.addView(textureView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+
+       val local = VideoCanvas(textureView, RENDER_MODE_FIT, 0)
+       local.enableAlphaMask = true
+       rtcEngine.setupLocalVideo(local)`}  
+        </CodeBlock>  
+        </TabItem>  
+        </Tabs>
+
+3. Render the local view of the remote video stream and implement alpha transparency effects.
+   - After receiving the `onUserJoined` callback, a `TextureView` object is created for rendering the remote view.
+   - Call the `setupRemoteVideo` method to set the remote view:
+      - Set the `enableAlphaMask` parameter to true to enable alpha mask rendering.
+      - Set the display window of the remote video stream in the local video.
+
+        <Tabs groupId="language">  
+        <TabItem value="java" label="Java">  
+        <CodeBlock language="java" showLineNumbers>  
+        {`// Enable transparent mode at the receiving end
+        TextureView textureView = new TextureView(context);
+        textureView.setOpaque(false);
+        fl_remote.addView(textureView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        VideoCanvas remote = new VideoCanvas(textureView, VideoCanvas.RENDER_MODE_FIT, uid);
+        remote.enableAlphaMask = true;
+        rtcEngine.setupRemoteVideo(remote);`}  
+        </CodeBlock>  
+        </TabItem>  
+
+        <TabItem value="kotlin" label="Kotlin" default>  
+        <CodeBlock language="kotlin" showLineNumbers>  
+        {`// Enable transparent mode at the receiving end
+        val textureView = TextureView(context)
+        textureView.isOpaque = false
+        fl_remote.addView(textureView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+
+        val remote = VideoCanvas(textureView, VideoCanvas.RENDER_MODE_FIT, uid)
+        remote.enableAlphaMask = true
+        rtcEngine.setupRemoteVideo(remote)`}  
+        </CodeBlock>  
+        </TabItem>  
+        </Tabs>
+
+### SDK Capture use-case
+
+The implementation process for this use-case is illustrated in the following figure:
+
+<details>
+<summary>Alpha transparency SDK capture use-case</summary>
+
+![Custom Video Capture Process 2](/images/video-sdk/alpha-transparency-scenario-2.svg)
+</details>
+
+Take the following steps to implement this logic:
+
+1. On the broadcasting end, call the `enableVirtualBackground` [2/2] method to enable the background segmentation algorithm and obtain the Alpha data for the portrait area. Set the parameters as follows:
+
+    - `enabled`: Set to `true` to enable the virtual background.
+    - `backgroundSourceType`: Set to `BACKGROUND_NONE`(0), to segment the portrait and background, and process the background as Alpha data.
+
+        <Tabs groupId="language">  
+        <TabItem value="java" label="Java">  
+        <CodeBlock language="java" showLineNumbers>  
+        {`VirtualBackgroundSource virtualBackgroundSource = new VirtualBackgroundSource(...);
+      virtualBackgroundSource.backgroundSourceType = VirtualBackgroundSource.BACKGROUND_NONE; // Only generate alpha data, no background replacement
+      SegmentationProperty segmentationProperty = new SegmentationProperty(...);
+      rtcEngine.enableVirtualBackground(true, virtualBackgroundSource, segmentationProperty, sourceType);`}  
+        </CodeBlock>  
+        </TabItem>  
+
+        <TabItem value="kotlin" label="Kotlin" default>  
+        <CodeBlock language="kotlin" showLineNumbers>  
+        {`val virtualBackgroundSource = VirtualBackgroundSource(...)
+      virtualBackgroundSource.backgroundSourceType = VirtualBackgroundSource.BACKGROUND_NONE // Only generate alpha data, no background replacement
+      val segmentationProperty = SegmentationProperty(...)
+      rtcEngine.enableVirtualBackground(true, virtualBackgroundSource, segmentationProperty, sourceType)`}  
+        </CodeBlock>  
+        </TabItem>  
+        </Tabs>
+
+2. Call `setVideoEncoderConfiguration` on the broadcasting end to set the video encoding property and set `encodeAlpha` to `true`. Then the Alpha data will be encoded and sent to the remote end.
+
+    <Tabs groupId="language">  
+    <TabItem value="java" label="Java">  
+    <CodeBlock language="java" showLineNumbers>  
+    {`VideoEncoderConfiguration videoEncoderConfiguration = new VideoEncoderConfiguration(...);
+   videoEncoderConfiguration.advanceOptions = new VideoEncoderConfiguration.AdvanceOptions(...);
+   videoEncoderConfiguration.advanceOptions.encodeAlpha = true;
+   rtcEngine.setVideoEncoderConfiguration(videoEncoderConfiguration);`}  
+    </CodeBlock>  
+    </TabItem>  
+
+    <TabItem value="kotlin" label="Kotlin" default>  
+    <CodeBlock language="kotlin" showLineNumbers>  
+    {`val videoEncoderConfiguration = VideoEncoderConfiguration(...)
+   videoEncoderConfiguration.advanceOptions = VideoEncoderConfiguration.AdvanceOptions(...)
+   videoEncoderConfiguration.advanceOptions.encodeAlpha = true
+   rtcEngine.setVideoEncoderConfiguration(videoEncoderConfiguration)`}  
+    </CodeBlock>  
+    </TabItem>  
+    </Tabs>
+
+3. Render the local and remote views and implement the Alpha transparency effect. See the steps in the [Custom Video Capture use-case](#custom-video-capture-use-case) for details.
+
+### Raw video data use-case
+
+The implementation process for this use-case is illustrated in the following figure:
+
+<details>
+<summary>Alpha transparency raw video data use-case</summary>
+
+![Custom Video Capture Process 3](/images/video-sdk/alpha-transparency-scenario-3.svg)
+</details>
+
+Take the following steps to implement this logic:
+
+1. Call the `registerVideoFrameObserver` method to register a raw video frame observer and implement the corresponding callbacks as required.
+
+    <Tabs groupId="language">  
+    <TabItem value="java" label="Java">  
+    <CodeBlock language="java" showLineNumbers>  
+    {`// Register IVideoFrameObserver
+   public class MyVideoFrameObserver implements IVideoFrameObserver {
+        @Override
+        public boolean onRenderVideoFrame(String channelId, int uId, VideoFrame videoFrame) {
+            // ...
+            return false;
+        }
+
+        @Override
+        public boolean onCaptureVideoFrame(int type, VideoFrame videoFrame) {
+            // ...
+            return false;
+        }
+
+        @Override
+        public boolean onPreEncodeVideoFrame(int type, VideoFrame videoFrame) {
+            // ...
+            return false;
+        }
+    }
+   MyVideoFrameObserver observer = new MyVideoFrameObserver();
+   rtcEngine.registerVideoFrameObserver(observer);`}  
+    </CodeBlock>  
+    </TabItem>  
+
+    <TabItem value="kotlin" label="Kotlin" default>  
+    <CodeBlock language="kotlin" showLineNumbers>  
+    {`// Register IVideoFrameObserver
+   class MyVideoFrameObserver : IVideoFrameObserver {
+        override fun onRenderVideoFrame(channelId: String, uId: Int, videoFrame: VideoFrame): Boolean {
+            // ...
+            return false
+        }
+
+        override fun onCaptureVideoFrame(type: Int, videoFrame: VideoFrame): Boolean {
+            // ...
+            return false
+        }
+
+        override fun onPreEncodeVideoFrame(type: Int, videoFrame: VideoFrame): Boolean {
+            // ...
+            return false
+        }
+    }
+   val observer = MyVideoFrameObserver()
+   rtcEngine.registerVideoFrameObserver(observer)`}  
+    </CodeBlock>  
+    </TabItem>  
+    </Tabs>
+
+2. Use the `onCaptureVideoFrame` callback to obtain the captured video data and pre-process it as needed. You can modify the Alpha data or directly add Alpha data.
+
+    <Tabs groupId="language">
+    <TabItem value="java" label="Java">
+    <CodeBlock language="java" showLineNumbers>
+    {`public boolean onCaptureVideoFrame(int type, VideoFrame videoFrame) {
+        // Modify Alpha data or directly add Alpha data
+        ByteBuffer alphaBuffer = videoFrame.getAlphaBuffer();
+        // ...
+        videoFrame.fillAlphaData(byteBuffer);
+        return false;
+   }`}
+    </CodeBlock>
+    </TabItem>
+
+    <TabItem value="kotlin" label="Kotlin" default>
+    <CodeBlock language="kotlin" showLineNumbers>
+    {`override fun onCaptureVideoFrame(type: Int, videoFrame: VideoFrame): Boolean {
+        // Modify Alpha data or directly add Alpha data
+        val alphaBuffer = videoFrame.alphaBuffer
+        // ...
+        videoFrame.fillAlphaData(byteBuffer)
+        return false
+   }`}
+    </CodeBlock>
+    </TabItem>
+    </Tabs>
+
+3. Use the `onPreEncodeVideoFrame` callback to obtain the local video data before encoding, and modify or directly add Alpha data as needed.
+
+    <Tabs groupId="language">
+    <TabItem value="java" label="Java">
+    <CodeBlock language="java" showLineNumbers>
+    {`public boolean onPreEncodeVideoFrame(int type, VideoFrame videoFrame) {
+        // Modify Alpha data or directly add Alpha data
+        ByteBuffer alphaBuffer = videoFrame.getAlphaBuffer();
+        // ...
+        videoFrame.fillAlphaData(byteBuffer);
+        return false;
+   }`}
+    </CodeBlock>
+    </TabItem>
+
+    <TabItem value="kotlin" label="Kotlin" default>
+    <CodeBlock language="kotlin" showLineNumbers>
+    {`override fun onPreEncodeVideoFrame(type: Int, videoFrame: VideoFrame): Boolean {
+        // Modify Alpha data or directly add Alpha data
+        val alphaBuffer = videoFrame.alphaBuffer
+        // ...
+        videoFrame.fillAlphaData(byteBuffer)
+        return false
+   }`}
+    </CodeBlock>
+    </TabItem>
+    </Tabs>
+
+4. Use the `onRenderVideoFrame` callback to obtain the remote video data before rendering it locally. Modify the Alpha data, add Alpha data directly, or render the video image yourself based on the obtained Alpha data.
+
+    <Tabs groupId="language">
+    <TabItem value="java" label="Java">
+    <CodeBlock language="java" showLineNumbers>
+    {`public boolean onRenderVideoFrame(int type, VideoFrame videoFrame) {
+        // Modify Alpha data, directly add Alpha data, or render the video image yourself based on the obtained Alpha data
+        ByteBuffer alphaBuffer = videoFrame.getAlphaBuffer();
+        // ...
+        videoFrame.fillAlphaData(byteBuffer);
+        return false;
+   }`}
+    </CodeBlock>
+    </TabItem>
+
+    <TabItem value="kotlin" label="Kotlin" default>
+    <CodeBlock language="kotlin" showLineNumbers>
+    {`override fun onRenderVideoFrame(type: Int, videoFrame: VideoFrame): Boolean {
+        // Modify Alpha data, directly add Alpha data, or render the video image yourself based on the obtained Alpha data
+        val alphaBuffer = videoFrame.alphaBuffer
+        // ...
+        videoFrame.fillAlphaData(byteBuffer)
+        return false
+   }`}
+    </CodeBlock>
+    </TabItem>
+    </Tabs>
+</PlatformWrapper>

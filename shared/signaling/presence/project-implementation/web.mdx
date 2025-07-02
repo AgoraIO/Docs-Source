@@ -1,90 +1,279 @@
 <PlatformWrapper platform="web">
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
 
-### Add the presence event listener
+### Get channel users
 
-    ```js
-    signalingEngine.addEventListener("presence", eventArgs => {
-        eventsCallback("presence", eventArgs);
-        if (eventArgs.eventType === "SNAPSHOT") {
-          messageCallback(
-              `User ${eventArgs.snapshot[0].userId} joined channel ${eventArgs.channelName}`
-          );
-        } else {
-          messageCallback(
-              "Presence event: " +
-              eventArgs.eventType +
-              ", User: " +
-              eventArgs.publisher
-          );
-        }
+To obtain a list of online users in a channel, call `getOnlineUsers`. Depending on your parameter settings, this method returns a list of online user IDs in a channel and their temporary status data, or just the number of online users in the channel. You do not need to join a channel to call this method. This method is applicable to both message channels and stream channels. Use the `channelType` parameter to specify the channel type.
+
+After obtaining the initial online users list, update it in real time through `presence` event notifications.
+
+Refer to the following sample code to query the list of online users in a channel and their current status:
+
+```javascript
+const options = {
+    includedUserId: true,
+    includedState: true
+};
+
+try {
+    const result = await rtm.presence.getOnlineUsers(channelName, channelType, options);
+    const { totalOccupancy, occupants, nextPage } = result;
+    occupants.forEach((userInfo) => {
+        const { states, userId, statesCount } = userInfo;
+        console.log(`${userId} has states: ${states}`);
     });
-    ```
+} catch (status) {
+    const { operation, reason, errorCode } = status;
+    console.log(`${operation} failed, ErrorCode: ${errorCode}, due to: ${reason}.`);
+}
+```
 
-### Enable presence notifications when you subscribe to a channel
+The `getOnlineUsers` method retrieves one page of data at a time. Each page contains up to 100 online users. If the channel has more than 100 users, the `nextPage` field in the returned `result` contains a bookmark for the next page. After each query, check if `result.nextPage` is not empty to determine if there is more data. To retrieve the next page, set the `page` field in `options` to the value of `result.nextPage`. Repeat this process until `result.nextPage` is empty. Refer to the following code:
 
-    ```js    
-    const subscribe = async (channelName) => {
-      channelName = channelName || config.channelName;
-      try {
-        const subscribeOptions = {
-          withMessage: true,
-          withPresence: true, // Enable presence notifications
-          withMetadata: true,
-          withLock: true,
-        };
-        await signalingEngine.subscribe(channelName, subscribeOptions);
-      } catch (error) {
-        console.log(error);
-      }
-    };
-    ```
+```javascript
+const options = {
+    includedUserId: true,
+    includedState: true,
+    page: "Next_Page_Bookmark"
+};
+try {
+    const result = await rtm.presence.getOnlineUsers(channelName, channelType, options);
+    // If nextPage exists, the value of nextPage should be filled into the page field of getOnlineUsers options for the next getOnlineUsers call.
+    const { totalOccupancy, occupants, nextPage } = result;
+    occupants.forEach((userInfo) => {
+        const { states, userId, statesCount } = userInfo;
+        console.log(`${userId} has states: ${states}`);
+    });
+} catch (status) {
+    const { operation, reason, errorCode } = status;
+    console.log(`${operation} failed, ErrorCode: ${errorCode}, due to: ${reason}.`);
+}
+```
 
-### Obtain a list of users in the channel
+When there is a large number of users in a channel, you may only care about the total number of online users, and not their identities or temporary status. To get the total channel occupancy, set `includedState` and `includedUserId` in `options` to `false`. 
 
-    To get a list of users in a channel, call `getOnlineUsers()`:
+```javascript
+const options = {
+    includedUserId: false,
+    includedState: false,
+};
+try {
+    const result = await rtm.presence.getOnlineUsers(channelName, channelType, options);
+    const { totalOccupancy, occupants, nextPage } = getOnlineUsersResult;
+    occupants.forEach((userInfo) => {
+        const { states, userId, statesCount } = userInfo;
+        console.log(`${userId} has states: ${states}`);
+    });
+} catch (status) {
+    const { operation, reason, errorCode } = status;
+    console.log(`${operation} failed, the error code is ${errorCode}, because of: ${reason}.`);
+}
+```
 
-    ```js
-    const getOnlineMembersInChannel = async (channelName, channelType) => {
-        const result = await getSignalingEngine().presence.getOnlineUsers(
-            channelName,
-            channelType
-        );
-        return result.occupants;
-    };    
-    ```
+In this case, only the `totalOccupancy` property in the result is valid while all other fields are empty. 
+<Admonition type="info">
 
-### Set local user status
+You cannot set `includedState` to `true` and `includedUserId` to `false` at the same time. To get the temporary status of users, you must also retrieve their user IDs. 
+</Admonition>
 
-    To set the local user status, call `setState`. 
+### Get user channels
 
-    ```js
-    var state = {"mood":"pumped", "isTyping": "false"};
+The `getUserChannels` method enables you to query which channels a user is currently in. This includes the message channels a user has subscribed to and the stream channels they have joined. This method is particularly useful for tracking user paths. Refer to the following sample code:
 
-    const setUserState = async (channelName, channelType, state) => {
-      try {
-        const result = await getSignalingEngine().presence.setState(
-          channelName, channelType, state); 
-        console.log(result);
-      } catch (error) {
-          console.log(error);
-      }
-    }; 
-    ```
+```javascript
+try {
+    const getUserChannelsResult = await rtmClient.presence.getUserChannels(userId);
+    const { channels, totalChannel } = getUserChannelsResult;
+    channels.forEach((channelInfo) => {
+        const { channelName, channelType } = channelInfo;
+    });
+} catch (status) {
+    const { operation, reason, errorCode } = status;
+    console.log(`${operation} failed, the error code is ${errorCode}, because of: ${reason}.`);
+}
+```
 
-### Get the status of a remote user
+The `getUserChannels` method returns complete query results about the channels and their types that the queried user is in, without pagination.
 
-    To read the status of a remote user, call `getState`.
+## User status management
 
-    ```js
-    const getUserState = async (userId, channelName, channelType) => {
-      try {
-        const result = await getSignalingEngine().presence.getState(userId,
-          channelName, channelType);
-        console.log(result);
-      } catch (error) {
-          console.log(error);
-      }
-    };  
-    ```  
+<Vg k="SIG" /> enables you to set and delete user status messages for the local user in each channel. The SDK notifies other online users in the channel of these changes through event notifications. This feature is useful in use-cases where user status sharing is required, such as real-time synchronization of the user's microphone status, mood, personal signature, score, and message input status.
+
+<Vg k="SIG" /> does not permanently save the status data. When a user unsubscribes from a channel, times out, or exits a channel, the data is deleted. To save user data permanently, use the [Store user metadata](../core-functionality/store-user-data) feature.
+
+When a user's temporary status changes, <Vg k="SIG" /> triggers a `REMOTE_STATE_CHANGED` event notification in real time. Users who set `withPresence = true` when joining the channel, receive the event notification.
+
+### Set status
+
+Using presence, you can set the temporary user status for the local user. When you set the status before subscribing to or joining a channel, the data is cached on the client and does not take effect immediately. The status is updated and corresponding event notifications are triggered when you subscribe to or join a channel. The `setState` method applies to both message and stream channels; use the `channelType` parameter to specify the channel type.
+
+```javascript
+const channelName = "test_channel";
+const channelType = "MESSAGE";
+const states = {
+    "Mode": "Happy",
+    "Mic": "False",
+};
+try {
+    const result = await rtmClient.presence.setState(channelName, channelType, states);
+} catch (status) {
+    const { operation, reason, errorCode } = status;
+    console.log(`${operation} failed, ErrorCode: ${errorCode}, because of: ${reason}.`);
+}
+```
+
+When using `setState` to set temporary user status, if the specified key already exists, its value is overwritten by the new value. If the specified key does not exist, a new key/value pair is added.
+
+### Get status
+
+To obtain the temporary user status set by a user in a specified channel, use the `getState` method:
+
+```javascript
+const channelName = "Chat_room";
+const channelType = "MESSAGE";
+const userId = "Tony";
+try {
+    const result = await rtmClient.presence.getState(userId, channelName, channelType);
+    const { states, userId, statesCount } = result; // Tony's temporary state
+} catch (status) {
+    const { operation, reason, errorCode } = status;
+    console.log(`${operation} failed, ErrorCode: ${errorCode}, because of: ${reason}.`);
+}
+```
+
+Use the `getState` method to obtain the temporary status of other online users in the channel. If the queried user is not present in the specified channel, a `RTM_ERROR_PRESENCE_USER_NOT_EXIST` error message is returned by the SDK.
+
+### Delete status
+
+Each user can set up to 32 key/value pairs in a channel. To remove items that are no longer needed, call `removeState` with a list of keys. The `removeState` method only deletes temporary user status data for the local user.
+
+```javascript
+const channelName = "Chat_room";
+const channelType = "MESSAGE";
+const removeKeys = ["Mode", "Mic"];
+const options = {
+    states: removeKeys,
+}
+try {
+    const result = await rtmClient.presence.removeState(channelName, channelType, options);
+} catch (status) {
+    const { operation, reason, errorCode } = status;
+    console.log(`${operation} failed, ErrorCode: ${errorCode}, because of: ${reason}.`);
+}
+```
+
+Both the `setState` and `removeState` methods trigger `REMOTE_STATE_CHANGED` event notifications. Users who join the channel with `withPresence` set to `true` receive event notifications containing full data of the user's temporary status.
+
+## Receive presence event notifications
+
+To receive presence event notifications, implement an event listener. See [event listeners](../reference/api#event-listeners) for details. In addition, set the `withPresence` parameter to `true` when subscribing to or joining a channel. 
+
+### Event notification modes
+
+The presence event notification mode determines how subscribed users receive event notifications. There are two notification modes: 
+
+- `Announce`: Real-time notification mode  
+- `Interval`: Scheduled notification mode 
+
+You set the **Max number of instant event** value in <Vg k="CONSOLE" /> to specify the condition for switching between the two modes. The scheduled notification mode helps prevent event noise that results from a large number of online users in the channel. See [Presence configuration](../get-started/manage-agora-account#presence-configuration) for details.
+
+#### Real-time notification mode
+
+If the number of instant notifications in the channel is less than the **Max number of instant event** value, presence event notifications operate in real-time notification mode. In this mode, `REMOTE_JOIN`, `REMOTE_LEAVE`, `REMOTE_TIMEOUT`, and `REMOTE_STATE_CHANGED` notifications are sent to the client in real-time. 
+
+<Tabs>
+<TabItem value="join" label="Join" default>
+<CodeBlock language="js" showLineNumbers>
+{`{
+      eventType: "REMOTE_JOIN";
+      channelType: "MESSAGE";
+      channelName: "test_channel";
+      publisher: "publisher_name";
+      stateChanged: {};
+      interval: null;
+      snapshot: null;
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="leave" label="Leave" default>
+<CodeBlock language="js" showLineNumbers>
+{`{
+      eventType: "REMOTE_LEAVE";
+      channelType: "MESSAGE";
+      channelName: "test_channel";
+      publisher: "publisher_name";
+      stateChanged: {};
+      interval: null;
+      snapshot: null;
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="timeout" label="Timeout" default>
+<CodeBlock language="js" showLineNumbers>
+{`{
+      eventType: "REMOTE_TIMEOUT";
+      channelType: "MESSAGE";
+      channelName: "test_channel";
+      publisher: "publisher_name";
+      stateChanged: {};
+      interval: null;
+      snapshot: null;
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="snapshot" label="Snapshot" default>
+<CodeBlock language="js" showLineNumbers>
+{`{
+      eventType: "SNAPSHOT";
+      channelType: "MESSAGE";
+      channelName: "test_channel";
+      publisher: "";
+      stateChanged: {};
+      interval: null;
+      snapshot: [
+          { userId: "user_a", states: {}, statesCount: 0 },
+          { userId: "user_b", states: { key_1: "value_1" }, statesCount: 1 },
+          { userId: "yourSelf", states: {}, statesCount: 0 },
+      ];
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="state-change" label="State change" default>
+<CodeBlock language="js" showLineNumbers>
+{`{
+      eventType: "REMOTE_STATE_CHANGED";
+      channelType: "MESSAGE";
+      channelName: "test_channel";
+      publisher: "publisher_name";
+      stateChanged: {
+          "key_1": "value_1",
+      };
+      interval: null;
+      snapshot: null;
+}`}
+</CodeBlock>
+</TabItem>      
+</Tabs>
+
+#### Scheduled notification mode
+
+When the number of online users in the channel exceeds the **Max number of instant event** value, the channel switches to the scheduled notification mode. In this mode, `REMOTE_JOIN`, `REMOTE_LEAVE`, `REMOTE_TIMEOUT`, and `REMOTE_STATE_CHANGED` events are replaced by `INTERVAL` events and sent to all users in the channel at specific time intervals. Users receive the following notification:
+
+<CodeBlock language="js" showLineNumbers>
+{`interval: {
+    join: { users: ["Tony", "Lily"], userCount: 2 },
+    leave: { users: ["Jason"], userCount: 1 },
+    timeout: { users: ["Wang"], userCount: 1 },
+    userStateList: [
+        {
+            userId: "Harvard",
+            states: { "Mic": "False", "Position": "Beijing" },
+            statesCount: 2,
+        },
+    ],
+}`}
+</CodeBlock>
 
 </PlatformWrapper>

@@ -1,34 +1,152 @@
 <PlatformWrapper platform="flutter">
 
-1.  **Enable connection to <Vg k="CP"/>**
+### Create a stream channel
 
-    <ProductWrapper product='voice-calling'>
-    To access <Vg k="AGORA_BACKEND" /> in a restricted network environment, call `setCloudProxy` and set the transmission mode. To implement this logic, in `setupVoiceSDKEngine`, add the following code after calling `agoraEngine.initialize`:
-    </ProductWrapper>
-    <ProductWrapper notAllowed='voice-calling'>
-    To access <Vg k="AGORA_BACKEND" /> in a restricted network environment, call `setCloudProxy` and set the transmission mode. To implement this logic, in `setupVideoSDKEngine`, add the following code after calling `agoraEngine.initialize`:
-    </ProductWrapper>
+To use stream channel functionality, call `createStreamChannel` to create a `StreamChannel` object instance. 
 
-    ``` dart
-    // Start cloud proxy service in forced UDP mode.
-    await agoraEngine.setCloudProxy(CloudProxyType.udpProxy);
-    ```
+```dart
+final channel = 'stream_room';
+late StreamChannel streamChannel;
+try {
+    var (status, channel) = await rtmClient.createStreamChannel(channel);
+    if (status.error == true ){
+       print('${status.operation} failed, errorCode: ${status.errorCode}, due to ${status.reason}'); 
+    } else {
+        streamChannel = channel ;
+        print('${status.operation} success!');
+    }
+} catch (e) {
+    print('something went wrong: $e');
+}
+```
 
-1.  **Set up the cloud proxy callback**
+This method creates only one `StreamChannel` instance at a time. If you need to create multiple instances, call the method multiple times.
 
-    <ProductWrapper product='voice-calling'>
-    The <Vpd k="SDK" /> triggers `onConnectionStateChanged` callback to indicate the successful initiation of cloud proxy service. To set up this callback, in `setupVoiceSDKEngine`, add the following code after `RtcEngineEventHandler(`:
-    </ProductWrapper>
-    <ProductWrapper notAllowed='voice-calling'>
-    The <Vpd k="SDK" /> triggers `onConnectionStateChanged` callback to indicate the successful initiation of cloud proxy service. To set up this callback, in `setupVideoSDKEngine`, add the following code after `RtcEngineEventHandler(`:
-    </ProductWrapper>
+<Admonition type="info">
+<Vg k="SIG" /> enables you to create unlimited stream channel instances in a single <Vpl k="CLIENT"/>. However, best practice is to create channels based on your actual requirements to maintain optimal client-side performance. For instance, if you hold multiple stream channel instances, destroy the ones that are no longer in use to prevent resource blocking, and recreate them when they are needed again.
+</Admonition>
 
-    ``` dart
-    onConnectionStateChanged: (RtcConnection connection, ConnectionStateType state,
-        ConnectionChangedReasonType reason) {
-        if (reason == ConnectionChangedReasonType.connectionChangedSettingProxyServer){
-            showMessage("Proxy settings changed");
+### Join a stream channel
+
+Call the `join` method on the `StreamChannel` instance with appropriate options as follows:
+
+```dart
+var (status, response) = await streamChannel.join(
+    token: 'your_streamChannel_token',
+    withMetadata: true, // Subscribe to storage event notifications
+    withPresence: true, // Subscribe to the presence event notifications
+    withLock: true, // Subscribe to Lock event notifications in this channel
+    beQuiet: false); // Whether to subscribe to the channel silently
+if (status.error == true ){
+    print('${status.operation} failed, errorCode: ${status.errorCode}, due to ${status.reason}'); 
+} else {
+    print('${status.operation} success!');
+    print(response);
+}
+```
+
+When joining a channel, set the `token` parameter to a temporary token from <Vg k="CONSOLE" />. 
+
+### Send a message 
+
+In stream channels, message flow is managed using topics. Even if you configure a global message listener, you must still join a topic to send messages. Similarly, to receive messages you must subscribe to a topic. See [Topics](../core-functionality/topics) for more information.
+
+To send a message to a stream channel:
+
+- Create a `StreamChannel` instance.
+- Use the `join` method to join a channel.
+- Call `joinTopic` to register as a message publisher for the specified topic. See [Topics](../core-functionality/topics).
+
+Call `publishTopicMessage` to publish a message to a topic. This method sends a message to a single topic at a time. To deliver messages to multiple topics, call the method separately for each topic.
+
+Refer to the following sample code for sending messages:
+
+* String message
+
+    ```dart
+    // Send a string message
+    final topicName = 'chat_topic';
+    var payload = 'hello RTM';
+
+    try {
+        var (status, response) = await streamChannel.publishTextMessage(
+            topicName,
+            payload,
+            customType: 'PlainText');
+
+        if (status.error == true ){
+        print('${status.operation} failed, errorCode: ${status.errorCode}, due to ${status.reason}');
+        } else {
+            print('${status.operation} success!');
         }
-    },
+    } catch (e) {
+        print('something went wrong: $e');
+    }
     ```
+
+* Binary message
+
+    ```dart
+    // Send a binary message
+    final topicName = 'chat_topic';
+    var payload = Uint8List.fromList([155, 26, 88, 0, 0]);
+
+    try {
+        var (status, response) = await streamChannel.publishBinaryMessage(
+            topicName,
+            payload,
+            customType: 'Uint8List');
+
+        if (status.error == true ){
+        print('${status.operation} failed, errorCode: ${status.errorCode}, due to ${status.reason}');
+        } else {
+            print('${status.operation} success!');
+        }
+    } catch (e) {
+        print('something went wrong: $e');
+    }
+    ```
+
+In <Vg k="SIG" />, a user may register as a message publisher for up to 8 topics concurrently. However, there are no limitations on the number of users a single topic can accommodate. You can achieve a message transmission frequency to a topic of up to 120 QPS. This capability is useful in use-cases that demand high-frequency and high-concurrency data processing, such as Metaverse location status synchronization, collaborative office sketchpad applications, and parallel control operation-instructions transmission.
+
+### Leave a stream channel
+
+To leave a channel, call the `leave` method on the `StreamChannel` instance:
+
+```dart
+try {
+    var (status, response) = await streamChannel.leave();
+    if (status.error == true ){
+       print('${status.operation} failed, errorCode: ${status.errorCode}, due to ${status.reason}'); 
+    } else {
+        print('${status.operation} success!');
+    }
+} catch (e) {
+    print('something went wrong: $e');
+}
+```
+
+To rejoin a stream channel, call the `join` method again. You can join and leave as long as the corresponding `StreamChannel` instance remains active and has not been destroyed.
+
+### Destroy the stream channel instance
+
+To destroy a stream channel instance, call `release`:
+
+```dart
+try {
+    var status = await streamChannel.release();
+    if (status.error == true ){
+       print('${status.operation} failed, errorCode: ${status.errorCode}, due to ${status.reason}'); 
+    } else {
+        print('${status.operation} success!');
+    }
+} catch (e) {
+    print('something went wrong: $e');
+}
+```
+
+<Admonition type="info">
+Destroying a stream channel removes the `StreamChannel` instance from your <Vpl k="CLIENT"/>. This action is local to your <Vpl k="CLIENT"/> and does not affect other users or the <Vg k="SIG" /> channel.
+</Admonition>
+
 </PlatformWrapper>

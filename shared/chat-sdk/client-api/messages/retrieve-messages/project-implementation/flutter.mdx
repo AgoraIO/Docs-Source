@@ -2,21 +2,18 @@
 
 ### Retrieve a list of conversations from the server
 
-Call `fetchConversation` to retrieve conversations from the server with pagination. The SDK returns the conversation list in the reverse chronological order of when conversations are active (the timestamp of the last message in the conversation). In the conversation list, each conversation object contains the conversation ID, conversation type, whether the conversation is pinned, the pinned time (the value is 0 for an unpinned conversation), and the last message in the conversation. After the conversation list is retrieved from the server, the local conversation list will be updated accordingly. We recommend calling this method when the app is first installed, or when there is no conversation on the local device. Otherwise, you can call `loadAllConversations` to retrieve conversations on the local device.
-The server stores 100 conversations for 7 days by default. To increase the two upper limits, contact support@agora.io. Agora Chat server can store up to 3,000 conversation per end user.
+Call `fetchConversationsByOptions` to retrieve conversations from the server with pagination. The SDK returns the conversation list in the reverse chronological order of when conversations are active (the timestamp of the last message in the conversation). In the conversation list, each conversation object contains the conversation ID, conversation type, whether the conversation is pinned, the pinned time (the value is 0 for an unpinned conversation), and the last message in the conversation. After the conversation list is retrieved from the server, the local conversation list will be updated accordingly. We recommend calling this method when the app is first installed, or when there is no conversation on the local device. Otherwise, you can call `loadAllConversations` to retrieve conversations on the local device.
+
+
+For each end user, the server stores 100 conversations by default. When this limit is exceeded, new conversations will start overwriting the old ones. If the entire message history in a conversation expires, the conversation becomes empty. When pulling the conversation list from the server, these empty conversations are not included by default. To include them, set `EMOptions#enableEmptyConversation` to `true` when initializing the SDK. In this case, empty conversations will occupy the conversations pull quota, regardless of whether they are needed when pulling. To change this, contact support@agoro.io.
 
 ```dart
-// pageSize: The number of conversations that you expect to get on each page. The value range is [1,50].
-String? cursor;
-int pageSize = 10;
-ChatCursorResult<ChatConversation> result =
-    await ChatClient.getInstance.chatManager.fetchConversation(
-  cursor: cursor,
-  pageSize: pageSize,
-);
+ChatClient.getInstance.chatManager.fetchConversationsByOptions(
+      options: ConversationFetchOptions(),
+    );
 ```
 
-### Retrieve historical messages of the specified conversation
+### Retrieve message history of the specified conversation
 
 After retrieving conversations, you can retrieve historical messages from the server.
 
@@ -28,11 +25,15 @@ The Agora Chat server stores the full message history for a certain period of ti
 
 - 1:1 private chat: Store 500 offline messages by default;
 - Chat Group: Store 200 offline messages by default;
-- Chatroom: Doesn't store offline messages. However, whenever an end user joins a chatroom, Agora Chat servers push the 10 latest messages/chatroom to them, by default. This number can be adjusted to 200 messages/chatroom without additional charges.
+- Chatroom: Doesn't store offline messages. However, by default, whenever an end user joins a chatroom, Agora Chat servers push the 10 latest messages/chatroom to them, and this number can be adjusted to 200 messages/chatroom without additional charges.
+
+After the GA release of Agora Chat 1.3, you can log in to Agora Console and enable the chatroom message history retrieval feature. After that, Agora Chat servers will stop automatically pushing chatroom messages to new members and you can follow the guidance below to retrieve chatroom message history.
 
 For users to receive more offline messages, use the client API or a webhook to sync with Agora Chat's server. End users can also store additional messages on their local database.
 
 To ensure data reliability, we recommend retrieving less than 50 historical messages for each method call. To retrieve more than 50 historical messages, call this method multiple times. Once the messages are retrieved, the SDK automatically updates these messages in the local database.
+
+We recommend that you retrieve 20 messages each time, with a maximum of 50. During paginated query, if the total number of messages that meet the query conditions is greater than the number of `pageSize`, the number of messages of `pageSize` will be returned. If it is less than the number of `pageSize`, the actual number will be returned. When the message query is completed, the number of returned messages is less than the number of `pageSize`.
 
 Refer to the following code sample:
 
@@ -58,7 +59,7 @@ ChatCursorResult<ChatMessage> result =
 
 ### Pin a conversation
 
-To keep track of an important conversation, you can pin it to the top of your conversation list. You can pin up to 50 conversations.  The pinned state is stored on the server. In a multi-device login scenario, if you pin or unpin a conversation, other login devices will receive the `CONVERSATION_PINNED` or `CONVERSATION_UNPINNED` events.
+To keep track of an important conversation, you can pin it to the top of your conversation list. You can pin up to 50 conversations.  The pinned state is stored on the server. In a multi-device login use-case, if you pin or unpin a conversation, other login devices will receive the `CONVERSATION_PINNED` or `CONVERSATION_UNPINNED` events.
 
 Refer to the following code example to pin a conversation:
 
@@ -79,15 +80,72 @@ Agora Chat servers store a list of conversations that remain active in the past 
 Refer to the following code example to get a list of pinned conversations from the server with pagination:
 
 ```dart
-// pageSize: The number of sessions returned per page. The value range is [1,50].
-// cursor: The cursor position to start getting data. If `null` or an empty string ("") is passed when obtaining data, the SDK will start querying from the latest pinned session.
-String? cursor;
-int pageSize = 10;
-ChatCursorResult<ChatConversation> result =
-    await ChatClient.getInstance.chatManager.fetchPinnedConversations(
-  cursor: cursor,
-  pageSize: pageSize,
-);
+ChatClient.getInstance.chatManager.fetchConversationsByOptions(
+      options: ConversationFetchOptions.pinned(),
+    );
+```
+
+### Pin a message
+
+You can call `ChatManager#pinMessage` to pin a message to the top of a one-to-one chat, chat group, or chat room. When the pinned status of a message changes, other members in the group or chat room conversation will receive the `ChatEventHandler#onMessagePinChanged` event. In the case of multi-device login, the updated top status will be synchronized to other logged-in devices, and other devices will receive the `ChatEventHandler#onMessagePinChanged` event, respectively.
+
+In group and chat room conversations, multiple users can pin the same message to the top. The latest pinned message will overwrite the earlier information. That is, the `MessagePinInfo` user ID and pin time will correspond to the latest pinned message.
+
+If the message is stored locally but deleted on the server due to expiration, the message will fail to be pinned to the top.
+
+For a single conversation, 20 messages can be pinned to the top by default.
+
+```dart
+try {
+  await ChatClient.getInstance.chatManager.pinMessage(messageId: msgId);
+} on ChatError catch (e) {
+  debugPrint('pinMessage error: ${e.code} ${e.description}');
+}
+```
+
+### Unpin a message
+
+You can call `ChatManager#unpinMessage` to unpin a message in a one-to-one chat, chat group, or chat room. As with pinned messages, other members of the group or chat room will receive the `ChatEventHandler#onMessagePinChanged` event when the pinned message is unpinned. In the case of multi-device login, the updated pin status will be synchronized to other logged-in devices, and other devices will receive the `ChatEventHandler#onMessagePinChanged` event, respectively.
+
+Any user in a group or room can unpin a message, regardless of who pinned it. After unpinning a message, `Message#pinnedInfo` is returned empty and the message is no longer included in the pinned message list.
+
+```dart
+  try {
+  await ChatClient.getInstance.chatManager.unpinMessage(messageId: msgId);
+} on ChatError catch (e) {
+  debugPrint('unpinMessage error: ${e.code} ${e.description}');
+}
+```
+
+### Get pinned messages in a single conversation
+
+You can call `ChatManager#fetchPinnedMessages` to get the pinned messages from a single conversation from the server. The SDK returns messages in the reverse order of pinning.
+
+<Admonition type="tip" title="Note"><ul><li>If a message expires on the server or the user deletes it unilaterally from the server after pinning, such user will not be able to pull it when pulling roaming messages. However, this user and other users will be able to pull this message from the pinned message list.</li><li>If the user withdraws a message after pinning, the message will be removed from the server; other users will not be able to pull it when they pull the pinned message list from the server.</li></ul></Admonition>
+
+```dart
+try {
+  List<ChatMessage> pinnedMessages = await ChatClient.getInstance.chatManager.fetchPinnedMessages(
+    conversationId: conversationId,
+  );
+} on ChatError catch (e) {
+  debugPrint('fetchPinnedMessages error: ${e.code} ${e.description}');
+}
+```
+
+### Get pinned details of a single message
+
+You can call `MessagePinInfo` to get the pinned details of a single message.
+
+- If the message is pinned, this class returns the time of pinning and the user ID of the user who has pinned it.
+- If the message is not pinned, this class is returned empty.
+
+```dart
+try {
+  MessagePinInfo? pinInfo = await message.pinInfo();
+} on ChatError catch (e) {
+  debugPrint('pinInfo error: ${e.code} ${e.description}');
+}
 ```
 
 ### Delete historical messages from the server unidirectionally
@@ -123,6 +181,100 @@ try {
     conversationId,
   );
 } on ChatError catch (e) {}
+```
+
+### Tag a conversation
+
+To tag a conversation, use the `addRemoteAndLocalConversationsMark` method. This method allows you to add tags to both local and server-side conversations. Each conversation can have up to 20 tags. This feature applies only to private chats and chat groups.
+
+After adding a tag, you can retrieve the tagged conversations from the server by calling the `fetchConversationsByOptions` method. The returned conversation objects will include the conversation tag, which you can obtain using the `marks` property.
+
+If the server conversation list reaches its limit (default 100 conversations per user), inactive conversations will be deleted based on conversation activity (timestamp of the latest message). Consequently, the conversation tags of these deleted conversations will also be removed.
+
+<Admonition type="info" title="Hint">Adding tags to a conversation, such as stars, does not affect other logic of the conversation, such as the number of unread messages in it.</Admonition>
+
+```dart
+try {
+  await EMClient.getInstance.chatManager.addRemoteAndLocalConversationsMark(
+    conversationIds: conversationsIds,
+    mark: ConversationMarkType.Type0,
+  );
+} on EMError catch (e) {
+  debugPrint("addRemoteAndLocalConversationsMark error: ${e.code}, ${e.description}");
+}
+
+```
+
+### Remove conversation tag
+
+You can call `deleteRemoteAndLocalConversationsMark` to remove tag of a conversation. Tags can be removed for up to 20 conversations at a time. Calling this method removes both the local and server-side tags.
+
+```dart
+try {
+  await ChatClient.getInstance.chatManager.deleteRemoteAndLocalConversationsMark(
+    conversationIds: conversationIds,
+    mark: ConversationMarkType.Type0,
+  );
+} on ChatError catch (e) {
+  debugPrint('deleteRemoteAndLocalConversationsMark error: ${e.code} ${e.description}');
+}
+```
+
+### Query conversations from the server by the conversation tag
+
+You can use the `fetchConversationsByOptions` method to retrieve a list of conversations from the server based on the tag. The SDK returns the conversation list in reverse order of the conversation tag's timestamp. Each conversation object includes the following information:
+
+- Conversation ID
+- Conversation type
+- Pinned status (whether it is pinned or not)
+- Pin time (For an unpinned conversation, the value is 0)
+- Conversation tag
+- Latest message
+
+After fetching the conversation list from the server, the local conversation list is updated accordingly:
+
+```dart
+try {
+  ChatCursorResult<ChatConversation> result = await ChatClient.getInstance.chatManager.fetchConversationsByOptions(
+    options: ConversationFetchOptions.mark(
+      ConversationMarkType.Type0,
+    ),
+  );
+} on ChatError catch (e) {
+  debugPrint('fetchConversationsByOptions error: ${e.code} ${e.description}');
+}
+```
+
+### Query local conversations by the conversation tag
+
+For local conversations, you can call the `getAllConversations` method to obtain all local conversations and then perform conversation filtering yourself. The following is an example of querying all local conversations marked with `EMConversation.EMMarkType.MARK_0`:
+
+```dart
+try {
+  List<ChatConversation> markedConversations = [];
+  List<ChatConversation> conversations = await ChatClient.getInstance.chatManager.loadAllConversations();
+  for (var conversation in conversations) {
+    if (conversation.marks?.contains(ConversationMarkType.Type0) == true) {
+      markedConversations.add(conversation);
+    }
+  }
+  debugPrint('marked conversations: $markedConversations');
+} on ChatError catch (e) {
+  debugPrint('get marks conversations error: ${e.code} ${e.description}');
+}
+```
+
+### Get all tags of a local conversation
+
+You can call `Conversation#marks` to get all the tags of a local conversation. The sample code is as follows:
+
+```dart
+try {
+  ChatConversation? conversation = await ChatClient.getInstance.chatManager.getConversation(targetId);
+  List<ConversationMarkType>? markType = conversation?.marks;
+} on ChatError catch (e) {
+  debugPrint('get marks error: ${e.code} ${e.description}');
+}
 ```
 
 </PlatformWrapper>

@@ -1,0 +1,355 @@
+import Status from '../shared/_rtmstatus-en.mdx'
+
+A critical resource can only be used by one process at a time. If multiple processes share a critical resource, they must use mutual exclusion to avoid interfering with each other. RTM provides a complete Lock solution that allows you to manage distributed processes and resolve user contention for shared resources.
+
+<Admonition type="info" title="Info">
+The client SDK supports setting, deleting, and revoking locks. We recommend that you control client-side permissions for lock operations based on your business needs.
+</Admonition>
+
+### setLock
+
+#### Description
+
+You need to configure properties such as the lock name and expiration time (TTL), then call the `setLock` method. After successful configuration, all users in the channel receive a `lockSet` type `lock` event notification. See <a href="configuration#event-listener">Event Listener</a> for details.
+
+#### Method
+
+You can call the `setLock` method as follows:
+
+```typescript 
+setLock(
+    channelName: string,
+    channelType: RtmChannelType,
+    lockName: string,
+    options?: SetLockOptions
+): Promise<SetLockResponse>;
+```
+
+| Parameter      | Type            | Required | Default | Description |
+|----------------|------------------|----------|---------|-------------|
+| `channelName`  | string           | Yes      | -       | Channel name. |
+| `channelType`  | RtmChannelType   | Yes      | -       | Channel type. See [Channel Type](enum#channeltype). |
+| `lockName`     | string           | Yes      | -       | Lock name. |
+| `options`      | object           | No       | -       | Lock configuration options. |
+
+The `options` object includes the following properties:
+
+| Property | Type   | Required | Default | Description |
+|----------|--------|----------|---------|-------------|
+| `ttl`    | number | No       | `10`    | Lock expiration time in seconds. Range: [10, 300]. If the user holding the lock goes offline and returns to the channel within the TTL, they can still use the lock. Otherwise, the lock is released and users listening for `lock` events receive a `lockReleased` event. |
+
+#### Basic usage
+
+```typescript 
+try {
+    const result = await rtm.Lock.setLock(
+        channel: "my_channel",
+        channelType: "STREAM",
+        lockName: "my_lock",
+        { ttl: 30 }
+    );
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns a `SetLockResponse` type:
+
+```typescript 
+type SetLockResponse = {
+    timestamp: number, // Reserved field
+    channelName: string, // Channel name
+    channelType: RtmChannelType, // Channel type
+    lockName: string // Lock name
+}
+```
+
+<Status />
+
+### acquireLock
+
+#### Description
+
+After configuring a Lock, you can call the `acquireLock` method on the client to obtain ownership of the lock. Once acquired, other users in the channel receive a `lockAcquired` type `lock` event notification. See <a href="configuration#event-listener">Event Listener</a> for details.
+
+#### Method
+
+You can call the `acquireLock` method as follows:
+
+```typescript 
+acquireLock(
+    channelName: string,
+    channelType: RtmChannelType,
+    lockName: string,
+    options?: AcquireLockOptions
+): Promise<AcquireLockResponse>;
+```
+
+| Parameter      | Type            | Required | Default | Description |
+|----------------|------------------|----------|---------|-------------|
+| `channelName`  | string           | Yes      | -       | Channel name. |
+| `channelType`  | RtmChannelType   | Yes      | -       | Channel type. See [Channel Type](enum#channeltype). |
+| `lockName`     | string           | Yes      | -       | Lock name. |
+| `options`      | object           | No       | -       | Options for acquiring the lock. |
+
+The `options` object includes the following properties:
+
+| Property | Type    | Required | Default | Description |
+|----------|---------|----------|---------|-------------|
+| `retry`  | boolean | No       | `false` | Whether to retry acquiring the lock until successful or the user leaves the channel. |
+
+#### Basic usage
+
+```typescript 
+try {
+    const result = await rtm.Lock.acquireLock(
+        "chat_room",
+        "STREAM",
+        "my_lock",
+        { retry: false }
+    );
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns an `AcquireLockResponse` type:
+
+```typescript 
+type AcquireLockResponse = {
+    timestamp: number, // Reserved field
+    channelName: string, // Channel name
+    channelType: RtmChannelType, // Channel type
+    lockName: string // Lock name
+}
+```
+
+<Status />
+
+### releaseLock
+
+#### Description
+
+When a user no longer needs to hold a lock, they can call the `releaseLock` method to release it. After the lock is released, other users in the channel receive a `lockReleased` type `lock` event. See <a href="configuration#event-listener">Event Listener</a> for details.
+
+At this point, if another user wants to acquire the lock, they can call `acquireLock` to compete for it. New users and those with `retry` enabled have equal priority.
+
+#### Method
+
+You can call the `releaseLock` method as follows:
+
+```typescript 
+releaseLock(
+    channelName: string,
+    channelType: RtmChannelType,
+    lockName: string
+): Promise<ReleaseLockResponse>;
+```
+
+| Parameter      | Type            | Required | Default | Description |
+|----------------|------------------|----------|---------|-------------|
+| `channelName`  | string           | Yes      | -       | Channel name. |
+| `channelType`  | RtmChannelType   | Yes      | -       | Channel type. See [Channel Type](enum#channeltype). |
+| `lockName`     | string           | Yes      | -       | Lock name. |
+
+#### Basic usage
+
+```typescript 
+try {
+    const result = await rtm.lock.releaseLock(
+        "chat_room",
+        "STREAM",
+        "my_lock"
+    );
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns a `ReleaseLockResponse` type:
+
+```typescript 
+type ReleaseLockResponse = {
+    timestamp: number, // Reserved field
+    channelName: string, // Channel name
+    channelType: RtmChannelType, // Channel type
+    lockName: string // Lock name
+}
+```
+
+<Status />
+
+### revokeLock
+
+#### Description
+
+If a lock is held and you need to ensure your business logic proceeds, you may need to revoke the lock to give other users a chance to acquire it. Call `revokeLock` to revoke the held lock. After revocation, all users in the channel receive a `lockReleased` type `lock` event. See <a href="configuration#event-listener">Event Listener</a> for details.
+
+At this point, if another user wants to acquire the lock, they can call `acquireLock` to compete for it. New users and those with `retry` enabled have equal priority.
+
+#### Method
+
+You can call the `revokeLock` method as follows:
+
+```typescript 
+revokeLock(
+    channelName: string,
+    channelType: RtmChannelType,
+    lockName: string,
+    owner: string
+): Promise<RevokeLockResponse>;
+```
+
+| Parameter      | Type            | Required | Default | Description |
+|----------------|------------------|----------|---------|-------------|
+| `channelName`  | string           | Yes      | -       | Channel name. |
+| `channelType`  | RtmChannelType   | Yes      | -       | Channel type. See [Channel Type](enum#channeltype). |
+| `lockName`     | string           | Yes      | -       | Lock name. |
+| `owner`        | string           | Yes      | -       | User ID of the current lock owner. |
+
+#### Basic usage
+
+```typescript 
+try {
+    const result = await rtm.lock.revokeLockLock(
+        "chat_room",
+        "STREAM",
+        "my_lock",
+        "Tony"
+    );
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns a `RevokeLockResponse` type:
+
+```typescript 
+type RevokeLockResponse = {
+    timestamp: number, // Reserved field
+    channelName: string, // Channel name
+    channelType: RtmChannelType, // Channel type
+    lockName: string // Lock name
+}
+```
+
+<Status />
+
+### getLock
+
+#### Description
+
+If you need to query information such as the number of locks in a channel, their names, owners, and expiration times, call the `getLock` method on the client.
+
+#### Method
+
+You can call the `getLock` method as follows:
+
+```typescript 
+getLock(
+    channelName: string,
+    channelType: RtmChannelType
+): Promise<GetLockResponse>;
+```
+
+| Parameter      | Type            | Required | Default | Description |
+|----------------|------------------|----------|---------|-------------|
+| `channelName`  | string           | Yes      | -       | Channel name. |
+| `channelType`  | RtmChannelType   | Yes      | -       | Channel type. See [Channel Type](enum#channeltype). |
+
+#### Basic usage
+
+```typescript 
+try {
+    const result = await rtm.lock.getLock("chat_room", "STREAM");
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns a `GetLockResponse` type:
+
+```typescript 
+type GetLockResponse = {
+    timestamp: number, // Reserved field
+    channelName: string, // Channel name
+    channelType: RtmChannelType, // Channel type
+    totalLocks: string, // Number of locks
+    lockDetails: [{
+        lockName: string, // Lock name
+        owner: string, // Lock owner
+        ttl: number // Lock expiration time
+    }]
+}
+```
+
+<Status />
+
+### removeLock
+
+#### Description
+
+If you no longer need a specific lock in a channel, you can call the `removeLock` method to delete it. After successful deletion, all users in the channel receive a `lockRemoved` type `lock` event notification. See <a href="configuration#event-listener">Event Listener</a> for details.
+
+#### Method
+
+You can call the `removeLock` method as follows:
+
+```typescript 
+removeLock(
+    channelName: string,
+    channelType: RtmChannelType,
+    lockName: string
+): Promise<RemoveLockResponse>;
+```
+
+| Parameter      | Type            | Required | Default | Description |
+|----------------|------------------|----------|---------|-------------|
+| `channelName`  | string           | Yes      | -       | Channel name. |
+| `channelType`  | RtmChannelType   | Yes      | -       | Channel type. See [Channel Type](enum#channeltype). |
+| `lockName`     | string           | Yes      | -       | Lock name. |
+
+#### Basic usage
+
+```typescript 
+try {
+    const result = await rtm.Lock.removeLockLock(
+        "chat_room",
+        "STREAM",
+        "my_lock"
+    );
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns a `RemoveLockResponse` type:
+
+```typescript 
+type RemoveLockResponse = {
+    timestamp: number, // Reserved field
+    channelName: string, // Channel name
+    channelType: RtmChannelType, // Channel type
+    lockName: string // Lock name
+}
+```
+
+<Status />

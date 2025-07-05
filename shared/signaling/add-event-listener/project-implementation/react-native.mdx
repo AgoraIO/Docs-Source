@@ -7,69 +7,92 @@
 ```tsx
 // Listen to messages received via Signaling channel
 useRtmEvent(engine, 'message', (evt) => {
-  console.log('[You] received a message:', evt.message);
+ const msg = new MessageEvent(evt);
+ console.log('[You] received a message:', msg.message, 'from:', msg.publisher);
 });
 
 // Listen to Signaling link state changes
 useRtmEvent(engine, 'linkState', (eventData) => {
-  console.log('Link state event:', eventData);
-});
-
-// Listen to channel lock or unlock events
-useRtmEvent(engine, 'lock', (eventData) => {
-  console.log('[Signaling] Lock event:', eventData);
-});
-
-// Listen to updates in shared storage
-useRtmEvent(engine, 'storage', (storageData) => {
-  console.log('[Signaling] Storage event:', storageData);
-});
-
-// Listen to token expiration warnings
-useRtmEvent(engine, 'tokenPrivilegeWillExpire', (channelName) => {
-  console.log('[Signaling] Token privilege will expire for channel:', channelName);
-});
-
-// Listen to topic-related events such as topic creation, update, or deletion
-useRtmEvent(engine, 'topic', (topicEvent) => {
-  console.log('[Signaling] Topic event:', topicEvent);
+ console.log('Link state changed:', eventData.currentState, 'reason:', eventData.reason);
+ 
+ if (eventData.currentState === RtmLinkState.connected) {
+   console.log('✅ Connected to Signaling');
+ } else if (eventData.currentState === RtmLinkState.failed) {
+   console.log('❌ Connection failed:', eventData.reason);
+ }
 });
 
 // Listen to presence events such as user join, leave, or state change
 useRtmEvent(engine, 'presence', (presenceData) => {
-  console.log('[Signaling] Presence event:', presenceData);
+ console.log('[Signaling] Presence event:', presenceData.eventType);
+ console.log('User:', presenceData.publisher, 'Channel:', presenceData.channelName);
 });
 
-useRtmEvent(engine, 'linkState', (eventData) => {
-  console.log('Link state changed:', eventData);
+// Listen to topic-related events such as topic creation, update, or deletion
+useRtmEvent(engine, 'topic', (topicEvent) => {
+ console.log('[Signaling] Topic event:', topicEvent.eventType);
+ console.log('Topic:', topicEvent.topicName, 'Publisher:', topicEvent.publisher);
+});
+
+// Listen to updates in shared storage
+useRtmEvent(engine, 'storage', (storageData) => {
+ console.log('[Signaling] Storage event:', storageData.eventType);
+ console.log('Storage type:', storageData.storageType, 'Channel:', storageData.channelName);
+});
+
+// Listen to channel lock or unlock events
+useRtmEvent(engine, 'lock', (eventData) => {
+ console.log('[Signaling] Lock event:', eventData.eventType);
+ console.log('Lock:', eventData.lockName, 'Channel:', eventData.channelName);
+});
+
+// Listen to token expiration warnings
+useRtmEvent(engine, 'tokenPrivilegeWillExpire', (channelName) => {
+ console.log('[Signaling] Token privilege will expire for channel:', channelName);
+ // Generate and renew token here
 });
 ```
 
-### Remove event listeners
+### Event listener lifecycle
 
-To avoid performance degradation caused by memory leaks, errors, and exceptions, best practice is to unregister an event handler when you no longer need to use it. 
+The `useRtmEvent` hook provides automatic lifecycle management:
+
+- **Automatic registration**: Listeners are added when the component mounts
+- **Automatic cleanup**: Listeners are removed when the component unmounts
+- **Dependency tracking**: Hook re-registers listeners when dependencies change
+- **Memory leak prevention**: No manual cleanup required
 
 ```tsx
-const engine = useRtm();
-engine.removeAllListeners();
+// Event listeners are automatically managed by the hook
+useEffect(() => {
+ // useRtmEvent hooks automatically register listeners when component mounts
+ console.log('Component mounted - event listeners active');
+ 
+ return () => {
+   // Listeners are automatically removed when component unmounts
+   console.log('Component unmounting - listeners automatically cleaned up');
+ };
+}, []);
 ```
 
-The `RtmClient` automatically destroys event listeners when you call `release`.
+<Admonition type="info">
+The `useRtmEvent` hook is the recommended approach for React Native applications as it follows React best practices and prevents common memory leak issues.
+</Admonition>
 
 ### Signaling events
 
 <Vpd k="SDK" /> offers the following events:  
 
-| Event Listener            | Description             |
-|---------------------------|-------------------------|
-| `message`          | Receive message notifications from all the message channels you have subscribed to, or topic message notifications subscribed to from all the stream channels you have joined. The event payload data includes channel name, channel type, topic name, event sender, message payload data type, and other information. |
-| `presence`         | Receive online status event notifications from remote users in all message channels you have subscribed to and stream channels you have joined. The event payload data includes channel name, channel type, event type, event sender, user temporary status data, and other information.  |
-| `topic`            | Receive notifications of topic change events in all the stream channels you have joined. The event payload data includes information such as channel name, event type, topic name, and event sender. |
-| `storage`          | Receive all channel metadata event notifications in all message channels you have subscribed to and stream channels you have joined, as well as user metadata event notifications from all subscribed users. The event payload data includes information such as channel name, channel type, event type, and specific metadata. |
-| `lock`             | Receive all lock event notifications in the message channel you have subscribed to and stream channel you have joined. The event payload data contains information such as channel name, channel type, event type, and lock details. |
-| `linkState`          | Receive event notifications for client network connection status changes, including the connection status before and after the change, service type, operation type that caused the change, reason for the change, channel list, and other information. |
-| `tokenPrivilegeWillExpire`| Receive event notifications that the client token is about to expire.  |
+| Event Listener            | Description             | Common Use Cases |
+|---------------------------|-------------------------|------------------|
+| `message`          | Receive message notifications from all message channels you have subscribed to, or topic message notifications from stream channels you have joined. Includes channel name, channel type, topic name, sender, message content, and timestamp. | Chat applications, real-time notifications, data synchronization |
+| `linkState`          | Receive event notifications for client network connection status changes. Includes current state, previous state, reason for change, and error codes. | Connection monitoring, retry logic, user status indicators |
+| `presence`         | Receive online status event notifications from remote users in subscribed message channels and joined stream channels. Includes user join/leave events, state changes, and user metadata. | User presence indicators, active user lists, status updates |
+| `topic`            | Receive notifications of topic change events in stream channels you have joined. Includes topic creation, updates, user join/leave topic events. | Stream channel management, topic subscription handling |
+| `storage`          | Receive channel metadata and user metadata event notifications. Includes metadata updates, deletions, and synchronization events. | Data persistence, shared state management, user profiles |
+| `lock`             | Receive lock event notifications for distributed resource management. Includes lock acquisition, release, and expiration events. | Resource coordination, mutual exclusion, distributed locks |
+| `tokenPrivilegeWillExpire`| Receive event notifications when the client token is about to expire (30 seconds before expiration). | Token refresh, authentication management, session handling |
 
-For details on the parameters passed in by each event, refer to <Link to="{{Global.SIG_SDK_API_RN}}/interfaces/RTMClientEventMap.html">`RTMClientEventMap`</Link> in the API reference.
+For details on the parameters passed in by each event, refer the [API reference](/signaling/reference/api?platform=react-native#add-listener-1).
 
 </PlatformWrapper>

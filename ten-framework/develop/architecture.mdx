@@ -1,0 +1,338 @@
+---
+title: 'Package architecture'
+sidebar_position: 1
+platform_selector: false
+description: >
+ Understand TEN package structure, types, and lifecycle management for extensions, apps, and system components.
+---
+
+TEN packages are the fundamental building blocks of the TEN framework, providing a standardized structure for organizing applications, extensions, and system components. This guide explains the TEN package architecture, lifecycle management, and deployment strategies.
+
+Understanding TEN packages is essential for effective development with the framework. Packages define how code, configuration, and dependencies are organized, while the extension lifecycle provides a predictable pattern for component initialization, operation, and cleanup across different programming languages.
+
+Whether you're building standalone extensions, complete applications, or contributing to the framework itself, this guide covers the package structure and lifecycle concepts you need to develop robust TEN-based solutions.
+
+## Package structure and types
+
+### Common package structure
+
+Every TEN package follows a standardized directory structure that ensures consistency across different package types and programming languages:
+
+```text
+.
+├── bin/
+├── src/
+├── manifest.json
+├── manifest-lock.json
+├── property.json
+└── ten_packages/
+   ├── extension/
+   │   ├── <extension_foo>/
+   │   └── <extension_bar>/
+   ├── extension_group/
+   │   └── <extension_group_x>/
+   ├── protocol/
+   │   └── <protocol_a>/
+   └── system/
+       ├── <system_package_1>/
+       └── <system_package_2>/
+```
+
+**Language-specific files:**
+- **C++**: `BUILD.gn` file for the `ten_gn` build system
+- **Go**: `go.mod` and `go.sum` files for dependency management
+- **Python**: `requirements.txt` file for package dependencies
+
+### Package types
+
+TEN framework packages are organized into distinct types, each serving specific purposes in the application architecture:
+
+- **App**: Complete TEN applications that can run as standalone processes or embedded threads. Apps serve as containers for extensions and extension groups.
+
+- **Extension**: Individual functional components that implement specific business logic or capabilities. Extensions are the primary building blocks for TEN applications.
+
+- **Extension group**: Collections of related extensions that work together as a cohesive unit. Extension groups provide organizational structure and shared resources.
+
+- **Protocol**: Communication protocols that define how extensions interact and exchange messages. Protocols ensure consistent data flow between components.
+
+- **System**: Core framework components and runtime packages that provide essential TEN functionality. System packages include the runtime engine and fundamental services.
+
+Each package type has specific responsibilities and usage patterns within the TEN ecosystem, allowing developers to build modular, scalable applications through composition.
+
+## App packages
+
+Apps are containers that orchestrate extensions and extension groups to create complete TEN applications. Apps provide the runtime environment and can be deployed in multiple ways to suit different architectural needs.
+
+### Deployment modes
+
+TEN apps have two deployment modes:
+
+- **Process mode**: Apps run as standalone processes, typically deployed in Docker containers for cloud environments. This mode provides complete isolation and is ideal for microservices architectures.
+
+- **Thread mode**: Apps run as embedded threads within existing applications. This mode enables incremental adoption of TEN without requiring complete application rewrites.
+
+![Run TEN as a process or a thread](/images/ten-framework/run_ten_as_process_or_thread.png)
+
+![Different modes of app running](/images/ten-framework/different_mode_of_app_runnings.png)
+
+### App structure
+
+TEN apps maintain consistent folder structures across all programming languages, ensuring uniformity and predictability regardless of implementation language:
+
+![TEN package folder structure](/images/ten-framework/ten_package_folder_structure.png)
+
+This consistency allows developers to work with TEN apps using familiar patterns, whether building in C++, Go, Python, or other supported languages.
+
+## Extension packages
+
+Extension packages contain individual components that implement specific functionality within TEN applications. Extensions are the core building blocks that handle business logic, data processing, and external integrations.
+
+### Extension lifecycle
+
+Extensions follow a predictable five-stage lifecycle that ensures proper initialization, operation, and cleanup. Each stage provides specific capabilities for message handling and inter-extension communication.
+
+| Stage | Purpose | Completion Function |
+|-------|---------|-------------------|
+| `on_configure` | Set initial property values | `on_configure_done()` |
+| `on_init` | Initialize extension resources | `on_init_done()` |
+| `on_start` | Begin normal operation | `on_start_done()` |
+| `on_stop` | Prepare for shutdown | `on_stop_done()` |
+| `on_deinit` | Clean up resources | `on_deinit_done()` |
+
+You can send messages and receive command results at any lifecycle stage, enabling flexible inter-extension dependencies and communication patterns. You must call the corresponding completion function to complete each stage and advance to the next. The following diagram illustrates the extension lifecycle flow, showing how each stage transitions to its completion function and then to the next stage:
+
+![](/images/ten-framework/stage-transition-graph.png)
+
+#### `on_configure`
+
+Use this stage to set the initial values of your extension's properties. This allows you to use the `get_property` API from `ten_env` in other lifecycle stages to retrieve properties set during `on_configure`. Call `on_configure_done()` to mark the end of this stage.
+
+```cpp
+void on_configure(ten::ten_env_t &ten_env) override {
+ // Set the initial values of the extension's properties.
+ ten_env.init_property_from_json(
+   R"({
+        "ten": {
+          "uri": "msgpack://127.0.0.1:8001/",
+          "log_level": 2
+        }
+      })", nullptr);
+ ten_env.on_configure_done();
+}
+```
+
+#### `on_init`
+
+Use this stage to initialize your extension. The TEN runtime queues all incoming messages until you call `on_init_done()`, then delivers the queued messages once your extension is ready. 
+
+**Exception:** Command results from commands you send yourself are delivered immediately, since you must be prepared to handle results from your own commands.
+
+```cpp
+void on_init(ten::ten_env_t &ten_env) override {
+  // Initialize extension resources
+  ten_env.on_init_done();
+}
+```
+
+#### `on_start`
+
+Use this stage to finalize startup operations before your extension begins receiving messages from other extensions. The TEN runtime starts delivering messages from other extensions after you call `on_start_done()`.
+
+```cpp
+void on_start(ten::ten_env_t &ten_env) override {
+  // Perform startup operations
+  ten_env.on_start_done();
+}
+```
+
+#### `on_stop`
+
+Use this stage to perform cleanup operations when your extension needs to stop, such as when the containing app is terminating. Call `on_stop_done()` to complete the shutdown process.
+
+```cpp
+void on_stop(ten::ten_env_t &ten_env) override {
+  // Perform cleanup operations
+  ten_env.on_stop_done();
+}
+```
+
+#### `on_deinit`
+
+Use this stage for final resource cleanup. The TEN runtime will not deliver messages from other extensions during this stage since your extension's resources may no longer be fully available. Call `on_deinit_done()` to complete the lifecycle.
+
+```cpp
+void on_deinit(ten::ten_env_t &ten_env) override {
+  // Final cleanup
+  ten_env.on_deinit_done();
+}
+```
+
+### Extension coordination
+
+Extensions operate independently through their lifecycle stages with no built-in synchronization. Each extension progresses through its own lifecycle stages without waiting for other extensions. You must explicitly implement any dependencies between extensions.
+
+To coordinate between extensions, use message passing during lifecycle stages. For example, if extension A needs extension B to complete initialization first:
+
+1. Extension A sends a command to extension B during its `on_init` stage
+2. Extension B completes initialization and responds to the command
+3. Extension A receives the response and calls `on_init_done()`
+
+![](/images/ten-framework/extension-sequence.png)
+
+You can apply the same message-passing approach to coordinate extensions at any lifecycle stage.
+
+### Runtime interfaces
+
+Extensions interact with the TEN runtime through three primary interfaces:
+
+- **Lifecycle callbacks**: Handle extension state transitions: `on_init`, `on_deinit`, `on_start`, `on_stop`, and `on_configure`.
+
+- **Message receivers**: Process incoming messages: `on_cmd`, `on_data`, `on_audio_frame`, and `on_video_frame`.
+
+- **Message senders**: Send outgoing messages: `send_cmd`, `send_data`, `send_audio_frame`, and `send_video_frame`.
+
+These interfaces provide complete control over your extension's lifecycle and communication with other components in the TEN application.
+
+### Message handling by lifecycle stage
+
+Each lifecycle stage has specific message handling capabilities that determine what your extension can send and receive:
+
+- **`on_configure` to `on_configure_done`**: Set up properties only. No message handling capabilities.
+
+- **`on_init` to `on_init_done`**: You can send messages and receive results from your own commands, but cannot receive messages from other extensions.
+
+- **`on_start` to `on_start_done`**: You can send messages and receive results from your own commands, but cannot receive messages from other extensions. Since properties are configured, you can perform actions that depend on these settings.
+
+- **Normal operation (after `on_start_done` until `on_stop`)**: Full message handling capabilities. You can send and receive all types of messages and their results.
+
+- **`on_stop` to `on_stop_done`**: You can send messages and receive results from your own commands, but cannot receive messages from other extensions.
+
+- **`on_deinit` to `on_deinit_done`**: Similar to `on_init`. You can send messages and receive results from your own commands, but cannot receive messages from other extensions.
+
+### Multi-language support
+
+You can implement extensions in C++, Go, and Python using the same conceptual approach across all languages. Once you learn extension development in one language, the concepts transfer easily to other supported languages.
+
+### Asynchronous message processing
+
+Extensions process messages asynchronously, giving you flexibility in how and when to handle incoming data. When the TEN runtime delivers a message through callbacks like `on_cmd`, `on_data`, `on_audio_frame`, or `on_video_frame`, you can:
+
+- Process the message immediately within the callback
+- Delegate processing to other threads for parallel execution
+- Forward the message to other processes or machines for distributed processing
+
+This asynchronous design enables full utilization of multi-core and distributed computing resources without blocking the TEN runtime.
+
+![Asynchronous Message Processing](/images/ten-framework/asynchronous_message_processing.png)
+
+After processing completes, send results back to the TEN runtime using functions like `send_cmd`, `send_data`, `send_audio_frame`, or `send_video_frame`. You can send results at any time after processing finishes; the callback functions don't need to wait for results before returning.
+
+### Python async extensions
+
+TEN's Python async extensions provide a powerful way to handle long-running tasks asynchronously. By integrating Python's `asyncio` framework, these extensions ensure that operations such as network calls or file handling are efficient and non-blocking.
+
+To wrap existing Python code that uses `asyncio` into a TEN extension, use the Python async extension. A Python async extension is structured as follows:
+
+```python
+import asyncio
+from ten_runtime import AsyncExtension, AsyncTenEnv
+
+class DefaultAsyncExtension(AsyncExtension):
+   async def on_configure(self, ten_env: AsyncTenEnv) -> None:
+       # Mock async operation, e.g. network, file I/O.
+       await asyncio.sleep(0.5)
+
+   async def on_init(self, ten_env: AsyncTenEnv) -> None:
+       # Mock async operation, e.g. network, file I/O.
+       await asyncio.sleep(0.5)
+
+   async def on_start(self, ten_env: AsyncTenEnv) -> None:
+       # Mock async operation, e.g. network, file I/O.
+       await asyncio.sleep(0.5)
+
+   async def on_deinit(self, ten_env: AsyncTenEnv) -> None:
+       # Mock async operation, e.g. network, file I/O.
+       await asyncio.sleep(0.5)
+
+   async def on_cmd(self, ten_env: AsyncTenEnv, cmd: Cmd) -> None:
+       cmd_json = cmd.to_json()
+       ten_env.log_debug(f"DefaultAsyncExtension on_cmd: {cmd_json}")
+
+       # Mock async operation, e.g. network, file I/O.
+       await asyncio.sleep(0.5)
+
+       # Send a new command to other extensions and wait for the result. The
+       # result will be returned to the original sender.
+       new_cmd = Cmd.create("hello")
+       cmd_result = await ten_env.send_cmd(new_cmd)
+       ten_env.return_result(cmd_result, cmd)
+```
+
+Each method simulates a delay using `await asyncio.sleep()`.
+
+#### Async loop for event handling
+
+To create an async event loop to handle continuous event processing:
+
+- Create a queue using `asyncio.Queue`
+- Create an async task for event handling in `on_start`
+- Signal shutdown by putting `None` in the queue during `on_stop`
+
+```python
+import asyncio
+from ten_runtime import AsyncExtension, AsyncTenEnv
+
+class DefaultAsyncExtension(AsyncExtension):
+   def __init__(self):
+       super().__init__()
+       self.queue = asyncio.Queue()
+       self.loop = None
+
+   async def on_start(self, ten_env: AsyncTenEnv) -> None:
+       self.loop = asyncio.get_event_loop()
+       self.loop.create_task(self._consume())
+
+   async def on_stop(self, ten_env: AsyncTenEnv) -> None:
+       await self.queue.put(None)
+
+   async def _consume(self) -> None:
+       while True:
+           try:
+               value = await self.queue.get()
+               if value is None:
+                   self.ten_env.log_info("async loop exit")
+                   break
+
+               # Code for processing values retrieved from the queue.
+
+           except Exception as e:
+               self.ten_env.log_error(f"Failed to handle {e}")
+```
+
+## Package deployment types
+
+TEN packages come in two deployment formats:
+
+- **Development packages**: Include source code and build configurations for creating and modifying extensions
+- **Release packages**: Contain only compiled artifacts and runtime files for direct deployment
+
+### Development packages
+
+Development packages are used for creating and modifying TEN components. They contain:
+
+- Complete source code
+- Build configurations
+- Development dependencies
+- Documentation and examples
+
+Use development packages when you need to modify existing extensions or create new TEN components from scratch.
+
+### Release packages
+
+Release packages are optimized for deployment and operation. They contain:
+
+- Compiled binaries and libraries
+- Runtime configurations
+- Essential dependencies only
+
+Use release packages for production deployment where you only need to run existing functionality without modification. Release packages require no build steps and can be deployed immediately.

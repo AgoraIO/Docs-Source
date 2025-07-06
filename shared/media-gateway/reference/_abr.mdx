@@ -1,0 +1,367 @@
+
+Adaptive Bitrate (ABR) streaming delivers multiple video quality levels from a single source, allowing viewers to automatically switch between different bitrates based on their network conditions and device capabilities. This ensures optimal viewing experience by reducing buffering and maintaining the highest possible quality for each viewer's situation.
+
+This guide explains how to configure Adaptive Bitrate (ABR) encoding for video transcoding in <Vpd k="NAME" />.
+
+## Understand the tech
+
+ABR works by encoding the same video content at multiple resolutions and bitrates, called layers. Viewers can then select or automatically switch between these layers based on their available bandwidth and device performance. <Vpd k="NAME" /> supports ABR through the `simulcastStreamLayers` configuration in stream templates. When enabled, the system creates multiple encoding layers from your source stream.
+
+Following are the key ABR concepts:
+
+- **Source stream**: The original stream pushed by the client without transcoding.
+
+- **Main stream**: The primary transcoded stream output by <Vpd k="NAME" /> when video transcoding is enabled. Resolution does not exceed the source stream resolution.
+
+- **Layer**: Additional streams with lower bitrates that <Vpd k="NAME" /> outputs, based on your configuration. These streams are in addition to the main stream and are available when video transcoding is enabled. Each layer maintains consistent aspect ratios while providing different quality levels. The system automatically handles encoding parameters and ensures proper bitrate gradients between layers for smooth switching.
+
+- **Layer ID**: A unique identifier for each layer stream, ranging from 1 to 7.
+
+- **Low stream**:  A lower-quality stream option that was available before full ABR support. Previously used to provide basic two-level quality switching. It is now implemented as Layer ID 7 to maintain compatibility with existing applications that expect this stream type.
+
+    <Admonition type="info">
+    - ABR layers are independent - enabling ABR doesn't automatically create a low stream. You can selectively enable Layer ID 7 based on your needs.
+    - Use Layer ID 7 for backward compatibility with older applications that don't support full ABR functionality.
+    </Admonition>
+
+
+## ABR Configuration
+
+Configure ABR encoding in stream configuration templates using the `settings.transcoding.video.simulcastStreamLayers` parameter.
+
+### Request parameters
+
+- **`transcoding.video`** Object (required): Video transcoding configuration
+    - **`enabled`** Boolean (required): Set to `true` to enable video transcoding
+    - **`codec`** String (optional): Video encoding format. `"H.264"` (default), `"VP8"`
+    - **`width`** Number (optional): Main stream encoding width in pixels. If unspecified or `0`, follows source stream width when height is also unspecified. If height is specified, implements "short side fixed, long side adaptive"
+    - **`height`** Number (optional): Main stream encoding height in pixels. If unspecified or `0`,Follows source stream height when width is also unspecified. If width is specified, implements "long side fixed, short side adaptive"
+    - **`fps`** Number (optional): Main stream frame rate in fps. If unspecified or `0`, follows source stream fps
+    - **`bitrate`** Number (optional): Main stream bitrate in kbps. If unspecified, follows source stream bitrate. If set to `0`, automatically calculated based on resolution and fps. 
+    - **`simulcastStreamLayers`** Array (optional): ABR layer definitions. When specified, enables ABR functionality. Each array element contains:
+        - **`id`** Number (required): [Layer identifier](#layer-id-selection) (range: 1-7)
+        - **`width`** Number (optional): Layer encoding width in pixels. Must decrease monotonically as Layer ID increases. If unspecified or `0`: `height` must be specified for aspect ratio calculation
+        - **`height`** Number (optional): Layer encoding height in pixels. Must decrease monotonically as Layer ID increases. If unspecified or `0`: `width` must be specified for aspect ratio calculation
+        - **`fps`** Number (optional): Layer frame rate in fps. If unspecified or `0`: Uses main stream fps
+        - **`bitrate`** Number (required): Layer bitrate in kbps. Must decrease monotonically as Layer ID increases
+
+### Request example
+
+The following example creates a transcoding template with ABR encoding. It configures a main stream (1080p) and four additional layers with decreasing quality:
+
+```bash
+$ curl --request PUT \
+  --url http://${host}/${region}/v1/projects/${appid}/rtls/ingress/stream-templates/${templateId} \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Basic XXXXXX' \
+  --data '{
+    "settings": {
+        "transcoding": {
+            "video": {
+                "enabled": true,
+                "width": 1920,
+                "height": 1080,
+                "fps": 30,
+                "bitrate": 3800,
+                "simulcastStreamLayers": [
+                    {
+                        "id": 1,
+                        "width": 1280,
+                        "height": 720,
+                        "fps": 30,
+                        "bitrate": 2400
+                    },
+                    {
+                        "id": 2,
+                        "width": 960,
+                        "height": 540,
+                        "fps": 30,
+                        "bitrate": 1500
+                    },
+                    {
+                        "id": 3,
+                        "width": 854,
+                        "height": 480,
+                        "fps": 30,
+                        "bitrate": 800
+                    },
+                    {
+                        "id": 7,
+                        "width": 640,
+                        "height": 360,
+                        "fps": 30,
+                        "bitrate": 500
+                    }
+                ]
+            },
+            "audio": {
+                "enabled": true,
+                "profile": 3
+            }
+        }
+    }
+}'
+```
+
+### Configuration requirements
+
+Follow these requirements to ensure proper ABR functionality and avoid configuration errors:
+
+**Layer limitations:**
+- Maximum 5 simultaneous layers per stream (despite Layer ID range of 1-7)
+- Choose 1-5 layers based on your use case
+
+**Resolution requirements:**
+- **Main stream**: Specify at least one dimension (width or height) when ABR is enabled
+- **ABR layers**: Specify at least one dimension for each layer using consistent fields across all layers
+
+**Bitrate requirements:**
+- **Main stream**: Must specify bitrate when ABR is enabled (cannot be unspecified or `0`) 
+- **ABR layers**: Must specify bitrates in decreasing order by Layer ID
+- Use proper bitrate gradients to ensure smooth quality switching
+
+**Client integration:**
+- Clients must specify the Layer ID when subscribing to receive the corresponding quality layer
+
+### Layer ID selection
+
+When specifying layer IDs, best practice is to bind each ID to a specific resolution. This enables you to dynamically add or delete ABR layers without needing to modify the mapping between layer ID and resolution.
+
+**Recommended Layer ID mapping:**
+
+| Layer ID | Resolution     |
+|---------|----------------|
+| 1       | 3840x2160 (4K) |
+| 2       | 2560x1440 (2K) |
+| 3       | 1920x1080 (1080p) |
+| 4       | 1280x720 (720p)   |
+| 5       | 960x540 (540p)    |
+| 6       | 854x480 (480p)    |
+| 7       | 640x360 (360p)    |
+
+**Example configuration:**
+
+If your source stream is 1080p and you want to output 1080p, 720p, 480p, and 360p video streams, configure the ABR layer IDs as follows:
+
+| Layer ID | Resolution |
+|----------|------------|
+| Main Stream  | 1080p |
+| 4 | 720p |
+| 6 | 480p |
+| 7 | 360p |
+
+## Webhook notifications
+
+To help you monitor the ABR configuration for each stream, <Vpd k="NAME" /> provides this information through webhooks. When video transcoding is enabled, the [`live_stream_connected`](../develop/receive-notifications#1-live_stream_connected) event includes the transcoding configuration details for your stream.
+
+**Example notification payload**
+
+The `transcoding.video.simulcastStreamLayers` array shows the active ABR layers for this stream, including their resolution, bitrate, and Layer ID configuration.
+
+```json
+{
+    "beginAt": "2025-03-11T17:56:23.60Z",
+    "domain": "rtls-ingress-test-cn.agoramdn.com",
+    "region": "dev-cn",
+    "rtcInfo": {
+        "channel": "abrtest0224",
+        "uid": "1000"
+    },
+    "sid": "66ff5811-7baa-0298-8244-f2de5ae2a047",
+    "streamKey": "123456rlg-RSQ_TqkhqgF373zAll4vz",
+    "transcoding": {
+        "audio": {
+            "enabled": true,
+            "profile": 3
+        },
+        "video": {
+            "enabled": true,
+            "bitrate": 3000,
+            "fps": 30,
+            "width": 1920,
+            "height": 1080,
+            "simulcastStreamLayers": [
+                {
+                    "id": 4,
+                    "bitrate": 2000,
+                    "fps": 30,
+                    "height": 720,
+                    "width": 1280
+                },
+                {
+                    "id": 5,
+                    "bitrate": 1200,
+                    "fps": 30,
+                    "height": 540,
+                    "width": 960
+                },
+                {
+                    "id": 7,
+                    "bitrate": 700,
+                    "fps": 30,
+                    "height": 360,
+                    "width": 640
+                }
+            ]
+        }
+    }
+}
+```
+
+## Subscriber-side ABR stream
+
+This section explains how to implement ABR streaming on the subscriber side using Agora Native and Web SDKs. ABR automatically adjusts video quality based on network conditions to ensure smooth playback.
+
+### Integration guidelines
+
+The following <Vg k="VSDK" /> versions include the necessary ABR APIs and optimizations. Using the recommended versions ensures access to the latest performance improvements and bug fixes.
+
+- **Web SDK**:  
+    - **Minimum version**: 4.22.1 or later
+    - **Recommended**: Use the latest SDK from the [official website](https://docs.agora.io/en/sdks)
+    - **Note**: To use the latest Agora Web FLS Player, contact [technical support](mailto:support@agora.io)
+
+- **Native SDK**:  
+    - **Minimum version**: 4.3.2 or later
+    - **Recommended**: Use the latest SDK from the [official website](https://docs.agora.io/en/sdks)
+
+### Stream quality levels
+
+ABR uses multiple quality layers to adapt to different network conditions. The table below shows how RTMPG layer IDs correspond to SDK-specific stream types:
+
+| RTMPG Layer ID | Native SDK (`VideoStreamType`) | Web SDK (`RemoteStreamType`) |
+|----------------|-------------------------------|-------------------------------|
+| 1              | `VIDEO_STREAM_LAYER_1`         | `HIGH_STREAM_LAYER1`          |
+| 2              | `VIDEO_STREAM_LAYER_2`         | `HIGH_STREAM_LAYER2`          |
+| 3              | `VIDEO_STREAM_LAYER_3`         | `HIGH_STREAM_LAYER3`          |
+| 4              | `VIDEO_STREAM_LAYER_4`         | `HIGH_STREAM_LAYER4`          |
+| 5              | `VIDEO_STREAM_LAYER_5`         | `HIGH_STREAM_LAYER5`          |
+| 6              | `VIDEO_STREAM_LAYER_6`         | `HIGH_STREAM_LAYER6`          |
+| 7              | `VIDEO_STREAM_LOW`             | `LOW_STREAM`                  |
+| Push streaming | `VIDEO_STREAM_HIGH`            | `HIGH_STREAM`                 |
+
+### Native SDK: Subscriber-side APIs
+
+These APIs enable you manage how video streams are handled under varying network conditions.
+
+#### Configure remote subscriber fallback
+
+- **API**: `setRemoteSubscribeFallbackOption(StreamFallbackOptions option)`
+- **Description**: Sets the fallback option for subscribed audio and video streams under poor network conditions. In suboptimal network environments, real-time audio and video quality may degrade. Use this method to set a `StreamFallbackOptions` value. When the downlink network is weak and the quality is severely affected, the SDK automatically reduces the video stream to a lower layer to maintain smooth playback. The SDK continuously monitors the network and restores the higher layer when conditions improve.
+
+    Specify the minimum acceptable fallback level:
+
+    - To fall back to a lower video stream, use `STREAM_FALLBACK_OPTION_VIDEO_STREAM_LOW`.
+    - To fall back to audio only, use `STREAM_FALLBACK_OPTION_AUDIO_ONLY`.
+
+- **Enum: `StreamFallbackOptions`**
+
+    ```ts
+    enum StreamFallbackOptions {
+        STREAM_FALLBACK_OPTION_DISABLED,
+        STREAM_FALLBACK_OPTION_VIDEO_STREAM_LOW,
+        STREAM_FALLBACK_OPTION_AUDIO_ONLY,
+        STREAM_FALLBACK_OPTION_VIDEO_STREAM_LAYER_1,
+        STREAM_FALLBACK_OPTION_VIDEO_STREAM_LAYER_2,
+        STREAM_FALLBACK_OPTION_VIDEO_STREAM_LAYER_3,
+        STREAM_FALLBACK_OPTION_VIDEO_STREAM_LAYER_4,
+        STREAM_FALLBACK_OPTION_VIDEO_STREAM_LAYER_5,
+        STREAM_FALLBACK_OPTION_VIDEO_STREAM_LAYER_6
+    }
+    ```
+
+#### Manual stream selection
+
+- **API**: `setRemoteVideoStreamType(int uid, VideoStreamType streamType)`  
+- **Description**: Sets the specified video stream type for subscription
+
+#### Set the default stream type
+
+- **API**: `setRemoteDefaultVideoStreamType(VideoStreamType streamType)`  
+- **Description**: Sets the default video stream type for subscription
+- **Enum: `VideoStreamType`**
+
+    ```ts
+    enum VideoStreamType {
+        VIDEO_STREAM_HIGH,
+        VIDEO_STREAM_LOW,
+        VIDEO_STREAM_LAYER_1,
+        VIDEO_STREAM_LAYER_2,
+        VIDEO_STREAM_LAYER_3,
+        VIDEO_STREAM_LAYER_4,
+        VIDEO_STREAM_LAYER_5,
+        VIDEO_STREAM_LAYER_6;
+    }
+    ```
+
+### Web SDK: Subscriber-side APIs
+
+These APIs enables subscribers to control stream behavior and optimize performance based on network conditions.
+
+#### Enable bandwidth estimation
+
+- **API**: `.setParameter("ENABLE_AUT_CC", true);`
+- **Description**: AUT-CC is a server-side Bandwidth Estimation (BWE) mechanism that relies on packet loss. Its main inputs include the number of packets, packet size, feedback on packet loss, and the timing of that feedback. The output is the currently available bandwidth.
+
+#### Configure remote subscriber fallback
+
+- **API**: `setStreamFallbackOption(uid: UID, fallbackType: RemoteStreamFallbackType): Promise<void>`
+- **Description**: Enable automatic switching, the subscriber side adapts to the network conditions.
+
+- **Example**:
+
+    ```js
+    // the range supports up to LOW_STREAM
+    client.setStreamFallbackOption(uid, 1); 
+    ```
+
+#### Manual stream selection
+
+- **API**: `setRemoteVideoStreamType(uid: UID, streamType: RemoteStreamType): Promise<void>`
+- **Description**: Manual switching, set the specified video stream type for subscription.
+- **Example**:
+
+    ```js
+    client.setRemoteVideoStreamType(uid, 0); // HIGH_STREAM = 0
+    ```
+
+- **Enum: `VideoStreamType`**
+
+    ```js
+    enum VideoStreamType {
+        HIGH_STREAM,
+        LOW_STREAM,
+        HIGH_STREAM_LAYER1,
+        HIGH_STREAM_LAYER2,
+        HIGH_STREAM_LAYER3,
+        HIGH_STREAM_LAYER4,
+        HIGH_STREAM_LAYER5,
+        HIGH_STREAM_LAYER6;
+    }
+    ```
+
+For manual switching, consider the network conditions. The following example shows how to obtain the network status：
+
+    ```js
+    const NetworkQualityDesc = [
+            "Unknown",
+            "Excellent",
+            "Good",
+            "Poor",
+            "Bad",
+            "Very Bad",
+            "Down",
+    ];
+    client.on("network-quality", (quality) => {
+            uplinkQuality = NetworkQualityDesc[quality.uplinkNetworkQuality];
+            downlinkQuality = NetworkQualityDesc[quality.downlinkNetworkQuality];
+            console.log(uplinkQuality, downlinkQuality);
+    });
+    ```
+
+#### Set the default stream type
+
+- **API**: `setRemoteDefaultVideoStreamType(streamType: RemoteStreamType): Promise<void>`
+- **Description**: Set the default video stream type for subscription
+
+

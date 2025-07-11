@@ -8,17 +8,19 @@ description: >
 
 This page provides sunset plans for some Agora services. You should prepare to replace or upgrade affected solutions in a timely fashion to avoid service disruptions.
 
-## SDKs earlier than v3.0.0
+## SDKs earlier than v4.0.0
 
 ### Retirement plans
 
-As of December 8, 2021, Agora begins implementing the retirement process for the On-Premise Recording SDK earlier than v3.0.0. The specific plan is as follows:
+To support ongoing technical evolution and architectural improvements, Agora will begin the retirement process for the Local Server Recording SDK 1.x–3.x series. This change does not affect users of version 4.x.
 
-- From December 8, 2021 until May 31, 2022, Agora no longer accepts requests for new features to the On-Premise Recording SDK earlier than v3.0.0, but continues to provide bug fixes and security patches.
-- From June 1, 2022 until November 30, 2022, Agora no longer accepts requests for new features or bug fixes to the On-Premise Recording SDK earlier than v3.0.0, but continues to provide security patches.
-- As of December 1, 2022, Agora no longer accepts requests for new features, bug fixes, or security patches to the On-Premise Recording SDK earlier than v3.0.0.
+The retirement schedule is as follows:
 
-If you are using the On-Premise Recording SDK earlier than v3.0.0, upgrade as soon as possible.
+* **June 30, 2025** (exclusive):
+  Agora will stop providing new features and download access for SDK versions 1.x–3.x.
+
+* **After December 30, 2025**:
+  Technical support for SDK versions 1.x–3.x will end. All associated documentation will also be taken offline.
 
 ### Upgrade solutions
 
@@ -27,4 +29,4 @@ The latest versions of the On-Premise Recording SDK have made significant improv
 - [SDK download links](https://docs.agora.io/en/Recording/downloads)
 - [Release notes](../overview/release-notes)
 
-If you encounter any problems, contact Agora for support.
+If you encounter any problems, contact [Agora](mailto:support@agora.io) for support.

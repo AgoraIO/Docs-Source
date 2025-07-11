@@ -6,54 +6,61 @@ description: >
   To ensure that enterprise users can connect to Agora's services through a firewall, Agora supports setting up a cloud proxy. 
 ---
 
-## Introduction
+Large enterprises, hospitals, universities, banks, and other institutions commonly deploy firewalls to meet their stringent security requirements. To ensure uninterrupted access to its services for enterprise users behind firewalls, Agora offers firewall whitelist and <Vg k="CP" /> services.
 
-Enterprises with high-security requirements usually have firewalls that restrict employees from visiting unauthorized sites to protect internal information.
+Admins enable users to use <Vpd k="SDK" /> in network-restricted environments by adding specific IP addresses and ports to the firewall whitelist. Users make API calls to configure the <Vg k="CP" /> service.
 
-To ensure that enterprise users can connect to Agora's services through a firewall, Agora supports setting up a cloud proxy. 
+## Understand the tech
 
-Compared with setting a single proxy server, the cloud proxy is more flexible and stable, thus widely implemented in organizations with high-security requirements, such as large-scale enterprises, hospitals, universities, and banks.
+<Vg k="CP" /> works as follows:
 
-## Implementation
+1. <Vpd k="SDK" /> initiates a request to <Vg k="CP" />.
+1. <Vg k="CP" /> returns the corresponding proxy information.
+1. Agora SDK sends data to <Vg k="CP" />. <Vg k="CP" /> receives the data and transmits it to Agora SD-RTN™.
+1. Agora SD-RTN™ returns data to <Vg k="CP" />. <Vg k="CP" /> receives the data and sends it to the SDK.
 
-<div class="note alert">The Agora On-Premise Recording SDK v3.0.0 or later supports the cloud proxy service. Before using the Agora Cloud Proxy Service, ensure that you prepare the development environment and integrate the Agora On-Premise Recording SDK v3.0.0 or later.</div>
+<details>
+<summary>Cloud proxy workflow</summary>
 
-Follow these steps to use the cloud proxy service.
+![](/images/video-sdk/cloud-proxy-tech.svg)
+</details>
 
-1. Contact support@agora.io with the following information to enable the cloud proxy service:
+## Prerequisites
 
-  - The regions to use cloud proxy.
-  - The scale of your app in terms of channel concurrency.
-  - Your Internet service provider.
+Ensure that you have implemented the [Quickstart](/on-premise-recording/get-started/) in your project.
 
-2. Add the following test IP addresses and ports to your whitelist.
-    The sources are the clients that integrate the Agora On-Premise Recording SDK.
+## Implement <Vg k="CP" />
 
-   | Protocol | Destination IP address  | Port                   | Port function      |
- | ---- | ------------- | ---------------------- | ---------------------- |
- | TCP  | 120.92.118.34 | 4000                   | Message data transmission |
- | TCP  | 120.92.18.162 | 4000                   | Message data transmission |
- | TCP  | 47.74.211.17  | 1080, 8000, 25000, 9700 | Edge node communication |
- | TCP  | 52.80.192.229 | 1080, 8000, 25000, 9700 | Edge node communication |
- | TCP  | 52.52.84.170  | 1080, 8000, 25000, 9700 | Edge node communication |
- | TCP  | 47.96.234.219 | 1080, 8000, 25000, 9700 | Edge node communication |
- | UDP  | 120.92.118.34 | 4500 to 4650            | Media data exchange |
- | UDP  | 120.92.18.162 | 4500 to 4650            | Media data exchange |
- | UDP  | 47.74.211.17  | 1080, 8000, 25000, 9700 | Edge node communication |
- | UDP  | 52.80.192.229 | 1080, 8000, 25000, 9700 | Edge node communication |
- | UDP  | 52.52.84.170  | 1080, 8000, 25000, 9700 | Edge node communication |
- | UDP  | 47.96.234.219 | 1080, 8000, 25000, 9700 | Edge node communication |
+Take the following steps to implement the use of <Vg k="CP" /> in your <Vpl k="CLIENT" />:
 
-<Admonition type="info">These IP addresses and ports are for testing purposes only. In a production environment, apply for the dedicated IP addresses and ports.</Admonition>
+1. Contact [Agora support](mailto:support@agora.io) and provide the following information to request <Vg k="CP" /> service:
+    - App ID
+    - <Vg k="CP" /> service usage area
+    - Concurrency scale
+    - Network operator and other relevant information
 
-3. When the recording server joins a channel, set `enableCloudProxy` in `RecordingConfig` as `true` to enable the cloud proxy service. Agora will configure the default domain of the cloud proxy service for you. If you can not resolve the domain name to an IP address, take the following steps to directly configure a list of proxy server IP addresses:
+2. After receiving the request, <Vg k="COMPANY" /> provides the IP addresses and ports used for <Vg k="CP" />.
 
-  1. Set `proxyType` in `RecordingConfig` as `2`;
-  
-  2. Set `proxyServer` in `RecordingConfig` as  `"47.74.211.17,52.80.192.229,52.52.84.170,47.96.234.219:0"`.
- 
-  > If you use our command-line demo, add `--enableCloudProxy 1 --proxyType ${type} --proxyServer ${ip,port}` to your command when starting a recording.
+3. Add the IP addresses and ports provided by <Vg k="COMPANY" /> to your firewall whitelist.
 
-4. To use the cloud proxy service in the production environment, contact support@agora.io for the IP addresses and ports for the production environment and add these resources to your whitelist.
+4. To enable the cloud proxy service, call `setBool` and set the private parameter `rtc.enable_proxy` to `true`:
+
+<PlatformWrapper platform="linux-cpp">
+  ```cpp
+  auto agoraParameter = service->getAgoraParameter();
+  agoraParameter->setBool("rtc.enable_proxy", true);
+  ```
+</PlatformWrapper>
+<PlatformWrapper platform="linux-java">
+  ```java
+  AgoraParameter parameter = agoraService.getAgoraParameter();
+  parameter.setBool("rtc.enable_proxy", true);
+  ```
+</PlatformWrapper>
+
+
+5. After enabling the proxy, test whether audio and video recording function correctly.
+
+6. To disable the cloud proxy service, set `rtc.enable_proxy` to `false`.
 
 

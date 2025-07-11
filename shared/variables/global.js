@@ -139,6 +139,7 @@ export const SIG2_SDK_API_IOS = 'https://agoraio.github.io/AgoraRtm_Apple/docume
 export const SIG2_SDK_API_MACOS = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
 export const SIG_SDK_API_WEB = `${SIG_SDK_API_REF_ROOT}/web/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/reference/user-channel-events`;
+export const SIG_SDK_API_RN = `/signaling/reference/api`;
 
 export const SPATIAL = '3D Spatial Audio';
 

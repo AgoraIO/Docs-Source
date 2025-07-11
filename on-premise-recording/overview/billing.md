@@ -102,6 +102,7 @@ Agora adds up the resolution of all the video streams recorded at the same time 
 | 2K                             | From greater than 2,073,600 (1920 × 1080) to 3,686,400 (2560 × 1440)  |
 | 2K+                            | From greater than 3,686,400 (2560 × 1440) to 8,847,360 (4096 × 2160)  |
 
+
 For example, if the recording server records two video streams with resolutions of 1280 × 720 and 1920 × 1080 at the same time, the aggregated resolution is (1280 × 720) + (1920 × 1080) = 2,995,200. Because 2,995,200 is greater than 2,073,600 but less than 3,686,400, the recording service is charged based on the 2K video pricing.
 
 

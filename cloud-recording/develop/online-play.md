@@ -65,7 +65,7 @@ We use [Amazon S3](https://aws.amazon.com/s3/) as an example to show you how to 
 
 
 <Admonition type="info">
-See [How to Serve HLS Video from an S3 Bucket](http://hlsbook.net/how-to-serve-hls-video-from-an-s3-bucket/) for more information.
+See [How to Serve HLS Video from an S3 Bucket](https://hlsbook.net/how-to-serve-hls-video-from-an-s3-bucket/) for more information.
 </Admonition>
 
 ## Considerations

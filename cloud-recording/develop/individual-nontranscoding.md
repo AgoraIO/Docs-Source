@@ -23,7 +23,7 @@ When recording audio only (`streamTypes` is `0`) in [individual recording mode](
 
 Before recording, call the [`acquire`](../reference/restful-api#acquire) method to apply for a resource ID.
 
-#### An HTTP request example of `acquire`
+#### Example `acquire` request over HTTPS
 
 - Request URL:
 
@@ -63,13 +63,13 @@ Configure the following parameters in `clientRequest` for Audio Individual non-t
 | [`recordingConfig.streamMode`](../reference/restful-api#recordingconfig)  | String. The output mode of the media stream in individual mode. Set this to `original` for Audio Individual non-transcoding Recording. | Required.                             |
 | [`storageConfig`](../reference/restful-api#storageconfig)               | JSON. Configures the third-party cloud storage.              | Required.                             |
 
-#### An HTTP request example of `start`
+#### Example `start` request over HTTPS
 
 - Request URL:
 
-```html
-https://http://api.agora.io//v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/individual/start
-```
+    ```html
+    https://api.agora.io//v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/individual/start
+    ```
 
 - `Content-type`: `application/json;charset=utf-8`
 - `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
@@ -115,13 +115,13 @@ When the user who publishes the stream mutes or leaves the channel, the recordin
 
 When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the `acquire` method for a new resource ID.
 
-#### An HTTP request example of `stop`
+#### Example `stop` request over HTTPS
 
 - The request URL is:
 
-```html
-http://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/individual/stop
-```
+    ```html
+    https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/individual/stop
+    ```
 
 - `Content-type` 为 `application/json;charset=utf-8`
 

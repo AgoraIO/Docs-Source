@@ -1,0 +1,449 @@
+---
+title: 'Deploy on AWS'
+sidebar_position: 6
+type: docs
+platform_selector: false
+description: >
+ Deploy the TEN agent on AWS.
+---
+
+This deployment guide walks you through setting up and running the TEN Agent on AWS using ECS Fargate. This approach provides a fully managed, scalable containerized deployment that's ideal for production environments with automatic scaling and no server management overhead.
+
+## Prerequisites
+
+Before you begin, ensure that you have the following requirements:
+
+- **AWS requirements**
+   - AWS Account with appropriate permissions for ECS, ECR, and related services
+   - AWS CLI installed and configured
+   - Basic understanding of AWS services (ECS, ECR, VPC, IAM, Secrets Manager)
+
+- **Service credentials**
+   - Agora credentials from Agora Console
+   - [App ID](https://docs.agora.io/en/video-calling/get-started/manage-agora-account?platform=web#create-an-agora-project)
+   - [App Certificate](https://docs.agora.io/en/video-calling/get-started/manage-agora-account?platform=web#create-an-agora-project)
+   - API keys for your chosen services
+       - LLM service like OpenAI or Google Gemini
+       - STT service such as Azure
+       - TTS service like ElevenLabs or Azure TTS
+
+- **Development tools**
+   - [Docker](https://www.docker.com/) installed locally
+   - [AWS CLI](https://aws.amazon.com/cli/) configured with appropriate credentials
+
+<Admonition type="info">
+ECS Fargate automatically manages the underlying infrastructure, so you don't need to provision or manage EC2 instances.
+</Admonition>
+
+## Deploy to AWS
+
+Follow these steps:
+
+### Prepare the application
+
+Before deploying to AWS, clone the repository and configure your environment variables locally.
+
+To clone the repository, run the following command:
+
+```bash
+git clone https://github.com/TEN-framework/ten-framework.git
+cd ten-framework/ai_agents
+```
+
+Next, create a production environment file by copying the example configuration:
+
+```bash
+cp ./.env.example ./.env.production
+```
+<Admonition type="caution">
+Never commit `.env.production` to version control. Use `.gitignore` to exclude it.
+</Admonition>
+
+Open the `.env.production` file and add your service configuration. Replace the placeholder values with your actual API keys and credentials:
+
+```yaml
+# Agora Configuration
+AGORA_APP_ID=your_app_id_here
+AGORA_APP_CERTIFICATE=your_certificate_here
+
+# LLM Services
+GEMINI_API_KEY=your_gemini_key
+OPENAI_API_BASE=https://api.openai.com/v1
+OPENAI_API_KEY=your_openai_key
+OPENAI_MODEL=gpt-4o
+
+# Speech Services
+AZURE_STT_KEY=your_azure_stt_key
+AZURE_STT_REGION=your_region
+AZURE_TTS_KEY=your_azure_tts_key
+AZURE_TTS_REGION=your_region
+ELEVENLABS_TTS_KEY=your_elevenlabs_key
+
+# Production Settings
+NODE_ENV=production
+PORT=8080
+```
+
+<Admonition type="info">
+These API keys will be stored securely in AWS Secrets Manager in the next section. Don't commit this file to version control.
+</Admonition>
+
+### Build and push container image
+
+To deploy your application on ECS, create a Docker image and push it to Amazon Elastic Container Registry (ECR).
+
+Create a `Dockerfile.production` file in the project root with the following content:
+
+```docker
+FROM node:18-alpine
+
+# Accept build argument for custom agent configurations
+ARG USE_AGENT=agents/property.json
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy application code
+COPY . .
+
+# Copy specific agent configuration if specified
+COPY ${USE_AGENT} agents/property.json
+
+# Build the application
+RUN npm run build
+
+# Expose port (using standard port from project)
+EXPOSE 8080
+
+# Start the application
+CMD ["npm", "start"]
+```
+
+Build and tag the Docker image:
+
+```bash
+docker build -f Dockerfile.production --build-arg USE_AGENT=agents/examples/demo -t ten-agent:latest .
+```
+
+Create an ECR repository to store your container image:
+
+```bash
+aws ecr create-repository --repository-name ten-agent --region us-east-1
+```
+
+Push your image to ECR by running the following commands:
+
+```bash
+# Get login token
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
+
+# Tag image
+docker tag ten-agent:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/ten-agent:latest
+
+# Push image
+docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/ten-agent:latest
+```
+
+Replace `<account-id>` with your actual AWS account ID.
+
+### Store secrets securely
+
+AWS Secrets Manager provides a secure way to store and manage your API keys and sensitive configuration data.
+
+Create a secret in AWS Secrets Manager that contains all your API keys:
+
+```bash
+aws secretsmanager create-secret \
+--name ten-agent-secrets \
+--description "TEN Agent API keys and secrets" \
+--secret-string '{
+  "AGORA_APP_ID": "your_app_id",
+  "AGORA_APP_CERTIFICATE": "your_certificate",
+  "OPENAI_API_KEY": "your_openai_key",
+  "GEMINI_API_KEY": "your_gemini_key",
+  "AZURE_STT_KEY": "your_azure_stt_key",
+  "AZURE_STT_REGION": "your_region",
+  "AZURE_TTS_KEY": "your_azure_tts_key",
+  "AZURE_TTS_REGION": "your_region",
+  "ELEVENLABS_TTS_KEY": "your_elevenlabs_key"
+}'
+```
+
+This command creates a secret that your ECS tasks can securely access at runtime.
+
+### Create ECS infrastructure
+
+This section covers setting up the AWS infrastructure required to run your TEN Agent, including the ECS cluster, logging, and task definition.
+
+<Admonition type="info">
+This deployment requires the `ecsTaskExecutionRole` IAM role with the following managed policies:
+- `AmazonECSTaskExecutionRolePolicy`
+- `AmazonEC2ContainerRegistryReadOnly`
+- Custom policy for Secrets Manager access
+
+If this role doesn't exist, create it using the AWS Console or CLI before proceeding.
+</Admonition>
+
+Create an ECS cluster with Fargate capacity providers:
+
+```bash
+aws ecs create-cluster --cluster-name ten-agent-cluster --capacity-providers FARGATE
+```
+
+Create a CloudWatch log group to collect container logs:
+
+```bash
+aws logs create-log-group --log-group-name /ecs/ten-agent
+```
+
+Create a `task-definition.json` file that defines how your container should run:
+
+```json
+{
+"family": "ten-agent",
+"networkMode": "awsvpc",
+"requiresCompatibilities": ["FARGATE"],
+"cpu": "1024",
+"memory": "2048",
+"executionRoleArn": "arn:aws:iam::<account-id>:role/ecsTaskExecutionRole",
+"containerDefinitions": [
+  {
+    "name": "ten-agent",
+    "image": "<account-id>.dkr.ecr.us-east-1.amazonaws.com/ten-agent:latest",
+    "portMappings": [
+      {
+        "containerPort": 8080,
+        "protocol": "tcp"
+      }
+    ],
+    "environment": [
+      {
+        "name": "NODE_ENV",
+        "value": "production"
+      },
+      {
+        "name": "PORT",
+        "value": "8080"
+      }
+    ],
+    "secrets": [
+      {
+        "name": "AGORA_APP_ID",
+        "valueFrom": "arn:aws:secretsmanager:us-east-1:<account-id>:secret:ten-agent-secrets:AGORA_APP_ID::"
+      },
+      {
+        "name": "AGORA_APP_CERTIFICATE",
+        "valueFrom": "arn:aws:secretsmanager:us-east-1:<account-id>:secret:ten-agent-secrets:AGORA_APP_CERTIFICATE::"
+      },
+      {
+        "name": "OPENAI_API_KEY",
+        "valueFrom": "arn:aws:secretsmanager:us-east-1:<account-id>:secret:ten-agent-secrets:OPENAI_API_KEY::"
+      },
+      {
+        "name": "AZURE_STT_KEY",
+        "valueFrom": "arn:aws:secretsmanager:us-east-1:<account-id>:secret:ten-agent-secrets:AZURE_STT_KEY::"
+      },
+      {
+        "name": "AZURE_TTS_KEY",
+        "valueFrom": "arn:aws:secretsmanager:us-east-1:<account-id>:secret:ten-agent-secrets:AZURE_TTS_KEY::"
+      },
+      {
+        "name": "ELEVENLABS_TTS_KEY",
+        "valueFrom": "arn:aws:secretsmanager:us-east-1:<account-id>:secret:ten-agent-secrets:ELEVENLABS_TTS_KEY::"
+      }
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/ten-agent",
+        "awslogs-region": "us-east-1",
+        "awslogs-stream-prefix": "ecs"
+      }
+    }
+  }
+]
+}
+```
+
+Register the task definition with ECS:
+
+```bash
+aws ecs register-task-definition --cli-input-json file://task-definition.json
+```
+
+### Set up the load balancer
+
+An Application Load Balancer (ALB) distributes incoming traffic across your ECS tasks and provides health checking capabilities.
+
+<Admonition type="info">
+Before creating the load balancer, ensure you have the following AWS resources in your account:
+- A VPC with at least two public subnets in different Availability Zones
+- Security groups configured with appropriate rules
+- The `ecsTaskExecutionRole` IAM role with permissions for ECR and Secrets Manager
+
+Use the AWS Console or CLI to find your VPC ID, subnet IDs, and security group IDs to replace the placeholder values in the following commands.
+</Admonition>
+
+Create an Application Load Balancer and target group. The following commands require existing AWS networking resources. Replace these placeholder values with your actual resource IDs:
+
+- `vpc-12345678`: Your VPC ID
+- `subnet-12345678` and `subnet-87654321`: Two public subnet IDs in different Availability Zones
+- `sg-12345678`: Security group ID with the following rules:
+ - Inbound: Port 80 (HTTP) from 0.0.0.0/0
+ - Inbound: Port 8080 from the load balancer security group
+ - Outbound: Port 443 (HTTPS) to 0.0.0.0/0 for API calls
+
+
+```bash
+# Create ALB
+aws elbv2 create-load-balancer \
+--name ten-agent-alb \
+--subnets subnet-12345678 subnet-87654321 \
+--security-groups sg-12345678
+
+# Create target group
+aws elbv2 create-target-group \
+--name ten-agent-targets \
+--protocol HTTP \
+--port 8080 \
+--vpc-id vpc-12345678 \
+--target-type ip \
+--health-check-path /health
+```
+
+<Admonition type="info">
+The health check path `/health` must be implemented in your TEN Agent application. Ensure your application responds with HTTP 200 status at this endpoint.
+</Admonition>
+
+Configure a listener to route incoming requests to your target group:
+
+```bash
+aws elbv2 create-listener \
+--load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:<account-id>:loadbalancer/app/ten-agent-alb/<id> \
+--protocol HTTP \
+--port 80 \
+--default-actions Type=forward,TargetGroupArn=arn:aws:elasticloadbalancing:us-east-1:<account-id>:targetgroup/ten-agent-targets/<id>
+```
+
+Replace the placeholder ARNs with the actual values returned from the previous commands.
+
+### Deploy your service
+
+This section covers creating and configuring your ECS service with auto-scaling capabilities.
+
+Create an ECS service that runs your task definition:
+
+```bash
+aws ecs create-service \
+--cluster ten-agent-cluster \
+--service-name ten-agent-service \
+--task-definition ten-agent \
+--desired-count 2 \
+--launch-type FARGATE \
+--network-configuration "awsvpcConfiguration={subnets=[subnet-12345678,subnet-87654321],securityGroups=[sg-12345678],assignPublicIp=ENABLED}" \
+--load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:us-east-1:<account-id>:targetgroup/ten-agent-targets/<id>,containerName=ten-agent,containerPort=8080"
+```
+
+Configure auto-scaling to automatically adjust the number of running tasks based on CPU utilization:
+
+```bash
+# Register scalable target
+aws application-autoscaling register-scalable-target \
+--service-namespace ecs \
+--resource-id service/ten-agent-cluster/ten-agent-service \
+--scalable-dimension ecs:service:DesiredCount \
+--min-capacity 2 \
+--max-capacity 10
+
+# Create scaling policy
+aws application-autoscaling put-scaling-policy \
+--service-namespace ecs \
+--resource-id service/ten-agent-cluster/ten-agent-service \
+--scalable-dimension ecs:service:DesiredCount \
+--policy-name ten-agent-scaling-policy \
+--policy-type TargetTrackingScaling \
+--target-tracking-scaling-policy-configuration file://scaling-policy.json
+```
+
+Create a `scaling-policy.json` file with the following auto-scaling configuration:
+
+```json
+{
+"TargetValue": 70.0,
+"PredefinedMetricSpecification": {
+  "PredefinedMetricType": "ECSServiceAverageCPUUtilization"
+},
+"ScaleOutCooldown": 300,
+"ScaleInCooldown": 300
+}
+```
+
+### Configure your agent
+
+After deployment, access and configure your TEN Agent through the web interface.
+
+To find your load balancer URL, run the following command:
+
+```bash
+aws elbv2 describe-load-balancers --names ten-agent-alb --query 'LoadBalancers[0].DNSName' --output text
+```
+
+Open the playground at `http://your-load-balancer-dns-name` and configure your agent:
+
+1. Select a graph type (Voice Agent or Realtime Agent) from the dropdown menu
+2. Click the module configuration button to select extension modules such as STT, TTS, and LLM
+3. Click the settings button to configure extensions with the API keys stored in your environment
+4. Configure STT and TTS languages as needed
+
+The playground interface allows you to test different configurations and see results in real-time. Each graph type supports specific extensions and capabilities.
+
+To update your agent configuration after deployment:
+
+1. Edit the `agents/property.json` file in your repository
+2. Rebuild and push the Docker image
+3. Update the ECS service to deploy the new image:
+
+```bash
+aws ecs update-service \
+--cluster ten-agent-cluster \
+--service ten-agent-service \
+--force-new-deployment
+```
+
+## Monitor and troubleshoot
+
+This section provides commands and guidance for monitoring your deployment and resolving common issues.
+
+To view container logs, use the following CloudWatch commands:
+
+```bash
+aws logs describe-log-streams --log-group-name /ecs/ten-agent
+aws logs get-log-events --log-group-name /ecs/ten-agent --log-stream-name <stream-name>
+```
+
+Check the health and status of your ECS service:
+
+```bash
+aws ecs describe-services --cluster ten-agent-cluster --services ten-agent-service
+```
+
+### Common issues and solutions
+
+Use the following table to troubleshoot common deployment issues with your TEN Agent on AWS.
+
+| Issue                        | Possible causes          |
+|------------------------------|--------------------------|
+| Service won't start         | <ul><li>Check CloudWatch logs for error messages</li><li>Verify that all required secrets are set in Secrets Manager</li><li>Ensure that security groups allow traffic on port 8080</li></ul> |
+| Connection issues           | <ul><li>Verify that Agora credentials are correct</li><li>Check if WebRTC traffic is allowed through security groups</li><li>Ensure that load balancer health checks are passing</li></ul> |
+| High latency                | <ul><li>Consider deploying in multiple regions</li><li>Check ECS service CPU and memory utilization</li><li>Review network configuration and security group rules</li></ul> |
+
+
+## Reference
+
+For additional configuration options and advanced deployment scenarios, see the following resources:
+
+- [AWS ECS Documentation](https://docs.aws.amazon.com/ecs/)
+- [AWS Secrets Manager Best Practices](https://docs.aws.amazon.com/secretsmanager/latest/userguide/best-practices.html)

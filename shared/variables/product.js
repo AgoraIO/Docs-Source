@@ -162,6 +162,12 @@ const data = {
     PRODUCT: 'TEN Agent',
     MANAGER: 'TEN Manager',
     DESIGNER: 'TEN Designer',
+  },
+
+  'on-premise-recording': {
+    NAME: 'On-Premise Recording',
+    PATH: 'on-premise-recording',
+    SDK: 'On-Premise Recording SDK',
   }
 };
 

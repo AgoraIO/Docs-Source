@@ -1,5 +1,5 @@
 ---
-title: 'Repair Recorded Files'
+title: 'Repair recorded files'
 sidebar_position: 11
 type: docs
 description: >
@@ -10,7 +10,7 @@ If the recording process crashes, the generated MP4 file may become unplayable. 
 
 ## Prerequisites
 
-Before proceeding, integrate the <Vg k="OPREC_SDK" /> and complete the [Quickstart](/on-premise-recording/get-started) guide to ensure basic recording functionality is in place.
+Before proceeding, integrate the <Vg k="OPREC_SDK" /> and complete the [Quickstart](/on-premise-recording/get-started/quickstart) guide to ensure basic recording functionality is in place.
 
 ## Implementation
 

@@ -1,23 +1,23 @@
 ---
-title: 'Cloud Proxy'
+title: 'Cloud proxy'
 sidebar_position: 6
 type: docs
 description: >
   To ensure that enterprise users can connect to Agora's services through a firewall, Agora supports setting up a cloud proxy. 
 ---
 
-Large enterprises, hospitals, universities, banks, and other institutions commonly deploy firewalls to meet their stringent security requirements. To ensure uninterrupted access to its services for enterprise users behind firewalls, Agora offers firewall whitelist and <Vg k="CP" /> services.
+Large organizations commonly deploy firewalls to meet their stringent security requirements. To ensure uninterrupted access to Agora services for users behind firewalls, Agora offers a firewall allowlist and <Vg k="CP" /> services.
 
-Admins enable users to use <Vpd k="SDK" /> in network-restricted environments by adding specific IP addresses and ports to the firewall whitelist. Users make API calls to configure the <Vg k="CP" /> service.
+To enable SDK use in network-restricted environments, administrators can add specific IP addresses and ports to the firewall allowlist. Developers then configure the <Vg k="CP" /> service by calling the appropriate APIs.
 
 ## Understand the tech
 
 <Vg k="CP" /> works as follows:
 
 1. <Vpd k="SDK" /> initiates a request to <Vg k="CP" />.
-1. <Vg k="CP" /> returns the corresponding proxy information.
-1. Agora SDK sends data to <Vg k="CP" />. <Vg k="CP" /> receives the data and transmits it to Agora SD-RTN™.
-1. Agora SD-RTN™ returns data to <Vg k="CP" />. <Vg k="CP" /> receives the data and sends it to the SDK.
+2. <Vg k="CP" /> returns the corresponding proxy information.
+3. The Agora SDK sends data to <Vg k="CP" />, which forwards it to the Agora SD-RTN™.
+4. The SD-RTN™ sends the response back to <Vg k="CP" />, which then returns it to the SDK.
 
 <details>
 <summary>Cloud proxy workflow</summary>
@@ -27,40 +27,47 @@ Admins enable users to use <Vpd k="SDK" /> in network-restricted environments by
 
 ## Prerequisites
 
-Ensure that you have implemented the [Quickstart](/on-premise-recording/get-started/) in your project.
+Before you begin, complete the [Quickstart](/on-premise-recording/get-started/quickstart) to integrate the Recording SDK and set up basic recording functionality.
 
 ## Implement <Vg k="CP" />
 
-Take the following steps to implement the use of <Vg k="CP" /> in your <Vpl k="CLIENT" />:
+To implement <Vg k="CP" /> in your app, follow these steps:
 
-1. Contact [Agora support](mailto:support@agora.io) and provide the following information to request <Vg k="CP" /> service:
-    - App ID
-    - <Vg k="CP" /> service usage area
-    - Concurrency scale
-    - Network operator and other relevant information
+1. **Request access to <Vg k="CP" />**
 
-2. After receiving the request, <Vg k="COMPANY" /> provides the IP addresses and ports used for <Vg k="CP" />.
+   Contact [Agora support](mailto:support@agora.io) and provide the following information:
 
-3. Add the IP addresses and ports provided by <Vg k="COMPANY" /> to your firewall whitelist.
+   - App ID
+   - Region where you want to use <Vg k="CP" />
+   - Expected concurrency scale
+   - Network operator and other relevant details
 
-4. To enable the cloud proxy service, call `setBool` and set the private parameter `rtc.enable_proxy` to `true`:
+2. **Allow traffic through the firewall**
 
-<PlatformWrapper platform="linux-cpp">
-  ```cpp
-  auto agoraParameter = service->getAgoraParameter();
-  agoraParameter->setBool("rtc.enable_proxy", true);
-  ```
-</PlatformWrapper>
-<PlatformWrapper platform="linux-java">
-  ```java
-  AgoraParameter parameter = agoraService.getAgoraParameter();
-  parameter.setBool("rtc.enable_proxy", true);
-  ```
-</PlatformWrapper>
+   After your request is approved, Agora provides a list of IP addresses and ports. Add these to your firewall allowlist to enable communication through <Vg k="CP" />.
 
+3. **Enable the cloud proxy in your code**
 
-5. After enabling the proxy, test whether audio and video recording function correctly.
+    Set the private parameter `rtc.enable_proxy` to `true`.
 
-6. To disable the cloud proxy service, set `rtc.enable_proxy` to `false`.
+    <PlatformWrapper platform="linux-cpp">
+    ```cpp
+    auto agoraParameter = service->getAgoraParameter();
+    agoraParameter->setBool("rtc.enable_proxy", true);
+    ```
+    </PlatformWrapper>
 
+    <PlatformWrapper platform="linux-java">
+    ```java
+    AgoraParameter parameter = agoraService.getAgoraParameter();
+    parameter.setBool("rtc.enable_proxy", true);
+    ```
+    </PlatformWrapper>
 
+4. **Test your setup**
+
+   Record audio and video to confirm the proxy configuration is working as expected.
+
+5. **Disable cloud proxy**
+
+   To stop using <Vg k="CP" />, set `rtc.enable_proxy` to `false`.

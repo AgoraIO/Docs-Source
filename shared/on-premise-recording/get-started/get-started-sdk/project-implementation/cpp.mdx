@@ -1,5 +1,119 @@
 <PlatformWrapper platform="linux-cpp">
 
+### Initialize the service
+
+Create the Agora service using `createAgoraService`. Then initialize it with media configuration options and logging settings.
+
+```cpp
+auto service = createAgoraService();
+
+agora::base::AgoraServiceConfiguration service_config;
+service_config.enableAudioDevice = false;
+service_config.enableAudioProcessor = true;
+service_config.enableVideo = true;
+service_config.appId = config.appId.c_str();
+service_config.useStringUid = config.UseStringUid;
+
+service->initialize(service_config);
+service->setLogFile("./io.agora.rtc_sdk/agorasdk.log", 1024 * 1024 * 5);
+```
+
+### Create the recorder instance
+
+Call `createAgoraMediaComponentFactory` and use it to create a `IAgoraMediaRtcRecorder` instance. Then initialize the recorder with the service and recording mode.
+
+```cpp
+agora::rtc::IMediaComponentFactory* factory = createAgoraMediaComponentFactory();
+agora::agora_refptr<agora::rtc::IAgoraMediaRtcRecorder> recorder = factory->createMediaRtcRecorder();
+
+// Set the recording mode
+// - false: Record each user's audio and video stream separately (single stream recording)
+// - true: Record all users' audio and video streams together (composite recording)
+
+bool isMix = false;
+// Initialize recorder
+recorder->initialize(service, isMix);
+```
+
+### Register the event handler
+
+Call `registerRecorderEventHandle` to register a user-defined event handler that receives recorder callbacks.
+
+```cpp
+std::unique_ptr<RecorderEventHandler> eventHandler{new RecorderEventHandler(recorder, config)};
+recorder->registerRecorderEventHandle(eventHandler.get());
+```
+
+<Admonition type="info" >
+`RecorderEventHandler` is a custom class that implements your recorder event-handling logic.
+</Admonition>
+
+### Subscribe to audio and video streams
+
+Call `subscribeAllAudio` and `subscribeAllVideo` to receive all audio and video streams in the channel.
+
+```cpp
+recorder->subscribeAllAudio();
+recorder->subscribeAllVideo(options);
+```
+
+### Configure recording
+
+Call `setRecorderConfig` to define recording parameters such as resolution, frame rate, audio settings, and the storage location.
+
+<Admonition type="info" >
+Ensure that the directory specified in `storagePath` exists. If not, the recording will fail.
+</Admonition>
+
+```cpp
+// Set recording configuration
+agora::media::MediaRecorderConfiguration recorder_config;
+
+recorder_config.width = config.video.width;
+recorder_config.height = config.video.height;
+recorder_config.fps = config.video.fps;
+recorder_config.storagePath = config.recorderPath.c_str();
+recorder_config.sample_rate = config.audio.sampleRate;
+recorder_config.channel_num = config.audio.numOfChannels;
+// Set recording stream type: audio stream, video stream, or audio and video stream
+recorder_config.streamType = static_cast<agora::media::MediaRecorderStreamType>(config.recorderStreamType);
+// Set the maximum recording duration
+recorder_config.maxDurationMs = config.maxDuration * 1000;
+
+recorder->setRecorderConfig(recorder_config);
+```
+
+### Join the channel and start recording
+
+Call `joinChannel` to join the specified channel and `startRecording` to begin recording.
+
+```cpp
+recorder->joinChannel(config.token.c_str(), config.ChannelName.c_str(), config.UserId.c_str());
+recorder->startRecording();
+```
+
+### Stop recording and release resources
+
+Call the cleanup methods to end recording, unsubscribe from streams, and release memory.
+
+```cpp
+recorder->unsubscribeAllAudio();
+recorder->unsubscribeAllVideo();
+recorder->stopRecording();
+
+recorder->unregisterRecorderEventHandle(eventHandler.get());
+eventHandler = nullptr;
+
+recorder->leaveChannel();
+recorder = nullptr;
+
+service->release();
+```
+
+### Complete sample code
+
+The following example shows the full implementation of an On-Premise Recording workflow.
+
 <details>
 <summary>Complete sample code for On-Premise Recording</summary>
 
@@ -42,138 +156,27 @@ recorder_config.sample_rate = config.audio.sampleRate;
 recorder_config.channel_num = config.audio.numOfChannels;
 recorder_config.streamType = static_cast<agora::media::MediaRecorderStreamType>(config.recorderStreamType);
 recorder_config.maxDurationMs = config.maxDuration * 1000;
- 
-recorder->stopRecording();
-recorder->unregisterRecorderEventHandle(eventHandler.get());
-eventHandler = nullptr;
-recorder->leaveChannel(); // Fixed typo: 'leavelChannel' → 'leaveChannel'
-recorder = nullptr;
-service->release();
-```
-</details>
-
-### Initialize the Service
-
-First, create a service instance by calling `createAgoraService`. Then, initialize it using the `initialize` method, and set the App ID along with audio and video configuration options.
-
-```cpp
-// Create and initialize the service, and configure logging
-auto service = createAgoraService();
-
-agora::base::AgoraServiceConfiguration service_config;
-service_config.enableAudioDevice = false;
-service_config.enableAudioProcessor = true;
-service_config.enableVideo = true;
-service_config.appId = config.appId.c_str();
-service_config.useStringUid = config.UseStringUid;
-
-service->initialize(service_config);
-service->setLogFile("./io.agora.rtc_sdk/agorasdk.log", 1024 * 1024 * 5);
-```
-
-### Create the recording instance
-
-Call `createAgoraMediaComponentFactory` and `createMediaRtcRecorder` to create a recording instance. Then, use the `IAgoraMediaRtcRecorder::initialize` method to initialize the recorder.
-
-```cpp
-// Create the recorder
-agora::rtc::IMediaComponentFactory* factory = createAgoraMediaComponentFactory();
-agora::agora_refptr<agora::rtc::IAgoraMediaRtcRecorder> recorder = factory->createMediaRtcRecorder();
-
-// Initialize the recorder
-// Set the recording mode:
-// - false: Record each user's audio and video streams separately (individual recording)
-// - true: Mix all user streams into one (mixed recording)
-bool isMix = false;
-
-// 'service' is the AgoraService instance created in the previous step
-recorder->initialize(service, isMix);
-```
-
-### Register the event handler
-
-Use `registerRecorderEventHandler` to register a callback handler that receives event notifications during the recording process.
-
-```cpp
-// Register the event handler
-std::unique_ptr<RecorderEventHandler> eventHandler{new RecorderEventHandler(recorder, config)};
-```
-
-<Admonition type="info" info="info">
-`RecorderEventHandler` is a user-defined class that implements the event handling logic for the recorder.
-</Admonition>
-
-### Subscribe to audio and video
-
-Call the `subscribeAllAudio` and `subscribeAllVideo` methods to subcribe to all audio and video streams in the channel.
-
-```cpp
-// Subscribe to all audio streams
-recorder->subscribeAllAudio();
-
-// Subscribe to all video streams
-recorder->subscribeAllVideo();
-```
-
-### Configure recording
-
-Use the `setRecorderConfig` method to configure recording settings such as video resolution, frame rate, storage path, and audio parameters.
-
-<Admonition type="info" info="info">
-Make sure the directory specified in `storagePath` exists. If it doesn't, the recording will fail.
-</Admonition>
-
-```cpp
-// Configure recording settings
-agora::media::MediaRecorderConfiguration recorder_config;
-
-recorder_config.width = config.video.width;
-recorder_config.height = config.video.height;
-recorder_config.fps = config.video.fps;
-recorder_config.storagePath = config.recorderPath.c_str();
-
-recorder_config.sample_rate = config.audio.sampleRate;
-recorder_config.channel_num = config.audio.numOfChannels;
-
-// Set the recording stream type (audio, video, or both)
-recorder_config.streamType = static_cast<agora::media::MediaRecorderStreamType>(config.recorderStreamType);
-
-// Set the maximum recording duration in milliseconds
-recorder_config.maxDurationMs = config.maxDuration * 1000;
 
 recorder->setRecorderConfig(recorder_config);
-```
 
-### Join a channel and start recording
-
-Call `joinChannel` to join the specified channel, then call `startRecording` to begin recording.
-
-```cpp
 // Join the channel and start recording
 recorder->joinChannel(config.token.c_str(), config.ChannelName.c_str(), config.UserId.c_str());
 recorder->startRecording();
-```
 
-### End recording and release resources
-
-After recording is complete, call the appropriate methods to unsubscribe from streams, stop the recording, leave the channel, and release resources. The recorded file is saved in MP4 format at the storage path you specified during configuration.
-
-```cpp
-// Stop recording and clean up resources
+// Stop recording and clean up
 recorder->unsubscribeAllAudio();
 recorder->unsubscribeAllVideo();
 recorder->stopRecording();
 
-// Unregister the event handler
 recorder->unregisterRecorderEventHandle(eventHandler.get());
 eventHandler = nullptr;
 
-// Leave the channel and release the recorder
 recorder->leaveChannel();
 recorder = nullptr;
 
-// Release the Agora service
 service->release();
 ```
+
+</details>
 
 </PlatformWrapper>

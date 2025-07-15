@@ -6,66 +6,54 @@ description: >
   How to repair recorded files after the recording crashes.
 ---
 
-If the recording process crashes, the generated MP4 file may become unplayable. To help preserve recorded audio and video content, the Agora SDK provides a feature to recover corrupted files after a crash.
-
-## Prerequisites
-
-Before proceeding, integrate the <Vg k="OPREC_SDK" /> and complete the [Quickstart](/on-premise-recording/get-started/quickstart) guide to ensure basic recording functionality is in place.
+If a recording session crashes, the generated MP4 file may be unplayable. To preserve recorded audio and video content, the <Vpd k="SDK" /> provides a recovery feature that lets you reconstruct the MP4 file from temporary H264 and AAC files.
 
 ## Implementation
 
-This section guides you through the implementation of repairing the recorded files.
+This section shows how to enable recovery mode and regenerate MP4 files after a crash.
 
 ### Enable file recovery
 
-During `AgoraService` initialization, enable file recovery mode by setting the following private parameter:
+To enable file recovery, set the `che.media_recorder_recover_files` parameter to `true` during `AgoraService` initialization:
 
 <PlatformWrapper platform="linux-cpp">
+
 ```cpp
 auto agoraParameter = service->getAgoraParameter();
 agoraParameter->setBool("che.media_recorder_recover_files", true);
 ```
 </PlatformWrapper>
+
 <PlatformWrapper platform="linux-java">
+
 ```java
 AgoraParameter parameter = agoraService.getAgoraParameter();
 parameter.setBool("che.media_recorder_recover_files", true);
 ```
 </PlatformWrapper>
 
-### Understand recoverable file behavior
+### Understand file behavior
 
-When recovery mode is enabled, the SDK generates an MP4 file along with an H264 video file and an AAC audio file with the same base name in the same directory.
+When file recovery is enabled, the SDK generates an MP4 file as well as two additional files, H264 and AAC—with the same base name. For example, if the output file is `storagePath/agoraRecording.mp4`, then `agoraRecording.mp4.h264` and `agoraRecording.mp4.aac` files are also generated in the same path.
 
-For example, if the recorded MP4 file is saved as:
+- If the recording ends normally and the SDK triggers `onRecorderStateChanged` with `RECORDER_STATE_STOP` after `stopRecording` is called, the SDK deletes the H264 and AAC files automatically.
 
-```
-storagePath/agoraRecording.mp4
-```
-
-Then the following additional files will also be generated in the same path:
-
-```
-agoraRecording.mp4.h264
-agoraRecording.mp4.aac
-```
-
-* If the recording completes successfully (i.e., `stopRecording` is called and the `onRecorderStateChanged` callback is triggered with the status `RECORDER_STATE_STOP`), the SDK automatically deletes the H264 and AAC files.
-* If the recording crashes or exits unexpectedly, the H264 and AAC files are retained.
+- If the recording crashes or exits unexpectedly, the SDK retains the H264 and AAC files for recovery.
 
 ### Regenerate the MP4 file
 
-If the MP4 file is corrupted due to a crash, you can attempt to regenerate it using the retained H264 and AAC files. One common method is using `ffmpeg`:
+To regenerate a corrupted MP4 file, use [ffmpeg](https://ffmpeg.org/), a command-line tool for processing video and audio, to merge the retained files into a playable MP4.
 
-<PlatformWrapper platform="linux-java">
-```bash
-ffmpeg -i agoraRecording.mp4.h264 -i agoraRecording.mp4.aac -c:v copy -c:a copy output.mp4
-```
-</PlatformWrapper>
 <PlatformWrapper platform="linux-cpp">
 ```bash
 ffmpeg -i video.h264 -i audio.aac -c:v copy -c:a copy output.mp4
 ```
 </PlatformWrapper>
 
-This command merges the video and audio files into a new playable MP4 file.
+<PlatformWrapper platform="linux-java">
+```bash
+ffmpeg -i agoraRecording.mp4.h264 -i agoraRecording.mp4.aac -c:v copy -c:a copy output.mp4
+```
+</PlatformWrapper>
+
+This command creates a new playable MP4 file using the video and audio data from the retained files.

@@ -1,6 +1,6 @@
 ---
 title: 'Cloud proxy'
-sidebar_position: 6
+sidebar_position: 12
 type: docs
 description: >
   To ensure that enterprise users can connect to Agora's services through a firewall, Agora supports setting up a cloud proxy. 
@@ -27,7 +27,7 @@ To enable SDK use in network-restricted environments, administrators can add spe
 
 ## Prerequisites
 
-Before you begin, complete the [Quickstart](/on-premise-recording/get-started/quickstart) to integrate the Recording SDK and set up basic recording functionality.
+Before you begin, complete the [Quickstart](/on-premise-recording/get-started/quickstart) to integrate the <Vpd k="SDK" /> and set up basic recording functionality.
 
 ## Implement <Vg k="CP" />
 

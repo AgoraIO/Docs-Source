@@ -27,3 +27,8 @@ Before using layouts, complete the steps in the [Quickstart](/on-premise-recordi
 ## Implementation
 
 <Implementation />
+
+## API reference
+
+- [`setVideoMixingLayout`](/on-premise-recording/api-references/agora-media-rtc-recorder#setvideomixinglayout)
+- [`VideoMixingLayout`](/on-premise-recording/api-references/struct#videomixinglayout)

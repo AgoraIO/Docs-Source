@@ -90,3 +90,4 @@ The following table compares key callbacks between version 4.x and 3.x:
 | Remote user's audio state changes         | `onUserAudioStateChanged`    | `onRemoteAudioStreamStateChanged` |
 | Remote user's video state changes         | `onUserVideoStateChanged`    | `onRemoteVideoStreamStateChanged` |
 
+For more information, see [4.x API references](/on-premise-recording/api-references/api-overview).

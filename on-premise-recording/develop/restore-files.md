@@ -57,3 +57,13 @@ ffmpeg -i agoraRecording.mp4.h264 -i agoraRecording.mp4.aac -c:v copy -c:a copy 
 </PlatformWrapper>
 
 This command creates a new playable MP4 file using the video and audio data from the retained files.
+
+## Reference
+
+This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
+
+### API references
+
+- [`getAgoraParameter`](/on-premise-recording/api-references/agora-service#getagoraparameter)
+- [`onRecorderStateChanged`](/on-premise-recording/api-references/agora-media-rtc-recorder-eventhandler#onrecorderstatechanged)
+- [`stopRecording`](/on-premise-recording/api-references/agora-media-rtc-recorder#stoprecording)

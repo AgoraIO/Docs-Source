@@ -71,3 +71,12 @@ To implement <Vg k="CP" /> in your app, follow these steps:
 5. **Disable cloud proxy**
 
    To stop using <Vg k="CP" />, set `rtc.enable_proxy` to `false`.
+
+
+## Reference
+
+This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
+
+### API references
+
+- [`getAgoraParameter`](/on-premise-recording/api-references/agora-service#getagoraparameter)

@@ -1,0 +1,557 @@
+---
+title: 'Graphs'
+sidebar_position: 11
+platform_selector: false
+description: >
+  TEN framework build system.
+---
+
+A Graph in the TEN framework describes the data flow between extensions. It orchestrates how data moves from one extension to another, defining the participants and the flow of data between them. For example, you can route the output of a Speech-to-Text (STT) extension to a Large Language Model (LLM) extension for further processing.
+
+The TEN framework supports four main types of data flows between extensions:
+
+- Command
+- Data
+- Video Frame
+- Audio Frame
+
+By defining these data flows within a graph, you can create inter-extension communication and unidirectional data streams, particularly useful for handling audio and video data.
+
+## Graph types
+
+There are two types of graphs in the TEN framework:
+
+- Dynamic
+- Predefined
+
+|                         | Dynamic         | Predefined   |
+| ----------------------- | :--------------- | :----------- |
+| Graph starts | When the TEN app receives the `start_graph` command. | When the TEN app starts, or when the TEN app receives the `start_graph` command. |
+| Graph content           | Specified in the `start_graph` command.              | Specified in the TEN app's properties.                                           |
+| Graph ID                | A random UUID.                                       | A random UUID                                                                    |
+
+![Two Types of Graph](/images/ten-framework/two_types_of_graph.png)
+
+For predefined graphs, there is an `auto_start` attribute that determines whether the predefined graph start automatically when the TEN app starts.
+
+The `singleton` attribute determines if the predefined graph can create only one engine instance in the TEN app.
+
+## Graph ID and graph name
+
+Each engine instance created from a graph definition in the TEN app has a unique UUID4 string identifier. This UUID4 string is called the **graph ID**.
+
+You can assign a meaningful **graph name** to each predefined graph for easy reference. Use this name when specifying a particular predefined graph. When a predefined graph has the singleton attribute, only one graph instance can exist from this definition in the TEN app. The TEN runtime uses the graph name to identify this single instance.
+
+## Dynamic Graph
+
+When the TEN app receives the `start_graph` command and creates a dynamic graph, it assigns a random UUID value as the ID of the newly started graph. Other clients can connect to this graph by obtaining this graph's ID.
+
+Following is an example of a dynamic graph ID:
+
+`123e4567-e89b-12d3-a456-426614174000`
+
+## Predefined Graph
+
+Predefined graphs are very similar to dynamic graphs. The content of a dynamic graph is included in the `start_graph` command, while the content of a predefined graph is defined by the TEN app. Clients only need to specify the name of the predefined graph they want to start in the `start_graph` command.
+
+Predefined graphs improve usability and protect information. They let clients use graphs without needing to know their detailed structure, either for simplicity or to restrict access to sensitive information.
+
+Following is an example of a predefined graph name:
+
+`http-server`
+
+When a TEN app starts, predefined graphs that are set to auto-start are also initiated.
+
+## Graph Definition
+
+Flexible and predefined graphs use the same definition format, as shown below:
+
+```json
+{
+  "nodes": [
+    // Definition of nodes
+  ],
+  "connections": [
+    // Definition of connections
+  ]
+}
+```
+
+Key points:
+
+1. If there is only one app, you can omit the app field. If not, it must be specified. 
+The TEN runtime uses `localhost` as the default app value when the app field is not specified.
+
+2. The nodes field specifies the nodes within the graph, such as extensions, extension groups, etc.
+
+3. Each node within the graph can only appear once in the nodes field. If it appears multiple times, the TEN framework throws an error, either during graph validation by the TEN manager or during graph validation by the TEN runtime.
+
+4. Specify an extension group within the nodes field as follows.
+
+    ```json
+    {
+      "type": "extension_group",
+      "name": "default_extension_group",
+      "addon": "default_extension_group",
+      "app": "msgpack://127.0.0.1:8001/",
+      "property": {
+        "root_key": "player",
+        "extra_keys": ["playerName"]
+      }
+    }
+    ```
+
+    The `property` field is optional.
+
+5. Specify an extension within the nodes field as follows.
+
+    ```json
+    {
+      "type": "extension",
+      "name": "simple_http_server_cpp",
+      "addon": "simple_http_server_cpp",
+      "extension_group": "default_extension_group",
+      "app": "msgpack://127.0.0.1:8001/",
+      "property": {
+        "root_key": "player",
+        "extra_keys": ["playerName"]
+      }
+    }
+    ```
+
+    The `property` and `addon` fields are optional.
+
+    - If the `addon` field is present, it indicates that the extension is an instance generated by that addon.
+    - If the `addon` field is not present, it indicates that the extension is not generated by an addon but is created by the corresponding extension group. In such cases, it is not necessary to explicitly define it in the nodes field. If you want to specify its `property` field, it must be explicitly defined in the nodes field.
+
+6. The `connections` field specifies the connections between nodes within the graph.
+
+   In each connection, the values for extension and extension group are strings representing the names of the corresponding nodes.
+
+Following is a complete example:
+
+```json
+{
+  "nodes": [
+    {
+      "type": "extension_group",
+      "name": "default_extension_group",
+      "addon": "default_extension_group",
+      "app": "msgpack://127.0.0.1:8001/"
+    },
+    {
+      "type": "extension",
+      "name": "simple_http_server_cpp",
+      "addon": "simple_http_server_cpp",
+      "extension_group": "default_extension_group",
+      "property": {
+        "root_key": "player",
+        "extra_keys": ["playerName"]
+      }
+    }
+  ],
+  "connections": [
+    {
+      "app": "msgpack://127.0.0.1:8001/",
+      "extension": "simple_http_server_cpp",
+      "cmd": [
+        {
+          "name": "start",
+          "dest": [
+            {
+              "app": "msgpack://127.0.0.1:8001/",
+              "extension": "gateway"
+            }
+          ]
+        },
+        {
+          "name": "stop",
+          "dest": [
+            {
+              "app": "msgpack://127.0.0.1:8001/",
+              "extension": "gateway"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "app": "msgpack://127.0.0.1:8001/",
+      "extension": "gateway",
+      "cmd": [
+        {
+          "name": "push_status_online",
+          "dest": [
+            {
+              "app": "msgpack://127.0.0.1:8001/",
+              "extension": "uap"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Definition of predefined graphs
+
+Place the complete graph definition under the `predefined_graphs` field in the app's properties. The `predefined_graphs` field also has its own attributes, such as `name` and `auto_start`.
+
+```json
+"predefined_graphs": [
+  {
+    "name": "default",
+    "auto_start": true,
+    "singleton": true,
+    "nodes": [
+      {
+        "type": "extension_group",
+        "name": "default_extension_group",
+        "addon": "default_extension_group",
+        "app": "msgpack://127.0.0.1:8001/"
+      },
+      {
+        "type": "extension",
+        "name": "simple_http_server_cpp",
+        "addon": "simple_http_server_cpp",
+        "extension_group": "default_extension_group",
+        "property": {
+          "root_key": "player",
+          "extra_keys": [
+            "playerName"
+          ]
+        }
+      }
+    ],
+    "connections": [
+      {
+        "app": "msgpack://127.0.0.1:8001/",
+        "extension": "simple_http_server_cpp",
+        "cmd": [
+          {
+            "name": "start",
+            "dest": [
+              {
+                "app": "msgpack://127.0.0.1:8001/",
+                "extension": "gateway"
+              }
+            ]
+          },
+          {
+            "name": "stop",
+            "dest": [
+              {
+                "app": "msgpack://127.0.0.1:8001/",
+                "extension": "gateway"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "app": "msgpack://127.0.0.1:8001/",
+        "extension": "gateway",
+        "cmd": [
+          {
+            "name": "push_status_online",
+            "dest": [
+              {
+                "app": "msgpack://127.0.0.1:8001/",
+                "extension": "uap"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
+```
+
+## Definition of the `start_graph` command
+
+Place the complete graph definition above under the `ten` field in the `start_graph` command. The `start_graph` command also has its own attributes, such as `type` and `seq_id`.
+
+```json
+{
+  "ten": {
+    "type": "start_graph",
+    "seq_id": "55"
+    // Place the complete graph definition here.
+  }
+}
+```
+
+The following is a complete definition of the `start_graph` command:
+
+```json
+{
+  "ten": {
+    "type": "start_graph",
+    "seq_id": "55",
+    "nodes": [
+      {
+        "type": "extension_group",
+        "name": "default_extension_group",
+        "addon": "default_extension_group",
+        "app": "msgpack://127.0.0.1:8001/"
+      },
+      {
+        "type": "extension",
+        "name": "simple_http_server_cpp",
+        "addon": "simple_http_server_cpp",
+        "extension_group": "default_extension_group",
+        "property": {
+          "root_key": "player",
+          "extra_keys": ["playerName"]
+        }
+      }
+    ],
+    "connections": [
+      {
+        "app": "msgpack://127.0.0.1:8001/",
+        "extension": "simple_http_server_cpp",
+        "cmd": [
+          {
+            "name": "start",
+            "dest": [
+              {
+                "app": "msgpack://127.0.0.1:8001/",
+                "extension": "gateway"
+              }
+            ]
+          },
+          {
+            "name": "stop",
+            "dest": [
+              {
+                "app": "msgpack://127.0.0.1:8001/",
+                "extension": "gateway"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "extension": "gateway",
+        "cmd": [
+          {
+            "name": "push_status_online",
+            "dest": [
+              {
+                "extension": "uap"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+## Specification for graph definition
+
+- **Requirement for `nodes` Field**:
+  The `nodes` array is mandatory in a graph definition. The `connections` array is optional but encouraged for defining inter-node communication.
+
+- **Validation of node `app` field**:
+  Never set the `app` field to `localhost` under any circumstances. In a single-app graph, do not specify the `app` URI. In a multi-app graph, the value of the `app` field must match the `ten::uri` value defined in each app's `property.json`.
+
+- **Node Uniqueness and Identification**:
+  Each node in the `nodes` array represents a specific extension instance within a group of an app, created by a specified addon. Therefore, each extension instance should be uniquely represented by a single node. A node must be uniquely identified by the combination of `app`, `extension_group`, and `name`. Multiple entries for the same extension instance are not allowed. 
+  
+  <Admonition type="caution">
+  The following example is invalid because it defines multiple nodes for the same extension instance:
+  </Admonition>
+
+  ```json
+  {
+    "nodes": [
+      {
+        "type": "extension",
+        "name": "some_ext",
+        "addon": "addon_1",
+        "extension_group": "test"
+      },
+      {
+        "type": "extension",
+        "name": "some_ext",
+        "addon": "addon_2",
+        "extension_group": "test"
+      }
+    ]
+  }
+  ```
+
+- **Consistency of extension instance definition in connections**:
+  All extension instances referenced in the `connections` field, whether as a source or destination, must be explicitly defined in the `nodes` field. Any instance not defined in the `nodes` array causes validation errors.
+
+  <Admonition type="caution">
+  The following definition is invalid because the extension instance `ext_2` is used in the `connections` field but is not defined in the `nodes` field.
+  </Admonition>
+
+  ```json
+  {
+    "nodes": [
+      {
+        "type": "extension",
+        "name": "ext_1",
+        "addon": "addon_1",
+        "extension_group": "some_group"
+      }
+    ],
+    "connections": [
+      {
+        "extension": "ext_1",
+        "cmd": [
+          {
+            "name": "hello",
+            "dest": [
+              {
+                "extension": "ext_2"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+  ```
+
+- **Consolidation of Connection Definitions**:
+  Within the `connections` array, all messages related to the same source extension instance must be grouped within a single section. Splitting the information across multiple sections for the same source extension instance leads to inconsistencies and errors.
+
+  <Admonition type="caution">
+  The following example is incorrect because messages from `ext_1` are divided into separate sections.
+  </Admonition>
+
+  ```json
+  {
+    "connections": [
+      {
+        "extension": "ext_1",
+        "cmd": [
+          {
+            "name": "hello",
+            "dest": [
+              {
+                "extension": "ext_2"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "extension": "ext_1",
+        "data": [
+          {
+            "name": "hello",
+            "dest": [
+              {
+                "extension": "ext_2"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+  ```
+
+  The correct approach is to consolidate all messages for the same source extension instance into one section:
+
+  ```json
+  {
+    "connections": [
+      {
+        "extension": "ext_1",
+        "cmd": [
+          {
+            "name": "hello",
+            "dest": [
+              {
+                "extension": "ext_2"
+              }
+            ]
+          }
+        ],
+        "data": [
+          {
+            "name": "hello",
+            "dest": [
+              {
+                "extension": "ext_2"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+  ```
+
+- **Consolidation of Destinations for Unique Messages**:
+  For each message within a specific type, such as `cmd` or `data`, the destination extension instances must be grouped under a single entry for that message. Repeating the same message name with separate destinations leads to inconsistency and validation errors.
+
+  <Admonition type="caution">
+  For example, the following is incorrect due to separate entries for the message named `hello`.
+  </Admonition>
+
+  ```json
+  {
+    "connections": [
+      {
+        "extension": "ext_1",
+        "cmd": [
+          {
+            "name": "hello",
+            "dest": [
+              {
+                "extension": "ext_2"
+              }
+            ]
+          },
+          {
+            "name": "hello",
+            "dest": [
+              {
+                "extension": "ext_3"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+  ```
+
+  The correct approach is to consolidate all destinations for the same message under a single entry:
+
+  ```json
+  {
+    "connections": [
+      {
+        "extension": "ext_1",
+        "cmd": [
+          {
+            "name": "hello",
+            "dest": [
+              {
+                "extension": "ext_2"
+              },
+              {
+                "extension": "ext_3"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+  ```
+
+  However, messages with the same name can exist across different types, such as `cmd` and `data`, without causing conflicts.
+
+For further examples, refer to the `check graph` command documentation within the TEN framework's `tman`.

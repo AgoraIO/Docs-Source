@@ -1,0 +1,815 @@
+import Status from '../shared/_rtmstatus-en.mdx'
+
+The Storage feature in RTM provides a dynamic database mechanism that allows developers to dynamically set, store, update, and delete data such as Channel Metadata and User Metadata.
+
+### setChannelMetadata
+
+#### Description
+
+The `setChannelMetadata` method sets Channel Metadata for a channel (Message Channel or Stream Channel). A channel can only have one set of metadata, but each set can contain one or more Metadata Items. If you call this method multiple times, the SDK will iterate through the Metadata Item `key` values and process them as follows:
+- If the `key` values are different, new items are added in the order of the calls.
+- If the `key` values are the same, the `value` from the most recent call overwrites the previous one.
+
+After setting the Channel Metadata successfully, users who have subscribed to the channel and enabled event listening will receive a `storage` event of type `channel`. See [Event Listener](configuration#event-listener) for details.
+
+Channel Metadata also supports CAS (Compare And Set) version control. This method provides two independent version control fields, and you can choose one or both depending on your business needs:
+- Use the `majorRevision` property in `options` to enable version validation for the entire set of Channel Metadata.
+- Use the `revision` property in a single Metadata Item in `data` to enable version validation for that specific item.
+
+When setting Channel Metadata or Metadata Items, you can control whether version validation is enabled using the version properties:
+- If the version property is `-1` (default), CAS validation is disabled. If the Channel Metadata or Metadata Item exists, it will be overwritten with the new value; if it does not exist, the SDK will create it.
+- If the version property is a positive integer, CAS validation is enabled. The SDK will update the value only if the version matches; otherwise, it will return an error.
+
+#### Method
+
+You can call the `setChannelMetadata` method as follows:
+
+```typescript 
+setChannelMetadata(
+    channelName: string,
+    channelType: RtmChannelType,
+    data: Metadata,
+    options?: IMetadataOptions
+): Promise<SetChannelMetadataResponse>;
+```
+
+| Parameter      | Type              | Required | Default | Description |
+|----------------|-------------------|----------|---------|-------------|
+| `channelName`  | string            | Yes      | -       | Channel name. |
+| `channelType`  | RtmChannelType    | Yes      | -       | Channel type. See [Channel Type](enum#channeltype). |
+| `data`         | Array\<object\>   | Yes      | -       | Array of Metadata Items. Each item is a JSON object with predefined properties. Custom properties are not supported. |
+| `options`      | object            | No       | -       | Channel Metadata configuration options. |
+
+The `data` object includes the following properties:
+
+| Parameter       | Type          | Required | Default       | Description |
+|----------------|---------------|----------|---------------|-------------|
+| `majorRevision`| number        | Optional | `-1`          | <ul><li>Returned as the actual version number during read operations.</li><li>Used as a version control switch during write operations:</li><ul><li>`-1`: Disable version validation.</li><li>> `0`: Enable version validation. The operation only proceeds if the target version matches this value.</li></ul></ul> |
+| `items`        | MetadataItem  | Optional | Empty array   | Array of Metadata Items. |
+| `itemCount`    | number        | Optional | 0             | Number of Metadata Items. |
+
+
+Each Metadata Item includes the following properties:
+
+```typescript 
+class MetaDataItem = {
+    key: string, // Metadata Item key
+    value: string, // Metadata Item value
+    revision: number, // Metadata Item version
+    updatedTs: string, // Last updated timestamp
+    authorUserId: string, // User ID of the last editor
+}
+```
+
+The `options` object includes the following properties:
+
+
+| Parameter       | Type    | Required | Default            | Description |
+|----------------|---------|----------|--------------------|-------------|
+| `majorRevision`| number  | Optional | `-1`               | Version control switch: <ul><li>`-1`: Disable version validation.</li><li>> `0`: Enable version validation. The operation only proceeds if the target version matches this value.</li></ul> |
+| `lockName`     | string  | Optional | Empty string `''`  | Lock name. Only the user who acquires this lock via the `acquireLock` method can perform the operation. |
+| `addTimeStamp` | boolean | Optional | `false`            | Whether to record the edit timestamp. |
+| `addUserId`    | boolean | Optional | `false`            | Whether to record the user ID of the editor. |
+
+
+#### Basic usage
+
+```typescript
+const data = [
+    {
+        key : "Apple",
+        value : "100",
+        revision : 174298200
+    },
+    {
+        key : "Banana",
+        value : "200",
+        revision : 174298100
+    }
+];
+const options = {
+    majorRevision : 174298270,
+    lockName: "lockName",
+    addTimeStamp : true,
+    addUserId : true
+};
+try {
+    const result = await rtm.storage.setChannelMetadata("channel_name", "MESSAGE", data, options);
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns a `SetChannelMetadataResponse` type:
+
+```typescript 
+type SetChannelMetadataResponse = {
+    timestamp: number, // Reserved field
+    channelName: string, // Channel name
+    channelType: RtmChannelType // Channel type
+}
+```
+
+<Status />
+
+### getChannelMetadata
+
+#### Description
+
+The `getChannelMetadata` method retrieves the Metadata of a specified channel.
+
+#### Method
+
+You can call the `getChannelMetadata` method as follows:
+
+```typescript
+getChannelMetadata(
+    channelName: string,
+    channelType: RtmChannelType
+): Promise<GetChannelMetadataResponse>;
+```
+
+| Parameter      | Type            | Required | Default | Description |
+|----------------|------------------|----------|---------|-------------|
+| `channelName`  | string           | Yes      | -       | Channel name. |
+| `channelType`  | RtmChannelType   | Yes      | -       | Channel type. See <a href="enumv#channeltype">Channel Type</a>. |
+
+#### Basic usage
+
+```typescript
+try {
+    const result = await rtm.storage.getChannelMetadata("channel_name", "MESSAGE");
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns a `GetChannelMetadataResponse` type:
+
+```typescript
+type GetChannelMetadataResponse = {
+    timestamp: number, // Reserved field
+    channelName: string, // Channel name
+    channelType: RtmChannelType, // Channel type
+    majorRevision: number, // Version number
+    items: MetadataItem[], // JSON object containing Metadata Item data
+    itemCount: number // Number of Metadata Items
+}
+```
+
+Each Metadata Item includes the following properties:
+
+```typescript 
+class MetaDataItem = {
+    key: string, // Metadata Item key
+    value: string, // Metadata Item value
+    revision: number, // Metadata Item version
+    updatedTs: string, // Last updated timestamp
+    authorUserId: string // User ID of the last editor
+}
+```
+
+<Status />
+
+### removeChannelMetadata
+
+#### Description
+
+The removeChannelMetadata method deletes Channel Metadata or an array of Channel Metadata Items.
+
+When deleting, you can control whether version validation is enabled by using the version property as follows:
+
+- If the version property is set to -1 (default), CAS validation is disabled. If the Channel Metadata or Metadata Item exists, the SDK deletes it; if it does not exist, the SDK returns an error code.
+- If the version property is a positive integer, CAS validation is enabled. If the Channel Metadata or Metadata Item exists, the SDK deletes it only after the version number passes validation; otherwise, the SDK returns an error code.
+
+After successfully deleting Channel Metadata or a Metadata Item, users who subscribe to the channel and have enabled event listening will receive a storage event of type channel. See [Event Listener](configuration#event-listener) for details.
+
+#### Method
+
+You can call the `removeChannelMetadata` method as follows:
+
+```typescript 
+removeChannelMetadata(
+    channelName: string,
+    channelType: RtmChannelType,
+    options?: RemoveChannelMetadataOptions
+): Promise<RemoveChannelMetadataResponse>;
+```
+
+| Parameter      | Type            | Required | Default | Description |
+|----------------|------------------|----------|---------|-------------|
+| `channelName`    | string           | Yes      | -       | Channel name. |
+| `channelType`    | RtmChannelType   | Yes      | -       | Channel type. See <a href="enumv#channeltype">Channel Type</a>. |
+| `options`        | object           | No       | -       | Channel Metadata configuration options. |
+
+The `options` object includes the following properties:
+
+| Parameter        | Type             | Required | Default             | Description |
+|------------------|------------------|----------|---------------------|-------------|
+| `items`          | Array\<object\>  | Required | -                   | Array of Metadata Items. Each Metadata Item is a JSON object with predefined properties. Custom properties are not supported. |
+| `itemCount`      | number           | Optional | 0                   | Number of Metadata Items. |
+| `majorRevision`  | number           | Optional | `-1`                | Version control switch: <ul><li>`-1`: Disable version validation.</li><li>> `0`: Enable version validation. The operation only proceeds if the target version matches this value.</li></ul> |
+| `lockName`       | string           | Optional | Empty string `''`   | Lock name. Only the user who acquires this lock via the `acquireLock` method can perform the operation. |
+| `addTimeStamp`   | boolean          | Optional | `false`             | Whether to record the edit timestamp. |
+| `addUserId`      | boolean          | Optional | `false`             | Whether to record the user ID of the editor. |
+
+
+Each Metadata Item includes the following properties:
+
+```typescript 
+class MetaDataItem = {
+    key: string, // Metadata Item key
+    value: string, // Metadata Item value
+    revision: number, // Metadata Item version
+    updatedTs: string, // Last updated timestamp
+    authorUserId: string, // User ID of the last editor
+}
+```
+
+#### Basic usage
+
+```typescript
+const data = [
+    {
+        key : "Apple",
+        revision : 174298200
+    }
+];
+const options = {
+    data : data,
+    majorRevision : 174298270,
+};
+try {
+    const result = await rtm.storage.removeChannelMetadata("channel_name", "MESSAGE", options);
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns a `RemoveChannelMetadataResponse` type:
+
+```typescript
+type RemoveChannelMetadataResponse = {
+    timestamp: number, // Reserved field
+    channelName: string, // Channel name
+    channelType: string // Channel type
+}
+```
+
+<Status />
+
+
+### updateChannelMetadata
+
+#### Description
+
+The `updateChannelMetadata` method updates existing Channel Metadata. Each call can update the entire Channel Metadata or one or more Metadata Items.
+
+After a successful update, users who subscribe to the `channel` and have enabled event listening will receive a `storage` event of type channel. See [Event Listener](configuration#event-listener) for details.
+
+<Admonition type="info" title="Info">
+This method cannot operate on Metadata Items that do not exist.
+</Admonition>
+
+#### Method
+
+You can call the `updateChannelMetadata` method as follows:
+
+```typescript
+updateChannelMetadata(
+    channelName: string,
+    channelType: RtmChannelType,
+    data: Metadata,
+    options?: IMetadataOptions
+): Promise<UpdateChannelMetadataResponse>;
+```
+
+| Parameter      | Type            | Required | Default | Description |
+|----------------|------------------|----------|---------|-------------|
+| `channelName`    | string           | Yes      | -       | Channel name. |
+| `channelType`    | RtmChannelType   | Yes      | -       | Channel type. See <a href="enumv#channeltype">Channel Type]</a>. |
+| `data`           | Array\<object\>  | Yes      | -       | Array of Metadata Items. Each item is a JSON object with predefined properties. Custom properties are not supported. |
+| `options`        | object           | No       | -       | Channel Metadata configuration options. |
+
+The `data` object includes the following properties:
+
+| Parameter        | Type         | Required | Default       | Description |
+|------------------|--------------|----------|---------------|-------------|
+| `majorRevision`  | number       | Optional | `-1`          | <ul><li>Returned as the actual version number during read operations.</li><li>Used as a version control switch during write operations:</li><ul><li>`-1`: Disable version validation.</li><li>> `0`: Enable version validation. The operation only proceeds if the target version matches this value.</li></ul></ul> |
+| `items`          | MetadataItem | Optional | Empty array   | Array of Metadata Items. |
+| `itemCount`      | number       | Optional | 0             | Number of Metadata Items. |
+
+
+Each Metadata Item includes the following properties:
+
+```typescript 
+class MetaDataItem = {
+    key: string, // Metadata Item key
+    value: string, // Metadata Item value
+    revision: number, // Metadata Item version
+    updatedTs: string, // Last updated timestamp
+    authorUserId: string, // User ID of the last editor
+}
+```
+
+The options object includes the following properties:
+
+| Parameter        | Type     | Required | Default             | Description |
+|------------------|----------|----------|---------------------|-------------|
+| `majorRevision`  | number   | Optional | `-1`                | Version control switch: <ul><li>`-1`: Disable version validation.</li><li>> `0`: Enable version validation. The operation only proceeds if the target version matches this value.</li></ul> |
+| `lockName`       | string   | Optional | Empty string `''`   | Lock name. Only the user who acquires this lock via the `acquireLock` method can perform the operation. |
+| `addTimeStamp`   | boolean  | Optional | `false`             | Whether to record the edit timestamp. |
+| `addUserId`      | boolean  | Optional | `false`             | Whether to record the user ID of the editor. |
+
+
+#### Basic usage
+
+```typescript 
+const data = [
+    {
+        key : "Mute",
+        value : "false",
+        revision : 174298100
+    }
+];
+const options = {
+    userId : "Tony",
+    majorRevision : 174298270,
+    addTimeStamp : true,
+    addUserId : true
+};
+try {
+    const result = await rtm.storage.updateUserMetadata(data, options);
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns an `UpdateChannelMetadataResponse` type:
+
+```typescript 
+type UpdateChannelMetadataResponse = {
+    timestamp: number, // Reserved field
+    channelName : string, // Channel name
+    channelType : RtmChannelType // Channel type
+}
+```
+
+<Status />
+
+### setUserMetadata
+
+#### Description
+
+The `setUserMetadata` method sets User Metadata. If this method is called multiple times, the SDK will iterate over the `key` values of the User Metadata Items and handle them according to the following rules:
+- If the `key` values of the Metadata Items are different, they are added sequentially in the order of the calls.
+- If the `key` values are the same, the value of the last Metadata set will overwrite the previous one.
+
+Once User Metadata is successfully set, users who subscribe to the Metadata of that user and have enabled event listening will receive an `event` notification of type `user`. See [Event Listening](configuration#event-listener) for details.
+
+User Metadata also introduces CAS (Compare-And-Swap) version control logic. This method provides two independent version control fields, and you can configure either or both depending on your business needs:
+
+- Use the `majorRevision` property in `options` to enable version verification for the entire group of User Metadata.
+- Use the `revision` property in `data` to enable version verification for each Metadata Item in the array.
+
+When setting User Metadata, the version attributes determine whether to enable version verification for the current call, following this logic:
+
+- If the version attribute is set to `-1` (default), CAS verification is disabled. If the User Metadata or Metadata Item already exists, the value will be overwritten with the new value; if it does not exist, it will be created.
+- If the version attribute is a positive integer, CAS verification is enabled. If the User Metadata or Metadata Item already exists, the SDK will update the value only if the version matches; otherwise, the SDK will return an error code.
+
+#### Method Signature
+
+You can call the `setUserMetadata` method as follows:
+
+```typescript 
+setUserMetadata(
+    data: Metadata,
+    options?: SetOrUpdateUserMetadataOptions
+): Promise<SetUserMetadataResponse>;
+```
+
+| Parameter | Type            | Required | Default | Description |
+| --------- | --------------- | -------- | ------- | ----------- |
+| `data`    | Array\<object\> | Required | -       | Array of Metadata Items. A Metadata Item is a JSON-formatted object that includes predefined properties. Custom properties beyond the predefined ones are not supported. |
+| `options` | object          | Optional | -       | Metadata configuration options. |
+
+The `data` object contains the following properties:
+
+| Parameter       | Type         | Required | Default       | Description |
+|-----------------|--------------|----------|---------------|-------------|
+| `majorRevision` | number       | Optional | `-1`          | <ul><li>Returned as the actual version number during read operations.</li><li>Used as a version control flag during write operations:</li><ul><li>`-1`: Disable version verification.</li><li>> `0`: Enable version verification. The operation only proceeds if the target version matches this value.</li></ul></ul> |
+| `items`         | MetadataItem | Optional | Empty array   | Array of Metadata Items. |
+| `itemCount`     | number       | Optional | 0             | Number of Metadata Items. |
+
+
+Each Metadata Item contains the following properties:
+
+```typescript 
+class MetaDataItem = {
+    key: string, // Key of the Metadata Item
+    value: string, // Value of the Metadata Item
+    revision: number, // Version number of the Metadata Item
+    updatedTs: string, // Timestamp of the last update
+    authorUserId: string, // User ID of the last editor
+}
+```
+
+The `options` object contains the following properties:
+
+| Parameter        | Type     | Required | Default                | Description |
+|------------------|----------|----------|------------------------|-------------|
+| `userId`         | string   | Optional | Current user's `userId` | User ID. |
+| `majorRevision`  | number   | Optional | `-1`                   | Version control flag: <ul><li>`-1`: Disable version verification.</li><li>> `0`: Enable version verification. The operation only proceeds if the target version matches this value.</li></ul> |
+| `lockName`       | string   | Optional | Empty string `''`      | Lock name. When set, only users who acquire the lock using the `acquireLock` method can perform the operation. |
+| `addTimeStamp`   | boolean  | Optional | `false`                | Whether to record the timestamp of the edit. |
+| `addUserId`      | boolean  | Optional | `false`                | Whether to record the user ID of the editor. |
+
+
+#### Basic usage
+
+```typescript
+const data = [
+    {
+        key : "Name",
+        value : "Tony"
+        revision : 174298200
+    },
+    {
+        key : "Mute",
+        value : "true",
+        revision : 174298100
+    }
+];
+const options = {
+    userId : "Tony",
+    majorRevision : 174298270,
+    addTimeStamp : true,
+    addUserId : true
+};
+try {
+    const result = await rtm.storage.setUserMetadata(data, options);
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns a `SetUserMetadataResponse` type object:
+
+```typescript 
+type SetUserMetadataResponse = {
+    timestamp: number, // Reserved field
+    channelName: string;
+    channelType: RtmChannelType
+}
+```
+
+<Status />
+
+### getUserMetadata
+
+#### Description
+
+The `getUserMetadata` method retrieves the Metadata and User Metadata Items of a specified user.
+
+#### Method Signature
+
+You can call the `getUserMetadata` method as follows:
+
+```typescript 
+getUserMetadata(
+    options?: GetUserMetadataOptions
+): Promise<GetUserMetadataResponse>;
+```
+
+| Parameter   | Type     | Required | Default                     | Description                  |
+| ----------- | -------- | -------- | --------------------------- | ---------------------------- |
+| `options`   | object   | Optional | -                           | Metadata configuration options. |
+
+The `options` object contains the following properties:
+
+| Property  | Type   | Required | Default                     | Description   |
+| --------- | ------ | -------- | --------------------------- | ------------- |
+| `userId`  | string | Optional | Current user's `userId`     | User ID.      |
+
+#### Basic usage
+
+```typescript
+try {
+    const result = await rtm.storage.getUserMetadata({ userId: "Tony" });
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns a `GetUserMetadataResponse` type object:
+
+```typescript 
+type GetUserMetadataResponse = {
+    timestamp: number, // Reserved field
+    userId : string, // User ID
+    itemCount : number, // Number of Metadata Items
+    majorRevision : number, // Version number
+    items : MetadataItem[] // JSON object containing MetadataItem data
+}
+```
+
+Each Metadata Item contains the following properties:
+
+```typescript 
+class MetaDataItem = {
+    key: string, // Key of the Metadata Item
+    value: string, // Value of the Metadata Item
+    revision : number, // Version number of the Metadata Item
+    updatedTs : string, // Timestamp of the last update
+    authorUserId : string, // User ID of the last editor
+}
+```
+
+<Status />
+
+### removeUserMetadata
+
+#### Description
+
+The `removeUserMetadata` method deletes User Metadata or specific User Metadata Items.
+
+After successful deletion, users who subscribe to the Metadata of that user and have enabled event listening will receive a `storage` event of type `user`. See [Event Listening](configuration#event-listener) for details.
+
+#### Method Signature
+
+You can call the `removeUserMetadata` method as follows:
+
+```typescript
+removeUserMetadata(
+    options?: RemoveUserMetadataOptions
+): Promise<RemoveUserMetadataResponse>;
+```
+
+| Parameter   | Type   | Required | Default | Description                                                                 |
+| ----------- | ------ | -------- | ------- | --------------------------------------------------------------------------- |
+| `options`   | object | Optional | -       | Metadata configuration options. If not provided, all user properties of the current user will be deleted. |
+
+The `options` object contains the following properties:
+
+| Parameter       | Type             | Required | Default                  | Description |
+|-----------------|------------------|----------|--------------------------|-------------|
+| `userId`        | string           | Optional | Current user's `userId`  | User ID. |
+| `data`          | Array\<object>    | Optional | -                        | Array of Metadata Items. A Metadata Item is a JSON object with predefined properties. <br/>Custom properties beyond the predefined ones are not supported. <br/>If this parameter is not provided, all Metadata will be deleted. |
+| `majorRevision` | number           | Optional | `-1`                     | Version control flag: <ul><li>`-1`: Disable version verification.</li><li>> `0`: Enable version verification. The operation only proceeds if the target version matches this value.</li></ul> |
+| `lockName`      | string           | Optional | Empty string `''`        | Lock name. When set, only users who acquire the lock using the `acquireLock` method can perform the operation. |
+| `addTimeStamp`  | boolean          | Optional | `false`                  | Whether to record the timestamp of the edit. |
+| `addUserId`     | boolean          | Optional | `false`                  | Whether to record the user ID of the editor. |
+
+
+The `data` object contains the following properties:
+
+| Parameter        | Type          | Required | Default       | Description |
+|------------------|---------------|----------|---------------|-------------|
+| `majorRevision`  | number        | Optional | `-1`          | <ul><li>Returned as the actual version number during read operations.</li><li>Used as a version control flag during write operations:</li><ul><li>`-1`: Disable version verification.</li><li>> `0`: Enable version verification. The operation only proceeds if the target version matches this value.</li></ul></ul> |
+| `items`          | MetadataItem  | Optional | Empty array   | Array of Metadata Items. |
+| `itemCount`      | number        | Optional | `0`           | Number of Metadata Items. |
+
+
+Each Metadata Item contains the following properties:
+
+```typescript 
+class MetaDataItem = {
+    key: string, // Key of the Metadata Item
+    value: string, // Value of the Metadata Item
+    revision: number, // Version number of the Metadata Item
+    updatedTs: string, // Timestamp of the last update
+    authorUserId: string // User ID of the last editor
+}
+```
+
+#### Basic usage
+
+```typescript
+const data = [
+    {
+        key : "Mute",
+        revision : 174298100
+    }
+];
+const options = {
+    userId: "Tony",
+    data : data,
+    majorRevision : 174298270
+};
+try {
+    const result = await rtm.storage.removeUserMetadata(options);
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns a `RemoveUserMetadataResponse` type object:
+
+```typescript
+type RemoveUserMetadataResponse = {
+    timestamp: number, // Reserved field
+    userId : string, // User ID
+}
+```
+
+<Status />
+
+### updateUserMetadata
+
+#### Description
+
+The updateUserMetadata method updates existing User Metadata or Metadata Items. After a successful update, users who subscribe to the User Metadata and have enabled event listening will receive a storage event of type user. See [Event Listener](configuration#event-listener) for details.
+
+<Admonition type="info" title="Info">
+This method cannot operate on Metadata Items that do not exist.
+</Admonition>
+
+#### Method
+
+You can call the `updateUserMetadata` method as follows:
+
+```typescript 
+updateUserMetadata(
+    data: Metadata,
+    options?: SetOrUpdateUserMetadataOptions
+): Promise<UpdateUserMetadataResponse>;
+```
+
+| Parameter  | Type              | Required | Default | Description |
+|------------|-------------------|----------|---------|-------------|
+| `data`     | Array\<object\>     | Yes      | -       | Array of Metadata Items. Each item is a JSON object with predefined properties. Custom properties are not supported. |
+| `options`  | object            | No       | -       | Metadata configuration options. |
+
+The `data` object includes the following properties:
+
+| Parameter        | Type          | Required | Default       | Description |
+|------------------|---------------|----------|---------------|-------------|
+| `majorRevision`  | number        | Optional | `-1`          | <ul><li>Returned as the actual version number during read operations.</li><li>Acts as a version control switch during write operations:</li><ul><li>`-1`: Disable version validation.</li><li>> `0`: Enable version validation. The operation only proceeds if the target version number matches this value.</li></ul></ul> |
+| `items`          | MetadataItem  | Optional | Empty array   | Array of Metadata Items. |
+| `itemCount`      | number        | Optional | `0`           | Number of Metadata Items. |
+
+
+Each Metadata Item includes the following properties:
+
+```typescript 
+class MetaDataItem = {
+    key: string, // Metadata Item key
+    value: string, // Metadata Item value
+    revision: number, // Metadata Item version number
+    updatedTs: string, // Last updated timestamp
+    authorUserId: string, // User ID of the last editor
+}
+```
+
+The options object includes the following properties:
+
+| Parameter        | Type     | Required | Default                 | Description |
+|------------------|----------|----------|--------------------------|-------------|
+| `userId`         | string   | Optional | Current user's `userId` | User ID. |
+| `majorRevision`  | number   | Optional | `-1`                    | <ul><li>Version control switch:</li><ul><li>`-1`: Disable version validation.</li><li>> `0`: Enable version validation. The operation only proceeds if the target version number matches this value.</li></ul></ul> |
+| `lockName`       | string   | Optional | Empty string `''`       | Lock name. Only the user who acquires this lock via the `acquireLock` method can perform the operation. |
+| `addTimeStamp`   | boolean  | Optional | `false`                 | Whether to record the edit timestamp. |
+| `addUserId`      | boolean  | Optional | `false`                 | Whether to record the user ID of the editor. |
+
+
+#### Basic usage
+
+```typescript
+const data = [
+    {
+        key : "Mute",
+        value : "false",
+        revision : 174298100
+    }
+];
+const options = {
+    userId : "Tony",
+    majorRevision : 174298270,
+    addTimeStamp : true,
+    addUserId : true
+};
+try {
+    const result = await rtm.storage.updateUserMetadata(data, options);
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns an `UpdateUserMetadataResponse` type:
+
+```typescript 
+type UpdateUserMetadataResponse = {
+    timestamp: number, // Reserved field
+    userId : string // User ID
+}
+```
+
+<Status />
+
+### subscribeUserMetadata
+
+#### Description
+
+The subscribeUserMetadata method subscribes to the Metadata of a specified user. After a successful subscription and enabling event listening, you will receive a storage event of type user whenever that user's Metadata changes. See [Event Listener](configuration#event-listener) for details.
+
+#### Method
+
+You can call the `subscribeUserMetadata` method as follows:
+
+```typescript
+subscribeUserMetadata(
+    userId: string
+): Promise<SubscribeUserMetaResponse>;
+```
+
+| Parameter  | Type   | Required | Default | Description |
+|------------|--------|----------|---------|-------------|
+| `userId`   | string | Yes      | -       | User ID. |
+
+#### Basic usage
+
+```typescript
+try {
+    const result = await rtm.storage.subscribeUserMetadata("Tony");
+    console.log(result);
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns a `SubscribeUserMetaResponse` type:
+
+```typescript 
+type SubscribeUserMetaResponse = {
+    timestamp: number, // Reserved field
+    userId : string // User ID
+}
+```
+
+### unsubscribeUserMetadata
+
+#### Description
+
+If you no longer need to receive updates for a user's User Metadata, call the `unsubscribeUserMetadata` method to unsubscribe.
+
+#### Method
+
+You can call the `unsubscribeUserMetadata` method as follows:
+
+```typescript 
+unsubscribeUserMetadata(
+    userId: string
+): Promise<UnsubscribeUserMetaResponse>;
+```
+
+| Parameter  | Type   | Required | Default | Description |
+|------------|--------|----------|---------|-------------|
+| `userId`   | string | Yes      | -       | User ID. |
+
+#### Basic usage
+
+```typescript
+try {
+    const result = await rtm.storage.unsubscribeUserMetadata("Tony");
+    console.log("result");
+} catch (status) {
+    console.log(status);
+}
+```
+
+#### Return value
+
+If the method call succeeds, it returns an `UnsubscribeUserMetaResponse` type:
+
+```typescript 
+type UnsubscribeUserMetaResponse = {
+    timestamp: number, // Reserved field
+    userId : string // User ID
+}
+```

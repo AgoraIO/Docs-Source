@@ -73,9 +73,8 @@ const data = {
       NAME: 'Signaling',
       PATH: 'signaling',
       SDK: 'Signaling SDK',
-      PRODUCT: 'Signalling',
+      PRODUCT: 'Signaling',
       STREAM: 'interactive live streaming or broadcast streaming',
-      PRODUCT: 'Signalling',
       IOS_PACKAGE_NAME: 'AgoraRTM_iOS',
       MACOS_PACKAGE_NAME: 'AgoraRTM_macOS'
   },
@@ -144,6 +143,24 @@ const data = {
     SDK: 'Conversational AI SDK',
     AGENT: 'Conversational AI agent',
     PRODUCT: 'Conversational AI Engine',
+  },
+
+  'ten-framework': {
+    NAME: 'TEN Framework',
+    PATH: 'ten-framework',
+    SDK: 'TEN Framework',
+    PRODUCT: 'TEN Framework',
+    MANAGER: 'TEN Manager',
+    DESIGNER: 'TEN Designer',
+  },
+
+  'ten-agent': {
+    NAME: 'TEN Agent',
+    PATH: 'ten-agent',
+    SDK: 'TEN Agent',
+    PRODUCT: 'TEN Agent',
+    MANAGER: 'TEN Manager',
+    DESIGNER: 'TEN Designer',
   }
 };
 

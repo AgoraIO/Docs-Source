@@ -139,6 +139,7 @@ export const SIG2_SDK_API_IOS = 'https://agoraio.github.io/AgoraRtm_Apple/docume
 export const SIG2_SDK_API_MACOS = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
 export const SIG_SDK_API_WEB = `${SIG_SDK_API_REF_ROOT}/web/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/reference/user-channel-events`;
+export const SIG_SDK_API_RN = `/signaling/reference/api`;
 
 export const SPATIAL = '3D Spatial Audio';
 
@@ -192,6 +193,7 @@ export const RTEE_AF_D = `ActiveOS`;
 export const RTEE_HT3D = `HTEffect 3D Avatar`
 export const RTEE_LDCI = `LiveData Conversation Intelligence`
 export const RTEE_DUB = `Dubbing AI Voice Changer`
+export const RTEE_VAD = `Voice Activity Detection`
 export const AA = `${COMPANY} Analytics`;
 export const AA_DI = `Data Insights`;
 export const AA_DIP = `Data Insights Plus`;

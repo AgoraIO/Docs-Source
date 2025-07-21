@@ -1,0 +1,212 @@
+---
+title: 'Dependencies'
+sidebar_position: 1
+platform_selector: false
+description: >
+  Create a better user experience with the most accurate live transcription and subtitling.
+---
+
+The <Vpd k="NAME" /> relies on several external libraries and tools. Some are used for testing purposes, while others are integrated into the core runtime. This page documents these dependencies and any modifications needed for use with TEN.
+
+## Build system tools
+
+The TEN framework uses the following build system tools to compile and package the codebase.
+
+### Google GN
+
+Use one of the following installation options:
+
+- Download pre-built binaries from the [Google GN webpage](https://chrome-infra-packages.appspot.com/p/gn/gn/)
+
+    | OS    | Architecture  | Instance ID                            |
+    | ----- | ----- | ---------------------------------------------- |
+    | Linux | x64   | `BzX0zkfwFeUn9MaDVqm6FugmTIy-hFpgNUx43O1fN00C` |
+    | Linux | arm64 | `rT_12w1Iv6ug8CJ4j0VQekA0qTDq6CwoAqGWasIKFcEC` |
+    | Win   | x64   | `1QlqF0FPVt82ba5f48HxHpv5xPqOmyaThoR3TicuJ8QC` |
+
+- Build from source using the [GN repository](https://gn.googlesource.com/gn)
+
+    | OS  | Architecture | Commit ID                                |
+    | --- | ------------ | ---------------------------------------- |
+    | Mac | universal  | `18602f6cf1168cf78302024043edc02e8bad2ffb` |
+
+### Google ninja
+
+A small build system focused on speed.
+
+**Version**: 1.12.1
+**Installation**: Download from the [Ninja release page](https://github.com/ninja-build/ninja/releases)
+
+## Core libraries
+
+| Library | Version | License | Purpose |
+|---------|---------|---------|---------|
+| [yyjson](https://github.com/TEN-framework/ten-framework/tree/main/third_party/yyjson/) | 0.10.0 | [MIT](https://github.com/ibireme/yyjson/blob/master/LICENSE) | JSON parsing and generation  | 
+| [libuv](https://github.com/TEN-framework/ten-framework/tree/main/third_party/libuv/) | 1.50.0 | [MIT](https://github.com/libuv/libuv#licensing) | Event loop implementation |
+| [msgpack-c](https://github.com/TEN-framework/ten-framework/tree/main/third_party/msgpack/) | 6.1.0 | [Boost 1.0](https://github.com/msgpack/msgpack-c#license) | Efficient binary serialization |
+| [libwebsockets](https://github.com/TEN-framework/ten-framework/tree/main/third_party/libwebsockets) | 4.3.2<br/>with [patch](#libwebsockets-patch) | [MIT](https://github.com/warmcat/libwebsockets/blob/main/LICENSE) | Network communication | 
+| [curl](https://github.com/TEN-framework/ten-framework/tree/main/third_party/curl/) | 8.1.2<br/>with [patch](#curl-patch) | [MIT-like](https://curl.se/docs/copyright.html) | HTTP requests and API communication |
+| [clingo](https://github.com/TEN-framework/ten-framework/tree/main/third_party/clingo/) | 5.8.0<br/> with [patch](#clingo-cmake-patch) | [MIT](https://github.com/potassco/clingo/blob/master/LICENSE.md). | Logical constraint solving |
+| [FFmpeg]((https://github.com/TEN-framework/ten-framework/tree/main/third_party/ffmpeg/)) | 6.0 | [LGPL/GPL](https://www.ffmpeg.org/legal.html) | Audio and video processing | 
+| [libbacktrace<sup>*</sup>](https://github.com/TEN-framework/ten-framework/tree/main/core/src/ten_utils/backtrace) | 1.0 | [BSD](https://github.com/ianlancetaylor/libbacktrace/blob/master/LICENSE) | Debug information and crash reporting |
+| [uthash<sup>*</sup>](https://github.com/TEN-framework/ten-framework/tree/main/core/include/ten_utils/container) | 2.3.0 | [BSD revised](https://github.com/troydhanson/uthash/blob/master/LICENSE) | Efficient in-memory data structures |
+| [uuid4<sup>*</sup>](https://github.com/TEN-framework/ten-framework/tree/main/core/src/ten_utils/lib/sys/general/uuid.c) | - | [MIT](https://github.com/rxi/uuid4/blob/master/LICENSE) | Unique identifier generation | 
+| [zf_log<sup>*</sup>](https://github.com/TEN-framework/ten-framework/tree/main/core/src/ten_utils/log) | - | [MIT](https://github.com/wonder-mice/zf_log/blob/master/LICENSE) | Framework-wide logging | 
+
+<sup>*</sup>*This library has been significantly modified to conform to the naming conventions and folder structure of the <Vpd k="NAME" />. Click the library name to view details.*
+
+## Library customizations
+
+### `libwebsockets` patch
+
+```diff
+--- /home/wei/MyData/Temp/libwebsockets-4.3.2/CMakeLists.txt
++++ libwebsockets/CMakeLists.txt
+@@ -851,6 +851,7 @@
+  add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE)
+  # Fail the build if any warnings
+  add_compile_options(/W3 /WX)
++ add_compile_options(/Zc:preprocessor /wd4819)
+  # Unbreak MSVC broken preprocessor __VA_ARGS__ behaviour
+  if (MSVC_VERSION GREATER 1925)
+   add_compile_options(/Zc:preprocessor /wd5105)
+```
+
+Apply the following patch.
+
+```diff
+diff --git a/| `third_party/libwebsockets/`cmake/lws_config.h.in b/| `third_party/libwebsockets/`cmake/lws_config.h.in
+index f3f4a9d79..e8d36c3ae 100644
+--- a/| `third_party/libwebsockets/`cmake/lws_config.h.in
++++ b/| `third_party/libwebsockets/`cmake/lws_config.h.in
+@@ -238,3 +238,9 @@
+ #cmakedefine LWS_WITH_PLUGINS_API
+ #cmakedefine LWS_HAVE_RTA_PREF
+
++// NOTE (Liu): The libwebsockets library will use external variables from mbedtls
++// if 'LWS_WITH_MBEDTLS' is enabled. On Windows, variable declarations in the header
++// file must start with '__declspec(dllimport)', otherwise, the
++// symbols cannot be accessed.
++// Refer to | `third_party/mbedtls/`include/mbedtls/export.h.
++#define USING_SHARED_MBEDTLS
+diff --git a/| `third_party/libwebsockets/`lib/tls/mbedtls/wrapper/platform/ssl_pm.c b/| `third_party/libwebsockets/`lib/tls/mbedtls/wrapper/platform/ssl_pm.c
+index e8a0cb2d4..84a164e90 100755
+--- a/| `third_party/libwebsockets/`lib/tls/mbedtls/wrapper/platform/ssl_pm.c
++++ b/| `third_party/libwebsockets/`lib/tls/mbedtls/wrapper/platform/ssl_pm.c
+@@ -183,7 +183,12 @@ int ssl_pm_new(SSL *ssl)
+         mbedtls_ssl_conf_min_version(&ssl_pm->conf, MBEDTLS_SSL_MAJOR_VERSION_3, version);
+     } else {
+         mbedtls_ssl_conf_max_version(&ssl_pm->conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
+-    mbedtls_ssl_conf_min_version(&ssl_pm->conf, MBEDTLS_SSL_MAJOR_VERSION_3, 1);
++
++    // NOTE: mbedtls added 'ssl_conf_version_check()' since v3.1.0, and
++    // mbedtls only enables TLS 1.2 by default. So the 'min_tls_version' and
++    // 'max_tls_version' must be '0x303', or 'mbedtls_ssl_setup' will
++    // fail.
++    mbedtls_ssl_conf_min_version(&ssl_pm->conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
+     }
+
+     mbedtls_ssl_conf_rng(&ssl_pm->conf, mbedtls_ctr_drbg_random, &ssl_pm->ctr_drbg);
+```
+
+```diff
+diff --git a/| `third_party/libwebsockets/`CMakeLists.txt b/| `third_party/libwebsockets/`CMakeLists.txt
+index 92638143a..746f9b6a6 100644
+--- a/| `third_party/libwebsockets/`CMakeLists.txt
++++ b/| `third_party/libwebsockets/`CMakeLists.txt
+@@ -547,9 +547,12 @@ SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
+
+ SET(LWS_INSTALL_PATH "${CMAKE_INSTALL_PREFIX}")
+
+-# Put absolute path of dynamic libraries into the object code. Some
+-# architectures, notably Mac OS X, need this.
+-SET(CMAKE_INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/${LWS_INSTALL_LIB_DIR}${LIB_SUFFIX}")
++# Commented out to avoid using absolute paths in the install_name on macOS.
++# When CMAKE_INSTALL_NAME_DIR is set to an absolute path, binaries that link
++# against libwebsockets will hardcode this absolute path, making the library
++# difficult to relocate and potentially causing "library not found" errors at
++# runtime if the library is installed in a different location.
++# SET(CMAKE_INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/${LWS_INSTALL_LIB_DIR}${LIB_SUFFIX}")
+```
+
+##### Fix for linking `mbedtls` on Windows
+
+Apply the following patch if your CMake version is higher than 3.24, as `find_package` supports the `GLOBAL` keyword since 3.24.
+
+```diff
+diff --git a/| `third_party/libwebsockets/`lib/tls/mbedtls/CMakeLists.txt b/| `third_party/libwebsockets/`lib/tls/mbedtls/CMakeLists.txt
+index e34151724..79b15089d 100644
+--- a/| `third_party/libwebsockets/`lib/tls/mbedtls/CMakeLists.txt
++++ b/| `third_party/libwebsockets/`lib/tls/mbedtls/CMakeLists.txt
+-        find_library(MBEDTLS_LIBRARY mbedtls)
+-        find_library(MBEDX509_LIBRARY mbedx509)
+-        find_library(MBEDCRYPTO_LIBRARY mbedcrypto)
++        # find_library(MBEDTLS_LIBRARY mbedtls)
++        # find_library(MBEDX509_LIBRARY mbedx509)
++        # find_library(MBEDCRYPTO_LIBRARY mbedcrypto)
++
++        # set(LWS_MBEDTLS_LIBRARIES "${MBEDTLS_LIBRARY}" "${MBEDX509_LIBRARY}" "${MBEDCRYPTO_LIBRARY}")
++
++        # Set the custom search path.
++        set(MBEDTLS_DIR "${MBEDTLS_BUILD_PATH}/cmake")
++
++        // NOTE (Liu): We should use 'find_package' rather than 'find_library'
++        // to search for the mbedtls libraries. 'find_library' only finds a
++        // library, shared or static, without any settings from the external
++        // library.
+
+-        set(LWS_MBEDTLS_LIBRARIES "${MBEDTLS_LIBRARY}" "${MBEDX509_LIBRARY}" "${MBEDCRYPTO_LIBRARY}")
++        // The 'lib/tls/CMakeLists.txt' depends on the mbedtls libraries, so we set the scope to 'GLOBAL' here.
++        find_package(MbedTLS GLOBAL)
++        set(LWS_MBEDTLS_LIBRARIES MbedTLS::mbedcrypto MbedTLS::mbedx509 MbedTLS::mbedtls)
+```
+
+```diff
+diff --git a/| `third_party/libwebsockets/`BUILD.gn b/| `third_party/libwebsockets/`BUILD.gn
+index 4c89c2e2e..e6d641b9c 100644
+--- a/| `third_party/libwebsockets/`BUILD.gn
++++ b/| `third_party/libwebsockets/`BUILD.gn
+@@ -84,6 +84,10 @@ cmake_project("websockets") {
+   }
+
+   options += [
++  // The libwebsockets will use the 'MBEDTLS_BUILD_PATH' variable to set the
++  // search path of 'find_package'.
++  "MBEDTLS_BUILD_PATH=" + rebase_path("$root_gen_dir/cmake/mbedtls"),
++
+```
+
+Also, remove `#define USING_SHARED_MBEDTLS` in `https://github.com/TEN-framework/ten-framework/tree/main/| `third_party/libwebsockets/`README.md/cmake/lws_config.h.in`.
+
+### `curl` patch
+
+Patch `lib/CMakeLists.txt`, to change the shared library name from `_imp.lib` to `.lib`.
+
+```bash
+if(WIN32)
+  if(BUILD_SHARED_LIBS)
+    if(MSVC)
+      // Add "_imp" as a suffix before the extension to avoid conflicting with
+      // the statically linked "libcurl.lib"
+      //set_target_properties(${LIB_NAME} PROPERTIES IMPORT_SUFFIX "_imp.lib")
+      set_target_properties(${LIB_NAME} PROPERTIES IMPORT_SUFFIX ".lib")
+    endif()
+  endif()
+endif()
+```
+
+Export `Curl_ws_done` in `lib/ws.h`. This function is called to prevent memory leaks.
+
+```c
+CURL_EXTERN void Curl_ws_done(struct Curl_easy *data);
+// ^^^^^^^^
+```
+
+### Clingo CMake patch
+
+`ten_manager` uses the `clingo-sys` crate to call Clingo. The `clingo-sys` crate includes its own Clingo source code (version 5.6.2), which has compilation errors in a CMake 4 environment. To address this, we use Cargo's patch feature to point to a local version of the Clingo source code that fixes the CMake 4 compilation errors.
+
+Although `clingo-sys` includes the Clingo source code, we don't need the `third_party/clingo` folder for most platforms. However, on Windows, `clingo-sys` still compiles Clingo as a shared library. Therefore, we currently use the `third_party/clingo` folder to compile the shared library and use GN scripts to copy it to the final output folder of `ten_manager`.
+
+In the future, we plan to copy the Windows shared library directly from the Clingo source code bundled in `clingo-sys`. This change would allow us to remove the `third_party/clingo` folder entirely.
+

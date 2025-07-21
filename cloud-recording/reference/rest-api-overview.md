@@ -4,18 +4,18 @@ sidebar_position: 5
 type: docs
 platform_selector: false
 description: >
-  Notifies the Message Notification Service, and then the Message Notification Service notifies your server of that event through an HTTP/HTTPS request.
+  Notifies the Message Notification Service, and then the Message Notification Service notifies your server of that event through an HTTP request.
 ---
 
 import SignatureVerification from '@docs/shared/notification-center-service/signature-verification.mdx';
 
-Agora provides <Vg k="NCS_LONG" /> (<Vg k="NCS" />). You can set up an HTTP/HTTPS server to receive the event notifications of Agora Cloud Recording. When an event occurs, the Agora Cloud Recording service notifies the Message Notification Service, and then the Message Notification Service notifies your server of that event through an HTTP/HTTPS request.
+Agora provides <Vg k="NCS_LONG" /> (<Vg k="NCS" />). You can set up an HTTPS server to receive the event notifications of Agora Cloud Recording. When an event occurs, the Agora Cloud Recording service notifies the Message Notification Service, and then the Message Notification Service notifies your server of that event through an HTTP request.
 
 Best practice is that core apps do not rely on <Vg k="NCS_LONG" /> (<Vg k="NCS" />). If your apps already rely heavily on the <Vg k="NCS" />, contact <a href="mailto:support@agora.io">support@agora.io</a> and enable the redundant message notification function. This doubles the received notifications and reduces the probability of message loss. After enabling the message notification function, you need to deduplicate messages based on `sid`. Message notification still cannot guarantee a 100% arrival rate.
 
 ## Callback information
 
-After you enable the callback service, when a specified event occurs, the Agora notification center sends an HTTP/HTTPS request as a callback. The request body provides the main information of the callback in a JSON object. The JSON object contains different fields for different events.
+After you enable the callback service, when a specified event occurs, the Agora notification center sends an HTTP request as a callback. The request body provides the main information of the callback in a JSON object. The JSON object contains different fields for different events.
 
 The following is an example that shows the fields in the request body.
 ![](https://web-cdn.agora.io/docs-files/1567593635825)
@@ -595,7 +595,7 @@ If the reliability of the status of a cloud recording is a high priority, Agora 
 
 #### Message Notification Service
 
-You can use the Message Notification Service as a complementary option to monitor the recording service status. You need to configure an HTTP/HTTPS server to receive event notifications. 
+You can use the Message Notification Service as a complementary option to monitor the recording service status. You need to configure an HTTPS server to receive event notifications. 
 
 - Pros: Real-time
 - Cons:

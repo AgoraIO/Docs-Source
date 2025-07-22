@@ -1,91 +1,123 @@
 import CodeBlock from '@theme/CodeBlock';
 
-1. **Integrate the subtitle processing module**
+1. **Integrate the subtitle processing toolkit**
 
-Copy the [`message.ts`](https://github.com/AgoraIO-Community/Conversational-AI-Demo/blob/main/Web/Scenes/VoiceAgent/src/services/message.ts) file to your project and import the module before calling its API. The required dependencies are available in the [`lib`](https://github.com/AgoraIO-Community/Conversational-AI-Demo/tree/main/Web/Scenes/VoiceAgent/src/lib) folder.
+    Copy the [`conversational-ai-api`](https://github.com/Shengwang-Community/Conversational-AI-Demo/tree/main/Web/Scenes/VoiceAgent/src/conversational-ai-api) file to your project and import the toolkit before calling its API. Refer to [Toolkit Structure](#toolkit-structure) to understand the role of each file.
 
 1. **Implement subtitle UI rendering logic**
 
-    The subtitle UI module you implement processes the `MessageEngine` subtitle message list and includes a simple component to display these messages:
+    The subtitle UI toolkit receives transcription data from the client component and displays the messages using a simple React component. The `TRANSCRIPTION_UPDATED` event callback always returns the entire list of subtitle messages. Only the latest messages may be updated, but your UI should re-render based on the full list provided in each callback.
 
-    <CodeBlock language="js" showLineNumbers>
-    {`const ChatHistory = () =\> \{
-       const [chatHistory, setChatHistory] = useState\<IMessageListItem[]>([]);
-
-       useEffect(() =\> \{
-           const getChatHistoryFromEvent = (event: MessageEvent) => \{
-               const \{ data } = event;
-               if (data.type === "message") \{
-                   setChatHistory(data?.data?.chatHistory || []);
-               }
-           };
-
-           window.addEventListener("message", getChatHistoryFromEvent);
-
-           return () => \{
-               window.removeEventListener("message", getChatHistoryFromEvent);
-           };
-       }, []);
-
-       return (
-           \<>
-               \{chatHistory.map((message, index) => (
-                   \<div key={\`\${message.uid}-\${message.turn_id}\`}>
-                       \{message.uid}: \{message.text}
-                   \</div>
-               ))}
-           </>
-       );
-   };`}
-    </CodeBlock>
-
-    <Admonition type="info"> 
-    The sample code uses `window.addEventListener("message")` to listen for subtitle data sent by `MessageEngine` using `window.postMessage`. For complex applications, Agora recommends using [Redux](https://redux.js.org/introduction/getting-started) or other state management tools to manage these messages more efficiently. 
+    <Admonition type="info" info="info">
+    For better state sharing across components, consider using a state management library such as `zustand` or redux instead of `React.useState`.
     </Admonition>
 
-1. **Create a subtitle processing module instance**
+    <CodeBlock language="js" showLineNumbers>
+    {`import * as React from "react"
+    import {
+    type IUserTranscription,
+    type IAgentTranscription,
+    type ISubtitleHelperItem,
+    EConversationalAIAPIEvents,
+    } from "@/conversational-ai-api/type"
+    import { ConversationalAIAPI } from "@/conversational-ai-api"
 
-    Before joining an RTC channel, create a `MessageEngine` instance and pass in the `AgoraRTC` client, mode, and callback function.
+    // Listen for transcription updates to display subtitles in real time
+    export const ChatHistory = () => {
+    const [chatHistory, setChatHistory] = React.useState<
+        ISubtitleHelperItem<Partial<IUserTranscription | IAgentTranscription>>[]
+    >([])
+
+    return (
+        <>
+        {chatHistory.map((message) => (
+            <div key={\`\$\{message.uid\}-\$\{message.turn_id\}\`}>
+            {message.uid}: {message.text}
+            </div>
+        ))}
+        </>
+    )}`}
+    </CodeBlock>
+
+1. **Create a subtitle processing toolkit instance**
+
+    Before joining a <Vg k="VSDK"/> channel, create video and chat SDK instances and pass in to the toolkit instance.
 
     <CodeBlock language="js" showLineNumbers>
-    {`import AgoraRTC, { IAgoraRTCClient } from "agora-rtc-sdk-ng";
+    {`// Initialize the component
+    ConversationalAIAPI.init({
+      rtcEngine,
+      rtmEngine,
 
-   class RtcEngine {
-       private client: IAgoraRTCClient;
-       private messageEngine: MessageEngine | null = null;
+      /**
+      * Set the rendering mode for transcription subtitles. Available options:
+      * - ESubtitleHelperMode.WORD: Word-by-word rendering mode. The subtitle content received from the callback 
+      *   is rendered to the UI one word at a time.
+      * - ESubtitleHelperMode.TEXT: Sentence-by-sentence rendering mode. The full subtitle content from the callback 
+      *   is rendered to the UI at once.
+      *
+      * If not specified, the mode is determined automatically based on the message, or it can be set manually.
+      */
+      renderMode: ESubtitleHelperMode.WORD, 
+    })
 
-       constructor() {
-           // Create an AgoraRTC client with RTC mode and VP8 codec
-           this.client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-       }
+    // Get the API instance (singleton)
+    const conversationalAIAPI = ConversationalAIAPI.getInstance()
+    conversationalAIAPI.on(
+      EConversationalAIAPIEvents.TRANSCRIPTION_UPDATED,
+      setChatHistory
+    )`}
+    </CodeBlock>
 
-       public joinChannel() {
-           // Create a MessageEngine instance, passing in the AgoraRTC client, mode, and callback function
-           this.messageEngine = new MessageEngine(
-               this.client,
-               EMessageEngineMode.AUTO,
-               (chatHistory) => {
-                   // Log chatHistory to the console
-                   console.log("chatHistory", chatHistory);
+1. **Subscribe to the channel**
+    Agent-related events are delivered through Chat messages. Before starting an agent session, call `subscribeMessage` to receive these events:
 
-                   // Send chatHistory to the web page; using Redux or other state management tools is recommended
-                   // Here, window.postMessage is used as an example
-                   window.postMessage({
-                       type: "message",
-                       chatHistory,
-                   });
-               }
-           );
+    <CodeBlock language="ts" showLineNumbers>
+    {`conversationalAIAPI.subscribeMessage(channel_name)`}
+    </CodeBlock>
 
-           this.client.join("***", "****", "****", "****");
-       }
-   }`}
+
+1. **Agent joins the channel**
+
+    To create a conversational agent interface, make a `POST` request and configure the following parameters:
+
+    | Parameter                         | Required | Description                                    |
+    | --------------------------------- | -------- | ---------------------------------------------- |
+    | `advanced_features.enable_rtm`    | Yes      | Enables the Chat service. |
+    | `parameters.data_channel`         | Yes      | Sets the data transmission channel to `"rtm"`. |
+    | `parameters.enable_metrics`       | Optional | Enables agent performance metrics.             |
+    | `parameters.enable_error_message` | Optional | Enables agent error event reporting.           |
+
+    After a successful request, the agent joins the specified <Vg k="VSDK"/> channel and is ready to interact with the user.
+
+1. **Receive subtitles**
+
+    Call the `addHandler` method to register and implement the subtitle transcription callback:
+
+    <CodeBlock language="ts" showLineNumbers>
+    {`// Listen for transcription updates to display subtitles in real time
+    conversationalAIAPI.addHandler({
+    onSubtitleMessage: (subtitle) => {
+        // Handle subtitle content
+        console.log('Subtitle received:', subtitle)
+        renderSubtitlesToDOM(subtitle)
+    },
+    })`}
+    </CodeBlock>
+
+1. **Unsubscribe from the channel**
+
+    After each agent session ends, unsubscribe from channel messages to release resources associated with callback events:
+
+    <CodeBlock language="tsx" showLineNumbers>
+    {`conversationalAIAPI.unsubscribeMessage(channel_name)`}
     </CodeBlock>
 
 1. **Release resources**
 
-    When leaving the call page or ending the conversation, call the `cleanup` method to release resources.
+    At the end of each call, use the `destroy` method to clean up the cache.
 
-    <CodeBlock language="js" showLineNumbers>
-    {`this.messageEngine.clearup()`}
+    <CodeBlock language="ts" showLineNumbers>
+    {`conversationalAIAPI.destroy()`}
     </CodeBlock>
+

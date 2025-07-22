@@ -1,34 +1,163 @@
 import CodeBlock from '@theme/CodeBlock';
 
-1. **Integrate the subtitle processing module**
+1. **Integrate the subtitle processing toolkit**
 
-    Copy [`ConversationSubtitleController.swift`](https://github.com/AgoraIO-Community/Conversational-AI-Demo/blob/main/iOS/Scenes/ConvoAI/ConvoAI/Classes/Utils/ConversationSubtitleController.swift) and [`MessageParser.swift`](https://github.com/AgoraIO-Community/Conversational-AI-Demo/blob/main/iOS/Scenes/ConvoAI/ConvoAI/Classes/Utils/MessageParser.swift) files to your project and import the module before calling the module API.
+    Copy the [`ConversationalAIAPI`](https://github.com/Shengwang-Community/Conversational-AI-Demo/tree/main/iOS/Scenes/ConvoAI/ConvoAI/ConvoAI/Classes/ConversationalAIAPI) folder to your project and import the toolkit before calling the toolkit APIs. Refer to [Toolkit Structure](#toolkit-structure) to understand the role of each file.
 
 1. **Implement subtitle UI rendering logic**
 
-    To render subtitles in your UI, implement the `ConversationSubtitleDelegate` protocol in your subtitle UI module. Then, define the `onSubtitleUpdated` method to handle subtitle message rendering.
+    To render subtitles in your app’s UI, implement a `UIViewController` class that conforms to the `ConversationalAIAPIEventHandler` protocol. Within this class, implement the `handleTranscriptionUpdate` method to update your UI based on transcription events.
 
     <CodeBlock language="swift" showLineNumbers>
-    {`extension ChatViewController: ConversationSubtitleDelegate {
-       func onSubtitleUpdated(subtitle: SubtitleMessage) {
-           // Implement your UI rendering logic here
-       }
-   }`}
+    {`// Make your class conform to the ConversationalAIAPIEventHandler protocol
+    class ConversationViewController: UIViewController, ConversationalAIAPIEventHandler {
+        
+        // Transcription cache used for deduplication
+        private var transcriptionCache: [Int: String] = [:]
+        
+        private func handleTranscriptionUpdate(_ transcription: Transcription) {
+            // Deduplication: Avoid displaying duplicate content
+            let cacheKey = transcription.turnId
+            if transcriptionCache[cacheKey] == transcription.text {
+                return
+            }
+            transcriptionCache[cacheKey] = transcription.text
+            
+            switch transcription.type {
+            case .agent:
+                // Transcription from the AI agent
+                switch transcription.status {
+                case .inProgress:
+                    // Transcription in progress — update UI in real time
+                    agentResponseLabel.text = transcription.text
+                case .end:
+                    // Transcription complete — display final result
+                    agentResponseLabel.text = transcription.text
+                    transcriptionCache.removeValue(forKey: cacheKey)
+                case .interrupted:
+                    // Transcription was interrupted
+                    agentResponseLabel.text = transcription.text
+                    transcriptionCache.removeValue(forKey: cacheKey)
+                    print("Agent transcription interrupted")
+                }
+            case .user:
+                // Transcription from the user
+                switch transcription.status {
+                case .inProgress:
+                    // User is speaking — update UI in real time
+                    userInputLabel.text = transcription.text
+                case .end:
+                    // User finished speaking — display final result
+                    userInputLabel.text = transcription.text
+                    transcriptionCache.removeValue(forKey: cacheKey)
+                case .interrupted:
+                    // User transcription was interrupted
+                    userInputLabel.text = transcription.text
+                    transcriptionCache.removeValue(forKey: cacheKey)
+                    print("User transcription interrupted")
+                }
+            }
+        }
+    }`}
     </CodeBlock>
 
-1. **Create a subtitle processing module instance**
+1. **Create a subtitle processing toolkit instance**
 
-    When entering the call page, create a `ConversationSubtitleController` instance. This instance monitors subtitle message callbacks internally and passes the subtitle information to your UI using the `onSubtitleUpdated` callback of `ConversationSubtitleDelegate`.
+    To enable subtitle transcription, first create configuration objects for the <vg k="VSDK"/> and Chat SDK instances. Then set the subtitle rendering mode, and finally, create the Conversational AI component instance.
 
     <CodeBlock language="swift" showLineNumbers>
-    {`let subRenderConfig = SubtitleRenderConfig(rtcEngine: rtcEngine, renderMode: .words, delegate: self)
-   subRenderController.setupWithConfig(subRenderConfig)`}
+    {`// Create a configuration object for the RTC and RTM instances
+    let config = ConversationalAIAPIConfig(
+        rtcEngine: rtcEngine, 
+        rtmEngine: rtmEngine,
+        /**
+        * Set the subtitle rendering mode. Available options:
+        * - .words: Word-by-word rendering mode. The subtitle content received from the callback 
+        *   is rendered to the UI one word at a time.
+        * - .text: Sentence-by-sentence rendering mode. The full subtitle content from the callback 
+        *   is rendered to the UI at once.
+        */
+        renderMode: .words, 
+        enableLog: true
+    )
+
+    /// Create the component instance
+    convoAIAPI = ConversationalAIAPIImpl(config: config)`}
+    </CodeBlock>
+
+1. **Receive subtitles**
+
+    To receive and render real-time subtitles in your UI:
+
+    1. Conform to the `IConversationSubtitleCallback` protocol.
+    2. Implement the `onTranscriptionUpdated` method to handle subtitle updates.
+    3. Register the callback using the `addHandler` method.
+    4. Process and display the transcription using a helper like `handleTranscriptionUpdate`.
+
+    <CodeBlock language="swift" showLineNumbers>
+    {`func onTranscriptionUpdated(agentUserId: String, transcription: Transcription) {
+        // Listen for transcription updates to display subtitles in real time
+        DispatchQueue.main.async {
+            self.handleTranscriptionUpdate(transcription)
+        }
+    }
+    
+    // Register the event callback handler
+    convoAIAPI.addHandler(handler: self)`}
+    </CodeBlock>
+    <Admonition type="info" info="Tip">
+    Always update the UI on the main thread to prevent layout or rendering issues.
+    </Admonition>
+
+
+1. **Subscribe to the channel**
+
+    Subtitles are delivered through <Vg k="SIG"/> channel messages. To receive subtitle data, you must subscribe to channel messages before starting an agent session.
+
+    Call the `subscribeMessage` method to subscribe to the channel:
+
+    <CodeBlock language="swift" showLineNumbers>
+    {`convoAIAPI.subscribeMessage(channelName: channelName) { error in
+        if let error = error {
+            print("Subscription failed: \(error.message)")
+        } else {
+            print("Subscription successful")
+        }
+    }`}
+    </CodeBlock>
+
+1. **Agent joins the channel**
+
+    To create a conversational agent interface, send a `POST` request with the following parameters:
+
+    | Parameter                         | Required | Description                                    |
+    | --------------------------------- | -------- | ---------------------------------------------- |
+    | `advanced_features.enable_rtm`    | Yes      | Enables the RTM (Real-Time Messaging) service. |
+    | `parameters.data_channel`         | Yes      | Sets the data transmission channel to `"rtm"`. |
+    | `parameters.enable_metrics`       | Optional | Enables collection of agent performance data.  |
+    | `parameters.enable_error_message` | Optional | Enables reporting of agent error events.       |
+
+    After a successful request, the agent joins the specified RTC channel and the user can begin interacting with it.
+
+1. **Unsubscribe from the channel**
+
+    After each agent session ends, unsubscribe from channel messages to release subtitle-related resources.
+
+    <CodeBlock language="swift" showLineNumbers>
+    {`// Unsubscribe from channel messages
+    convoAIAPI.unsubscribeMessage(channelName: channelName) { error in
+        if let error = error {
+            print("Unsubscription failed: \(error.message)")
+        } else {
+            print("Unsubscribed successfully")
+        }
+    }`}
     </CodeBlock>
 
 1. **Release resources**
 
-    At the end of each call, use the `reset` method to clean up the cache.
+    At the end of each call, use the `destroy` method to clean up the cache.
 
     <CodeBlock language="swift" showLineNumbers>
-    {`subRenderController.reset()`}
+    {`convoAIAPI.destroy()`}
     </CodeBlock>

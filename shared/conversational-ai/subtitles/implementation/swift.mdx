@@ -4,9 +4,47 @@ import CodeBlock from '@theme/CodeBlock';
 
     Copy the [`ConversationalAIAPI`](https://github.com/AgoraIO-Community/Conversational-AI-Demo/tree/main/iOS/Scenes/ConvoAI/ConvoAI/ConvoAI/Classes/ConversationalAIAPI) folder to your project and import the toolkit before calling the toolkit APIs. Refer to [Folder structure](#folder-structure) to understand the role of each file.
 
-1. **Implement subtitle UI rendering logic**
+1. **Create a toolkit instance**
 
-    To render subtitles in your app’s UI, implement a `UIViewController` class that conforms to the `ConversationalAIAPIEventHandler` protocol. Within this class, implement the `handleTranscriptionUpdate` method to update your UI based on transcription events.
+    Create a configuration object with the <Vg k="VSDK"/> and <Vg k="SIG" /> engine instances. Set the subtitle rendering mode, then use the configuration to create a toolkit instance.
+
+    <CodeBlock language="swift" showLineNumbers>
+    {`// Create a configuration object for the RTC and RTM instances
+    let config = ConversationalAIAPIConfig(
+        rtcEngine: rtcEngine, 
+        rtmEngine: rtmEngine,
+        /**
+        * Set the subtitle rendering mode. Available options:
+        * - .words: Word-by-word rendering mode. The subtitle content received from the callback 
+        *   is rendered to the UI one word at a time.
+        * - .text: Sentence-by-sentence rendering mode. The full subtitle content from the callback 
+        *   is rendered to the UI at once.
+        */
+        renderMode: .words, 
+        enableLog: true
+    )
+
+    // Create the component instance
+    convoAIAPI = ConversationalAIAPIImpl(config: config)`}
+    </CodeBlock>
+
+1. **Subscribe to the channel**
+
+    Subtitles are delivered through <Vg k="SIG" /> channel messages. To receive subtitle data, call `subscribeMessage` before starting the agent session.
+
+    <CodeBlock language="swift" showLineNumbers>
+    {`convoAIAPI.subscribeMessage(channelName: channelName) { error in
+        if let error = error {
+            print("Subscription failed: \\(error.message)")
+        } else {
+            print("Subscription successful")
+        }
+    }`}
+    </CodeBlock>
+    
+1. **Receive subtitles**
+
+    Call the `addHandler` method to register and implement the subtitle transcription callback:
 
     <CodeBlock language="swift" showLineNumbers>
     {`// Make your class conform to the ConversationalAIAPIEventHandler protocol
@@ -14,6 +52,13 @@ import CodeBlock from '@theme/CodeBlock';
         
         // Transcription cache used for deduplication
         private var transcriptionCache: [Int: String] = [:]
+        
+        func onTranscriptionUpdated(agentUserId: String, transcription: Transcription) {
+            // Listen for transcription content updates to display real-time subtitle transcriptions
+            DispatchQueue.main.async {
+                self.handleTranscriptionUpdate(transcription)
+            }
+        }
         
         private func handleTranscriptionUpdate(_ transcription: Transcription) {
             // Deduplication: Avoid displaying duplicate content
@@ -51,93 +96,30 @@ import CodeBlock from '@theme/CodeBlock';
                     userInputLabel.text = transcription.text
                     transcriptionCache.removeValue(forKey: cacheKey)
                 case .interrupted:
-                    // User transcription was interrupted
+                    // User speech was interrupted
                     userInputLabel.text = transcription.text
                     transcriptionCache.removeValue(forKey: cacheKey)
                     print("User transcription interrupted")
                 }
             }
         }
-    }`}
-    </CodeBlock>
-
-1. **Create a subtitle processing toolkit instance**
-
-    To enable subtitle transcription, first create configuration objects for the <vg k="VSDK"/> engine and <Vg k="SIG" /> instances. Then set the subtitle rendering mode, and finally, create the Conversational AI component instance.
-
-    <CodeBlock language="swift" showLineNumbers>
-    {`// Create a configuration object for the RTC and RTM instances
-    let config = ConversationalAIAPIConfig(
-        rtcEngine: rtcEngine, 
-        rtmEngine: rtmEngine,
-        /**
-        * Set the subtitle rendering mode. Available options:
-        * - .words: Word-by-word rendering mode. The subtitle content received from the callback 
-        *   is rendered to the UI one word at a time.
-        * - .text: Sentence-by-sentence rendering mode. The full subtitle content from the callback 
-        *   is rendered to the UI at once.
-        */
-        renderMode: .words, 
-        enableLog: true
-    )
-
-    /// Create the component instance
-    convoAIAPI = ConversationalAIAPIImpl(config: config)`}
-    </CodeBlock>
-
-1. **Receive subtitles**
-
-    To receive and render real-time subtitles in your UI:
-
-    1. Conform to the `IConversationSubtitleCallback` protocol.
-    2. Implement the `onTranscriptionUpdated` method to handle subtitle updates.
-    3. Register the callback using the `addHandler` method.
-    4. Process and display the transcription using a helper like `handleTranscriptionUpdate`.
-
-    <CodeBlock language="swift" showLineNumbers>
-    {`func onTranscriptionUpdated(agentUserId: String, transcription: Transcription) {
-        // Listen for transcription updates to display subtitles in real time
-        DispatchQueue.main.async {
-            self.handleTranscriptionUpdate(transcription)
-        }
     }
-    
-    // Register the event callback handler
+    // Register event callback
     convoAIAPI.addHandler(handler: self)`}
     </CodeBlock>
-    <Admonition type="info" info="Tip">
-    Always update the UI on the main thread to prevent layout or rendering issues.
-    </Admonition>
 
+1. **Add a Conversational AI agent to the channel**
 
-1. **Subscribe to the channel**
+    To [start a <Vpd k="AGENT" />](/conversational-ai/rest-api/join), configure the following parameters in your `POST` request:
 
-    Subtitles are delivered through <Vg k="SIG"/> channel messages. To receive subtitle data, you must subscribe to channel messages before starting an agent session.
+    | Parameter       | Description   | Required |
+    | ----------------| ------------- | -------- |
+    | `advanced_features.enable_rtm: true`    | Starts the <Vg k="SIG" /> service | Yes  |
+    | `parameters.data_channel: "rtm"`  | Enables <Vg k="SIG" /> as the data transmission channel | Yes |
+    | `parameters.enable_metrics: true`  | Enables agent performance data collection    | Optional |
+    | `parameters.enable_error_message: true` | Enables reporting of agent error events  | Optional |
 
-    Call the `subscribeMessage` method to subscribe to the channel:
-
-    <CodeBlock language="swift" showLineNumbers>
-    {`convoAIAPI.subscribeMessage(channelName: channelName) { error in
-        if let error = error {
-            print("Subscription failed: \(error.message)")
-        } else {
-            print("Subscription successful")
-        }
-    }`}
-    </CodeBlock>
-
-1. **Agent joins the channel**
-
-    To create a conversational agent interface, send a `POST` request with the following parameters:
-
-    | Parameter                         | Required | Description                                    |
-    | --------------------------------- | -------- | ---------------------------------------------- |
-    | `advanced_features.enable_rtm`    | Yes      | Enables the RTM (Real-Time Messaging) service. |
-    | `parameters.data_channel`         | Yes      | Sets the data transmission channel to `"rtm"`. |
-    | `parameters.enable_metrics`       | Optional | Enables collection of agent performance data.  |
-    | `parameters.enable_error_message` | Optional | Enables reporting of agent error events.       |
-
-    After a successful request, the agent joins the specified RTC channel and the user can begin interacting with it.
+    After a successful response, the agent joins the specified <Vg k="VSDK"/> channel and is ready to interact with the user.
 
 1. **Unsubscribe from the channel**
 
@@ -147,7 +129,7 @@ import CodeBlock from '@theme/CodeBlock';
     {`// Unsubscribe from channel messages
     convoAIAPI.unsubscribeMessage(channelName: channelName) { error in
         if let error = error {
-            print("Unsubscription failed: \(error.message)")
+            print("Unsubscription failed: \\(error.message)")
         } else {
             print("Unsubscribed successfully")
         }
@@ -158,6 +140,6 @@ import CodeBlock from '@theme/CodeBlock';
 
     At the end of each call, use the `destroy` method to clean up the cache.
 
-    <CodeBlock language="swift" showLineNumbers>
+    <CodeBlock language="swift" >
     {`convoAIAPI.destroy()`}
     </CodeBlock>

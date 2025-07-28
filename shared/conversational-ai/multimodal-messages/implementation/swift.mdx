@@ -13,14 +13,6 @@ import CodeBlock from '@theme/CodeBlock';
     let config = ConversationalAIAPIConfig(
         rtcEngine: rtcEngine, 
         rtmEngine: rtmEngine,
-        /**
-        * Set the subtitle rendering mode. Available options:
-        * - .words: Word-by-word rendering mode. The subtitle content received from the callback 
-        *   is rendered to the UI one word at a time.
-        * - .text: Sentence-by-sentence rendering mode. The full subtitle content from the callback 
-        *   is rendered to the UI at once.
-        */
-        renderMode: .words, 
         enableLog: true
     )
 
@@ -42,24 +34,12 @@ import CodeBlock from '@theme/CodeBlock';
     }`}
     </CodeBlock>
     
-1. **Receive subtitles**
+1. **Register callback**
 
-    Call the `addHandler` method to register and implement the subtitle transcription callback:
+    Call the `addHandler` method to register your implementation of the callback.
 
     <CodeBlock language="swift" showLineNumbers>
     {`convoAIAPI.addHandler(handler: self)`}
-    </CodeBlock>
-
-1. **Implement subtitle UI rendering logic**
-
-    Implement the `ConversationalAIAPIEventHandler` protocol in your subtitle UI module, and use the `onTranscriptionUpdated` method to handle and render subtitles to the UI.
-
-    <CodeBlock language="swift" showLineNumbers>
-    {`extension ChatViewController: ConversationalAIAPIEventHandler {
-        public func onTranscriptionUpdated(agentUserId: String, transcription: Transcription) {
-            // Handle subtitle data and update the UI here
-        }
-    }`}
     </CodeBlock>
 
 1. **Add a Conversational AI agent to the channel**
@@ -74,6 +54,109 @@ import CodeBlock from '@theme/CodeBlock';
     | `parameters.enable_error_message: true` | Enables reporting of agent error events  | Optional |
 
     After a successful response, the agent joins the specified <Vg k="VSDK"/> channel and is ready to interact with the user.
+
+1. **Send an image**
+
+    Call the `chat` method to send a picture message. The following example sends a picture using a URL:
+
+    <CodeBlock language="swift" showLineNumbers>
+    {`let uuid = UUID().uuidString
+    let imageUrl = "https://example.com/image.jpg"
+    let message = ImageMessage(uuid: uuid, url: imageUrl)
+    self.convoAIAPI.chat(agentUserId: "\(agentUid)", message: message) { [weak self] error in
+        if let error = error {
+            print("send image failed, error: \\(error.message)")
+        } else {
+            print("send image success")
+        }
+    }`}
+    </CodeBlock>
+
+    <Admonition type="info">
+    The callback of the `chat` completion interface only indicates whether the sending request is successful, and does not reflect the actual processing status of the message.
+    </Admonition>
+
+
+1. **Receive image sending response**
+
+    The success of sending a picture message is confirmed by the picture message receipt callback `onMessageReceiptUpdated`. If sending fails, the agent error callback `onAgentError` is fired. The `uuid` value in the callback identifies the  uploaded picture.
+
+    - Image sent successfully
+
+        When you receive the `onMessageReceiptUpdateda` callback, follow the steps below to parse the JSON message in the callback and obtain the image's `uuid` and status information to confirm that the image was sent successfully:
+
+        <CodeBlock language="swift" showLineNumbers> 
+        {`struct PictureInfo: Codable {
+            let uuid: String
+        }
+
+        public func onMessageReceiptUpdated(agentUserId: String, messageReceipt: MessageReceipt) {
+            // Step 1: Check if the message type is Context
+            if messageReceipt.type == .context {
+                guard let messageData = messageReceipt.message.data(using: .utf8) else {
+                    return
+                }
+                // Step 2: Parse receipt.message as a JSON object
+                do {
+                    let imageInfo = try JSONDecoder().decode(PictureInfo.self, from: messageData)
+                    // Step 3: Check if it contains the uuid field
+                    let uuid = imageInfo.uuid
+                    // Update the UI to show the sent status
+                    self.messageView.viewModel.updateImageMessage(uuid: uuid, state: .success)
+                } catch {
+                    print("Failed to decode PictureInfo: \\(error)")
+                }
+
+                print("Failed to parse message string from image info message")
+                return
+            }
+        }`}
+        </CodeBlock>
+
+    - Image sending failed
+
+        If you receive the `onAgentError` callback, follow the steps below to parse the JSON message in the callback to obtain the image's `uuid` and status information to confirm that the image sending failed:
+
+        <CodeBlock language="swift" showLineNumbers> 
+        {`struct ImageUploadError: Codable {
+            let code: Int
+            let message: String
+        }
+
+        struct ImageUploadErrorResponse: Codable {
+            let uuid: String
+            let success: Bool
+            let error: ImageUploadError?
+        }
+
+        public func onAgentError(agentUserId: String, error: ModuleError) {
+            // Step 1: Check if the message type is Context
+            if error.type == .context {
+                // Step 2: Parse error.message as a JSON object
+                if let messageData = error.message.data(using: .utf8) {
+                    do {
+                        // Step 3: Parse error.message as a JSON object
+                        let errorResponse = try JSONDecoder().decode(ImageUploadErrorResponse.self, from: messageData)
+                        // Step 4: Check if the uuid field exists
+                        if !errorResponse.success {
+                            let errorMessage = errorResponse.error?.message ?? "Unknown error"
+                            let errorCode = errorResponse.error?.code ?? 0
+
+                            print("Image upload failed: \\(errorMessage) (code: \\(errorCode))")
+
+                            // Update the UI
+                            DispatchQueue.main.async { [weak self] in
+                                self?.messageView.viewModel.updateImageMessage(uuid: errorResponse.uuid, state: .failed)
+                            }
+                        }
+                    } catch {
+                        print("<<< [onAgentError] Failed to parse error message JSON: \\(error)")
+                    }
+                }
+            }
+            addLog("<<< [onAgentError] error: \\(error)")
+        }`}
+        </CodeBlock>
 
 1. **Unsubscribe from the channel**
 

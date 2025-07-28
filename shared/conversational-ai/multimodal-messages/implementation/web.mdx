@@ -11,19 +11,8 @@ import CodeBlock from '@theme/CodeBlock';
     <CodeBlock language="js" showLineNumbers>
     {`// Initialize the component
     ConversationalAIAPI.init({
-      rtcEngine,
-      rtmEngine,
-
-      /**
-      * Set the rendering mode for transcription subtitles. Available options:
-      * - ESubtitleHelperMode.WORD: Word-by-word rendering mode. The subtitle content received from the callback 
-      *   is rendered to the UI one word at a time.
-      * - ESubtitleHelperMode.TEXT: Sentence-by-sentence rendering mode. The full subtitle content from the callback 
-      *   is rendered to the UI at once.
-      *
-      * If not specified, the mode is determined automatically based on the message, or it can be set manually.
-      */
-      renderMode: ESubtitleHelperMode.WORD, 
+        rtcEngine,
+        rtmEngine,
     })
 
     // Get the API instance (singleton)
@@ -37,42 +26,14 @@ import CodeBlock from '@theme/CodeBlock';
     {`conversationalAIAPI.subscribeMessage(channel_name)`}
     </CodeBlock>
 
-1. **Receive subtitles**
 
-    Register an event listener to receive subtitle transcription updates:
+1. **Register callbacks**
 
-    <CodeBlock language="ts" showLineNumbers>
-    {`import * as React from "react"
-    import {
-        type IUserTranscription,
-        type IAgentTranscription,
-        type ISubtitleHelperItem,
-        EConversationalAIAPIEvents,
-    } from "@/conversational-ai-api/type"
-    import { ConversationalAIAPI } from "@/conversational-ai-api"
-
-    // Listen for transcription content updates to display subtitle transcription content in real time
-    export const ChatHistory = () => {
-    const [chatHistory, setChatHistory] = React.useState
-        ISubtitleHelperItem<Partial<IUserTranscription | IAgentTranscription>>[]
-    >([])
-
-    const conversationalAIAPI = ConversationalAIAPI.getInstance()
-    conversationalAIAPI.on(
-        EConversationalAIAPIEvents.TRANSCRIPTION_UPDATED,
-        setChatHistory
-    )
-
-    return (
-        <>
-        {chatHistory.map((message) => (
-            <div key={\`\${message.uid}-\${message.turn_id}\`}>
-            {message.uid}: {message.text}
-            </div>
-        ))}
-        </>
-    )
-    }`}
+    <CodeBlock language="js" >
+    {`// Listen for message receipt updates
+    conversationalAIAPI.on(EConversationalAIAPIEvents.MESSAGE_RECEIPT_UPDATED, handleMessageReceiptUpdated)
+    // Listen for agent error events
+    conversationalAIAPI.on(EConversationalAIAPIEvents.AGENT_ERROR, onAgentError)`}
     </CodeBlock>
 
 1. **Add a Conversational AI agent to the channel**
@@ -88,6 +49,86 @@ import CodeBlock from '@theme/CodeBlock';
 
     After a successful response, the agent joins the specified <Vg k="VSDK"/> channel and is ready to interact with the user.
 
+1. **Send an image**
+
+    Call the `chat` method to send a picture message. The following example sends a picture using a URL:
+
+    <CodeBlock language="js" showLineNumbers>
+    {`import { EChatMessageType } from '@/conversational-ai-api/type'
+
+    // Send picture message
+    await conversationalAIAPI.chat(\`\${agent_rtc_uid}\`, {
+            messageType: EChatMessageType.IMAGE,
+            url: "https://example.com/image.jpg",
+            uuid: genUUID()
+            })`}
+    </CodeBlock>
+
+    <Admonition type="info">
+    The callback of the `chat` completion interface only indicates whether the sending request is successful, and does not reflect the actual processing status of the message.
+    </Admonition>
+
+1. **Receive image sending response**
+
+    The success of sending a picture message is confirmed by the picture message receipt callback `onMessageReceiptUpdated`. If sending fails, the agent error callback `onAgentError` is fired. The `uuid` value in the callback identifies the  uploaded picture.
+
+    - Image sent successfully
+
+        When you receive the `handleMessageReceiptUpdated` callback, follow the steps below to parse the JSON message in the callback and obtain the image's `uuid` and status information to confirm that the image was sent successfully:
+
+        <CodeBlock language="js" showLineNumbers> 
+        {`import { TMessageReceipt, EModuleType } from '@/conversational-ai-api/type'
+
+        // Handle the send status of an image message
+        const handleMessageReceiptUpdated = (agentRtcUid: string, messageReceipt: TMessageReceipt) => {
+            // Check if the message type is Context
+            if (messageReceipt.type !== EModuleType.CONTEXT) {
+                return
+            }
+            // Parse receipt.message as a JSON object
+            try {
+                const receiptMessage = JSON.parse(messageReceipt.message)
+                // Check if the uuid field exists
+                const uuid = receiptMessage.uuid
+                if (!uuid) {
+                    return
+                }
+                // Log message send success
+                console.log(\`Message sent successfully, UUID: \${uuid}\`) // Replace this with actual UI or TTS logic
+            } catch (error) {
+                console.error('Failed to parse message:', error)
+            }
+        }`}
+        </CodeBlock>
+
+    - Image sending failed
+
+        If you receive the `handleAgentError` callback, follow the steps below to parse the JSON message in the callback to obtain the image's `uuid` and status information to confirm that the image sending failed:
+
+        <CodeBlock language="js" showLineNumbers> 
+        {`import { EModuleType, TModuleError } from '@/conversational-ai-api/type'
+
+        // Handle image message send failure
+        const handleAgentError = (agentRtcUid: string, error: TModuleError) => {
+            // Check if the message type is Context
+            if (error.type !== EModuleType.CONTEXT) {
+                return
+            }
+            // Parse error.message as a JSON object
+            try {
+                const errorMessage = JSON.parse(error.message)
+                // Check if the uuid field exists
+                const uuid = errorMessage.uuid
+                if (!uuid) {
+                    return
+                }
+                // Log message send failure
+                console.error(\`Message send failed, UUID: \${uuid}, Error info: \${errorMessage.error}\`) // Replace this with actual UI or TTS logic
+            } catch (error) {
+                console.error('Failed to parse error message:', error)
+            }
+        }`}
+        </CodeBlock>
 
 1. **Unsubscribe from the channel**
 

@@ -1,0 +1,168 @@
+import CodeBlock from '@theme/CodeBlock';
+
+1. **Integrate the toolkit**
+
+    Copy the [`convoaiApi`](https://github.com/AgoraIO-Community/Conversational-AI-Demo/tree/main/Android/scenes/convoai/src/main/java/io/agora/scene/convoai/convoaiApi) folder to your project and import the toolkit before calling the toolkit API. Refer to [Folder structure](#folder-structure) to understand the role of each file.
+
+1. **Create a toolkit instance**
+
+    Create a configuration object with the <Vg k="VSDK"/> and <Vg k="SIG" /> engine instances. Use the configuration to create a toolkit instance.
+
+    <CodeBlock language="kotlin" showLineNumbers>
+    {`// Create configuration objects for the RTC and RTM instances
+    val config = ConversationalAIAPIConfig(
+        rtcEngine = rtcEngineInstance,
+        rtmClient = rtmClientInstance,
+        enableLog = true
+    )
+
+    // Create component instance
+    val api = ConversationalAIAPIImpl(config)`}
+    </CodeBlock>
+
+1. **Subscribe to the channel**
+
+    Agent-related events are delivered through <Vg k="SIG" /> channel messages. To receive these events, call `subscribeMessage` before starting the agent session.
+    
+    <CodeBlock language="kotlin" showLineNumbers>
+    {`api.subscribeMessage("channelName") { error ->
+        if (error != null) {
+            // Handle error
+        }
+    }`}
+    </CodeBlock>
+
+1. **Register callback**
+
+    Call the `addHandler` method to register your implementation of the callback.
+
+    <CodeBlock language="kotlin" >
+    {`api.addHandler(covEventHandler)`}
+    </CodeBlock>
+
+1. **Add a Conversational AI agent to the channel**
+
+    To [start a <Vpd k="AGENT" />](/conversational-ai/rest-api/join), configure the following parameters in your `POST` request:
+
+    | Parameter       | Description   | Required |
+    | ----------------| ------------- | -------- |
+    | `advanced_features.enable_rtm: true`    | Starts the <Vg k="SIG" /> service | Yes  |
+    | `parameters.data_channel: "rtm"`  | Enables <Vg k="SIG" /> as the data transmission channel | Yes |
+    | `parameters.enable_metrics: true`  | Enables agent performance data collection    | Optional |
+    | `parameters.enable_error_message: true` | Enables reporting of agent error events  | Optional |
+
+    After a successful response, the agent joins the specified <Vg k="VSDK"/> channel and is ready to interact with the user.
+
+1. **Send an image**
+
+    Call the `chat` method to send a picture message. The following example sends a picture using a URL:
+
+    <CodeBlock language="kotlin" showLineNumbers>
+    {`val uuid = "unique-image-id-123" // Generate a unique image identifier
+    val imageUrl = "https://example.com/image.jpg" // HTTP/HTTPS URL of the image
+
+    api.chat("agentUserId", ImageMessage(uuid = uuid, imageUrl = imageUrl)) { error ->
+        if (error != null) {
+            Log.e("Chat", "Failed to send image: \${error.errorMessage}")
+        } else {
+            Log.d("Chat", "Image send request successful")
+        }
+    }`}
+    </CodeBlock>
+
+    <Admonition type="info">
+    The callback of the `chat` completion interface only indicates whether the sending request is successful, and does not reflect the actual processing status of the message.
+    </Admonition>
+
+1. **Receive image sending response**
+
+    The success of sending a picture message is confirmed by the picture message receipt callback `onMessageReceiptUpdated`. If sending fails, the agent error callback `onAgentError` is fired. The `uuid` value in the callback identifies the  uploaded picture.
+
+    - Image sent successfully
+
+        When you receive the `onMessageReceiptUpdateda` callback, follow the steps below to parse the JSON message in the callback and obtain the image's `uuid` and status information to confirm that the image was sent successfully:
+
+        <CodeBlock language="kotlin" showLineNumbers> 
+        {`override fun onMessageReceiptUpdated(agentUserId: String, receipt: MessageReceipt) {
+            // Check if the message type is Context
+            if (receipt.type == ModuleType.Context) {
+                try {
+                    // Parse receipt.message as a JSON object
+                    val jsonObject = JSONObject(receipt.message)
+                    
+                    // Check if resource_type is picture
+                    if (jsonObject.has("resource_type") && 
+                        jsonObject.getString("resource_type") == "picture") {
+                        
+                        // Check if the uuid field exists
+                        if (jsonObject.has("uuid")) {
+                            val receivedUuid = jsonObject.getString("uuid")
+                            
+                            // If the uuid matches, it means the image was sent successfully
+                            if (receivedUuid == "your-sent-uuid") {
+                                Log.d("ImageSend", "Image sent successfully: \$receivedUuid")
+                                // Update the UI to show the sent status
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("ImageSend", "Failed to parse message receipt: \${e.message}")
+                }
+            }
+        }`}
+        </CodeBlock>
+
+    - Image sending failed
+
+        If you receive the `onAgentError` callback, follow the steps below to parse the JSON message in the callback to obtain the image's `uuid` and status information to confirm that the image sending failed:
+
+        <CodeBlock language="kotlin" showLineNumbers> 
+        {`override fun onAgentError(agentUserId: String, error: ModuleError) {
+            // Check if the error is of type Context
+            if (error.type == ModuleType.Context) {
+                try {
+                    // Parse error.message as a JSON object
+                    val jsonObject = JSONObject(error.message)
+                    
+                    // Check if resource_type is picture
+                    if (jsonObject.has("resource_type") && 
+                        jsonObject.getString("resource_type") == "picture") {
+                        
+                        // Check if the uuid field exists
+                        if (jsonObject.has("uuid")) {
+                            val failedUuid = jsonObject.getString("uuid")
+                            
+                            // If the uuid matches, it means the image failed to send
+                            if (failedUuid == "your-sent-uuid") {
+                                Log.e("ImageSend", "Image send failed: \$failedUuid")
+                                // Update the UI to show the failed send status
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("ImageSend", "Failed to parse error message: \${e.message}")
+                }
+            }
+        }`}
+        </CodeBlock>
+
+1. **Unsubscribe from the channel**
+
+    After an agent session ends, unsubscribe from channel messages to release resources:
+
+    <CodeBlock language="kotlin" >
+    {`api.unsubscribeMessage("channelName") { error ->
+        if (error != null) {
+            // Handle the error
+        }
+    }`}
+    </CodeBlock>
+
+1. **Release resources**
+
+    At the end of each call, use the `destroy` method to clean up the cache.
+
+    <CodeBlock language="kotlin" >
+    {`api.destroy()`}
+    </CodeBlock>
+

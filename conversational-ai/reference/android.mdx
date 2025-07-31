@@ -12,6 +12,7 @@ The [Android toolkit API](https://github.com/AgoraIO-Community/Conversational-AI
 
 | API                 | Description               |
 |---------------------|------------------------------------|
+| [`chat`](#chat) | Send chat messages to a conversational agent.  |
 | [`addHandler`](#addhandler)        | Registers an event handler to receive agent session events.                 |
 | [`removeHandler`](#removehandler)     | Removes a registered event handler.                |
 | [`subscribeMessage`](#subscribemessage)  | Subscribes to a channel to receive agent conversation events.               |
@@ -20,7 +21,26 @@ The [Android toolkit API](https://github.com/AgoraIO-Community/Conversational-AI
 | [`loadAudioSettings`](#loadaudiosettings) | Sets audio parameters to optimize agent conversation performance.           |
 | [`destroy`](#destroy)           | Destroys the API instance and releases resources.         |
 
-### `addHandler`
+
+### `chat`
+
+Send a message to the agent.
+
+Support for sending different types of messages through the `ChatMessage` sealed class hierarchy:
+
+- `ImageMessage`: Used to send picture messages.
+
+```kotlin
+fun chat(agentUserId: String, message: ChatMessage, completion: (error: ConversationalAIAPIError?) -> Unit)
+```
+
+| Parameter | Type     | Description             |
+|-----------|----------|-------------------------|
+| `agentUserId`	| `String` | Agent user ID. |
+| `message`	| `ChatMessage`	Message object of type ImageMessage. See ChatMessage. |
+| `completion`	| `(error: ConversationalAIAPIError?) -> Unit` | Callback function. `error` is null if the call succeeds, and non-null if it fails. |
+
+### `addHandler`148.5
 
 Registers an event handler to receive agent session events.
 
@@ -97,7 +117,7 @@ fun loadAudioSettings(scenario: Int = Constants.AUDIO_SCENARIO_AI_CLIENT)
 
 | Parameter  | Type   | Description       |
 |------------|--------|------------|
-| `scenario` | `Int`  | Audio scene. Default is `AUDIO_SCENARIO_AI_CLIENT`. Optimized for intelligent agent dialogs. |
+| `scenario` | `Int`  | Audio scene. Default is `AUDIO_SCENARIO_AI_CLIENT`. Optimized for agent dialogs. |
 
 ### `destroy`
 
@@ -113,12 +133,42 @@ fun destroy()
 
 | API                    | Description             |
 |------------------------|----------------------------------|
+| [`onMessageError`](#onmessageerror) | Message processing error callback. |
+| [`onMessageReceiptUpdated`](#onmessagereceiptupdated) | Message receipt update callback. |
 | [`onAgentStateChanged`](#onagentstatechanged)  | Called when the agent’s status changes.          |
 | [`onAgentInterrupted`](#onagentinterrupted)   | Called when an interrupt event occurs.           |
 | [`onAgentMetrics`](#onagentmetrics)       | Called when performance metrics are available.   |
 | [`onAgentError`](#onagenterror)         | Called when an agent error occurs.               |
 | [`onTranscriptionUpdated`](#ontranscriptionupdated) | Called when transcription content is updated. |
 | [`onDebugLog`](#ondebuglog)           | Called for internal debug logging.               |
+
+### `onMessageError`
+
+Message processing error callback.
+
+This callback is triggered when an error occurs during message processing. For example, if a chat message fails to be sent, this callback is triggered and the error message is returned.
+
+```kotlin
+fun onMessageError(agentUserId: String, error: MessageError)
+```
+
+| Parameter     | Type              | Description                        |
+|---------------|-------------------|------------------------------------|
+| `agentUserId`   | `String`       | Agent user ID. |
+| `error`         | `MessageError` | Message error information, including error type and content. See `MessageError` for details. |
+
+### `onMessageReceiptUpdated`
+
+Message receipt update callback.
+
+```kotlin
+fun onMessageReceiptUpdated(agentUserId: String, receipt: MessageReceipt)
+```
+
+| Parameter     | Type              | Description                        |
+|---------------|-------------------|------------------------------------|
+| `agentUserId`   | `String`          | Agent user ID. |
+| `receipt`       | `MessageReceipt`  | Message receipt information. See `MessageReceipt` for details. |
 
 ### `onAgentStateChanged`
 
@@ -280,7 +330,96 @@ data class ModuleError(
 | `message`   | `String`     | Description of the error.       |
 | `timestamp` | `Long`       | Timestamp of the error in milliseconds since Unix epoch (January 1, 1970 UTC).   |
 
+### `ChatMessage`
 
+Sealed base class for all message types sent to agents.
+
+This sealed class hierarchy provides a type-safe way to handle messages of different content types.
+
+```kotlin
+sealed class ChatMessage
+```
+
+### `ImageMessage`
+
+Used to send image content to the agent.
+
+Supports specifying image files via HTTP/HTTPS links.
+
+```kotlin
+data class ImageMessage(
+    val uuid: String,
+    val imageUrl: String,
+) : ChatMessage()
+```
+
+| Parameter   | Type                  | Description  |
+|-------------|-----------------------|--------------|
+| `uuid` | String | Unique identifier for the image message. |
+| `imageUrl` | String? | HTTP/HTTPS image file link, mutually exclusive with `imageBase64`. |
+
+
+### MessageReceipt
+
+`MessageReceipt` represents message receipt information and supports processing multiple media types through `MediaInfo`.
+
+```kotlin
+data class MessageReceipt(
+    val type: ModuleType,
+    val chatMessageType: ChatMessageType,
+    val turnId: Long,
+    val message: String
+)
+```
+
+| Parameter   | Type                  | Description  |
+|-------------|-----------------------|--------------|
+| `type` | ModuleType | Module type. See ModuleType, for example: llm, mllm, tts, context. |
+| `chatMessageType` | ChatMessageType | Message error type. See [ChatMessageType](#chatmessagetype). |
+| `turnId` | Long | Turn ID of the message. |
+| `message` | String | Message content. Must be parsed according to the `type` field:<br/>Context type: usually a JSON string containing resource info. |
+
+### ChatMessageType
+
+Used to distinguish different types of messages in the session system.
+
+```kotlin
+enum class ChatMessageType(val value: String) {
+    Text("text"),
+    Image("picture"),
+    UNKNOWN("unknown");
+
+    companion object {
+        fun fromValue(value: String): ChatMessageType {
+            return ChatMessageType.entries.find { it.value == value } ?: UNKNOWN
+        }
+    }
+}
+```
+
+| Parameter   | Type                  | Description  |
+|-------------|-----------------------|--------------|
+| `value` | `String` | The string value to match against. |
+
+### MessageError
+
+Used to process and report message error information.
+
+```kotlin
+data class MessageError(
+    val chatMessageType: ChatMessageType,
+    val code: Int,
+    val message: String,
+    val timestamp: Long
+)
+```
+
+| Parameter   | Type                  | Description  |
+|-------------|-----------------------|--------------|
+| `chatMessageType`   | `ChatMessageType` | Message error type. See `ChatMessageType` for details. |
+| `code`              | `Int`             | Error code used to identify specific error scenarios. |
+| `message`           | `String`          | Error description providing detailed explanation, usually a JSON string containing resource information. |
+| `timestamp`         | `Long`            | Timestamp of when the event occurred (milliseconds since January 1, 1970 UTC). |
 
 ### `Transcription`
 Represents a full transcribed message used to render the UI.

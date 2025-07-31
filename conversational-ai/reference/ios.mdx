@@ -12,6 +12,7 @@ The [iOS toolkit API](https://github.com/AgoraIO-Community/Conversational-AI-Dem
 
 | API                 | Description               |
 |---------------------|------------------------------------|
+| [`chat`](#chat) | Send a message to the agent.  |
 | [`addHandler`](#addhandler)        | Add an event handler to receive the callback.                 |
 | [`removeHandler`](#removehandler)     | Removes an event handler.                |
 | [`subscribeMessage`](#subscribemessage)  | Subscribe to channel messages.               |
@@ -20,6 +21,22 @@ The [iOS toolkit API](https://github.com/AgoraIO-Community/Conversational-AI-Dem
 | [`loadAudioSettings`[1/2]](#loadaudiosettings-12) | Set audio best practice parameters for optimal performance.           |
 | [`loadAudioSettings`[2/2]](#loadaudiosettings-22) | Set audio best practice parameters for specific scenarios.           |
 | [`destroy`](#destroy)           | Destroys the API instance and releases all resources.         |
+
+### `chat`
+
+Sends a message to the agent for processing.
+
+You can use this method to send text and image messages to the agent, and the completion callback indicates the success or failure of the operation.
+
+```objc
+@objc func chat(agentUserId: String, message: ChatMessage, completion: @escaping (ConversationalAIAPIError?) -> Void)
+```
+
+| Parameter | Type     | Description             |
+|-----------|----------|-------------------------|
+| `agentUserId`  | `String`  | The RTM user ID of the agent. Must be globally unique. |
+| `message`      | `ChatMessage`   | Message object containing the image URL. See `ChatMessage` for details. |
+| `completion`   | `@escaping (ConversationalAIAPIError?) -> Void`   | Callback function invoked when the operation completes. <li>Returns nil on success.</li> <li>Returns error information on failure, see ConversationalAIAPIError for details.</li> |
 
 ### `addHandler`
 
@@ -152,11 +169,42 @@ Calling this method destroys the current API instance and releases all resources
 
 | API                    | Description             |
 |------------------------|----------------------------------|
+| [`onMessageError`](#onmessageerror) | A callback triggered when an error occurs during message processing. |
+| [`onMessageReceiptUpdated`](#onmessagereceiptupdated) | Image message information update callback. |
 | [`onAgentStateChanged`](#onagentstatechanged)  | Callback when the agent status changes.          |
 | [`onAgentInterrupted`](#onagentinterrupted)   | The callback triggered when an interrupt event occurs.           |
 | [`onAgentMetrics`](#onagentmetrics)       | A callback that is triggered when performance metrics are available.   |
 | [`onAgentError`](#onagenterror)         | Callback when an error occurs in the AI module.               |
 | [`onTranscriptionUpdated`](#ontranscriptionupdated) | Transcription content update callback. |
+
+### `onMessageError`
+
+This callback is triggered when an error occurs during message processing. For example, if sending a chat message fails, an error message is returned.
+
+```objc
+@objc func onMessageError(agentUserId: String, error: MessageError)
+```
+
+| Parameter       | Type             | Description |
+|----------------|------------------|-------------|
+| `agentUserId`  | `String`         | RTM user ID of the agent. |
+| `error`        | `MessageError`   | Message error object containing the error type and details.
+
+### `onMessageReceiptUpdated`
+
+Image message information update callback.
+
+This callback is triggered when an image is processed in a session and provides image metadata.
+
+```objc
+@objc func onMessageReceiptUpdated(agentUserId: String, messageReceipt: MessageReceipt)
+```
+
+| Parameter         | Type                | Description |
+|------------------|---------------------|-------------|
+| `agentUserId`    | `String`            | RTM user ID of the agent. |
+| `messageReceipt` | `MessageReceipt`    | Message receipt containing the type, module, and image information. See `MessageReceipt` for more details. |
+
 
 ### `onAgentStateChanged`
 
@@ -168,8 +216,8 @@ This callback is triggered when the agent state changes, such as switching from 
 @objc func onAgentStateChanged(agentUserId: String, event: StateChangeEvent)
 ```
 
-| Parameter     | Type              | Description                        |
-|---------------|-------------------|------------------------------------|
+| Parameter     | Type     | Description             |
+|---------------|----------|-------------------------|
 | `agentUserId` | `String`          | The RTM user ID of the agent.      |
 | `event`       | `StateChangeEvent`| Agent status change event, including status, round ID, timestamp and reason. See [`StateChangeEvent`](#statechangeevent). |
 
@@ -244,6 +292,120 @@ This callback is triggered when the speech transcription content in the session 
 | `transcription` | `Transcription`  | Transcript data, including text content, status and metadata. See [`Transcription`](#transcription). |
 
 ## Structures
+
+### `ChatMessage`
+
+Defines a common interface for different types of chat messages.
+
+```objc
+@objc public protocol ChatMessage {
+    var messageType: ChatMessageType { get }
+}
+```
+
+| Parameter     | Type     | Description             |
+|---------------|----------|-------------------------|
+| `messageType` | `ChatMessageType` | Message type. See [`ChatMessageType`](#chatmessagetype) for details. |
+
+### `ImageMessage`
+
+Used to send image content to an agent.
+
+The following image formats are supported:
+
+- `url`: An HTTP/HTTPS link to the image file (recommended for large images).
+- `base64`: Base64-encoded image data.
+
+    <Admonition type="info">When using `base64`, ensure the entire message size (including the JSON structure) is less than 32KB to comply with the RTM message channel limit. For larger images, use a URL.</Admonition>
+
+Example usage:
+
+- Image URL: `ImageMessage(uuid = "img_123", url = "https://example.com/image.jpg")`
+- Image Base64: `ImageMessage(uuid = "img_456", base64 = "data:image/jpeg;base64,...")`
+
+```objc
+@objc public class ImageMessage: NSObject, ChatMessage {
+    @objc public let messageType: ChatMessageType = .image
+    @objc public let uuid: String
+    @objc public let url: String?
+    @objc public let base64: String?
+}
+```
+
+| Parameter   | Type                 | Description |
+|------------|----------------------|-------------|
+| `messageType` | `ChatMessageType` | Type of the message. See `ChatMessageType` for more details. |
+| `uuid`        | `String`          | Unique identifier for the image message. The agent uses this UUID to identify the image. |
+| `url`         | `String?`         | HTTP/HTTPS link to the image file. The agent will download and process the image from this link. <br/><Admonition type="info"> Mutually exclusive with `base64`.</Admonition> |
+| `base64`      | `String?`         | Base64-encoded image data. When using this parameter, the total message size is limited to 32KB. <br/><Admonition type="info"> Mutually exclusive with `url`; total message size must not exceed 32KB.</Admonition> |
+
+### `MessageReceipt`
+
+The `MessageReceipt` model is used to track message processing status and metadata.
+
+
+```objc
+@objc public class MessageReceipt: NSObject {
+    @objc public let moduleType: ModuleType
+    @objc public let messageType: ChatMessageType
+    @objc public let message: String
+    @objc public let turnId: Int
+}
+```
+
+| Parameter     | Type               | Description |
+|---------------|--------------------|-------------|
+| `moduleType`  | `ModuleType`       | Module type. See `ModuleType` for more details. |
+| `messageType` | `ChatMessageType`  | Type of the message. See `ChatMessageType` for more details. |
+| `message`     | `String`           | Image information. |
+| `turnId`      | `Int`              | Conversation turn ID, used to identify a specific turn in the session. |
+
+
+### `MessageError`
+
+A data class for processing and reporting message errors.
+
+Contains the error type, error code, error description, and timestamp.
+
+```objc
+@objc public class MessageError: NSObject {
+    @objc public let type: ChatMessageType
+    @objc public let code: Int
+    @objc public let message: String
+    @objc public let timestamp: TimeInterval
+    @objc public init(type: ChatMessageType, code: Int, message: String, timestamp: TimeInterval)
+}
+```
+
+| Parameter     | Type               | Description |
+|---------------|--------------------|-------------|
+| `type`    | `ChatMessageType` | Message error type. See ChatMessageType. |
+| `code`    | `Int`             | Error code to identify specific error conditions. |
+| `message` | `String`          | Error description, providing detailed error explanation, usually a JSON string containing resource information. |
+| `timestamp` | `TimeInterval` | Timestamp of the error (milliseconds since January 1, 1970, UTC). |
+
+### `TextMessage`
+
+Used to send natural language text content to an agent.
+
+Supports priority control and interruptibility settings, enabling fine-grained control over how the AI processes and responds to text input.
+
+```objc
+@objc public class TextMessage: NSObject, ChatMessage {
+    @objc public let messageType: ChatMessageType = .text
+    @objc public let priority: Priority
+    @objc public let responseInterruptable: Bool
+    @objc public let text: String?
+}
+```
+
+| Parameter     | Type               | Description |
+|---------------|--------------------|-------------|
+| `messageType`         | `ChatMessageType` | Message type. See [`ChatMessageType`](#chatmessagetype). |
+| `priority`            | `Priority`        | Message handling priority. See `Priority`. |
+| `responseInterruptable` | `Bool`          | Whether the response to this message can be interrupted by a higher-priority message:<li>`YES` (default): Response can be interrupted.</li><li>`NO`: Response cannot be interrupted.</li> |
+| `text`                | `String?`         | Text content of the message. |
+
 
 ### `StateChangeEvent`
 
@@ -437,7 +599,21 @@ Class for logging and communicating error information.
 
 ## Enum classes
 
-### Priority
+### `ChatMessageType`
+
+Message type enumeration.
+
+Used to distinguish different message types within a session.
+
+
+| Value | Description               |
+|------------|---------------------------|
+| `text`     | (0): Text message type.   |
+| `image`    | (1): Image message type.  |
+| `unknown`  | (2): Unknown message type.|
+
+
+### `Priority`
 
 Controls the priority with which the agent processes messages.
 
@@ -447,7 +623,7 @@ Controls the priority with which the agent processes messages.
 | `append`    | (1): Medium priority. The agent will queue the message after the current interaction is completed, suitable for subsequent questions. |
 | `ignore`    | (2): Low priority. If the agent is currently interacting, the message will be discarded and only processed when idle, suitable for optional content. |
 
-### AgentState
+### `AgentState`
 
 Represents the different states of the agent during the dialogue.
 
@@ -460,7 +636,7 @@ Represents the different states of the agent during the dialogue.
 | `speaking`  | (4): Speaking state, the agent is speaking or outputting audio content. |
 | `unknown`   | (5): Unknown state, used for fallback processing of unrecognized states. |
 
-### ModuleType
+### `ModuleType`
 
 Represents different types of AI modules for performance monitoring.
 
@@ -471,7 +647,7 @@ Represents different types of AI modules for performance monitoring.
 | `tts`      | (2): Text-to-speech synthesis.               |
 | `unknown`  | (3): Unknown module type.                    |
 
-### MessageType
+### `MessageType`
 
 Used to distinguish different types of messages in the session system.
 
@@ -484,7 +660,7 @@ Used to distinguish different types of messages in the session system.
 | `state`     | Status message type.           |
 | `unknown`   | Unknown message type.          |
 
-### TranscriptionRenderMode
+### `TranscriptionRenderMode`
 
 Transcript rendering mode.
 
@@ -493,7 +669,7 @@ Transcript rendering mode.
 | `words` | (0): Word-by-word transcription rendering mode, updated every time a word is processed. |
 | `text`  | (1): Sentence-by-sentence transcription rendering mode, updated when the complete sentence is ready. |
 
-### TranscriptionType
+### `TranscriptionType`
 
 Distinguish the source type of the transcribed text.
 
@@ -504,7 +680,7 @@ By identifying whether the transcribed text comes from an agent or a user, it he
 | `agent`  | Transcript generated by the agent. Usually contains the responses and utterances of the agent assistant, and is used to render the agent voice in the conversational interface. |
 | `user`   | Transcribed text from the user. Contains the text converted from the user's voice input, which is used to display the user's voice content in the conversation process. |
 
-### TranscriptionStatus
+### `TranscriptionStatus`
 
 Indicates the current state of the transcription in the conversation flow.
 
@@ -516,7 +692,7 @@ Used to track and manage the lifecycle status of transcripts.
 | `end`         | (1): Transcription completed. This status is set when text generation ends normally, indicating the natural end of the transcription segment. |
 | `interrupted` | (2): Transcription interrupted. This state is set when text generation is stopped prematurely, which is applicable when it is interrupted by a higher priority message. |
 
-### ConversationalAIAPIErrorType
+### `ConversationalAIAPIErrorType`
 
 Used to distinguish different error types in conversational agent systems.
 

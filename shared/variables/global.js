@@ -1,7 +1,8 @@
 
 export const COMPANY = 'Agora';
 export const URL_ROOT = 'docs.agora.io/en';
-  export const AGORA_BACKEND = `${COMPANY} SD-RTN™`;
+export const AGORA_BACKEND = `${COMPANY} SDRTN®`;
+export const AB_NAME = `Software-Defined Real-Time Network (SDRTN®)`;
 export const CLIENT = platform => (platform === 'unity' ? 'game' : 'app');
 export const VSDK_RELEASE_API = '4.x'
 export const VSDK_PREVIOUS_RELEASE_API = '3.x'

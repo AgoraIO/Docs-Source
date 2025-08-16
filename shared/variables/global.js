@@ -91,7 +91,7 @@ export const RTES = `${RTE} SDK`;
 export const APP_ID_LINK = `http://agora.io`;
 export const AGORA_CONSOLE_URL = `https://console.agora.io/v2`;
 export const AGORA_WEBDEMO_URL = `https://webdemo.agora.io`;
-export const API_REF_ANDROID = `http://api.agora.io/android`;
+export const API_REF_ANDROID = `https://api.agora.io/android`;
 
 export const PLATFORM = `${AGORA_BACKEND}`;
 export const VIDEO = 'Video Calling';

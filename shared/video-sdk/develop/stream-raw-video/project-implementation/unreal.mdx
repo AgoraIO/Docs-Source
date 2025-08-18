@@ -1,6 +1,217 @@
-
 <PlatformWrapper platform="unreal">
 
+To implement raw video data functionality in your project, refer to the following steps:
 
+1. **Initialize MediaEngine and register video observer**
+
+   Before joining the channel, obtain the MediaEngine interface and create an instance of `IVideoFrameObserver`, then call `registerVideoFrameObserver` to register it:
+
+   ```cpp
+   void InitAgoraEngine(FString APP_ID, FString TOKEN, FString CHANNEL_NAME)
+   {
+       // Initialize RtcEngine context and event handler
+       agora::rtc::RtcEngineContext RtcEngineContext;
+       UserRtcEventHandlerEx = MakeShared<FUserRtcEventHandlerEx>(this);
+       std::string StdStrAppId = TCHAR_TO_UTF8(*APP_ID);
+       RtcEngineContext.appId = StdStrAppId.c_str();
+       RtcEngineContext.eventHandler = UserRtcEventHandlerEx.Get();
+       RtcEngineContext.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_LIVE_BROADCASTING;
+       
+       // Initialize the RtcEngine
+       int ret = AgoraUERtcEngine::Get()->initialize(RtcEngineContext);
+       
+       // Query for the MediaEngine interface
+       AgoraUERtcEngine::Get()->queryInterface(AGORA_IID_MEDIA_ENGINE, (void**)&MediaEngine);
+       
+       // Create and register video frame observer
+       UserVideoFrameObserver = MakeShared<FUserVideoFrameObserver>(this);
+       MediaEngine->registerVideoFrameObserver(UserVideoFrameObserver.Get());
+   }
+   ```
+
+2. **Join channel and configure video**
+
+   Enable audio and video, set the client role, and join the channel:
+
+   ```cpp
+   void OnBtnJoinChannelClicked()
+   {
+       AgoraUERtcEngine::Get()->enableAudio();
+       AgoraUERtcEngine::Get()->enableVideo();
+       AgoraUERtcEngine::Get()->setClientRole(CLIENT_ROLE_BROADCASTER);
+       int ret = AgoraUERtcEngine::Get()->joinChannel(TCHAR_TO_UTF8(*Token), TCHAR_TO_UTF8(*ChannelName), "", 0);
+       
+       // Set up UI for raw video rendering
+       MakeVideoViewForRawData();
+   }
+   ```
+
+3. **Implement video frame observer class**
+
+   Create a class that inherits from `IVideoFrameObserver` and implement the required callbacks to receive and process video frames:
+
+   ```cpp
+   class FUserVideoFrameObserver : public agora::media::IVideoFrameObserver
+   {
+   public:
+       FUserVideoFrameObserver(UProcessVideoRawDataWidget* InWidgetPtr) : WidgetPtr(InWidgetPtr) {}
+
+       bool onCaptureVideoFrame(agora::rtc::VIDEO_SOURCE_TYPE sourceType, agora::media::base::VideoFrame& videoFrame) override
+       {
+           if (!IsWidgetValid())
+               return false;
+
+           // Process captured video frames
+           WidgetPtr->RenderRawData(videoFrame);
+           return true;
+       }
+
+       bool onPreEncodeVideoFrame(agora::rtc::VIDEO_SOURCE_TYPE sourceType, agora::media::base::VideoFrame& videoFrame) override
+       {
+           return false;
+       }
+
+       bool onMediaPlayerVideoFrame(agora::media::base::VideoFrame& videoFrame, int mediaPlayerId) override
+       {
+           return false;
+       }
+
+       bool onRenderVideoFrame(const char* channelId, agora::rtc::uid_t remoteUid, agora::media::base::VideoFrame& videoFrame) override
+       {
+           // Process remote user video frames
+           return false;
+       }
+
+       bool onTranscodedVideoFrame(agora::media::base::VideoFrame& videoFrame) override
+       {
+           return false;
+       }
+
+       // Required methods to specify video processing mode and format preference
+       agora::media::IVideoFrameObserver::VIDEO_FRAME_PROCESS_MODE getVideoFrameProcessMode() override
+       {
+           return agora::media::IVideoFrameObserver::PROCESS_MODE_READ_ONLY;
+       }
+
+       agora::media::base::VIDEO_PIXEL_FORMAT getVideoFormatPreference() override
+       {
+           return agora::media::base::VIDEO_PIXEL_RGBA;
+       }
+
+   private:
+       UProcessVideoRawDataWidget* WidgetPtr;
+       
+       bool IsWidgetValid() const
+       {
+           return WidgetPtr && IsValid(WidgetPtr);
+       }
+   };
+   ```
+
+4. **Implement raw video data rendering**
+
+   Process the received video frames and render them using Unreal Engine's texture system:
+
+   ```cpp
+   void RenderRawData(agora::media::base::VideoFrame& videoFrame)
+   {
+       TWeakObjectPtr<UProcessVideoRawDataWidget> SelfWeakPtr(this);
+       if (!SelfWeakPtr.IsValid())
+           return;
+
+       int Width = videoFrame.width;
+       int Height = videoFrame.height;
+       uint8* rawdata = new uint8[Width * Height * 4];
+       memcpy(rawdata, videoFrame.yBuffer, Width * Height * 4);
+
+       AsyncTask(ENamedThreads::GameThread, [=, this]()
+       {
+           if (!SelfWeakPtr.IsValid())
+               return;
+
+           TWeakObjectPtr<UDraggableVideoViewWidget> VideoRenderViewWeakPtr(VideoRenderView);
+           if (!VideoRenderViewWeakPtr.IsValid())
+               return;
+
+           if (RenderTexture == nullptr || !RenderTexture->IsValidLowLevel() || 
+               RenderTexture->GetSizeX() != Width || RenderTexture->GetSizeY() != Height)
+           {
+               RenderTexture = UTexture2D::CreateTransient(Width, Height, PF_R8G8B8A8);
+           }
+
+           // Copy raw data to texture
+           uint8* raw = (uint8*)RenderTexture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
+           memcpy(raw, rawdata, Width * Height * 4);
+           delete[] rawdata;
+           RenderTexture->GetPlatformData()->Mips[0].BulkData.Unlock();
+           RenderTexture->UpdateResource();
+
+           // Update UI brush and size
+           RenderBrush.SetResourceObject(RenderTexture);
+           RenderBrush.SetImageSize(FVector2D(Width, Height));
+           VideoRenderViewWeakPtr->View->SetBrush(RenderBrush);
+
+           UCanvasPanelSlot* CanvasPanelSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(VideoRenderViewWeakPtr.Get());
+           CanvasPanelSlot->SetSize(FVector2D(Width, Height));
+       });
+   }
+   ```
+
+5. **Set up UI for raw video display**
+
+   Create and manage the UI widget for displaying the raw video data:
+
+   ```cpp
+   void MakeVideoViewForRawData()
+   {
+       ReleaseVideoViewForRawData();
+
+       UWorld* world = GEngine->GameViewport->GetWorld();
+       VideoRenderView = CreateWidget<UDraggableVideoViewWidget>(world, DraggableVideoViewTemplate);
+
+       FText ShowedText = FText::FromString(FString("RawDataRenderView"));
+       VideoRenderView->Text->SetText(ShowedText);
+
+       UPanelSlot* PanelSlot = CanvasPanel_VideoView->AddChild(VideoRenderView);
+       UCanvasPanelSlot* CanvasPanelSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(VideoRenderView);
+   }
+
+   void ReleaseVideoViewForRawData()
+   {
+       if (VideoRenderView != nullptr)
+       {
+           VideoRenderView->RemoveFromParent();
+           VideoRenderView = nullptr;
+       }
+   }
+   ```
+
+6. **Unregister the video frame observer**
+
+   Call `registerVideoFrameObserver` with `nullptr` to unregister the video frame observer before leaving the channel:
+
+   ```cpp
+   void UnInitAgoraEngine()
+   {
+       if (AgoraUERtcEngine::Get() != nullptr)
+       {
+           AgoraUERtcEngine::Get()->leaveChannel();
+           ReleaseVideoViewForRawData();
+
+           if (MediaEngine != nullptr)
+           {
+               // Unregister the video frame observer
+               MediaEngine->registerVideoFrameObserver(nullptr);
+           }
+
+           AgoraUERtcEngine::Get()->unregisterEventHandler(UserRtcEventHandlerEx.Get());
+           AgoraUERtcEngine::Release();
+       }
+   }
+   ```
+
+<Admonition type="caution" title="Caution">
+When modifying parameters in a `VideoFrame`, ensure that the updated parameters match the actual video frame in the buffer. Mismatches may cause issues like unexpected rotation, distortion, or other visual problems in the local preview and the remote video.
+</Admonition>
 
 </PlatformWrapper>

@@ -41,34 +41,33 @@ Protobuf allows you to generate source code in your preferred language based on 
     option java_outer_classname = "AgoraSpeech2TextProtobuffer";
 
     message Text {
-        int32 vendor = 1;
-        int32 version = 2;
-        int32 seqnum = 3;
-        int64 uid = 4;
-        int32 flag = 5;
-        int64 time = 6;
-        int32 lang = 7;
-        int32 starttime = 8;
-        int32 offtime = 9;
-        repeated Word words = 10;
-        bool end_of_segment = 11;
-        int32 duration_ms = 12;
-        string data_type = 13;
-        repeated Translation trans = 14;
-        string culture = 15;
-        int64 text_ts = 16;
+      reserved 1 to 3, 5, 7 to 9, 11, 17;
+      int64 uid = 4;
+      int64 time = 6;
+      repeated Word words = 10;
+      int32 duration_ms = 12;
+      string data_type = 13;
+      repeated Translation trans = 14;
+      string culture = 15;
+      int64 text_ts = 16;
+      OriginalTranscript original_transcript = 18;
     }
+
     message Word {
-        string text = 1;
-        int32 start_ms = 2;
-        int32 duration_ms = 3;
-        bool is_final = 4;
-        double confidence = 5;
+      reserved 2, 3, 5;
+      string text = 1;
+      bool is_final = 4;
     }
+
     message Translation {
-        bool is_final = 1;
-        string lang = 2;
-        repeated string texts = 3;
+      bool is_final = 1;
+      string lang = 2;
+      repeated string texts = 3;
+    }
+
+    message OriginalTranscript {
+      string culture = 1;
+      repeated Word words = 2;
     }
     ```
 
@@ -224,12 +223,12 @@ pbjs -t json-module -w es6 ./SttMessage.proto > ./SttMessage_es6.js
 echo "JavaScript code generation completed."`}
     </CodeBlock>
 
-        Replace `./SttMessage.proto` with the path to the file you created in the [Create a Protobuf Template](#create-a-protobuf-template) section.
+        Replace `./SttMessage.proto` with the path to the file you created in the [Create a Protobuf definition file](create-a-protobuf-definition-file) section.
   </TabItem>
 
 </Tabs>
 
-### Run the Script
+### Run the script
 
 To generate a Protobuf class, run these commands in your terminal:
 
@@ -248,34 +247,35 @@ When transcription text is available, your <Vg k="VSDK" /> event handler receive
 <Tabs>
   <TabItem value="java" label="Java">
   <CodeBlock language="java" showLineNumbers>
-  {`// Join the channel and add callback events
-rtcManager.joinChannel(roomName, localUid, agora_token, roleType.equals(ROLE_TYPE_BROADCAST), new RtcManager.OnChannelListener() {
-    ...
-    // Callback for receiving data stream messages
-    @Override
-    public void onStreamMessage(int uid, int streamId, byte[] data) {
-        // Check if the remote user ID matches the specified streaming bot ID; if so, decode the data stream into a text object
-        if (String.valueOf(uid).equalsIgnoreCase(RTC_UID_STT_STREAM)) {
-            AgoraSpeech2TextProtobuffer.Text text = STTManager.getInstance().parseTextByte(roomName, data);
-            // Convert the parsed text object into JSON format and log it
-            LogUtil.d(originLogName, mGson.toJson(text));
-        }
-    }
-    // ...
-});
+  {`// Join a channel and add callback events
+ rtcManager.joinChannel(roomName, localUid, agora_token, roleType.equals(ROLE_TYPE_BROADCAST), new RtcManager.OnChannelListener() {
+     ...
+     // Callback for receiving a stream message
+     @Override
+     public void onStreamMessage(int uid, int streamId, byte[] data) {
+         // Check if the remote user ID matches the specified streaming bot ID. 
+         // If so, decode the stream data into a text object.
+         if (String.valueOf(uid).equalsIgnoreCase(RTC_UID_STT_STREAM)) {
+             AgoraSpeech2TextProtobuffer.Text text = STTManager.getInstance().parseTextByte(roomName, data);
+             // Convert the parsed text object to JSON format and print it to the log
+             LogUtil.d(originLogName, mGson.toJson(text));
+         }
+     }
+     ...
+ });
 
-public AgoraSpeech2TextProtobuffer.Text parseTextByte(String channel, byte[] data) {
-    // Declare a variable of type AgoraSpeech2TextProtobuffer.Text to store the deserialized object
-    AgoraSpeech2TextProtobuffer.Text textStream;
-    try {
-        // Deserialize the byte array data into an AgoraSpeech2TextProtobuffer.Text object
-        textStream = AgoraSpeech2TextProtobuffer.Text.parseFrom(data);
-    } catch (Exception ex) {
-        notifyErrorHandler(new ErrorInfo("parseTextByte", "-1", "Error parsing from parseTextByte >> " + ex.toString()));
-        return null;
-    }
-    // ...
-  }`}
+ public AgoraSpeech2TextProtobuffer.Text parseTextByte(String channel, byte[] data) {
+     // Declare a variable of type AgoraSpeech2TextProtobuffer.Text to store the deserialized object
+     AgoraSpeech2TextProtobuffer.Text textStream;
+     try {
+         // Deserialize the byte array data into an AgoraSpeech2TextProtobuffer.Text object
+         textStream = AgoraSpeech2TextProtobuffer.Text.parseFrom(data);
+     } catch (Exception ex) {
+         notifyErrorHandler(new ErrorInfo("parseTextByte", "-1", "parseTextByte parseFrom error >> " + ex.toString()));
+         return null;
+     }
+     ...
+ }`}
   </CodeBlock>
   </TabItem>
   <TabItem value="csharp" label="C#">
@@ -360,7 +360,8 @@ NS_ASSUME_NONNULL_END
 
 // Callback for receiving data stream messages
 - (void)rtcEngine:(AgoraRtcEngineKit *)engine receiveStreamMessageFromUid:(NSUInteger)uid streamId:(NSInteger)streamId data:(NSData *)data {
-    // Check if the remote user ID is the specified streaming bot ID; if not, return directly and do not proceed with further processing
+    // Check if the remote user ID is the specified streaming bot ID; 
+    // if not, return directly and do not proceed with further processing
     if (uid != pusherUid) {
         return;
     }
@@ -377,8 +378,9 @@ NS_ASSUME_NONNULL_END
   <TabItem value="swift" label="Swift">
   <CodeBlock language="swift" showLineNumbers>
   {`// Callback for receiving data stream messages
-func rtcEngine(_ engine: AgoraRtcEngineKit, receiveStreamMessageFromUid uid: UInt, streamId: Int, data: Data) {
-    // Check if the remote user ID is the specified streaming bot ID; if not, return directly and do not proceed with further processing
+func rtcEngine(_engine: AgoraRtcEngineKit, receiveStreamMessageFromUid uid: UInt, streamId: Int, data: Data) {
+    // Check if the remote user ID is the specified streaming bot ID; 
+    // if not, return directly and do not proceed with further processing
     guard uid == {pusher bot uid} else {
         return
     }
@@ -394,43 +396,135 @@ func rtcEngine(_ engine: AgoraRtcEngineKit, receiveStreamMessageFromUid uid: UIn
 
 This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
 
+### Sample project
+
+Agora provides an open-source [Agora-RTT-Demo](https://github.com/AgoraIO-Community/Agora-RTT-Demo/tree/main) sample project. You can download it or view its source code.
+
+### `SttMessage.proto` fields
+
 The following tables describe the fields in the `SttMessage.proto` file.
 
-### Text message fields
+#### Text message fields
 
-| Field Name      | Type     | Description     |
-|-----------------|----------|----------------------------------------------|
-| `vendor`        | `int32`  | Reserved field.           |
-| `version`       | `int32`  | Reserved field.           |
-| `seqnum`        | `int32`  | Reserved field.           |
-| `uid`           | `uint32`  | The user ID to which the text corresponds.     |
-| `flag`          | `int32`  | Reserved field.           |
-| `time`          | `int64`  | The start time of the transcription of this segment. It has a value only when `isFinal` is true; otherwise, it is 0. |
-| `lang`          | `int32`  | Reserved field.           |
-| `starttime`     | `int32`  | Reserved field.           |
-| `offtime`       | `int32`  | Reserved field.           |
-| `words`         | `repeated` | An array of transcription results. See WordMessage Types for details.    |
-| `end_of_segment`| `bool`   | Reserved field.           |
-| `duration_ms`   | `int32`  | The time taken to transcribe, in milliseconds.  |
-| `data_type`     | `string` | Data Type: <br/> - `transcribe`: Transcription. <br/> - `translate`: Text translation.              |
-| `trans`         | `repeated` | An array of translation results. See TranslationMessage Types for details.                         |
-| `culture`       | `string` | The source language of the transcription.      |
-| `text_ts`       | `int64`  | The timestamp of the transcription used to align the source and target text during real-time translation. |
+| Field name            | Type                 | Description                |
+| --------------------- | -------------------- | -------------------------- |
+| `uid`                 | `int64`              | The user ID associated with the text.                 |
+| `time`                | `int64`              | The start time of the transcription segment. Has a value only when `isFinal` is `true`; otherwise, the value is `0`.                   |
+| `words`               | `repeated`           | An array of transcription results. See **WordMessage** type for details.         |
+| `duration_ms`         | `int32`              | The duration of the transcribed text in milliseconds. |
+| `data_type`           | `string`             | The type of data: <ul><li> `transcribe`: Transcription </li><li> `translate`: Text translation </li></ul>  |
+| `trans`               | `repeated`           | An array of translation results. See **TranslationMessage** type for details.    |
+| `culture`             | `string`             | The source language of the transcription.             |
+| `text_ts`             | `int64`              | The continuously incremented timestamp of the transcription result, used to align source and target text during real-time translation. |
+| `original_transcript` | `OriginalTranscript` | The transcribed text used for translation.   |
 
-### Word message fields
+#### Word message fields
 
-| Field Name    | Type    | Description                    |
-| ------------- | ------- | ------------------------------ |
-| `text`        | string  | The result of transcription.   |
-| `start_ms`    | int32   | Reserved field.            |
-| `duration_ms` | int32   | Reserved field.            |
-| `is_final`    | bool    | Is this sentence the final result of transcription?  <br/> - **true**: This is the final result. <br/> - **false**: Not the final result. <br/> When this field is `true`, it indicates that the transcription engine believes the transcription result is finalized but doesn't imply the sentence has ended semantically.  |
-| `confidence`  | double  | Confidence indicates the speech-to-text engine’s confidence in the transcription result. Value: [0,1]. |
+| **Field Name** | **Type** | **Description**      |
+| ----------- | ---------- | ------------------------- |
+| `text`      | `string`   | The transcription result. |
+| `is_final`  | `bool`     | Indicates whether this sentence is the final transcription result. <ul><li> `true`: The transcription engine has determined the result for this sentence, and no further modifications are expected. This does not mean the sentence is semantically complete. </li><li> `false`: The result is not yet final and may change. </li></ul> |
 
-### Translation message fields
+#### Translation message fields
 
-| Field Name    | Type      | Description                    |
-| ------------- | --------- | ------------------------------ |
-| `is_final`    | bool      | Is this sentence the final result of the translation? <br/> - **true**: This is the final result. <br/> - **false**: Not the final result. <br/>When this field is `true`, it indicates that the translation engine believes the translation result is finalized but doesn't imply the sentence has ended semantically.         |
-| `lang`        | string    | The target language for the translation.        |
-| `texts`       | repeated  | The result of translation. |
+| **Field Name**              | **Type**   | **Meaning**|
+| ------------- | ---------- | -------------------- |
+| `is_final`                  | `bool`     | Indicates whether this sentence is the final translation result. <ul><li> `true`: The translation engine has determined that the translation result is final and no further modification is required. This does **not** mean the sentence is semantically complete. </li><li> `false`: The translation result is not yet final and may be updated. </li></ul> |
+| `lang`                      | `string`   | The target language of the translation.                          |
+| `texts`                     | `repeated` | The translated text results.          |
+
+#### Original transcript message fields
+
+| Field Name | Type     | Meaning            |
+| ---------- | -------- | ---------------------------- |
+| `culture`  | string   | The source language of the transcription.     |
+| `words`    | repeated | An array of transcription results. |
+
+
+### Translate and transcribe examples
+
+This section shows sample output from the STT service for transcribed and translated sentences.
+
+#### Transcribe
+
+<Tabs>
+  <TabItem value="protobuf" label="Protobuf">
+    <CodeBlock language="js" showLineNumbers>
+      {`time: 1753359518654
+ words {
+   text: "Hello, how are you?"
+   is_final: true
+ }
+ duration_ms: 770
+ data_type: "transcribe"
+ culture: "en-US"
+ text_ts: 1753359520754`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="json" label="JSON">
+    <CodeBlock language="json" showLineNumbers>
+    {`{
+    "transcript": {
+        "uid": 222,
+        "language": "zh-CN",
+        "text": "北选手",
+        "isFinal": false,
+        "offset": 1751438272384,
+        "duration": 760,
+        "textTs": 1751438273939
+    }
+}`}
+    </CodeBlock>
+  </TabItem>
+</Tabs>
+
+
+#### Translate
+
+
+<Tabs>
+  <TabItem value="protobuf" label="Protobuf">
+    <CodeBlock language="js" showLineNumbers>
+      {`time: 1753359518654
+duration_ms: 770
+data_type: "translate"
+trans {
+  is_final: true
+  lang: "es-ES"
+  texts: "Hola, ¿cómo estás? "
+}
+text_ts: 1753359520754
+original_transcript {
+  culture: "en-US"
+  words {
+    text: "Hello, how are you?"
+    is_final: true
+  }
+}`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="json" label="JSON">
+    <CodeBlock language="json" showLineNumbers>
+    {`{
+  "translation": {
+      "uid": 222,
+      "isFinal": true,
+      "offset": 1751438270274,
+      "duration": 1320,
+      "textTs": 1751438272825,
+      "results0": {
+          "language": "ja-JP",
+          "texts": [
+              "4月13日。 "
+          ]
+      },
+      "original_transcript": {
+          "language": "zh-CN",
+          "text": "4月13日。"
+      }
+    }
+}`}
+    </CodeBlock>
+  </TabItem>
+</Tabs>
+

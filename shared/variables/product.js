@@ -61,6 +61,13 @@ const data = {
       STREAM: 'interactive live streaming or broadcast streaming',
   },
 
+  'flexible-classroom': {
+      NAME: 'Flexible Classroom',
+      PATH: 'flexible-classroom',
+      SDK: 'Flexible Classroom',
+      PRODUCT: 'Flexible Classroom',
+  },
+
   'cloud-recording': {
       NAME: 'Cloud Recording',
       PATH: 'cloud-recording',

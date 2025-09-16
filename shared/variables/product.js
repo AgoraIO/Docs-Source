@@ -1,5 +1,17 @@
 const data = {
-    'video-calling': {
+  'realtime-communication': {
+    NAME: 'Realtime Communication',
+    SDK_LITE: 'Lite SDK',
+    PATH: 'realtime-communication',
+    SDK: 'RTC SDK',
+    PRODUCT: 'Realtime Communication',
+    BETA_API_FOLDER: 'video-call-4.x-beta',
+    IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
+    STREAM: 'interactive live streaming or broadcast streaming',
+    MEDIA: 'audio and video',
+    MEDIA_DEVICES: 'camera and microphone',
+  },
+  'video-calling': {
     NAME: 'Video Calling',
     SDK_LITE: 'Lite SDK',
     PATH: 'video-calling',

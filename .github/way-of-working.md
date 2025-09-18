@@ -29,7 +29,7 @@ Agora uses [Docusaurus](https://docusaurus.io/) to generate a static documentati
 To be able to contribute to Agora documentation, follow [this procedure](https://github.com/AgoraIO/Docs/edit/staging/README.md)
 and then clone [all other repositories](#repositories) that the EN doc team works in.
 
-To set up your development environment, refer to the prerequisites section of the SDK quickstart for the relevant product and platform. For example, you can find Video Calling prerequisites for Android development [here](https://docs.agora.io/en/video-calling/get-started/get-started-sdk?platform=android#prerequisites).
+To set up your development environment, refer to the prerequisites section of the SDK quickstart for the relevant product and platform. For example, you can find Video Calling prerequisites for Android development [here](https://docs.agora.io/en/realtime-communication/get-started/get-started-sdk?platform=android#prerequisites).
 
 ### 1. Documentation request
 

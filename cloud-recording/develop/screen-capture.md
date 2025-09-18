@@ -16,7 +16,7 @@ The following two screenshot methods are supported:
 - Capture screenshots and recording during a recording process. Agora only charges recording fees.
 
 For pricing details, see [Pricing](../overview/pricing).
-To implement client-side screen capture, see [Screenshot Upload](../../video-calling/advanced/screenshot-upload).
+To implement client-side screen capture, see [Screenshot Upload](../../realtime-communication/advanced/screenshot-upload).
 
 
 ## Implementation

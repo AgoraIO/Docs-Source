@@ -101,7 +101,7 @@ export const BS = 'Broadcast Streaming';
 export const ILS = 'Interactive Live Streaming';
 export const ILSS = 'Interactive Live Streaming Standard';
 export const ILSP = 'Interactive Live Streaming Premium';
-export const VSDK = 'Video SDK';
+export const VSDK = 'RTC SDK';
 
 export const GET_STARTED = 'SDK quickstart';
 export const VSDK_RELEASE = '4.x';

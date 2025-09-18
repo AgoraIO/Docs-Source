@@ -1,51 +1,16 @@
 const data = {
-    'video-calling': {
-    NAME: 'Video Calling',
+  'realtime-communication': {
+    NAME: 'Realtime Communication',
     SDK_LITE: 'Lite SDK',
-    PATH: 'video-calling',
-    SDK: 'Video SDK',
-    PRODUCT: 'Video Calling',
+    PATH: 'realtime-communication',
+    SDK: 'RTC SDK',
+    PRODUCT: 'Realtime Communication',
     BETA_API_FOLDER: 'video-call-4.x-beta',
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
     STREAM: 'interactive live streaming or broadcast streaming',
     MEDIA: 'audio and video',
     MEDIA_DEVICES: 'camera and microphone',
   },
-
-  'voice-calling': {
-    NAME: 'Voice Calling',
-    SDK_LITE: 'Lite SDK',
-    PATH: 'voice-calling',
-    SDK: 'Voice SDK',
-    PRODUCT: 'Voice Calling',
-    STREAM: 'interactive live streaming or broadcast streaming',
-    MEDIA: 'audio',
-    MEDIA_DEVICES: 'microphone',
-  },
-
-  'interactive-live-streaming': {
-    NAME: 'Interactive Live Streaming',
-    SDK_LITE: 'Lite SDK',
-    PATH: 'interactive-live-streaming',
-    SDK: 'Video SDK',
-    PRODUCT: 'Interactive Live Streaming',
-    IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
-    STREAM: 'interactive live streaming',
-    MEDIA: 'audio and video',
-    MEDIA_DEVICES: 'camera and microphone',
-  },
-
-  'broadcast-streaming': {
-    NAME: 'Broadcast Streaming',
-    SDK_LITE: 'Lite SDK',
-    PATH: 'broadcast-streaming',
-    SDK: 'Video SDK',
-    PRODUCT: 'Broadcast Streaming',
-    STREAM: 'broadcast streaming',
-    MEDIA: 'audio and video',
-    MEDIA_DEVICES: 'camera and microphone',
-  },
-
   'agora-analytics': {
       NAME: 'Agora Analytics',
       PATH: 'agora-analytics',

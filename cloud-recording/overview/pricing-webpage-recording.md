@@ -25,7 +25,7 @@ The unit pricing for video usage is as follows:
 When you use Web Page Recording, Agora charges you based on the usage and resolution of the recorded videos.
 
 If you use other Agora products or services in the web page being recorded, 
-such as [Video Calling](/video-calling/overview/product-overview), 
+such as [Realtime Communication](/realtime-communication/overview/product-overview), 
 [Interactive Whiteboard](../../interactive-whiteboard/overview/product-overview), 
 or [Real-time Messaging](../../signaling/overview/product-overview), expect additional charges. 
 

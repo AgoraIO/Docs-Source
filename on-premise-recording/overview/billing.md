@@ -18,7 +18,7 @@ Agora calculates the billing of all projects under your <Link to="{{Global.AGORA
 
 Billing for the on-premise recording service begins once you use the Agora On-Premise Recording SDK to record and save audio calls, group video calls, or interactive live video streaming made via the Agora <Vg k="VSDK" /> on your server. 
 
-On the first day of each month, Agora sends you the bill via email, and five days later deducts the payment from your account. For details, see [Billing, fee deduction, and account suspension](../../video-calling/reference/billing-policies).
+On the first day of each month, Agora sends you the bill via email, and five days later deducts the payment from your account. For details, see [Billing, fee deduction, and account suspension](/realtime-communication/advanced-features/receive-notificationsreference/billing-policies).
 
 <Admonition type="info">Agora gives each Agora account 10,000 free-of-charge minutes each month. For more information on the deduction sequence and applicable products, see<a href="https://docs.agora.io/en/faq/billing_free"> Agora's free-of-charge policy for the first 10,000 minutes</a>.</Admonition>
 
@@ -411,13 +411,9 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
 
 At the end of each month, Agora adds up the usage duration (in seconds) of audio and video in each category, and divides them by 60 to get the respective service minutes (rounded up to the nearest integer). For example, if the duration of audio service of the month is 59 seconds, then the audio service minutes is calculated as 1 minute; if the duration of video service is 61 seconds, then the video service minutes is calculated as 2 minutes. The margin of error for service minutes for each month is within 1 minute. 
 
-
-
-
-
 ### Video resolution in the dual-stream use-case
 
-When the user being recorded enables [dual-stream mode](../../video-calling/reference/glossary#dual-stream-mode), the recording service can receive only one stream at a time:
+When the user being recorded enables [dual-stream mode](/realtime-communication/advanced-features/receive-notificationsreference/glossary#dual-stream-mode), the recording service can receive only one stream at a time:
 
 - If the recording server records the high-quality video stream, the aggregate video resolution is calculated based on the resolution of the high-quality video.
 - If the recording server records the low-quality video stream, the aggregate video resolution is calculated based on the resolution of the video received by the server.

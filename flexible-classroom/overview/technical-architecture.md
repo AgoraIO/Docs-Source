@@ -2,6 +2,7 @@
 title: 'Technical architecture'
 sidebar_position: 2
 type: docs
+platform_selector: false
 description: >
   Overview of the components in Flexible Classroom. 
 ---

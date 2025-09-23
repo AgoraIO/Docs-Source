@@ -1,7 +1,9 @@
 
 export const COMPANY = 'Agora';
 export const URL_ROOT = 'docs.agora.io/en';
-  export const AGORA_BACKEND = `${COMPANY} SD-RTN™`;
+export const SDRTN = `SDRTN®`;
+export const AGORA_BACKEND = `${COMPANY} ${SDRTN}`;
+export const BACKEND_NAME = `Software-Defined Real-Time Network (SDRTN®)`;
 export const CLIENT = platform => (platform === 'unity' ? 'game' : 'app');
 export const VSDK_RELEASE_API = '4.x'
 export const VSDK_PREVIOUS_RELEASE_API = '3.x'
@@ -89,7 +91,7 @@ export const RTES = `${RTE} SDK`;
 export const APP_ID_LINK = `http://agora.io`;
 export const AGORA_CONSOLE_URL = `https://console.agora.io/v2`;
 export const AGORA_WEBDEMO_URL = `https://webdemo.agora.io`;
-export const API_REF_ANDROID = `http://api.agora.io/android`;
+export const API_REF_ANDROID = `https://api.agora.io/android`;
 
 export const PLATFORM = `${AGORA_BACKEND}`;
 export const VIDEO = 'Video Calling';
@@ -139,6 +141,7 @@ export const SIG2_SDK_API_IOS = 'https://agoraio.github.io/AgoraRtm_Apple/docume
 export const SIG2_SDK_API_MACOS = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
 export const SIG_SDK_API_WEB = `${SIG_SDK_API_REF_ROOT}/web/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/reference/user-channel-events`;
+export const SIG_SDK_API_RN = `/signaling/reference/api`;
 
 export const SPATIAL = '3D Spatial Audio';
 

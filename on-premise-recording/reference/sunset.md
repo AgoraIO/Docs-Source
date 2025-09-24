@@ -28,7 +28,7 @@ The retirement timeline is as follows:
 The latest version of the <Vpd k="SDK" /> includes major improvements in reliability, performance, and security. To avoid service interruption, upgrade as soon as possible using the following resources:
 
 - [Migration guide](migration-guide)
-- [SDK download links](https://docs.agora.io/en/Recording/downloads)
+- [SDK download links](/sdks?platform=linux)
 - [Release notes](../overview/release-notes)
 
 If you have questions or need help with migration, contact [Agora support](mailto:support@agora.io).

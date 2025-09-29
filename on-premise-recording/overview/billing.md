@@ -428,33 +428,25 @@ When the user being recorded enables [dual-stream mode](../../video-calling/refe
 When calculating the aggregate resolution, Agora counts the resolution of 225,280 (640 × 352) as 640 × 360.
 
 <a name="question"></a>
-## Q&A
 
-
+## FAQs
 
 <details>
-	<summary><font color="#3ab7f8">Question: How does Agora charge if I use different recording modes?</font></summary>
+<summary>How does Agora charge if I use different recording modes?</summary>
 
-Your recording fee has nothing to do with the recording mode you choose. Regardless of whether you use the individual mode or composite mode, your recording fee relates only to the number of the streams recorded, the recording time, and the aggregate recording resolutions. The number of the streams recorded does not affect the recording duration, but affects the aggregate recording resolution.
+Your recording fee has nothing to do with the recording mode you choose. Regardless of whether you use the individual mode or composite mode, your recording fee relates only to the number of streams recorded, the recording time, and the aggregate recording resolution. The number of streams recorded does not affect the recording duration, but affects the aggregate recording resolution.
 
 </details>
 
-
-
 <details>
-	<summary><font color="#3ab7f8">Question: Does Agora charge the screen capture function separately?</font></summary>
+<summary>Does Agora charge for screen capture separately?</summary>
 
-Agora does not charge for the screen capture function separately. Screen capture is a different form of the recording function. The recording service joins the corresponding channel and subscribes to the specified video streams all the time in order to capture screens at the specified interval. Therefore, if you have enabled the screen capture function, Agora charges you for the full-time recording of the corresponding stream, but do not charge you for the screen capture function separately.
+Agora does not charge for screen capture separately. Screen capture is a variation of the recording function. The recording service joins the corresponding channel and subscribes to the specified video streams in order to capture screens at the specified interval. Therefore, if you have enabled screen capture, Agora charges you for the full-time recording of the corresponding stream, but does not charge you for screen capture separately.
 
 </details>
-
-
-
-
-
-
 
 ## Relevant links
 
-- [Agora's free-of-charge policy for the first 10,000 minutes](https://docs.agora.io/en/faq/billing_free)
-- [Billing, free deduction, and account suspension](https://docs.agora.io/en/faq/billing_account)
+- [RTC Pricing](/video-calling/overview/pricing)
+- [Agora's free-of-charge policy for the first 10,000 minutes](/help/account-and-billing/billing_free)
+- [Billing, free deduction, and account suspension](/help/account-and-billing/billing_account)

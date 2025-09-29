@@ -17,10 +17,10 @@ To support ongoing platform evolution and architectural improvements, Agora is r
 
 The retirement timeline is as follows:
 
-- **Until June 30, 2025**  
+- **Until September 30, 2025**  
   Agora will stop releasing new features and remove download access for SDK versions 1.x–3.x.
 
-- **Starting December 31, 2025**  
+- **Starting April 1, 2025**  
   Technical support and documentation for SDK versions 1.x–3.x will end.
 
 ### Upgrade guidance

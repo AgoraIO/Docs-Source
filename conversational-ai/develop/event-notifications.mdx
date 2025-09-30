@@ -1,6 +1,6 @@
 ---
 title: Receive event notifications
-sidebar_position: 2
+sidebar_position: 5
 platform_selector: false
 description: >
   Receive notification of Conversational AI Engine events.
@@ -9,471 +9,142 @@ description: >
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import CodeBlock from '@theme/CodeBlock';
+import Android from '@docs/shared/conversational-ai/receive-notifications/implementation/android.mdx';
+import Swift from '@docs/shared/conversational-ai/receive-notifications/implementation/swift.mdx';
+import Web from '@docs/shared/conversational-ai/receive-notifications/implementation/web.mdx';
 
-A webhook is a user-defined callback over HTTP that allows your <Vpl k="CLIENT" /> or back-end system to receive notifications when certain events occur. <Vg k="COMPANY" /> calls your webhook endpoint from its servers to send notifications about <Vpd k="NAME" /> events. 
-
-The Agora message notification service offers low latency, high concurrency, stability, and reliability. In high-concurrency scenarios with conversational AI agents, the service maintains a real-time synchronized agent state machine at the business layer, enabling the following functions:
-
-- Monitor agent join and leave events in real time.
-- Monitor agent error events in real time.
+Real-time conversational AI applications require responsive user interfaces that react to agent events. This page demonstrates how to implement event handling to create dynamic, interactive experiences with conversational agents.
 
 ## Understand the tech
 
-Using <Vg k="CONSOLE" /> you subscribe to specific events for your project and configure the URL of the webhooks to receive these events. <Vg k="COMPANY" /> sends notifications of your events to your webhook every time they occur. Your server authenticates the notification and returns `200 Ok` to confirm reception. You use the information in the JSON payload of each notification to give the best user experience to your users.
+Agora provides a flexible, scalable, and standardized conversational AI engine toolkit. The toolkit supports **iOS**, **Android**, and **Web** platforms, and encapsulates scenario-based APIs. You can use these APIs to integrate the capabilities of the Agora Chat SDK and Video SDK to enable the following features:
 
-When an event you subscribe to occurs, the Agora business server sends the event message to the Agora message notification server, which then delivers the event notification to your server via an HTTPS POST request.
+* [`Interrupt agents`](/conversational-ai/develop/interrupt-agent)
+* [`Display live subtitles`](/conversational-ai/develop/subtitles)
+* [`Receive event notifications`](/conversational-ai/develop/event-notifications)
+* [`Set optimal audio parameters`](/conversational-ai/best-practices/audio-setup) (iOS and Android only)
 
-![](/images/conversational-ai/convo-ai-notifications.svg)
+The component provides a set of callback methods that allow you to listen for various agent-related events and system information:
 
+* **`onAgentStateChanged`** :
+  Listen for agent state changes through <Vg k="SIG" /> presence events. Possible states include: `silent`, `listening`, `thinking`, and `speaking`. Use this callback to update the agent UI or track the conversation flow.
+
+* **`onAgentInterrupted`** :
+  Listen for agent interruption events through <Vg k="SIG" /> messages. Use this to handle scenarios where the agent is interrupted mid-response.
+
+* **`onAgentMetrics`** :
+  Listen for agent performance metrics through <Vg k="SIG" /> messages. Metrics include LLM reasoning delay, TTS synthesis delay, and more. Use this callback to monitor system performance.
+
+* **`onAgentError`** :
+  Listen for agent error events through <Vg k="SIG" /> messages. These may include errors in agent modules such as LLM or TTS. Use this callback for error monitoring, logging, and implementing graceful degradation strategies.
 
 ## Prerequisites
 
-Before you begin, make sure that you have:
+Before you begin, ensure the following:
 
-- A valid Agora developer account and <Vg k="CONSOLE" /> project. See [Enable Conversational AI](../get-started/manage-agora-account) for details .
-- Servers that meet the following requirements:
-    - Support HTTPS protocol. To improve security, Agora message notification service no longer supports HTTP server addresses.
-    - Support HTTPS connection reuse (recommended), also known as keep-alive mode, to reduce message delivery delay. Agora recommends the following settings:
-        - `MaxKeepAliveRequests`: greater than or equal to 100.
-        - `KeepAliveTimeout`: Greater than or equal to 10 seconds.
+- You have implemented the <Vpd k="NAME" /> [REST quickstart](../get-started/quickstart).
+- Your app integrates <Vg k="VSDK" /> v4.5.1 or later and includes the video [quickstart](/video-calling/get-started/get-started-sdk) implementation.
+- You have enabled <Vg k="SIG" /> in the <Vg k="CONSOLE" /> and completed [Signaling quickstart](/signaling/get-started/sdk-quickstart) for basic messaging.
+- You maintain active and authenticated RTC and <Vg k="SIG" /> instances that persist beyond the component's lifecycle. The toolkit does not manage the initialization, lifecycle, or authentication of RTC or <Vg k="SIG" />.
 
-## Enable notifications
+## Implementation
 
-To enable <Vg k="NCS_LONG" />:
+This section describes how to implement Conversational AI engine events using the toolkit.
 
-1. Log in to the <Vg k="CONSOLE" />. Click **Projects** in the left navigation menu. Find the project for which you want to enable notifications and click ✎ to configure the project.
-
-1. Under **All Features**, select **Notifications**. You see a list of <Vg k="COMPANY" /> products for which notifications are available.
-
-1. In the list of products, find **<Vpd k="NAME" />** and expand the block to reveal configuration options.
-
-1. Fill in the following information:
-
-    * **Event**: Select all the events that you want to subscribe to. See [Notification event types](../develop/event-types) for details.
-
-        If the selected events generate a high number of queries per second (QPS), ensure that your server has sufficient processing capacity.
-
-    * **Receiving Server Region**: Select the region where your server that receives the notifications is located. <Vg k="COMPANY" /> connects to the nearest <Vg k="COMPANY" /> node server based on your selection.
-
-    * **Receiving Server URL Endpoint**: The `HTTPS` public address of your server that receives the notifications. 
-
-        <Admonition type="info">
-        For enhanced security, <Vg k="NCS_LONG" /> no longer supports `HTTP` addresses.
-        </Admonition>
-
-        * To reduce the delay in notification delivery, best practice is to activate `HTTPS` persistent connection (also called `HTTP` keep-alive) on your server with the following settings:
-
-            * `MaxKeepAliveRequests`: 100 or more
-            * `KeepAliveTimeout`: 10 seconds or more
-    
-    * **Status**: Set to enabled.
-
-    * **Whitelist**: If your server is behind a firewall, check the box here, and ensure that you call the [IP address query API](#ip-address-query-api) to get the IP addresses of the <Vg k="COMPANY" /> <Vg k="NCS_LONG" /> server and add them to the firewall's allowed IP list.
-
-1. Copy the **Secret** by clicking the copy icon. You use this secret to [Verify the Signature​](#verify-the-signature).
-
-1. To test your configuration, press **Check**. Agora performs a health test for your configuration as follows:
-
-    1. The <Vg k="NCS_LONG" /> health test generates test events that correspond to your subscribed events, and then sends test event callbacks to your server. 
-        
-        In test event callbacks, the channelName is `test_webhook`, and the uid is `12121212`.
-
-    1. After receiving each test event callback, your server must respond within 10 seconds with a status code of `200`. The response body must be in JSON format.
-
-    1. When the <Vg k="NCS_LONG" /> health test succeeds, press **Apply Settings**. 
-
-        If the <Vg k="NCS_LONG" /> health test fails, follow the prompt on the <Vg k="CONSOLE" /> to [troubleshoot the error](#troubleshoot-common-errors). 
-
-#### Sample Code 
-
-Refer to the following sample code to handle incoming POST requests from the Notifications server.
-
-```javascript
-// Sample Javascript code to handle incoming POST requests
-const express = require('express');
-const app = express();
-const bodyParser = require('body-parser');
-
-// Use body-parser middleware to parse request body
-app.use(bodyParser.json());
-
-// Handle incoming POST requests
-app.post('/', express.json({ type: 'application/json' }), (req, res) => {
-    const event = req.body;
-    
-    // Respond within 5 seconds
-    setTimeout(() => {
-        res.status(200).json({ message: 'Success' });
-    }, 5000);
-    
-    // Perform any long-running tasks after sending the response
-});
-```
-
-## Troubleshoot Common Errors
-
-If the health check fails, follow the prompts in the <Vg k="CONSOLE" /> to troubleshoot. 
-
-Common issues include:
-
-- **Request Timeout:** Your server did not return a **200** response within **10 seconds**.
-  - Ensure your server processes event callbacks promptly.
-  - If your response time is correct, [contact Agora support](mailto:support@agora.io) to check network connectivity.
-
-- **Certificate Error:** Your HTTPS certificate is invalid.
-  - Verify that your SSL certificate is correct and has not expired.
-  - If your server is behind a firewall, ensure that all Agora event notification IPs are whitelisted.
-
-- **Domain Name Unreachable:** The domain name is invalid or cannot resolve to the correct IP address.
-  - Double-check your server deployment and DNS configuration.
-
-- **Response Error:** Your server returned an incorrect status code.
-  - Review the <Vg k="CONSOLE" /> for specific status codes and troubleshooting tips.
-
-Once the health check passes, click **Save Configuration** in the <Vg k="CONSOLE" />.
-
-After approval, the **Event Notification Service** status will be marked as **Enabled**.
-
-## Receive Event Notification Callback
-
-After you successfully activate Agora's event notification service, when a subscribed channel event occurs, the Agora event server sends an event notification callback to your server via an HTTPS `POST` request. For details, see [Conversational AI Engine Event Types](../develop/event-types).
-
-### Respond to Requests
-
-After receiving an event notification callback, your server must respond to the Agora event server within **10 seconds**. The response body must be in JSON format, but the body content is optional.
-
-If the Agora event server does not receive a response within 10 seconds or the response status code is not `200`, the notification is considered failed. When a failure occurs, Agora immediately retries the notification. The retry interval increases progressively with each failure, and the retries stop after three attempts.
-
-### Verify the Signature
-
-To enhance security, <Vg k="COMPANY" /> provides a signature mechanism to verify that the request is from Agora.
-
-When Agora sends an event notification callback, it generates a signature using **HMAC/SHA1** and **HMAC/SHA256** algorithms with a secret key. The signature values are included in the `Agora-Signature` and `Agora-Signature-V2` fields in the HTTPS request header.
-
-Follow these steps to verify the signature:
-
-1. Get the Key
-
-    When you [Enable notifications](#enable-notifications), you receive a secret key. 
-
-2. Calculate the Signature
-
-    When you receive a callback, use the key and the parameters in the request body to compute the signature value using the **HMAC/SHA1** or **HMAC/SHA256** algorithm.
-
-3. Compare the Signature
-    
-    Compare your calculated signature with the corresponding field in the request header:
-
-    - **HMAC/SHA1**: Compare the computed value with the `Agora-Signature` field. If they match, the request is from Agora.
-
-    - **HMAC/SHA256**: Compare the computed value with the `Agora-Signature-V2` field. If they match, the request is from Agora.
-
-    Agora provides sample code for signature verification in multiple languages for your reference.
-
-<Tabs>
-<TabItem value="python" label="Python" default>
-
-- HMAC/SHA256
-
-    <CodeBlock language="python" showLineNumbers>
-    {`#!/usr/bin/env python2
-  # !-*- coding: utf-8 -*-
-  import hashlib
-  import hmac
-
-  # Obtain the raw request body of the event notification and compute its signature. 
-  # In other words, the request_body in the following code is the binary byte array before deserialization, 
-  # not the dictionary after deserialization.
-  request_body = '{"eventType":10,"noticeId":"4eb720f0-8da7-11e9-a43e-53f411c2761f","notifyMs":1560408533119,"payload":{"a":"1","b":2},"productId":1}'
-
-  secret = 'secret'
-  signature2 = hmac.new(secret, request_body, hashlib.sha256).hexdigest()
-
-  # Print the computed signature
-  print(signature2)  # de96da5acf03b0021ac3b4fa2225e7ae6f3533a30d50bb02c08ea4fa748bda24
-  `}
-    </CodeBlock>
-
-- HMAC/SHA1
-
-    <CodeBlock language="python" showLineNumbers>
-    {`#!/usr/bin/env python2
-  # !-*- coding: utf-8 -*-
-  import hashlib
-  import hmac
-
-  # Obtain the raw request body of the event notification and compute its signature. 
-  # In other words, the request_body in the following code is the binary byte array before deserialization, 
-  # not the dictionary after deserialization.
-  request_body = '{"eventType":10,"noticeId":"4eb720f0-8da7-11e9-a43e-53f411c2761f","notifyMs":1560408533119,"payload":{"a":"1","b":2},"productId":1}'
-
-  secret = 'secret'
-  signature = hmac.new(secret, request_body, hashlib.sha1).hexdigest()
-
-  # Print the computed signature
-  print(signature)  # 5a3bb6a6d9fad2ea9ae3fb707a14c9d7f3136df1
-  `}
-    </CodeBlock>
+<Tabs groupId="platform">
+<TabItem value="android" label="Android" default>
+<Android />
 </TabItem>
 
-<TabItem value="Javascript" label="Javascript" default>
-
-- HMAC/SHA256
-
-    <CodeBlock language="js" showLineNumbers>
-    {`const crypto = require('crypto');
-  // Obtain the raw request body of the event notification and compute its signature. 
-  // In other words, the requestBody in the following code is the binary byte array before deserialization, 
-  // not the object after deserialization.
-  const requestBody = '{"eventType":10,"noticeId":"4eb720f0-8da7-11e9-a43e-53f411c2761f","notifyMs":1560408533119,"payload":{"a":"1","b":2},"productId":1}';
-
-  const secret = 'secret';
-
-  // Compute the HMAC signature using SHA-256
-  const signature2 = crypto.createHmac('sha256', secret).update(requestBody, 'utf8').digest('hex');
-
-  // Print the computed signature
-  console.log(signature2); // de96da5acf03b0021ac3b4fa2225e7ae6f3533a30d50bb02c08ea4fa748bda24
-  `}
-    </CodeBlock>
-
-- HMAC/SHA1
-
-    <CodeBlock language="js" showLineNumbers>
-    {`const crypto = require('crypto');
-  // Obtain the raw request body of the event notification and compute its signature. 
-  // In other words, the requestBody in the following code is the binary byte array before deserialization, 
-  // not the object after deserialization.
-  const requestBody = '{"eventType":10,"noticeId":"4eb720f0-8da7-11e9-a43e-53f411c2761f","notifyMs":1560408533119,"payload":{"a":"1","b":2},"productId":1}';
-
-  const secret = 'secret';
-
-  // Compute the HMAC signature using SHA-1
-  const signature = crypto.createHmac('sha1', secret).update(requestBody, 'utf8').digest('hex');
-
-  // Print the computed signature
-  console.log(signature); // 5a3bb6a6d9fad2ea9ae3fb707a14c9d7f3136df1`}
-    </CodeBlock>
+<TabItem value="swift" label="iOS" default>
+<Swift />
 </TabItem>
 
-<TabItem value="Java" label="Java">
+<TabItem value="web" label="Web" default>
+<Web />
+</TabItem>
+</Tabs>
 
-- HMAC/SHA256
+## Reference 
 
-    <CodeBlock language="java" showLineNumbers>
-    {`import javax.crypto.Mac;
-  import javax.crypto.SecretKey;
-  import javax.crypto.spec.SecretKeySpec;
+This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
 
-  public class HmacSha {
+### Sample project
 
-      // Convert the encrypted byte array into a hexadecimal string
-      public static String bytesToHex(byte[] bytes) {
-          StringBuffer sb = new StringBuffer();
-          for (int i = 0; i < bytes.length; i++) {
-              String hex = Integer.toHexString(bytes[i] & 0xFF);
-              if (hex.length() < 2) {
-                  sb.append(0);
-              }
-              sb.append(hex);
-          }
-          return sb.toString();
-      }
+Refer to the following open-source sample code for your reference.
 
-      // HMAC/SHA256 encryption, returns the encrypted string
-      public static String hmacSha256(String message, String secret) {
-          try {
-              SecretKeySpec signingKey = new SecretKeySpec(secret.getBytes("utf-8"), "HmacSHA256");
-              Mac mac = Mac.getInstance("HmacSHA256");
-              mac.init(signingKey);
-              byte[] rawHmac = mac.doFinal(message.getBytes("utf-8"));
-              return bytesToHex(rawHmac);
-          } catch (Exception e) {
-              throw new RuntimeException(e);
-          }
-      }
+- [`Conversational-AI-Demo`](https://github.com/AgoraIO-Community/Conversational-AI-Demo/)
 
-      public static void main(String[] args) {
-          // Obtain the raw request body of the event notification and compute its signature.
-          // In other words, the request_body in the following code is the binary byte array before deserialization, 
-          // not the object after deserialization.
-          String request_body = "{\\"eventType\\":10,\\"noticeId\\":\\"4eb720f0-8da7-11e9-a43e-53f411c2761f\\",\\"notifyMs\\":1560408533119,\\"payload\\":{\\"a\\":\\"1\\",\\"b\\":2},\\"productId\\":1}";
 
-          String secret = "secret";
+### Folder structure 
 
-          // Print the computed HMAC/SHA256 signature
-          System.out.println(hmacSha256(request_body, secret)); 
-          // Expected output: de96da5acf03b0021ac3b4fa2225e7ae6f3533a30d50bb02c08ea4fa748bda24
-      }
-  }`}
-    </CodeBlock>
+To integrate the client components, only the files and folders listed below are required. You do not need to copy any other files.
 
-- HMAC/SHA1
+<Tabs groupId="platform">
+<TabItem value="android" label="Android" default>
 
-    <CodeBlock language="java" showLineNumbers>
-    {`import javax.crypto.Mac;
-  import javax.crypto.SecretKey;
-  import javax.crypto.spec.SecretKeySpec;
-
-  public class HmacSha {
-
-      // Convert the encrypted byte array into a hexadecimal string
-      public static String bytesToHex(byte[] bytes) {
-          StringBuffer sb = new StringBuffer();
-          for (int i = 0; i < bytes.length; i++) {
-              String hex = Integer.toHexString(bytes[i] & 0xFF);
-              if (hex.length() < 2) {
-                  sb.append(0);
-              }
-              sb.append(hex);
-          }
-          return sb.toString();
-      }
-
-      // HMAC/SHA1 encryption, returns the encrypted string
-      public static String hmacSha1(String message, String secret) {
-          try {
-              SecretKeySpec signingKey = new SecretKeySpec(secret.getBytes("utf-8"), "HmacSHA1");
-              Mac mac = Mac.getInstance("HmacSHA1");
-              mac.init(signingKey);
-              byte[] rawHmac = mac.doFinal(message.getBytes("utf-8"));
-              return bytesToHex(rawHmac);
-          } catch (Exception e) {
-              throw new RuntimeException(e);
-          }
-      }
-
-      public static void main(String[] args) {
-          // Obtain the raw request body of the event notification and compute its signature.
-          // In other words, the request_body in the following code is the binary byte array before deserialization, 
-          // not the object after deserialization.
-          String request_body = "{\\"eventType\\":10,\\"noticeId\\":\\"4eb720f0-8da7-11e9-a43e-53f411c2761f\\",\\"notifyMs\\":1560408533119,\\"payload\\":{\\"a\\":\\"1\\",\\"b\\":2},\\"productId\\":1}";
-
-          String secret = "secret";
-
-          // Print the computed HMAC/SHA1 signature
-          System.out.println(hmacSha1(request_body, secret)); 
-          // Expected output: 5a3bb6a6d9fad2ea9ae3fb707a14c9d7f3136df1
-      }
-  }`}
-    </CodeBlock>
+* `IConversationalAIAPI.kt`: Defines the API interface, data structures, and enumerations.
+* `ConversationalAIAPIImpl.kt`: Contains the main implementation logic of the ConversationalAI API.
+* `ConversationalAIUtils.kt`: Provides utility functions and manages event callbacks.
+  * `v3/`: Contains the subtitle rendering module.
+    * `TranscriptionController.kt`: Controls subtitle rendering and synchronization.
+    * `MessageParser.kt`: Parses transcription and message data.
 </TabItem>
 
-<TabItem value="php" label="PHP" default>
+<TabItem value="swift" label="iOS" default>
 
-- HMAC/SHA256
+* `ConversationalAIAPI.swift`: Defines the API interface, data structures, and enumerations.
+* `ConversationalAIAPIImpl.swift`: Contains the main implementation logic of the ConversationalAI API.
+* `Transcription/`
+  * `TranscriptionController.swift`: Manages subtitle rendering and transcription control.
 
-    <CodeBlock language="php" showLineNumbers>
-   {`<?php
-  function assertEqual($expect, $actual)
-  {
-      if ($expect != $actual) {
-          echo("\\n assert failed");
-          echo("\\n  expect:\\n    " . $expect);
-          echo("\\n  actual:\\n    " . $actual);
-          echo("\\n");
-      } else {
-          echo("assert ok\\n");
-          echo("\\n");
-      }
-  }
-
-  // Obtain the raw request body from the notification and compute its signature.
-  // In other words, the requestBody in the following code is the binary byte array before deserialization, 
-  // not the object after deserialization.
-  $request_body = '{"eventType":10,"noticeId":"4eb720f0-8da7-11e9-a43e-53f411c2761f","notifyMs":1560408533119,"payload":{"a":"1","b":2},"productId":1}';
-  $secret = 'secret';
-
-  // The value of Agora-Signature-V2 in the request header
-  $sha256 = 'de96da5acf03b0021ac3b4fa2225e7ae6f3533a30d50bb02c08ea4fa748bda24';
-
-  $res2 = (hash_hmac('sha256', $request_body, $secret));
-  assertEqual($res2, $sha256);
-  ?>`}
-    </CodeBlock>
-
-- HMAC/SHA1
-
-    <CodeBlock language="php" showLineNumbers>
-    {`<?php
-  function assertEqual($expect, $actual)
-  {
-      if ($expect != $actual) {
-          echo("\\n assert failed");
-          echo("\\n  expect:\\n    " . $expect);
-          echo("\\n  actual:\\n    " . $actual);
-          echo("\\n");
-      } else {
-          echo("assert ok\\n");
-          echo("\\n");
-      }
-  }
-
-  // Obtain the raw request body from the notification and compute its signature.
-  // In other words, the requestBody in the following code is the binary byte array before deserialization, 
-  // not the object after deserialization.
-  $request_body = '{"eventType":10,"noticeId":"4eb720f0-8da7-11e9-a43e-53f411c2761f","notifyMs":1560408533119,"payload":{"a":"1","b":2},"productId":1}';
-  $secret = 'secret';
-
-  // The value of Agora-Signature in the request header
-  $sha1 = '5a3bb6a6d9fad2ea9ae3fb707a14c9d7f3136df1';
-
-  $res1 = (hash_hmac('sha1', $request_body, $secret));
-  assertEqual($res1, $sha1);
-  ?>`}
-    </CodeBlock>
 </TabItem>
 
-<TabItem value="go" label="Go" default>
-- HMAC/SHA256
+<TabItem value="web" label="Web" default>
 
-    <CodeBlock language="php" showLineNumbers>
-    {`package main
-  import (
-    "crypto/hmac"
-    "crypto/sha256"
-    "encoding/hex"
-    "fmt"
-  )
-  func main() \{
-    // Obtain the raw request body of the message notification and compute its signature.
-    // In other words, the \`request_body\` in the code below is the binary byte array before deserialization,
-    // not the dictionary after deserialization.
-    request_body := \`\{"eventType":10,"noticeId":"4eb720f0-8da7-11e9-a43e-53f411c2761f","notifyMs":1560408533119,"payload":\{"a":"1","b":2},"productId":1}\`
-    secret := "secret"
-    fmt.Println(calcSignatureV2(secret, request_body)) // de96da5acf03b0021ac3b4fa2225e7ae6f3533a30d50bb02c08ea4fa748bda24
-  }
-  func calcSignatureV2(secret, payload string) string \{
-    mac := hmac.New(sha256.New, []byte(secret))
-    mac.Write(\[]byte(payload))
-    return hex.EncodeToString(mac.Sum(nil))
-  }`}
-    </CodeBlock>
+* `index.ts`: Defines the main API class.
+* `type.ts`: Contains API interfaces, data structures, and enumerations.
+* `utils/`
+  * `index.ts`: Provides general utility functions for the API.
+  * `events.ts`: Defines the event management class, which can be extended to support event listening and broadcasting.
+  * `sub-render.ts`: Implements the subtitle rendering module.
 
-- HMAC/SHA1
+</TabItem>
+</Tabs>
 
-    <CodeBlock language="php" showLineNumbers>
-    {`package main
-  import (
-    "crypto/hmac"
-    "crypto/sha1"
-    "encoding/hex"
-    "fmt"
-  )
-  func main() {
-    // Obtain the raw request body of the message notification and compute its signature.
-    // In other words, the \`request_body\` in the code below is the binary byte array before deserialization,
-    // not the dictionary after deserialization.
-    request_body := \`{\"eventType\":10,\"noticeId\":\"4eb720f0-8da7-11e9-a43e-53f411c2761f\",\"notifyMs\":1560408533119,\"payload\":{\"a\":\"1\",\"b\":2},\"productId\":1}\`
-    secret := "secret"
-    fmt.Println(calcSignatureV1(secret, request_body))  // 5a3bb6a6d9fad2ea9ae3fb707a14c9d7f3136df1
-  }
-  func calcSignatureV1(secret, payload string) string {
-    mac := hmac.New(sha1.New, []byte(secret))
-    mac.Write([]byte(payload))
-    return hex.EncodeToString(mac.Sum(nil))
-  }`}
-    </CodeBlock>
+### API reference
+
+<Tabs groupId="platform">
+<TabItem value="android" label="Android" default>
+
+- [`addHandler`](/conversational-ai/reference/android#addhandler)
+- [`subscribeMessage`](/conversational-ai/reference/android#subscribemessage)
+- [`unsubscribeMessage`](/conversational-ai/reference/android#unsubscribemessage)
+- [`destroy`](/conversational-ai/reference/android#destroy)
+- [`onAgentStateChanged`](/conversational-ai/reference/android#onagentstatechanged)
+- [`onAgentInterrupted`](/conversational-ai/reference/android#onagentinterrupted)
+- [`onAgentMetrics`](/conversational-ai/reference/android#onagentmetrics)
+- [`onAgentError`](/conversational-ai/reference/android#onagenterror)
 </TabItem>
 
+<TabItem value="swift" label="iOS" default>
+
+- [`addHandler`](/conversational-ai/reference/ios#addhandler)
+- [`subscribeMessage`](/conversational-ai/reference/ios#subscribemessage)
+- [`unsubscribeMessage`](/conversational-ai/reference/ios#unsubscribemessage)
+- [`destroy`](/conversational-ai/reference/ios#destroy)
+- [`onAgentStateChanged`](/conversational-ai/reference/ios#onagentstatechanged)
+- [`onAgentInterrupted`](/conversational-ai/reference/ios#onagentinterrupted)
+- [`onAgentMetrics`](/conversational-ai/reference/ios#onagentmetrics)
+- [`onAgentError`](/conversational-ai/reference/ios#onagenterror)
+</TabItem>
+
+<TabItem value="web" label="Web" default>
+
+- [`IConversationalAIAPIEventHandler`](/conversational-ai/reference/web#iconversationalaiapieventhandlers-interface)
+- [`EConversationalAIAPIEvents`](/conversational-ai/reference/web#econversationalaiapievents)
+- [`subscribeMessage`](/conversational-ai/reference/web#subscribemessage)
+- [`unsubscribeMessage`](/conversational-ai/reference/web#unsubscribe)
+- [`destroy`](/conversational-ai/reference/web#destroy)
+</TabItem>
 </Tabs>

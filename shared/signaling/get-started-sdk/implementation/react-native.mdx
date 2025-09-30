@@ -1,0 +1,519 @@
+<PlatformWrapper platform="react-native">
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+
+A complete code sample that implements the basic features of <Vpd k="NAME" /> is presented here for your reference. To use the sample code, create a file named `signaling.tsx` and add the following code.
+
+<details>
+<summary>Complete sample code for <Vpd k="PRODUCT" /></summary>
+<CodeBlock language="tsx" showLineNumbers>
+{`import React, { useEffect, useRef, useState } from 'react';
+import {
+ View,
+ Text,
+ TextInput,
+ TouchableOpacity,
+ FlatList,
+ KeyboardAvoidingView,
+ Platform,
+ StyleSheet,
+} from 'react-native';
+import {
+ createAgoraRtmClient,
+ RtmConfig,
+ RTMProvider,
+ useRtm,
+ MessageEvent,
+ RtmChannelType,
+ RtmMessageType,
+ useRtmEvent,
+ RtmLinkState,
+} from 'agora-react-native-rtm';
+
+// Configuration - Replace with your actual values
+const CONFIG = {
+ APP_ID: 'YOUR_APP_ID',
+ TOKEN: 'YOUR_AUTH_TOKEN',
+ CHANNEL_ID: 'demo',
+ USER_ID: '1',
+};
+
+interface ChatMessage {
+ id: number;
+ text: string;
+ sender: string;
+ timestamp: number;
+}
+
+export default function SignalingApp() {
+ const client = createAgoraRtmClient(
+   new RtmConfig({
+     userId: CONFIG.USER_ID,
+     appId: CONFIG.APP_ID,
+     useStringUserId: true,
+   })
+ );
+
+ return (
+   <RTMProvider client={client}>
+     <ChatScreen />
+   </RTMProvider>
+ );
+}
+
+function ChatScreen() {
+ const flatListRef = useRef<FlatList<ChatMessage>>(null);
+ const [message, setMessage] = useState('');
+ const [messages, setMessages] = useState<ChatMessage[]>([]);
+ const [isConnected, setIsConnected] = useState(false);
+
+ const engine = useRtm();
+
+ // Login to Signaling - direct approach (more reliable than useLogin hook)
+ useEffect(() => {
+   const login = async () => {
+     if (engine) {
+       try {
+         await engine.login({ token: CONFIG.TOKEN });
+         console.log('✅ Login successful');
+       } catch (error) {
+         console.error('❌ Login failed:', error);
+       }
+     }
+   };
+   
+   login();
+ }, [engine]);
+
+ // Handle incoming messages
+ useRtmEvent(engine, 'message', (evt) => {
+   console.log('📨 Message received from:', evt.publisher);
+   
+   const msg = new MessageEvent(evt);
+   const newMessage: ChatMessage = {
+     id: Date.now() + Math.random(),
+     text: msg.message ?? '',
+     sender: msg.publisher || 'remote',
+     timestamp: msg.timestamp || Date.now(),
+   };
+   
+   setMessages((prev) => [...prev, newMessage]);
+ });
+
+ // Handle connection state
+ useRtmEvent(engine, 'linkState', (eventData) => {
+   console.log('🔗 Connection state:', eventData.currentState);
+   
+   if (eventData.currentState === RtmLinkState.connected) {
+     console.log('✅ Connected! Subscribing to channel...');
+     setIsConnected(true);
+     subscribeToChannel();
+   } else if (eventData.currentState === RtmLinkState.connecting) {
+     console.log('🔄 Connecting...');
+     setIsConnected(false);
+   } else if (eventData.currentState === RtmLinkState.failed) {
+     console.error('❌ Connection failed:', eventData.reason);
+     setIsConnected(false);
+   } else {
+     setIsConnected(false);
+   }
+ });
+
+ const subscribeToChannel = async () => {
+   try {
+     await engine.subscribe(CONFIG.CHANNEL_ID, { withMessage: true });
+     console.log('✅ Subscribed to channel:', CONFIG.CHANNEL_ID);
+   } catch (error) {
+     console.error('❌ Subscribe error:', error);
+   }
+ };
+
+ const sendMessage = async () => {
+   if (!message.trim() || !isConnected) return;
+
+   try {
+     await engine.publish(CONFIG.CHANNEL_ID, message, {
+       channelType: RtmChannelType.message,
+       messageType: RtmMessageType.string,
+       customType: 'PlainText',
+     });
+
+     // Add sent message to local state
+     const sentMessage: ChatMessage = {
+       id: Date.now(),
+       text: message,
+       sender: 'local',
+       timestamp: Date.now(),
+     };
+     
+     setMessages((prev) => [...prev, sentMessage]);
+     setMessage('');
+     console.log('✅ Message sent successfully');
+   } catch (error) {
+     console.error('❌ Send error:', error);
+   }
+ };
+
+ // Cleanup when component unmounts
+ useEffect(() => {
+   return () => {
+     const cleanup = async () => {
+       try {
+         await engine.unsubscribe(CONFIG.CHANNEL_ID);
+         await engine.logout();
+         engine.release();
+       } catch (error) {
+         console.error('Cleanup error:', error);
+       }
+     };
+     cleanup();
+   };
+ }, [engine]);
+
+ // Auto-scroll to bottom when new messages arrive
+ useEffect(() => {
+   if (messages.length > 0) {
+     flatListRef.current?.scrollToEnd({ animated: true });
+   }
+ }, [messages]);
+
+ return (
+   <KeyboardAvoidingView
+     style={styles.container}
+     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+     keyboardVerticalOffset={90}
+   >
+     {/* Header */}
+     <View style={styles.header}>
+       <Text style={styles.headerTitle}>Signaling Demo</Text>
+       <View style={[styles.statusDot, { backgroundColor: isConnected ? '#4CAF50' : '#F44336' }]} />
+     </View>
+
+     {/* Messages */}
+     <FlatList
+       ref={flatListRef}
+       data={messages}
+       renderItem={({ item }) => (
+         <View
+           style={[
+             styles.messageBubble,
+             item.sender === 'local' ? styles.localBubble : styles.remoteBubble,
+           ]}
+         >
+           <Text style={[styles.messageText, { color: item.sender === 'local' ? 'white' : 'black' }]}>
+             {item.text}
+           </Text>
+           <Text style={[styles.senderText, { color: item.sender === 'local' ? '#E0E0E0' : '#666' }]}>
+             {item.sender === 'local' ? 'You' : item.sender}
+           </Text>
+         </View>
+       )}
+       keyExtractor={(item) => item.id.toString()}
+       contentContainerStyle={styles.messageList}
+       showsVerticalScrollIndicator={false}
+     />
+
+     {/* Input */}
+     <View style={styles.inputContainer}>
+       <TextInput
+         style={styles.textInput}
+         placeholder={isConnected ? "Type a message..." : "Connecting..."}
+         value={message}
+         onChangeText={setMessage}
+         editable={isConnected}
+         multiline
+       />
+       <TouchableOpacity
+         style={[styles.sendButton, { opacity: (!message.trim() || !isConnected) ? 0.5 : 1 }]}
+         onPress={sendMessage}
+         disabled={!message.trim() || !isConnected}
+       >
+         <Text style={styles.sendButtonText}>Send</Text>
+       </TouchableOpacity>
+     </View>
+   </KeyboardAvoidingView>
+ );
+}
+
+const styles = StyleSheet.create({
+ container: {
+   flex: 1,
+   backgroundColor: '#f5f5f5',
+ },
+ header: {
+   flexDirection: 'row',
+   alignItems: 'center',
+   justifyContent: 'center',
+   paddingVertical: 16,
+   paddingTop: 50,
+   backgroundColor: '#007AFF',
+ },
+ headerTitle: {
+   fontSize: 18,
+   fontWeight: 'bold',
+   color: 'white',
+   marginRight: 8,
+ },
+ statusDot: {
+   width: 12,
+   height: 12,
+   borderRadius: 6,
+ },
+ messageList: {
+   padding: 16,
+   paddingBottom: 8,
+ },
+ messageBubble: {
+   padding: 12,
+   borderRadius: 16,
+   marginVertical: 4,
+   maxWidth: '80%',
+ },
+ localBubble: {
+   alignSelf: 'flex-end',
+   backgroundColor: '#007AFF',
+ },
+ remoteBubble: {
+   alignSelf: 'flex-start',
+   backgroundColor: 'white',
+   borderWidth: 1,
+   borderColor: '#e0e0e0',
+ },
+ messageText: {
+   fontSize: 16,
+ },
+ senderText: {
+   fontSize: 12,
+   marginTop: 4,
+ },
+ inputContainer: {
+   flexDirection: 'row',
+   padding: 16,
+   backgroundColor: 'white',
+   borderTopWidth: 1,
+   borderTopColor: '#e0e0e0',
+   alignItems: 'flex-end',
+ },
+ textInput: {
+   flex: 1,
+   borderWidth: 1,
+   borderColor: '#ddd',
+   borderRadius: 20,
+   paddingHorizontal: 16,
+   paddingVertical: 12,
+   marginRight: 12,
+   backgroundColor: '#f9f9f9',
+   maxHeight: 100,
+ },
+ sendButton: {
+   paddingHorizontal: 20,
+   paddingVertical: 12,
+   borderRadius: 20,
+   backgroundColor: '#007AFF',
+ },
+ sendButtonText: {
+   color: 'white',
+   fontWeight: 'bold',
+   fontSize: 16,
+ },
+});`}
+</CodeBlock>
+</details>
+
+To confirm that login is successful, monitor the `linkState` event notification which provides the error code and reason for login failure. When performing a login operation, the client's network connection state is `CONNECTING`. After a successful login, the state is updated to `CONNECTED`. 
+
+<Admonition title="Best practice">
+To continuously monitor the network connection state of the client, best practice is to continue to listen for `linkState` notifications throughout the life cycle of the application. For further details, see [API references](https://agoraio-extensions.github.io/agora-react-native-rtm/modules.html).
+</Admonition>
+
+<Admonition type="caution">
+After a user successfully logs into <Vg k="SIG"/>, the application's PCU increases, which affects your billing data.
+</Admonition>
+
+### Import Agora modules
+
+To use <Vg k="SIG"/> APIs in your project, import the relevant Agora classes and interfaces:
+
+```tsx
+import {
+  createAgoraRtmClient,
+  RtmConfig,
+  RTMProvider,
+  useRtm,
+  MessageEvent,
+  RtmChannelType,
+  RtmMessageType,
+  useRtmEvent,
+  RtmLinkState,
+} from 'agora-react-native-rtm';
+```
+
+### Initialize the Signaling engine
+
+To initialize the <Vg k="SIG" /> SDK, create an instance with `createAgoraRtmClient`. Then, pass this instance to the `RTMProvider` so that child components can access it using the `useRtm` hook.
+
+```tsx
+export default function SignalingApp() {
+ const client = createAgoraRtmClient(
+   new RtmConfig({
+     userId: CONFIG.USER_ID,
+     appId: CONFIG.APP_ID,
+     useStringUserId: true,
+   })
+ );
+
+ return (
+   <RTMProvider client={client}>
+     <ChatScreen />
+   </RTMProvider>
+ );
+}
+```
+
+### Add event listeners
+
+The event listeners enable you to implement the processing logic in response to Signaling events. Use the following code to handle event notifications or display received messages:
+
+```tsx
+// Get the SDK instance
+const engine = useRtm();
+
+useRtmEvent(engine, 'message', (evt) => {
+ console.log('📨 Message received from:', evt.publisher);
+ 
+ const msg = new MessageEvent(evt);
+ const newMessage: ChatMessage = {
+   id: Date.now() + Math.random(),
+   text: msg.message ?? '',
+   sender: msg.publisher || 'remote',
+   timestamp: msg.timestamp || Date.now(),
+ };
+ 
+ setMessages((prev) => [...prev, newMessage]);
+});
+
+useRtmEvent(engine, 'linkState', (eventData) => {
+ console.log('🔗 Connection state:', eventData.currentState);
+ 
+ if (eventData.currentState === RtmLinkState.connected) {
+   setIsConnected(true);
+   subscribeToChannel();
+ } else {
+   setIsConnected(false);
+ }
+});
+```
+
+### Log in to <Vg k="SIG"/>
+
+To connect to <Vg k="SIG"/> and access <Vg k="SIG"/> network resources, such as sending messages, and subscribing to channels, login using your authentication token.
+
+During a login operation, the client attempts to establish a connection with <Vg k="SIG"/>. Once the connection is established, the client transmits heartbeat information to the <Vg k="SIG"/> server at fixed intervals to keep the client active until the client actively logs out or is disconnected. The connection is interrupted when timeout occurs. During this period, users may freely access the <Vg k="SIG"/> network resources subject to their own permissions and usage restrictions.
+
+```tsx
+// Login using direct approach for reliability
+useEffect(() => {
+ const login = async () => {
+   if (engine) {
+     try {
+       await engine.login({ token: CONFIG.TOKEN });
+       console.log('✅ Login successful');
+     } catch (error) {
+       console.error('❌ Login failed:', error);
+     }
+   }
+ };
+ 
+ login();
+}, [engine]);
+```
+
+### Publish a message
+
+To distribute a message to all subscribers of a message channel, call `publish`. The following code sends a string type message.
+
+```tsx
+const sendMessage = async () => {
+ if (!message.trim() || !isConnected) return;
+
+ try {
+   await engine.publish(CONFIG.CHANNEL_ID, message, {
+     channelType: RtmChannelType.message,
+     messageType: RtmMessageType.string,
+     customType: 'PlainText',
+   });
+
+   // Add sent message to local state
+   const sentMessage: ChatMessage = {
+     id: Date.now(),
+     text: message,
+     sender: 'local',
+     timestamp: Date.now(),
+   };
+   
+   setMessages((prev) => [...prev, sentMessage]);
+   setMessage('');
+ } catch (error) {
+   console.error('❌ Send error:', error);
+ }
+};
+```
+
+<Admonition type="info">
+Before calling `publish` to send a message, serialize the message payload as a string. 
+</Admonition>
+
+### Subscribe and unsubscribe
+
+To subscribe to a channel, call `subscribe`. When you subscribe to a channel, you receive all messages published to the channel.
+
+```tsx
+const subscribeToChannel = async () => {
+ try {
+   await engine.subscribe(CONFIG.CHANNEL_ID, { withMessage: true });
+   console.log('✅ Subscribed to channel:', CONFIG.CHANNEL_ID);
+ } catch (error) {
+   console.error('❌ Subscribe error:', error);
+ }
+};
+```
+
+When you no longer need to receive messages from a channel, call `unsubscribe` to unsubscribe from the channel:
+
+```tsx
+const unsubscribe = async () => {
+ try {
+   await engine.unsubscribe(CONFIG.CHANNEL_ID);
+   console.log('✅ Unsubscribed from channel:', CONFIG.CHANNEL_ID);
+ } catch (error) {
+   console.error('❌ Unsubscribe error:', error);
+ }
+};
+```
+
+For more information about subscribing and sending messages, see [Message channels](../core-functionality/message-channel) and [Stream channels](../core-functionality/stream-channel).
+
+### Log out of Signaling
+
+When a user no longer needs to use <Vg k="SIG" />, call `logout`. Logging out means closing the connection between the client and <Vg k="SIG" />. The user is automatically logged out or unsubscribed from all message and stream channels. Other users in the channel receive an `presence` notification of the user leaving the channel.
+
+```tsx
+useEffect(() => {
+ return () => {
+   const cleanup = async () => {
+     try {
+       await engine.unsubscribe(CONFIG.CHANNEL_ID);
+       await engine.logout();
+       engine.release();
+     } catch (error) {
+       console.error('Cleanup error:', error);
+     }
+   };
+   cleanup();
+ };
+}, [engine]);
+```
+
+</PlatformWrapper>

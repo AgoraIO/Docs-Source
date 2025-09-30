@@ -6,7 +6,7 @@ import MaintainStatus from '@docs/shared/notification-center-service/maintain-us
 import RedundantNotifications from '@docs/shared/notification-center-service/redundant-notifications.mdx';
 import SignatureVerification from '@docs/shared/notification-center-service/signature-verification.mdx';
 
-A webhook is a user-defined callback over HTTP that allows your <Vpl k="CLIENT" /> or back-end system to receive notifications when certain events occur. <Vg k="COMPANY" /> calls your webhook endpoint from its servers to send notifications about <Vpd k="NAME" /> events. With <Vg k="NCS_LONG" />, you can subscribe to <Vpd k="PRODUCT" /> events and receive notifications in real time.
+A webhook is a user-defined callback over HTTPS that allows your <Vpl k="CLIENT" /> or back-end system to receive notifications when certain events occur. <Vg k="COMPANY" /> calls your webhook endpoint from its servers to send notifications about <Vpd k="NAME" /> events. With <Vg k="NCS_LONG" />, you can subscribe to <Vpd k="PRODUCT" /> events and receive notifications in real time.
 
 ## Understand the tech
 
@@ -68,7 +68,7 @@ In order to handle notifications for the events you subscribe to, you need to:
 
 Once <Vg k="NCS_LONG" /> is enabled, <Vg k="AGORA_BACKEND" /> sends notification callbacks as `HTTPS POST` requests to your webhook when events that you are subscribed to occur. The data format of the requests is JSON, the character encoding is `UTF-8`, and the signature algorithm is `HMAC/SHA1` or `HMAC/SHA256`.
 
-For <Vg k="NCS_LONG" />, a webhook is an endpoint on an `HTTP` server that handles these requests. In a production environment you write this in your web infrastructure, for development purposes best practice is to create a simple local server and use a service such as [ngrok](https://ngrok.com/download) to supply a public URL that you register with  <Vg k="AGORA_BACKEND" /> when you enable <Vg k="NCS_LONG" />.
+For <Vg k="NCS_LONG" />, a webhook is an endpoint on an `HTTPS` server that handles these requests. In a production environment you write this in your web infrastructure, for development purposes best practice is to create a simple local server and use a service such as [ngrok](https://ngrok.com/download) to supply a public URL that you register with  <Vg k="AGORA_BACKEND" /> when you enable <Vg k="NCS_LONG" />.
 
 To do this, take the following steps:
 
@@ -87,6 +87,120 @@ To do this, take the following steps:
 
     In the project directory, create a new file `main.go`. Open the file in your preferred text editor and add the following code:
 
+    <ProductWrapper product="media-gateway">
+
+    ```go
+    package main
+
+    import (
+        "encoding/json"
+        "fmt"
+        "io"
+        "log"
+        "net/http"
+    )
+
+    // Base webhook request structure with common fields
+    type WebhookRequest struct {
+        NoticeID  string                 `json:"noticeId"`
+        ProductID int64                  `json:"productId"`
+        EventType int                    `json:"eventType"`
+        NotifyMs  int64                  `json:"notifyMs"`
+        SID       string                 `json:"sid"`
+        Payload   map[string]interface{} `json:"payload"`
+    }
+
+    // RTCInfo represents the rtcInfo nested structure
+    type RTCInfo struct {
+        Channel string `json:"channel"`
+        UID     string `json:"uid"`
+    }
+
+    func rootHandler(w http.ResponseWriter, r *http.Request) {
+        response := `<h1>Agora Notifications demo</h1>`
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte(response))
+    }
+
+    func ncsHandler(w http.ResponseWriter, r *http.Request) {
+        // Log signature for verification purposes
+        agoraSignature := r.Header.Get("Agora-Signature")
+        fmt.Println("Agora-Signature:", agoraSignature)
+
+        // Read request body
+        body, err := io.ReadAll(r.Body)
+        if err != nil {
+            http.Error(w, "Unable to read request body", http.StatusBadRequest)
+            return
+        }
+
+        // Parse the webhook request
+        var req WebhookRequest
+        if err := json.Unmarshal(body, &req); err != nil {
+            http.Error(w, "Invalid JSON", http.StatusBadRequest)
+            return
+        }
+
+        // Log base information
+        fmt.Printf("\n--- Webhook Notification Received ---\n")
+        fmt.Printf("Notice ID: %s\n", req.NoticeID)
+        fmt.Printf("Event Type: %d\n", req.EventType)
+        fmt.Printf("Session ID: %s\n", req.SID)
+        fmt.Printf("Timestamp: %d\n", req.NotifyMs)
+
+        // Extract and process payload fields
+        if streamKey, ok := req.Payload["streamKey"].(string); ok {
+            fmt.Printf("Stream Key: %s\n", streamKey)
+        }
+
+        // Extract rtcInfo if available
+        if rtcInfoRaw, ok := req.Payload["rtcInfo"].(map[string]interface{}); ok {
+            channel := rtcInfoRaw["channel"].(string)
+            uid := rtcInfoRaw["uid"].(string)
+            fmt.Printf("RTC Info - Channel: %s, UID: %s\n", channel, uid)
+        }
+
+        // Handle different event types
+        // Modify the following code to extract additional info from the payload depending on the eventType. See Event Types for details.
+        switch req.EventType {
+        case 1:
+            fmt.Println("Event: Live stream connected")
+            // Extract beginAt timestamp if available
+            if beginAt, ok := req.Payload["beginAt"].(string); ok {
+                fmt.Printf("Started At: %s\n", beginAt)
+            }
+        case 2:
+            fmt.Println("Live stream disconnected")
+            // Extract additional fields for stream disconnected event
+            // Add specific handling for event type
+        default:
+            fmt.Printf("Event: Unknown (%d)\n", req.EventType)
+        }
+
+        // Print the full payload structure for reference (helpful for debugging)
+        prettyJSON, _ := json.MarshalIndent(req.Payload, "", "  ")
+        fmt.Printf("\nFull Payload:\n%s\n", string(prettyJSON))
+
+        // Send successful response
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte("Notification received successfully"))
+    }
+
+    func main() {
+        http.HandleFunc("/", rootHandler)
+        http.HandleFunc("/ncsNotify", ncsHandler)
+
+        port := ":8080"
+        fmt.Printf("Notifications webhook server started on port %s\n", port)
+        fmt.Println("Ready to receive Agora webhook notifications...")
+        
+        if err := http.ListenAndServe(port, nil); err != nil {
+            log.Fatalf("Failed to start server: %v", err)
+        }
+    }
+    ```
+    </ProductWrapper>
+    <ProductWrapper notAllowed="media-gateway">
     ```go
     package main
     
@@ -151,6 +265,7 @@ To do this, take the following steps:
         }
     }
     ```
+    </ProductWrapper>
 
 1. **Run your Go server**
 
@@ -194,6 +309,7 @@ To do this, take the following steps:
 
     Example using `curl`:
 
+    <ProductWrapper notAllowed="media-gateway">
     ```sh
     curl -X POST <ngrok_url>/ncsNotify \
     -H "Content-Type: application/json" \
@@ -226,6 +342,47 @@ To do this, take the following steps:
       }
     }
     ```
+    </ProductWrapper>
+    <ProductWrapper product="media-gateway">
+    ```sh
+    curl -X POST <ngrok_url>/ncsNotify \
+    -H "Content-Type: application/json" \
+    -H "Agora-Signature: your_signature" \
+    -d '{
+      "noticeId": "some_notice_id",
+      "productId": 12345,
+      "eventType": 1,
+      "notifyMs": 1744184971214,
+      "sid": "test-session-id",
+      "payload": {
+        "clientSeq": 67890,
+        "uid": 123,
+        "channelName": "test_channel",
+        "beginAt": "2025-04-09T07:49:29.946Z"
+      }
+    }'
+    ```
+    
+    Make sure you replace `ngrok_url` with the forwarding url.
+
+    Once the HTTP request is successful, you see the following `JSON` payload in your browser:
+
+    ```json
+    {
+      "noticeId": "some_notice_id",
+      "productId": 12345,
+      "eventType": 1,
+      "notifyMs": 1744184971214,
+      "sid": "test-session-id",
+      "payload": {
+        "clientSeq": 67890,
+        "uid": 123,
+        "channelName": "test_channel",
+        "beginAt": "2025-04-09T07:49:29.946Z"
+      }
+    }
+    ```
+    </ProductWrapper>
 
 ### Enable Notifications
 

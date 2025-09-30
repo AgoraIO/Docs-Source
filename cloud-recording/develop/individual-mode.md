@@ -33,12 +33,12 @@ For example, if a channel has two users and you choose to record both audio and 
 
 Before recording, call the [`acquire`](../reference/restful-api#acquire) method to apply for a resource ID.
 
-#### An HTTP request example of `acquire`
+#### Example `acquire` request over HTTPS
 
 -   Request URL:
 
   ```json
-    https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
+  https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
   ``` 
 -   `Content-type`: `application/json;charset=utf-8`
 
@@ -61,7 +61,7 @@ Before recording, call the [`acquire`](../reference/restful-api#acquire) method 
 
 To enable individual recording mode, set `mode` to `individual` when calling [`start`](../reference/restful-api#start). Use `recordingConfig` to configure individual recording, and use `storageConfig` to configure your third-party cloud storage.
 
-Agora recommends that you use the standard mode when you start recording, that is, set the `streamMode` field in the `recordingConfig` parameterto `standard` to generate combined audio and video files that can be played directly.
+Agora recommends that you use the standard mode when you start recording, that is, set the `streamMode` field in the `recordingConfig` parameter to `standard` to generate combined audio and video files that can be played directly.
 
 In individual recording mode, you can configure the following parameters in `clientRequest`:
 
@@ -73,11 +73,12 @@ In individual recording mode, you can configure the following parameters in `cli
 | [`recordingFileConfig`](../reference/restful-api#recordingfileconfig) | JSON. Configures the recorded files.                                                              | Optional                                   |
 | [`storageConfig`](../reference/restful-api#storageconfig)                 | JSON. Configures the third-party cloud storage.                                                   | Required                                   |
 
-#### An HTTP request example of `start`
+#### Example `start` request over HTTPS
 
 -   Request URL:
+
   ```json
-    https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/individual/start
+  https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/individual/start
   ```
 -   `Content-type`: `application/json;charset=utf-8`
 
@@ -127,11 +128,12 @@ In individual recording mode, you can configure the following parameters in `cli
 
 When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the [`acquire`](../reference/restful-api#acquire) method for a new resource ID.
 
-#### An HTTP request example of `stop`
+#### Example `stop` request over HTTPS
 
 -   The request URL is:
+
   ```json
-     http://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/individual/stop
+    https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/individual/stop
   ```
 -   `Content-type`: `application/json;charset=utf-8`
 

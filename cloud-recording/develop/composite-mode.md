@@ -29,7 +29,7 @@ This guide explains how to implement composite recording using Cloud Recording R
 
 Before recording, call the [`acquire`](../reference/restful-api#acquire) method to apply for a resource ID.
 
-#### An HTTP request example of `acquire`
+#### Example `acquire` request over HTTPS
 
 - Request URL: 
 
@@ -68,7 +68,7 @@ In composite recording mode, you can configure the following parameters in `clie
 | [`recordingFileConfig`](../reference/restful-api#recordingfileconfig) | Configures the recorded files.                               | Optional                             |
 |  [`storageConfig`](../reference/restful-api#storageconfig)       | Configures the third-party cloud storage.                    | Required                             |
 
-#### An HTTP request example of `start`
+#### Example `start` request over HTTPS
 
 - Request URL:
 
@@ -129,12 +129,12 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>
 
 When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the [`acquire`](../reference/restful-api#acquire) method for a new resource ID.
 
-#### An HTTP request example of `stop`
+#### Example `stop` request over HTTPS
 
 - The request URL is: 
 
  ```html
- http://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/mix/stop
+ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/mix/stop
  ```
 - `Content-type`: `application/json;charset=utf-8`
 

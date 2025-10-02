@@ -137,6 +137,13 @@ const data = {
     PRODUCT: 'Real-Time STT'
   },
 
+  'cloud-transcoding': {
+    NAME: 'Cloud Transcoding',
+    PATH: 'cloud-transcoding',
+    SDK: 'Cloud Transcoding',
+    PRODUCT: 'Cloud Transcoding'
+  },
+
   'interactive-whiteboard': {
     NAME: 'Interactive Whiteboard',
     PATH: 'interactive-whiteboard',

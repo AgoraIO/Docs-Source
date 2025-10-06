@@ -19,7 +19,7 @@ The <Vpd k="SDK" /> 4.x is built on top of the latest Agora RTC SDK 4.x. It prov
 - Supports the latest Agora cloud agent
 - Improved resilience in weak network conditions and adaptive feedback
 - Compatibility with <Vg k="VSDK" /> 4.x and later
-- Support for H.265 and other peer codecs
+- Support for AV1 and other peer codecs
 - Easier upgrades due to shared RTC engine between the RTC SDK and the recording SDK
 
 ## Functionality changes
@@ -31,7 +31,6 @@ Version 4.x focuses on recording audio and video streams in the RTC channel and 
 The following features are not available in SDK 4.x. If needed, use the Agora RTC Server SDK:
 
 * Access to raw audio and video (For example, YUV or PCM data)
-* Local screenshot capture
 * Built-in cloud container deployment
 
 <Admonition type="info" >

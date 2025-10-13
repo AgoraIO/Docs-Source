@@ -1,0 +1,394 @@
+import CodeBlock from '@theme/CodeBlock';
+
+<PlatformWrapper platform = "web">
+
+![](/images/rtc-sdk/rtc-quick-start-sequence-web.svg)
+
+This guide includes [complete sample code](#complete-sample-code) that demonstrates implementing basic real-time interaction. To understand the core API calls in the sample code, review the following implementation steps.
+
+### Import the `AgoraRTC` SDK
+
+```js
+import AgoraRTC from "agora-rtc-sdk-ng";
+```
+
+### Initialize an instance of `AgoraRTCClient`
+
+Call <Link target="_blank" to="{{global.API_REF_WEB_ROOT}}/interfaces/iagorartc.html#createclient">`createClient`</Link> to initialize an `AgoraRTCClient` object.  
+Set the [Channel mode](#channel-modes) and [Video encoding format](#video-encoding-formats) based on your use case. 
+
+For <Vpd k="NAME" /> Set `mode` to `live`.
+
+```javascript
+// RTC client instance
+let client = null; 
+
+// Initialize the AgoraRTC client
+function initializeClient() {
+    client = AgoraRTC.createClient({ mode: "live", codec: "vp8", role: "host" });
+    setupEventListeners();
+}
+```
+
+### Join a channel 
+
+To join a channel, call `join` with the following parameters:
+
+- **App ID**: The [App ID](../get-started/manage-agora-account#get-the-app-id) for your project.
+
+- **Channel name**: The name of the channel to join. Clients that pass the same channel name join the same channel. If a channel with the specified name does not exist, it is created when the first user joins.
+
+- **Authentication token**: A dynamic key that authenticates a user when the client joins a channel. In a production environment, you obtain a token from a [token server](../token-authentication/deploy-token-server) in your security infrastructure. For the purpose of this guide [Generate a temporary token](../get-started/manage-agora-account#generate-temporary-tokens).
+
+- **User ID**: A 32-bit signed integer that identifies a user in the channel. You can specify a unique user ID for each user yourself. If you set the user ID to `0` when joining a channel, the SDK generates a random number for the user ID. 
+
+When you join as a host, you can publish local media streams in the channel; you can also subscribe to streams published by other hosts. As an audience member, you may only subscribe to media streams published by hosts. 
+
+Set the channel profile, client role, and audience latency level according to your use case:
+
+| Use case | Channel profile | Client role | Latency level |
+|----------|-----------------|-------------|---------------|
+| **Voice calling** | `"rtc"` | `"host"` | `2`: Ultra low latency (default) |
+| **Video calling** | `"rtc"` | `"host"` | `2`: Ultra low latency (default) |
+| **Interactive live streaming** |  `"live"` | `"host"` or `"audience"` | `2`: Ultra low latency (default) |
+| **Broadcast streaming** | `"live"` | `"host"` or `"audience"` | `1`: Low latency |
+
+* Join as a host
+
+    ```js
+    // Join as a host
+    async function joinAsHost() {
+        await client.join(appId, channel, token, uid);
+        // A host can both publish tracks and subscribe to tracks
+        client.setClientRole("host");
+        // Create and publish local tracks
+        await createLocalMediaTracks();
+        await publishLocalTracks();
+        displayLocalVideo();
+    }
+    ```
+
+* Join as audience
+
+    To join a channel as an audience member, first call `join`, then use `setClientRole` to set the role. Listen for the `user-published` callback to play the tracks published in the channel.
+
+    ```js
+    // Join as audience
+    async function joinAsAudience() {
+        await client.join(appId, channel, token, uid);
+        
+        // Set ultra-low latency level for| **Interactive live streaming** |
+        let clientRoleOptions = { level: 2 };
+        // Audience can only subscribe to tracks
+        client.setClientRole("audience", clientRoleOptions);
+    }
+    ```
+
+### Create local media tracks
+
+To set up the necessary local media tracks:
+
+- Call `createMicrophoneAudioTrack` to create a local audio track.
+- Call `createCameraVideoTrack` to create a local Video track.
+
+```javascript
+// Declare variables for local tracks
+let localAudioTrack = null;
+let localVideoTrack = null;
+
+// Create local audio and video tracks
+async function createLocalMediaTracks() {
+    localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+    localVideoTrack = await AgoraRTC.createCameraVideoTrack();
+}
+```
+
+### Publish local media tracks
+
+To make the created <Vpd k="MEDIA" /> tracks available for other users in the channel, use the `publish` method.
+
+```javascript
+async function publishLocalTracks() {
+    await client.publish([localAudioTrack, localVideoTrack]);
+}
+```
+
+See [Local <Vpd k="MEDIA" /> tracks](#local--tracks) to learn more about local tracks.
+
+### Set up event listeners
+
+Use the `on` method to register event listeners for SDK events. The SDK triggers the `user-published` event when a user publishes an audio track in the channel. Similarly, it triggers the `user-unpublished` event when a user leaves the channel, goes offline, or unpublishes a media track. 
+
+
+```javascript
+// Handle client events
+function setupEventListeners() {
+    // Declare event handler for "user-published"
+    client.on("user-published", async (user, mediaType) => {
+        // Subscribe to media streams
+        await client.subscribe(user, mediaType);
+        if (mediaType === "video") {
+            // Specify the ID of the DOM element or pass a DOM object.
+            user.videoTrack.play("<Specify a DOM element>");
+        }
+        if (mediaType === "audio") {
+            user.audioTrack.play();
+        }
+    });
+
+    // Handle the "user-unpublished" event to unsubscribe from the user's media tracks
+    client.on("user-unpublished", async (user) => {
+        const remotePlayerContainer = document.getElementById(user.uid);
+        remotePlayerContainer && remotePlayerContainer.remove();
+    });
+}
+```
+
+- After successfully unsubscribing, the SDK releases the corresponding `RemoteTrack` object. This automatically removes the video playback element and stops audio playback.
+- If a remote user actively stops publishing, the local user receives the `user-unpublished` callback. Upon receiving this callback, the SDK automatically releases the corresponding `RemoteTrack` object, so you do not need to call `unsubscribe` again.
+- The `unsubscribe` method is asynchronous and should be used with `Promise` or `async/await`.
+
+<Admonition type="info">
+To ensure that you receive all <Vpd k="SDK" /> events, set up event listeners before joining a channel.
+</Admonition>
+
+For more information about other `AgoraRTCClient` events, refer to the <Link target="_blank" to="{{global.API_REF_WEB_ROOT}}/interfaces/iagorartcclient.html#event_channel_media_relay_event">API reference</Link>.
+
+### Display the local video
+
+To play the local video, use the `play` method of the local video track. Pass an element ID or a DOM element from your UI where you want to render the video.
+
+```javascript
+// Display local video
+function displayLocalVideo() {
+    const localPlayerContainer = document.createElement("div");
+    localPlayerContainer.id = uid;
+    localPlayerContainer.textContent = `Local user ${uid}`;
+    localPlayerContainer.style.width = "640px";
+    localPlayerContainer.style.height = "480px";
+    document.body.append(localPlayerContainer);
+    localVideoTrack.play(localPlayerContainer);
+}
+```
+
+### Display remote video
+
+To display the remote video, call the `play` method of the remote user's `videoTrack` and pass in either the element ID or a DOM element from your UI where you want to render the video.
+
+```js
+// Display remote user's video
+function displayRemoteVideo(user) {
+    const remotePlayerContainer = document.createElement("div");
+    remotePlayerContainer.id = user.uid.toString();
+    remotePlayerContainer.textContent = `Remote user ${user.uid}`;
+    remotePlayerContainer.style.width = "640px";
+    remotePlayerContainer.style.height = "480px";
+    document.body.append(remotePlayerContainer);
+    user.videoTrack.play(remotePlayerContainer);
+}
+```
+
+### Leave the channel
+
+To exit the channel, close local audio and video tracks and call `leave`. 
+
+```javascript
+// Leave the channel and clean up
+async function leaveChannel() {
+    // Stop the local media tracks to release the microphone and camera resources
+    if (localAudioTrack) {
+        localAudioTrack.close();
+        localAudioTrack = null; 
+    }
+    if (localVideoTrack) {
+        localVideoTrack.close();
+        localVideoTrack = null; 
+    }
+    // Leave the channel
+    await client.leave();
+}
+```
+
+### Complete sample code
+
+A complete code sample demonstrating the basic process of real-time interaction is provided here for your reference. To use the sample, copy the following code to the JavaScript file in the project's `src` folder. 
+
+<details> 
+<summary>Complete sample code for <Vpd k="NAME" /></summary>
+<CodeBlock language="js" showLineNumbers>
+{`import AgoraRTC from "agora-rtc-sdk-ng";
+
+// RTC client instance
+let client = null;
+
+// Declare variables for local tracks
+let localAudioTrack = null; 
+let localVideoTrack = null; 
+
+// Connection parameters
+let appId = "<-- Insert app ID -->";
+let channel = "<-- Insert channel name -->";
+let token = "<-- Insert token -->"; 
+let uid = 0; // User ID
+
+// Initialize the AgoraRTC client
+function initializeClient() {
+    client = AgoraRTC.createClient({ mode: "live", codec: "vp8", role: "host" });
+    setupEventListeners();
+}
+
+// Handle client events
+function setupEventListeners() {
+    client.on("user-published", async (user, mediaType) => {
+        await client.subscribe(user, mediaType);
+        console.log("subscribe success");
+        if (mediaType === "video") {
+            displayRemoteVideo(user);
+        }
+        if (mediaType === "audio") {
+            user.audioTrack.play();
+        }
+    });
+    client.on("user-unpublished", async (user) => {
+        const remotePlayerContainer = document.getElementById(user.uid);
+        remotePlayerContainer && remotePlayerContainer.remove();
+    });
+}
+
+// Create and publish local tracks
+async function createLocalTracks() {
+    localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+    localVideoTrack = await AgoraRTC.createCameraVideoTrack();
+}
+
+// Display local video
+function displayLocalVideo() {
+    const localPlayerContainer = document.createElement("div");
+    localPlayerContainer.id = uid;
+    localPlayerContainer.textContent = \`Local user $\{uid}\`;
+    localPlayerContainer.style.width = "640px";
+    localPlayerContainer.style.height = "480px";
+    document.body.append(localPlayerContainer);
+    localVideoTrack.play(localPlayerContainer);
+}
+
+// Join as a host
+async function joinAsHost() {
+    await client.join(appId, channel, token, uid);
+    // A host can both publish tracks and subscribe to tracks
+    client.setClientRole("host");
+    // Create and publish local tracks
+    await createLocalTracks();
+    await publishLocalTracks();
+    displayLocalVideo();
+    disableJoinButtons();
+    console.log("Host joined and published tracks.");
+}
+
+// Join as audience
+async function joinAsAudience() {
+    await client.join(appId, channel, token, uid);
+    // Set ultra-low latency level
+    let clientRoleOptions = { level: 2 };
+    // Audience can only subscribe to tracks
+    client.setClientRole("audience", clientRoleOptions);
+    disableJoinButtons();
+    console.log("Audience joined.");
+}
+
+// Publish local tracks
+async function publishLocalTracks() {
+    await client.publish([localAudioTrack, localVideoTrack]);
+}
+
+// Display remote user's video
+function displayRemoteVideo(user) {
+    const remotePlayerContainer = document.createElement("div");
+    remotePlayerContainer.id = user.uid.toString();
+    remotePlayerContainer.textContent = \`Remote user $\{user.uid\}\`;
+    remotePlayerContainer.style.width = "640px";
+    remotePlayerContainer.style.height = "480px";
+    document.body.append(remotePlayerContainer);
+    user.videoTrack.play(remotePlayerContainer);
+}
+
+// Leave the channel
+async function leaveChannel() {
+    if (localAudioTrack) {
+        localAudioTrack.close();
+        localAudioTrack = null; 
+    }
+    if (localVideoTrack) {
+        localVideoTrack.close();
+        localVideoTrack = null; 
+    }
+    const localPlayerContainer = document.getElementById(uid);
+    localPlayerContainer && localPlayerContainer.remove();
+    client.remoteUsers.forEach((user) => {
+        const playerContainer = document.getElementById(user.uid);
+        playerContainer && playerContainer.remove();
+    });
+    await client.leave();
+    enableJoinButtons();
+    console.log("Left the channel.");
+}
+
+// Disable join buttons
+function disableJoinButtons() {
+    document.getElementById("host-join").disabled = true;
+    document.getElementById("audience-join").disabled = true;
+}
+
+// Enable join buttons
+function enableJoinButtons() {
+    document.getElementById("host-join").disabled = false;
+    document.getElementById("audience-join").disabled = false;
+}
+
+// Set up event listeners for buttons
+function setupButtonHandlers() {
+    document.getElementById("host-join").onclick = joinAsHost;
+    document.getElementById("audience-join").onclick = joinAsAudience;
+    document.getElementById("leave").onclick = leaveChannel;
+}
+
+// Start live streaming
+function startBasicLiveStreaming() {
+    initializeClient();
+    window.onload = setupButtonHandlers;
+}
+startBasicLiveStreaming();`}
+</CodeBlock>
+</details> 
+
+### Create a user interface​
+
+Open `index.html` in the project's root folder and replace the contents with the following code to implement a basic client user interface:
+
+<details>
+<summary>Sample code to create the user interface</summary>
+
+<CodeBlock language="html" showLineNumbers>
+{`<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Agora Web SDK Quickstart</title>
+    </head>
+    <body>
+        <h2 class="left-align">Agora Web SDK Quickstart</h2>
+        <div class="row">
+            <div>
+                <button type="button" id="host-join">Join as host</button>
+                <button type="button" id="audience-join">Join as audience</button>
+                <button type="button" id="leave">Leave</button>
+            </div>
+        </div>
+        <!-- Include the JavaScript file -->
+        <script type="module" src="/src/main.js"></script>
+    </body>
+</html>`}
+</CodeBlock>
+</details>
+
+</PlatformWrapper>

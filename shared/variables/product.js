@@ -102,6 +102,13 @@ const data = {
     PRODUCT: 'Real-Time STT'
   },
 
+  'cloud-transcoding': {
+    NAME: 'Cloud Transcoding',
+    PATH: 'cloud-transcoding',
+    SDK: 'Cloud Transcoding',
+    PRODUCT: 'Cloud Transcoding'
+  },
+
   'interactive-whiteboard': {
     NAME: 'Interactive Whiteboard',
     PATH: 'interactive-whiteboard',
@@ -147,6 +154,12 @@ const data = {
     PRODUCT: 'TEN Agent',
     MANAGER: 'TEN Manager',
     DESIGNER: 'TEN Designer',
+  },
+
+  'on-premise-recording': {
+    NAME: 'On-Premise Recording',
+    PATH: 'on-premise-recording',
+    SDK: 'On-Premise Recording SDK',
   }
 };
 

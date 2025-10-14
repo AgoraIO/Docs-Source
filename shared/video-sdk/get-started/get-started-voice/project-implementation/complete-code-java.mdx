@@ -1,13 +1,9 @@
 import CodeBlock from '@theme/CodeBlock';
 
 <CodeBlock language="java" showLineNumbers>
-{`package com.example.<projectname>
-
-import android.Manifest;
+{`import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.view.SurfaceView;
-import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -20,166 +16,134 @@ import io.agora.rtc2.Constants;
 import io.agora.rtc2.IRtcEngineEventHandler;
 import io.agora.rtc2.RtcEngine;
 import io.agora.rtc2.RtcEngineConfig;
-import io.agora.rtc2.video.VideoCanvas;
 
 public class MainActivity extends AppCompatActivity {
-    private static final int PERMISSION_REQ_ID = 22;
-    // Fill in the app ID from Agora Console
-    private String myAppId = "<Your app ID>";
+
+    // Fill in the App ID obtained from the Agora Console
+    private String appId = "<#Your App ID#>";
     // Fill in the channel name
-    private String channelName = "<Your channel name>";
-    // Fill in the temporary token generated from Agora Console
-    private String token = "<Your token>";
+    private String channelName = "<#Your channel name#>";
+    // Fill in the temporary Token generated from the Agora Console
+    private String token = "<#Your Token#>";
 
     private RtcEngine mRtcEngine;
 
     private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {
-        // Callback when successfully joining the channel
+        // Callback for successfully joining the channel
         @Override
         public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
             super.onJoinChannelSuccess(channel, uid, elapsed);
-            showToast("Joined channel " + channel);
+            runOnUiThread(() -> {
+                Toast.makeText(MainActivity.this, "Join channel success", Toast.LENGTH_SHORT).show();
+            });
         }
 
-        // Callback when a remote user or host joins the current channel
+        // Callback for when a remote user or host joins the current channel
         @Override
         public void onUserJoined(int uid, int elapsed) {
             super.onUserJoined(uid, elapsed);
             runOnUiThread(() -> {
-                // When a remote user joins the channel, display the remote video stream for the specified uid
-                setupRemoteVideo(uid);
-                showToast("User joined: " + uid); // Show toast for user joining
+                Toast.makeText(MainActivity.this, "User joined: " + uid, Toast.LENGTH_SHORT).show();
             });
         }
 
-        // Callback when a remote user or host leaves the current channel
+        // Callback for when a remote user or host leaves the current channel
         @Override
         public void onUserOffline(int uid, int reason) {
             super.onUserOffline(uid, reason);
             runOnUiThread(() -> {
-                showToast("User offline: " + uid); // Show toast for user going offline
+                Toast.makeText(MainActivity.this, "User offline: " + uid, Toast.LENGTH_SHORT).show();
             });
         }
     };
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        if (checkPermissions()) {
-            startLiveStreaming();
-        } else {
-            requestPermissions();
+    private void initializeAndJoinChannel() {
+        try {
+            // Create and configure RtcEngineConfig object
+            RtcEngineConfig config = new RtcEngineConfig();
+            config.mContext = getBaseContext();
+            config.mAppId = appId;
+            config.mEventHandler = mRtcEventHandler;
+            // Create and initialize RtcEngine
+            mRtcEngine = RtcEngine.create(config);
+        } catch (Exception e) {
+            throw new RuntimeException("Check the error.");
         }
+
+        // Create and configure ChannelMediaOptions object
+        ChannelMediaOptions options = new ChannelMediaOptions();
+        // Set user role to BROADCASTER (host) or AUDIENCE (audience)
+        options.clientRoleType = Constants.CLIENT_ROLE_BROADCASTER;
+        // Set channel profile to BROADCASTING (live broadcasting scenario)
+        options.channelProfile = Constants.CHANNEL_PROFILE_LIVE_BROADCASTING;
+        // Publish audio captured by the microphone
+        options.publishMicrophoneTrack = true;
+        // Automatically subscribe to all audio streams
+        options.autoSubscribeAudio = true;
+        // Join the channel using temporary Token and channel name, uid of 0 means the engine randomly generates a user ID internally
+        // The onJoinChannelSuccess callback will be triggered upon success
+        mRtcEngine.joinChannel(token, channelName, 0, options);
     }
 
-    private void requestPermissions() {
-        ActivityCompat.requestPermissions(this, getRequiredPermissions(), PERMISSION_REQ_ID);
+    private static final int PERMISSION_REQ_ID = 22;
+
+    // Get the permissions required for real-time audio interaction experience
+    private String[] getRequiredPermissions(){
+        // Determine the permissions required when targetSDKVersion is 31 and above
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            return new String[]{
+                    Manifest.permission.RECORD_AUDIO, // Audio recording permission
+                    Manifest.permission.READ_PHONE_STATE, // Read phone state permission
+                    Manifest.permission.BLUETOOTH_CONNECT // Bluetooth connection permission
+            };
+        } else {
+            return new String[]{
+                    Manifest.permission.RECORD_AUDIO,
+            };
+        }
     }
 
     private boolean checkPermissions() {
         for (String permission : getRequiredPermissions()) {
-            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+            int permissionCheck = ContextCompat.checkSelfPermission(this, permission);
+            if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
                 return false;
             }
         }
         return true;
     }
 
-    private String[] getRequiredPermissions() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            return new String[]{
-                Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.CAMERA,
-                Manifest.permission.READ_PHONE_STATE,
-                Manifest.permission.BLUETOOTH_CONNECT
-            };
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        // If permissions are already granted, initialize RtcEngine and join the channel
+        if (checkPermissions()) {
+            initializeAndJoinChannel();
         } else {
-            return new String[]{
-                Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.CAMERA
-            };
+            ActivityCompat.requestPermissions(this, getRequiredPermissions(), PERMISSION_REQ_ID);
         }
     }
 
+    // System permission request callback
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == PERMISSION_REQ_ID && checkPermissions()) {
-            startLiveStreaming();
+        if (checkPermissions()) {
+            initializeAndJoinChannel();
         }
-    }
-
-    private void startLiveStreaming() {
-        initializeAgoraVideoSDK();
-        enableVideo();
-        setupLocalVideo();
-        joinChannel();
-    }
-
-    private void initializeAgoraVideoSDK() {
-        try {
-            RtcEngineConfig config = new RtcEngineConfig();
-            config.mContext = getBaseContext();
-            config.mAppId = myAppId;
-            config.mEventHandler = mRtcEventHandler;
-            mRtcEngine = RtcEngine.create(config);
-        } catch (Exception e) {
-            throw new RuntimeException("Error initializing RTC engine: " + e.getMessage());
-        }
-    }
-
-    private void enableVideo() {
-        mRtcEngine.enableVideo();
-        mRtcEngine.startPreview();
-    }
-
-    private void setupLocalVideo() {
-        FrameLayout container = findViewById(R.id.local_video_view_container);
-        SurfaceView surfaceView = new SurfaceView(getBaseContext());
-        container.addView(surfaceView);
-        mRtcEngine.setupLocalVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, 0));
-    }
-
-    private void joinChannel() {
-        // Create an instance of ChannelMediaOptions and configure it
-        ChannelMediaOptions options = new ChannelMediaOptions();
-        // Set the user role to BROADCASTER or AUDIENCE according to the use-case
-        options.clientRoleType = Constants.CLIENT_ROLE_BROADCASTER;
-        // In the live broadcast use-case, set the channel profile to BROADCASTING (live broadcast use-case)
-        options.channelProfile = Constants.CHANNEL_PROFILE_LIVE_BROADCASTING;
-        // Set the audience latency level
-        options.audienceLatencyLevel = Constants.AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY;
-        // Publish local media
-        options.publishCameraTrack = true;
-        options.publishMicrophoneTrack = true;
-        mRtcEngine.joinChannel(token, channelName, 0, options);
-    }
-
-    private void setupRemoteVideo(int uid) {
-        FrameLayout container = findViewById(R.id.remote_video_view_container);
-        SurfaceView surfaceView = new SurfaceView(getBaseContext());
-        surfaceView.setZOrderMediaOverlay(true);
-        container.addView(surfaceView);
-        mRtcEngine.setupRemoteVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, uid));
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        cleanupAgoraEngine();
-    }
-
-    private void cleanupAgoraEngine() {
         if (mRtcEngine != null) {
-            mRtcEngine.stopPreview();
+            // Leave the channel
             mRtcEngine.leaveChannel();
             mRtcEngine = null;
+            // Destroy the engine
+            RtcEngine.destroy();
         }
-    }
-
-    private void showToast(String message) {
-        runOnUiThread(() -> Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show());
     }
 }`}
 </CodeBlock>

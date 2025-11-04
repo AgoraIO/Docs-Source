@@ -369,6 +369,99 @@ func main() {
 
 </CodeBlock>
 </TabItem>
+<TabItem value="node" label="Node.js">
+
+<CodeBlock showLineNumbers language="js">
+{`const express = require('express');
+const OpenAI = require('openai');
+
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.YOUR_LLM_API_KEY,
+});
+
+// Initialize Express app
+const app = express();
+app.use(express.json());
+
+// Configure logging
+const logger = {
+  info: (message) => console.log('INFO: ' + message),
+  debug: (message) => console.log('DEBUG: ' + message),
+  error: (message, error) => console.error('ERROR: ' + message, error),
+};
+
+// Chat Completions endpoint
+app.post('/chat/completions', async (req, res) => {
+  try {
+    logger.info('Received request: ' + JSON.stringify(req.body));
+
+    const {
+      model,
+      messages,
+      modalities = ['text'],
+      tools,
+      tool_choice,
+      response_format,
+      audio,
+      stream = true,
+      stream_options,
+    } = req.body;
+
+    if (!stream) {
+      return res
+        .status(400)
+        .json({ detail: 'chat completions require streaming' });
+    }
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Create OpenAI streaming completion
+    const completion = await openai.chat.completions.create({
+      model,
+      messages,
+      tools: tools ? tools : undefined,
+      tool_choice: tools && tool_choice ? tool_choice : undefined,
+      modalities,
+      audio,
+      response_format,
+      stream: true,
+      stream_options,
+    });
+
+    // Stream the response
+    for await (const chunk of completion) {
+      logger.debug('Received chunk: ' + JSON.stringify(chunk));
+      res.write('data: ' + JSON.stringify(chunk) + '\\n\\n');
+    }
+
+    // End the stream
+    res.write('data: [DONE]\\n\\n');
+    res.end();
+  } catch (error) {
+    logger.error('Chat completion error:', error);
+
+    if (!res.headersSent) {
+      const errorDetail = error.message + '\\n' + (error.stack || '');
+      return res.status(500).json({ detail: errorDetail });
+    }
+
+    res.write('data: ' + JSON.stringify({ error: error.message }) + '\\n\\n');
+    res.write('data: [DONE]\\n\\n');
+    res.end();
+  }
+});
+
+// Start server
+const PORT = process.env.PORT || 8000;
+app.listen(PORT, () => {
+  logger.info('Server running on port ' + PORT);
+});`}
+</CodeBlock>
+</TabItem>
 </Tabs>
 
 When calling the POST method to [Start a conversational AI agent](../rest-api/join.mdx), use the LLM configuration to point your agent to the custom service:
@@ -376,9 +469,9 @@ When calling the POST method to [Start a conversational AI agent](../rest-api/jo
 ```json
 {
   "llm": {
-     "url": "https://your-custom-llm-service/chat/completions",
+    "url": "https://your-custom-llm-service/chat/completions",
     "api_key": "",
-     "system_messages": [
+    "system_messages": [
       {
         "role": "system",
         "content": "You are a helpful assistant."
@@ -620,6 +713,136 @@ func (s *Server) refactMessages(context string, messages []Message) []Message {
 	// Only return original messages
 	return messages
 }`}
+</CodeBlock>
+</TabItem>
+<TabItem value="node" label="Node.js">
+
+<CodeBlock showLineNumbers language="js">
+{`/**
+ * Retrieve relevant content from the knowledge base using the RAG model.
+ *
+ * @param {Array} messages - The original message list.
+ * @returns {Promise<string>} The retrieved text content.
+ */
+async function performRagRetrieval(messages) {
+  // TODO: Implement the actual RAG retrieval logic.
+  // You can choose the first or last message from the message list as the query,
+  // then send the query to the RAG model to retrieve relevant content.
+
+  // Return the retrieval result.
+  return 'This is relevant content retrieved from the knowledge base.';
+}
+
+/**
+ * Modify the message list by adding the retrieved context to the original messages.
+ *
+ * @param {string} context - The retrieved context.
+ * @param {Array} messages - The original message list.
+ * @returns {Array} The modified message list.
+ */
+function refactMessages(context, messages) {
+  // TODO: Implement the actual message modification logic.
+  // This should add the retrieved context to the original message list.
+
+  return messages;
+}
+
+// Random waiting messages
+const waitingMessages = [
+  "Just a moment, I'm thinking...",
+  'Let me think about that for a second...',
+  'Good question, let me find out...',
+];
+
+// RAG Chat Completions endpoint
+app.post('/rag/chat/completions', async (req, res) => {
+  try {
+    logger.info('Received RAG request: ' + JSON.stringify(req.body));
+
+    const {
+      model,
+      messages,
+      modalities = ['text'],
+      tools,
+      tool_choice,
+      response_format,
+      audio,
+      stream = true,
+      stream_options,
+    } = req.body;
+
+    if (!stream) {
+      return res
+        .status(400)
+        .json({ detail: 'chat completions require streaming' });
+    }
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // First, send a "please wait" prompt
+    const waitingMessage = {
+      id: 'waiting_msg',
+      choices: [
+        {
+          index: 0,
+          delta: {
+            role: 'assistant',
+            content:
+              waitingMessages[
+                Math.floor(Math.random() * waitingMessages.length)
+              ],
+          },
+          finish_reason: null,
+        },
+      ],
+    };
+
+    res.write('data: ' + JSON.stringify(waitingMessage) + '\\n\\n');
+
+    // Perform RAG retrieval
+    const retrievedContext = await performRagRetrieval(messages);
+
+    // Modify messages
+    const refactedMessages = refactMessages(retrievedContext, messages);
+
+    // Request LLM completion
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: refactedMessages,
+      tools: tools ? tools : undefined,
+      tool_choice: tools && tool_choice ? tool_choice : undefined,
+      modalities,
+      audio,
+      response_format,
+      stream: true,
+      stream_options,
+    });
+
+    // Stream the response
+    for await (const chunk of completion) {
+      logger.debug('Received RAG chunk: ' + JSON.stringify(chunk));
+      res.write('data: ' + JSON.stringify(chunk) + '\\n\\n');
+    }
+
+    // End the stream
+    res.write('data: [DONE]\\n\\n');
+    res.end();
+  } catch (error) {
+    logger.error('RAG chat completion error:', error);
+
+    if (!res.headersSent) {
+      const errorDetail = error.message + '\\n' + (error.stack || '');
+      return res.status(500).json({ detail: errorDetail });
+    }
+
+    res.write('data: ' + JSON.stringify({ error: error.message }) + '\\n\\n');
+    res.write('data: [DONE]\\n\\n');
+    res.end();
+  }
+});`}
 </CodeBlock>
 </TabItem>
 </Tabs>
@@ -877,6 +1100,140 @@ func (s *Server) readTextFile(filePath string) (string, error) {
    }
    return string(data), nil
 }`}
+</CodeBlock>
+</TabItem>
+<TabItem value="node" label="Node.js">
+
+<CodeBlock showLineNumbers language="js">
+{`const fs = require('fs').promises;
+const { randomUUID } = require('crypto');
+
+/**
+ * Read a text file and return its content
+ * @param {string} filePath - Path to the text file
+ * @returns {Promise<string>} Content of the text file
+ */
+async function readTextFile(filePath) {
+  const content = await fs.readFile(filePath, 'utf8');
+  return content;
+}
+
+/**
+ * Read a PCM file and return a list of audio chunks
+ * @param {string} filePath - Path to the PCM file
+ * @param {number} sampleRate - Sampling rate of the audio
+ * @param {number} durationMs - Duration of each audio chunk in milliseconds
+ * @returns {Promise<Buffer[]>} List of audio chunks
+ */
+async function readPCMFile(filePath, sampleRate, durationMs) {
+  const content = await fs.readFile(filePath);
+  const chunkSize = Math.floor(sampleRate * 2 * (durationMs / 1000));
+  const chunks = [];
+
+  for (let i = 0; i < content.length; i += chunkSize) {
+    chunks.push(content.slice(i, i + chunkSize));
+  }
+
+  return chunks;
+}
+
+// Audio Chat Completions endpoint
+app.post('/audio/chat/completions', async (req, res) => {
+  try {
+    logger.info('Received audio request: ' + JSON.stringify(req.body));
+
+    const {
+      model,
+      messages,
+      modalities = ['text'],
+      tools,
+      tool_choice,
+      response_format,
+      audio,
+      stream = true,
+      stream_options,
+    } = req.body;
+
+    if (!stream) {
+      return res
+        .status(400)
+        .json({ detail: 'chat completions require streaming' });
+    }
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Example usage, reading text and audio files
+    // Please replace with your actual logic
+    const textFilePath = './file.txt';
+    const pcmFilePath = './file.pcm';
+
+    const sampleRate = 16000; // Example sampling rate
+    const durationMs = 40; // 40ms audio chunk
+
+    const textContent = await readTextFile(textFilePath);
+    const audioChunks = await readPCMFile(pcmFilePath, sampleRate, durationMs);
+
+    // Generate audio ID for this response
+    const audioId = randomUUID();
+
+    // Send text content
+    const textMessage = {
+      id: randomUUID(),
+      choices: [
+        {
+          index: 0,
+          delta: {
+            audio: {
+              id: audioId,
+              transcript: textContent,
+            },
+          },
+          finish_reason: null,
+        },
+      ],
+    };
+
+    res.write('data: ' + JSON.stringify(textMessage) + '\\n\\n');
+
+    // Send audio chunks
+    for (const chunk of audioChunks) {
+      const audioMessage = {
+        id: randomUUID(),
+        choices: [
+          {
+            index: 0,
+            delta: {
+              audio: {
+                id: audioId,
+                data: chunk.toString('base64'),
+              },
+            },
+            finish_reason: null,
+          },
+        ],
+      };
+
+      res.write('data: ' + JSON.stringify(audioMessage) + '\\n\\n');
+    }
+
+    res.write('data: [DONE]\\n\\n');
+    res.end();
+  } catch (error) {
+    logger.error('Audio chat completion error:', error);
+
+    if (!res.headersSent) {
+      const errorDetail = error.message + '\\n' + (error.stack || '');
+      return res.status(500).json({ detail: errorDetail });
+    }
+
+    res.write('data: ' + JSON.stringify({ error: error.message }) + '\\n\\n');
+    res.write('data: [DONE]\\n\\n');
+    res.end();
+  }
+});`}
 </CodeBlock>
 </TabItem>
 </Tabs>

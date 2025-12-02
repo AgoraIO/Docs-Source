@@ -4,18 +4,18 @@ sidebar_position: 5
 type: docs
 platform_selector: false
 description: >
-  Notifies the Message Notification Service, and then the Message Notification Service notifies your server of that event through an HTTP/HTTPS request.
+  Notifies the Message Notification Service, and then the Message Notification Service notifies your server of that event through an HTTP request.
 ---
 
 import SignatureVerification from '@docs/shared/notification-center-service/signature-verification.mdx';
 
-Agora provides <Vg k="NCS_LONG" /> (<Vg k="NCS" />). You can set up an HTTP/HTTPS server to receive the event notifications of Agora Cloud Recording. When an event occurs, the Agora Cloud Recording service notifies the Message Notification Service, and then the Message Notification Service notifies your server of that event through an HTTP/HTTPS request.
+Agora provides <Vg k="NCS_LONG" /> (<Vg k="NCS" />). You can set up an HTTPS server to receive the event notifications of Agora Cloud Recording. When an event occurs, the Agora Cloud Recording service notifies the Message Notification Service, and then the Message Notification Service notifies your server of that event through an HTTP request.
 
 Best practice is that core apps do not rely on <Vg k="NCS_LONG" /> (<Vg k="NCS" />). If your apps already rely heavily on the <Vg k="NCS" />, contact <a href="mailto:support@agora.io">support@agora.io</a> and enable the redundant message notification function. This doubles the received notifications and reduces the probability of message loss. After enabling the message notification function, you need to deduplicate messages based on `sid`. Message notification still cannot guarantee a 100% arrival rate.
 
 ## Callback information
 
-After you enable the callback service, when a specified event occurs, the Agora notification center sends an HTTP/HTTPS request as a callback. The request body provides the main information of the callback in a JSON object. The JSON object contains different fields for different events.
+After you enable the callback service, when a specified event occurs, the Agora notification center sends an HTTP request as a callback. The request body provides the main information of the callback in a JSON object. The JSON object contains different fields for different events.
 
 The following is an example that shows the fields in the request body.
 ![](https://web-cdn.agora.io/docs-files/1567593635825)
@@ -37,7 +37,6 @@ The following is an example that shows the fields in the request body.
   - `0`: The cloud recording service.
   - `1`: The recorder module.
   - `2`: The uploader module.
-  - `4`: The extension services. 
   - `6`: The web page recording module.
   - `8`: The download module.
 - `details`: JSON. The details of the callback events are described as follows. The message notification service may add new fields in `details` in the future. To ensure backward compatibility, the service will not change the data format of existing fields.
@@ -77,9 +76,7 @@ The related fields of the Agora Cloud Recording callback events are listed below
 | [71](#71-web_recorder_stopped) | 6 (web page recording module) | Web page recording stops.                                                                                                     |
 | [72](#72-web_recorder_capability_limit) | 6 (web page recording module) | The web page to record uses a feature that is unsupported by web page recording. The recording service will stop immediately. |
 | [73](#73) | 6 (web page recording module) | The web page reloads.                                                                                                         |
-| [90](#90) | 	8（download module） | The recording service fails to download the recorded files.                                                                   |
 | [100](#100) | 	6（web page recording module） | The CDN streaming status of the web page recording changes.                                                                   |
-| [1001](#1001) | 0 (cloud recording service) | The result of the transcoding.                                                                                                |
 
 ### <a name="1"></a>1 cloud_recording_error
 
@@ -529,42 +526,6 @@ eventType 43 indicates that the state of the audio stream has changed, and `deta
   - `"audio_silence"`: Audio loss issue.
   - `"page_load_timeout"`: Web page load timeout. The callback returns this field only if the web page load detection function is enabled and there is a web page load timeout. See [Web page load detection](../../develop/webpage-load-timeout).
  
-### <a name="80"></a>80 transcoder_started
-
-`eventType` 80 indicates that the transcoding starts, and `details` includes the following field:
-
-   `msgName`: String. The message name, `"transcoder_started"`.
-
-### <a name="81"></a>81 transcoder_completed
-
-`eventType` 81 indicates that the transcoding completes, and `details` includes the following fields:
-
-- `msgName`: String. The message name, `"transcoder_completed"`.
-
-- `result`: String. The result of the transcoding.
-
-  - `"all_success"`: Successfully transcodes all files.
-  - `"partial_success"`: Fails to transcode some files.
-  - `"fail"`: The transcoding fails.
-
-- `uids`: JSONArray. The array contains the transcoding result and the name of the MP4 file of a specific user ID.
- - `uid`: String. The corresponding user ID of the MP4 file.
- - `result`: String. The result of transcoding.
-   - `"success"`: Transcoding succeeds.
-   - `"fail"`: Transcoding fails.
-  - `fileList`: JSONArray. The array contains information about the MP4 file.
-  - `fileName`: String. The name of the MP4 file. 
-
-### <a name="90"></a>90 download_failed
-
-`eventType` 90 indicates that the recording service fails to download the recorded files. This callback is triggered only once in the entire recording process, and `details` includes the following fields:
-
-- `msgName`: String. The message name, `"download_failed"`.
-- `vendor`: Number. The name of the third-party cloud storage service, which is the same as `vendor` in your `start` request.
-- `region`: Number. The region of the third-party cloud storage, which is the same as region set in your `start` request.
-- `bucket`: String. The bucket name of the third-party cloud storage, which is the same as `bucket` set in your `start` request.
-- `fileName`: String. The list of M3U8 or TS/WebM files that fail to be downloaded. The file names are separated by `";"`.
-
 ### <a name="100"></a>100 rtmp_publish_status
 
 `eventType` 100 indicates the CDN streaming status of the web page recording. `details` includes the following fields:
@@ -576,21 +537,6 @@ eventType 43 indicates that the state of the audio stream has changed, and `deta
   - `"publishing"`: Pushing the stream to the CDN server.
   - `"onhold"`: Pause streaming.
   - `"disconnected"`: Failed to connect to the CDN server. Agora recommends that you change the CDN address.
-
-### <a name="1001"></a>1001 postpone_transcode_final_result
-
-`eventType` 1001 indicates the final transcoding result, and `details` includes the following fields:
-
-- `msgName`: String. The message name, `"postpone_transcode_final_result"`.
-
-- `result`: String. The final result of the transcoding.
-
-  - `"total_success"`: Successfully transcodes all files.
-  - `"partial_success"`: Fails to transcode some files.
-  - `"failed"`: The transcoding fails.
-- `fileList`: JSONArray. The array contains information about the generated MP4 files.
-- `fileName`: String. The name of an individual MP4 file. 
-
 
 ## Reference
 
@@ -649,7 +595,7 @@ If the reliability of the status of a cloud recording is a high priority, Agora 
 
 #### Message Notification Service
 
-You can use the Message Notification Service as a complementary option to monitor the recording service status. You need to configure an HTTP/HTTPS server to receive event notifications. 
+You can use the Message Notification Service as a complementary option to monitor the recording service status. You need to configure an HTTPS server to receive event notifications. 
 
 - Pros: Real-time
 - Cons:

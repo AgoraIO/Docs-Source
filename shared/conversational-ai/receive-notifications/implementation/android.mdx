@@ -1,0 +1,146 @@
+import CodeBlock from '@theme/CodeBlock';
+
+1. **Integrate the toolkit**
+
+    Copy the [`convoaiApi`](https://github.com/AgoraIO-Community/Conversational-AI-Demo/tree/main/Android/scenes/convoai/src/main/java/io/agora/scene/convoai/convoaiApi) folder to your project and import the toolkit before calling the toolkit API. Refer to [Folder structure](#folder-structure) to understand the role of each file.
+
+1. **Create a toolkit instance**
+
+    Create a configuration object with the <Vg k="VSDK"/> and <Vg k="SIG" /> engine instances. Use the configuration to create a toolkit instance.
+
+    <CodeBlock language="kotlin" showLineNumbers>
+    {`// Create a configuration object for the Video SDK and Chat SDK instances
+    val config = ConversationalAIAPIConfig(
+        rtcEngine = rtcEngineInstance,
+        rtmClient = rtmClientInstance,
+        enableLog = true
+    )
+
+    // Create the toolkit instance
+    val api = ConversationalAIAPIImpl(config)`}
+    </CodeBlock>
+
+1. **Register events**
+
+    Call the `addHandler` method to register and implement agent-related event callbacks.
+
+    <CodeBlock language="kotlin" showLineNumbers>
+    {`// Register event callbacks
+    api.addHandler(object : IConversationalAIAPIEventHandler {
+
+        // Listen for agent state changes
+        override fun onAgentStateChanged(agentUserId: String, event: StateChangeEvent) {
+            when (event.state) {
+                AgentState.SILENT -> {
+                    updateAgentStatus("Waiting...")
+                }
+                AgentState.LISTENING -> {
+                    updateAgentStatus("Listening...")
+                }
+                AgentState.THINKING -> {
+                    updateAgentStatus("Thinking...")
+                }
+                AgentState.SPEAKING -> {
+                    updateAgentStatus("Speaking...")
+                }
+                AgentState.UNKNOWN -> {
+                    Log.w("AgentState", "Unknown agent state: $event")
+                }
+            }
+        }
+
+        // Listen for agent interruption events
+        override fun onAgentInterrupted(agentUserId: String, event: InterruptEvent) {
+            Log.d("AgentInterrupt", "Agent $agentUserId interrupted at turn \$\{event.turnId\}")
+            showInterruptNotification()
+        }
+
+        // Monitor agent performance metrics
+        override fun onAgentMetrics(agentUserId: String, metric: Metric) {
+            when (metric.type) {
+                ModuleType.LLM -> {
+                    Log.d("Metrics", "LLM latency: \$\{metric.value\} ms")
+                }
+                ModuleType.TTS -> {
+                    Log.d("Metrics", "TTS latency: \$\{metric.value\} ms")
+                }
+                else -> {
+                    Log.d("Metrics", "\$\{metric.type\}: \$\{metric.name\} = \$\{metric.value\}")
+                }
+            }
+        }
+
+        // Handle agent errors
+        override fun onAgentError(agentUserId: String, error: ModuleError) {
+            Log.e("AgentError", "Error in \$\{error.type\}: \$\{error.message\} (code: \$\{error.code\})")
+
+            when (error.type) {
+                ModuleType.LLM -> {
+                    showErrorMessage("AI processing failed. Please try again later.")
+                }
+                ModuleType.TTS -> {
+                    showErrorMessage("Speech synthesis failed.")
+                }
+                else -> {
+                    showErrorMessage("System error: \$\{error.message\}")
+                }
+            }
+        }
+
+        // Handle debug logs
+        override fun onDebugLog(log: String) {
+            if (BuildConfig.DEBUG) {
+                Log.d("ConvoAI", log)
+            }
+            // Optional: Send logs to a remote server for diagnostics
+        }
+    })`}
+    </CodeBlock>
+
+1. **Subscribe to the channel**
+
+    Transcript data is delivered through <Vg k="SIG" /> channel messages. To receive transcript data, call `subscribeMessage` before starting the agent session.
+    
+    <CodeBlock language="kotlin" showLineNumbers>
+    {`api.subscribeMessage("channelName") { error ->
+        if (error != null) {
+            // Handle error
+        }
+    }`}
+    </CodeBlock>
+
+
+1. **Add a Conversational AI agent to the channel**
+
+    To [start a <Vpd k="AGENT" />](/conversational-ai/rest-api/agent/join), configure the following parameters in your `POST` request:
+
+    | Parameter       | Description   | Required |
+    | ----------------| ------------- | -------- |
+    | `advanced_features.enable_rtm: true`    | Starts the <Vg k="SIG" /> service | Yes  |
+    | `parameters.data_channel: "rtm"`  | Enables <Vg k="SIG" /> as the data transmission channel | Yes |
+    | `parameters.enable_metrics: true`  | Enables agent performance data collection    | Optional |
+    | `parameters.enable_error_message: true` | Enables reporting of agent error events  | Optional |
+
+    After a successful response, the agent joins the specified <Vg k="VSDK"/> channel and is ready to interact with the user.
+
+
+1. **Unsubscribe from the channel**
+
+    After an agent session ends, unsubscribe from channel messages to release transcription resources:
+
+    <CodeBlock language="kotlin" >
+    {`api.unsubscribeMessage("channelName") { error ->
+        if (error != null) {
+            // Handle the error
+        }
+    }`}
+    </CodeBlock>
+
+1. **Release resources**
+
+    At the end of each call, use the `destroy` method to clean up the cache.
+
+    <CodeBlock language="kotlin" >
+    {`api.destroy()`}
+    </CodeBlock>
+

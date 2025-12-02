@@ -1,0 +1,264 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+
+<PlatformWrapper platform="ios, macos">
+
+<Tabs groupId="language">
+<TabItem value="1" label="Preload and initialize early" default>
+
+The following figure illustrates the essential steps:
+
+<details>
+<summary>Sequence diagram for implementation</summary>
+
+![Sequence diagram for optimized video rendering](/images/video-sdk/optimize-video-rendering-solution-1.svg)
+</details>
+
+### Set up a <Vg k="VSDK"/> instance
+
+Creating and initializing the <Vg k="VSDK"/> engine takes time. To reduce first-frame display time, <Vg k="COMPANY"/> recommends initializing the engine when the module is loaded, not when SDK functions are first called.
+
+<Admonition type="info">
+Initialize the engine only once. Avoid creating and destroying it multiple times.
+</Admonition>
+
+<CodeBlock language="swift" showLineNumbers>
+{`class AgoraQuickStartViewController: UIViewController {
+    var agoraKit: AgoraRtcEngineKit?
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        // Create and initialize the engine during view controller creation
+        initializeAgoraEngine()
+    }
+    
+    private func initializeAgoraEngine() {
+        let config = AgoraRtcEngineConfig()
+        config.appId = "Your App ID"
+        config.channelProfile = .liveBroadcasting
+        config.delegate = self // You'll need to implement AgoraRtcEngineDelegate
+        
+        agoraKit = AgoraRtcEngineKit.sharedEngine(with: config, delegate: self)
+    }
+}`}
+</CodeBlock>
+
+### Enable accelerated rendering
+
+Call [`enableInstantMediaRendering`](https://api-ref.agora.io/en/voice-sdk/ios/4.x/documentation/agorartckit/agorartcenginekit/enableinstantmediarendering()) to reduce the time it takes to render the first video frame and play audio after joining a channel.
+
+- Call this method **before** joining a channel. Ideally, call it right after engine initialization.
+- Both host and audience must call this method to benefit from faster rendering.
+- To disable this feature, destroy the engine with `release`, then reinitialize it.
+
+<CodeBlock language="swift" showLineNumbers>
+{`// Enable accelerated rendering before joining the channel
+agoraKit?.enableInstantMediaRendering()`}
+</CodeBlock>
+
+### Set a video scenario
+
+Use [`setVideoScenario`](https://api-ref.agora.io/en/voice-sdk/ios/4.x/documentation/agorartckit/agorartcenginekit/setvideoscenario(_:)) to optimize performance for your specific use case. The SDK applies strategies tailored to the selected scenario.
+
+For example, for a one-on-one call, use `APPLICATION_SCENARIO_1V1`.
+
+<CodeBlock language="swift" showLineNumbers>
+{`// Set the video scenario
+agoraKit?.setVideoScenario(.application1V1Scenario)`}
+</CodeBlock>
+
+### Preload a channel
+
+Joining a channel involves acquiring server resources and establishing a connection. Call [`preloadChannel`](https://api-ref.agora.io/en/voice-sdk/ios/4.x/documentation/agorartckit/agorartcenginekit/preloadchannel(bytoken:channelid:uid:)) to handle resource acquisition early and reduce join time.
+
+- The `token`, `channelId`, and `uid` must match the values used in `joinChannel`.
+- Call `preloadChannel` as soon as you retrieve the required info.
+- Don’t call `joinChannel` immediately after `preloadChannel`.
+
+<CodeBlock language="swift" showLineNumbers>
+{`private func prepareChannelInfo() -> Int {
+    uid = getUid()
+    channelId = getChannelInfo()
+    token = getTokenFromServer(channelId: channelId, uid: uid)
+    
+    // Preload the channel
+    agoraKit?.preloadChannel(byToken: token, channelId: channelId, uid: uid)
+    
+    return 0 // Return success code, adjust as needed
+}`}
+</CodeBlock>
+
+
+### Set up the rendering view
+
+Setting the rendering view early ensures the first frame displays properly. If the view is not ready, the first frame might be skipped.
+
+If your app knows the remote user ID (For example, from Signaling), set the view immediately. Otherwise, use the `onUserJoined` callback.
+
+- **Set the remote view early:**
+
+    <CodeBlock language="swift" showLineNumbers>
+    {`func onShowChannels(channelId: String, remoteUid: UInt) {
+        let canvas = AgoraRtcVideoCanvas()
+        canvas.uid = remoteUid
+        canvas.renderMode = .fit
+        canvas.view = nil
+        agoraKit?.setupRemoteVideo(canvas)
+    }
+
+    func onEIDUserJoined(uid: UInt, elapsed: Int) {
+        // Already set - no additional setup needed
+    }`}
+    </CodeBlock>
+
+- **Set the view when the user joins:**
+
+    <CodeBlock language="swift" showLineNumbers>
+    {`// Event handler class
+    extension AgoraQuickStartViewController: AgoraRtcEngineDelegate {
+        func rtcEngine(_ engine: AgoraRtcEngineKit, didJoinedOfUid uid: UInt, elapsed: Int) {
+            // Forward to UI logic
+            DispatchQueue.main.async {
+                self.onEIDUserJoined(uid: uid, elapsed: elapsed)
+            }
+        }
+    }
+
+    func onEIDUserJoined(uid: UInt, elapsed: Int) {
+        let canvas = AgoraRtcVideoCanvas()
+        canvas.uid = uid
+        canvas.renderMode = .fit
+        canvas.view = surfaceView
+        agoraKit?.setupRemoteVideo(canvas)
+    }`}
+    </CodeBlock>
+
+### Monitor rendering performance
+
+Use [`startMediaRenderingTracing`](https://api-ref.agora.io/en/voice-sdk/ios/4.x/documentation/agorartckit/agorartcenginekit/startmediarenderingtracing()) to monitor first-frame rendering metrics. Results are reported via [`videoRenderingTracingResultOfUid`](https://api-ref.agora.io/en/voice-sdk/ios/4.x/documentation/agorartckit/agorartcenginedelegate/rtcengine(_:videorenderingtracingresultofuid:currentevent:tracinginfo:)).
+
+<Admonition type="info" info="info">
+Call this method when the user initiates joining. For example, on a **Join** button tap. This gives accurate first-frame timing.
+</Admonition>
+
+<CodeBlock language="swift" showLineNumbers>
+{`private func onJoinClicked() {
+    agoraKit?.startMediaRenderingTracing()
+    agoraKit?.joinChannel(byToken: token, channelId: channelId, info: nil, uid: uid, joinSuccess: nil)
+}`}
+</CodeBlock>
+
+### Join a channel
+
+Call [`joinChannel`](https://api-ref.agora.io/en/voice-sdk/ios/4.x/documentation/agorartckit/agorartcenginekit/joinchannel(bytoken:channelid:uid:mediaoptions:joinsuccess:)) to enter the channel. To speed up first-frame playback, avoid delays like fetching a token in this method.
+
+If you can’t retrieve a token early, consider using a [wildcard token](../token-authentication/deploy-token-server#generate-wildcard-tokens).
+
+<CodeBlock language="swift" showLineNumbers>
+{`private func prepareChannelInfo() -> Int {
+    uid = getUid()
+    channelId = getChannelInfo()
+    token = getTokenFromServer(channelId: channelId, uid: uid)
+    return 0 // Return success code
+}
+
+private func joinChannel() -> Int {
+    let options = AgoraRtcChannelMediaOptions()
+    let result = agoraKit?.joinChannel(byToken: token, channelId: channelId, uid: uid, mediaOptions: options)
+    return result == 0 ? 0 : -1
+}`}
+</CodeBlock>
+
+### Optimize callback performance
+
+The SDK runs callbacks like `onJoinChannelSuccess` on the same thread. If one callback is slow, it can delay others—including rendering events.
+
+<Admonition type="info" info="info">
+Don’t block the callback thread with network calls, file I/O, or heavy processing.
+</Admonition>
+
+#### Best practices
+
+- Avoid complex operations in `onJoinChannelSuccess`.
+- Don’t block `onUserJoined` or other rendering-related callbacks.
+- Use background threads for heavy logic.
+</TabItem>
+
+
+<TabItem value="2" label="Join early, subscribe on demand" default>
+
+The following figure illustrates the essential steps:
+
+<details>
+<summary>Sequence diagram for implementation</summary>
+
+![Sequence diagram for optimized video rendering](/images/video-sdk/optimize-video-rendering-solution-2.svg)
+</details>
+
+### Set up the rendering view
+
+If you know the host’s user ID before joining the channel, call [`setupRemoteVideoEx`](https://api-ref.agora.io/en/voice-sdk/ios/4.x/documentation/agorartckit/agorartcenginekit/setupremotevideoex(_:connection:)) as early as possible to set up the rendering view. This ensures the rendering pipeline is initialized in advance, helping avoid delays in displaying the first decoded frame.
+
+If the host’s user ID is not available beforehand, wait for the `onUserJoined` callback, then call [`setupRemoteVideoEx`](https://api-ref.agora.io/en/voice-sdk/ios/4.x/documentation/agorartckit/agorartcenginekit/setupremotevideoex(_:connection:)).
+
+<CodeBlock language="swift" showLineNumbers>
+{`// Define necessary variables first
+let connection = AgoraRtcConnection(channelId: channelId, localUid: uid)
+let remoteUid: UInt = 12345 // Replace with actual remote user ID
+
+// Set the host's rendering view
+let canvas = AgoraRtcVideoCanvas()
+canvas.uid = remoteUid
+canvas.renderMode = .fit
+canvas.view = getView()
+agoraKit?.setupRemoteVideoEx(canvas, connection: connection)`}
+</CodeBlock>
+
+### Join a channel without automatically subscribing
+
+Joining a channel typically takes the most time before the first video frame appears. For use cases like fast channel switching, delay subscribing to media streams to speed up rendering:
+
+1. Call [`joinChannelEx`](https://api-ref.agora.io/en/voice-sdk/ios/4.x/documentation/agorartckit/agorartcenginekit/joinchannelex(bytoken:connection:delegate:mediaoptions:joinsuccess:)) to join the channel.
+2. In [`AgoraRtcChannelMediaOptions`](https://api-ref.agora.io/en/voice-sdk/ios/4.x/documentation/agorartckit/agorartcchannelmediaoptions), set `autoSubscribeAudio` and `autoSubscribeVideo` to `false`.
+3. Subscribe manually when the user is ready to view content.
+
+<CodeBlock language="swift" showLineNumbers>
+{`// Define connection and event handler
+let connection = AgoraRtcConnection(channelId: channelId, localUid: uid)
+let eventHandler = self
+
+// Set channel media options
+let options = AgoraRtcChannelMediaOptions()
+options.channelProfile = .liveBroadcasting
+options.clientRoleType = .audience
+options.autoSubscribeAudio = false
+options.autoSubscribeVideo = false
+
+// Join the channel without subscribing
+agoraKit?.joinChannelEx(byToken: token, connection: connection, delegate: self, mediaOptions: options, joinSuccess: nil)`}
+</CodeBlock>
+
+### Subscribe to streams and start rendering
+
+When the user chooses to view content:
+
+1. Resume media subscription using [`muteRemoteVideoStreamEx`](https://api-ref.agora.io/en/voice-sdk/ios/4.x/documentation/agorartckit/agorartcenginekit/muteremotevideostreamex(_:mute:connection:)) and [`muteRemoteAudioStreamEx`](https://api-ref.agora.io/en/voice-sdk/ios/4.x/documentation/agorartckit/agorartcenginekit/muteremoteaudiostreamex(_:mute:connection:)).
+2. Call [`startMediaRenderingTracingEx`](https://api-ref.agora.io/en/voice-sdk/ios/4.x/documentation/agorartckit/agorartcenginekit/startmediarenderingtracingex(_:)) to log rendering metrics.
+3. The SDK reports results in the [`videoRenderingTracingResultOfUid`](https://api-ref.agora.io/en/voice-sdk/ios/4.x/documentation/agorartckit/agorartcenginedelegate/rtcengine(_:videorenderingtracingresultofuid:currentevent:tracinginfo:)) callback, which you can use for performance analysis.
+
+<CodeBlock language="swift" showLineNumbers>
+{`func switchToChannel() {
+    // Start video rendering tracing
+    agoraKit?.startMediaRenderingTracingEx(connection)
+    
+    // Resume remote media subscriptions
+    agoraKit?.muteRemoteVideoStreamEx(remoteUid, mute: false, connection: connection)
+    agoraKit?.muteRemoteAudioStreamEx(remoteUid, mute: false, connection: connection)
+}`}
+</CodeBlock>
+
+</TabItem>
+</Tabs>
+</PlatformWrapper>

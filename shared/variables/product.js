@@ -61,6 +61,13 @@ const data = {
       STREAM: 'interactive live streaming or broadcast streaming',
   },
 
+  'flexible-classroom': {
+      NAME: 'Flexible Classroom',
+      PATH: 'flexible-classroom',
+      SDK: 'Flexible Classroom',
+      PRODUCT: 'Flexible Classroom',
+  },
+
   'cloud-recording': {
       NAME: 'Cloud Recording',
       PATH: 'cloud-recording',
@@ -73,9 +80,8 @@ const data = {
       NAME: 'Signaling',
       PATH: 'signaling',
       SDK: 'Signaling SDK',
-      PRODUCT: 'Signalling',
+      PRODUCT: 'Signaling',
       STREAM: 'interactive live streaming or broadcast streaming',
-      PRODUCT: 'Signalling',
       IOS_PACKAGE_NAME: 'AgoraRTM_iOS',
       MACOS_PACKAGE_NAME: 'AgoraRTM_macOS'
   },
@@ -131,6 +137,13 @@ const data = {
     PRODUCT: 'Real-Time STT'
   },
 
+  'cloud-transcoding': {
+    NAME: 'Cloud Transcoding',
+    PATH: 'cloud-transcoding',
+    SDK: 'Cloud Transcoding',
+    PRODUCT: 'Cloud Transcoding'
+  },
+
   'interactive-whiteboard': {
     NAME: 'Interactive Whiteboard',
     PATH: 'interactive-whiteboard',
@@ -144,6 +157,44 @@ const data = {
     SDK: 'Conversational AI SDK',
     AGENT: 'Conversational AI agent',
     PRODUCT: 'Conversational AI Engine',
+  },
+
+  'on-premise-recording': {
+    NAME: 'On-Premise Recording',
+    PATH: 'on-premise-recording',
+    SDK: 'On-Premise Recording',
+    PRODUCT: 'On-Premise Recording',
+  },
+
+  'open-ai-integration': {
+    NAME: 'OpenAI Realtime API',
+    PATH: 'open-ai-integration',
+    SDK: 'OpenAI Realtime API',
+    PRODUCT: 'OpenAI Realtime API',
+  },
+
+  'ten-framework': {
+    NAME: 'TEN Framework',
+    PATH: 'ten-framework',
+    SDK: 'TEN Framework',
+    PRODUCT: 'TEN Framework',
+    MANAGER: 'TEN Manager',
+    DESIGNER: 'TEN Designer',
+  },
+
+  'ten-agent': {
+    NAME: 'TEN Agent',
+    PATH: 'ten-agent',
+    SDK: 'TEN Agent',
+    PRODUCT: 'TEN Agent',
+    MANAGER: 'TEN Manager',
+    DESIGNER: 'TEN Designer',
+  },
+
+  'on-premise-recording': {
+    NAME: 'On-Premise Recording',
+    PATH: 'on-premise-recording',
+    SDK: 'On-Premise Recording SDK',
   }
 };
 

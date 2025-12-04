@@ -3,7 +3,7 @@ title: 'Migration guide'
 sidebar_position: 2
 type: docs
 description: >
-  Upgrade to the latest version of <Vg k="WHITE" />.
+  Upgrade to the latest version of Interactive Whiteboard.
 ---
 
 Netless Whiteboard is acquired by Agora and now fully integrated into the Agora product suite. This guide shows how to migrate all the projects under your Netless account to <Vg k="CONSOLE" />. 

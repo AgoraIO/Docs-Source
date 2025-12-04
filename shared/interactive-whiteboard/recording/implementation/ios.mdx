@@ -1,0 +1,329 @@
+<PlatformWrapper platform="ios">
+
+## Implement recording​​
+
+### Enable recording​​
+
+To enable whiteboard recording, set `isRecord: true` in the server-side API POST request when creating a room.
+
+The following example demonstrates how to create a room with recording enabled using a server-side API:
+
+```swift
+// Note: Execute room creation on your business server, not on the client side
+let url = URL(string: "https://api.netless.link/v5/rooms")!
+var request = URLRequest(url: url)
+request.httpMethod = "POST"
+request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+request.setValue("NETLESSSDK_YWs9xxxxxxM2MjRi", forHTTPHeaderField: "token") // Replace with your SDK Token
+request.setValue("us-sv", forHTTPHeaderField: "region") // Replace with your data center
+
+let parameters: [String: Any] = [
+    "name": "My Fastboard Recording Room",
+    // highlight-start
+    "isRecord": true  // Enable recording
+    // highlight-end
+]
+
+request.httpBody = try? JSONSerialization.data(withJSONObject: parameters)
+
+let task = URLSession.shared.dataTask(with: request) { data, response, error in
+    if let error = error {
+        print("Failed to create room:", error)
+        return
+    }
+    
+    if let data = data,
+       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+        print("Room UUID:", json["uuid"] ?? "")
+        print("Room recording enabled")
+    }
+}
+task.resume()
+```
+
+### Recorded content
+
+When the recording function is enabled, the following content is recorded automatically:
+
+* Whiteboard drawing operations (pen, graphics, text, etc.)
+* Scene switching and content changes
+* Display and operation of images, audio and video, and courseware (PPT, DOC)
+* All operations and state changes in a multi-window application
+* Changes in user perspective
+* Custom events (events sent through the `dispatchMagixEvent` method)
+* Global state changes (`GlobalState` modifications)
+
+
+## Implement playback​​
+
+### Initialize the playback player
+
+Use the `WhiteSDK` `createReplayerWithConfig` method to create a playback player:
+
+```swift
+import UIKit
+import Whiteboard
+
+class ReplayViewController: UIViewController {
+    
+    var boardView: WhiteBoardView!
+    var whiteSDK: WhiteSDK!
+    var player: WhitePlayer?
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        // Create the whiteboard view
+        boardView = WhiteBoardView()
+        boardView.frame = view.bounds
+        view.addSubview(boardView)
+        
+        // Configure and initialize WhiteSDK
+        let config = WhiteSdkConfiguration(app: "RMxxxAQ") // Replace with your App Identifier
+        config.region = .US // Replace with your data center
+        whiteSDK = WhiteSDK(whiteBoardView: boardView, config: config)
+        
+        // Configure playback parameters
+        let playerConfig = WhitePlayerConfig(
+            room: "a7xxx69",  // Room UUID
+            roomToken: "NETLESSROOM_YWxxxjk"  // Room Token
+        )
+        
+        // Set playback time range
+        playerConfig.beginTimestamp = NSNumber(value: Date(timeIntervalSince1970: 1609459200).timeIntervalSince1970) // Playback start time
+        playerConfig.duration = NSNumber(value: 45 * 60) // Playback duration in seconds
+        
+        // Create the playback player
+        whiteSDK.createReplayer(with: playerConfig, callbacks: self) { [weak self] success, player, error in
+            if let error = error {
+                print("Failed to create playback player:", error.localizedDescription)
+                return
+            }
+            
+            if success, let player = player {
+                self?.player = player
+                print("Playback player created successfully")
+                
+                // Start playback
+                player.play()
+            }
+        }
+    }
+}
+
+extension ReplayViewController: WhitePlayerEventDelegate {
+    
+    func phaseChanged(_ phase: WhitePlayerPhase) {
+        switch phase {
+        case .waitingFirstFrame:
+            print("Waiting for first frame")
+        case .playing:
+            print("Playing")
+        case .pause:
+            print("Paused")
+        case .stopped:
+            print("Stopped")
+        case .ended:
+            print("Playback ended")
+        case .buffering:
+            print("Buffering")
+        @unknown default:
+            break
+        }
+    }
+    
+    func loadFirstFrame() {
+        print("First frame loaded")
+    }
+    
+    func stoppedWithError(_ error: Error) {
+        print("Playback error:", error.localizedDescription)
+    }
+    
+    func scheduleTimeChanged(_ time: TimeInterval) {
+        print("Current playback progress:", time, "seconds")
+    }
+}
+```
+
+### Player controls
+
+The `WhitePlayer` class provides comprehensive playback control functions:
+
+```swift
+// Playback controls
+player.play()     // Start playback
+player.pause()    // Pause playback
+player.stop()     // Stop playback
+
+// Seek to a specific position (in seconds, relative to playback start time)
+player.seekToScheduleTime(10 * 60) // Seek to the 10-minute mark
+
+// Seek with callback
+player.seekToScheduleTime(10 * 60) { result in
+    switch result {
+    case .success:
+        print("Seek successful")
+    case .fail:
+        print("Seek failed")
+    case .outOfRange:
+        print("Seek position out of range")
+    @unknown default:
+        break
+    }
+}
+
+// Set playback speed
+player.playbackSpeed = 1.5  // Play at 1.5x speed
+player.playbackSpeed = 1.0  // Resume normal speed
+
+// Get playback status information
+print("Current playback state:", player.phase)
+print("Playback speed:", player.playbackSpeed)
+print("Time information:", player.timeInfo)
+```
+
+### Control the view
+
+You can control the viewing angle during playback:
+
+```swift
+// Set viewing mode
+player.setObserverMode(.directory)  // Follow mode: follows the recorded viewpoint changes
+player.setObserverMode(.freedom)    // Free mode: allows manual viewpoint adjustment
+
+// Disable user viewpoint adjustment
+player.disableCameraTransform = true   // Prevent users from adjusting viewpoint via gestures
+player.disableCameraTransform = false  // Allow users to adjust viewpoint
+```
+
+### Synchronize whiteboard with RTC playback
+
+In real-world applications, you may need to simultaneously replay audio and video recorded by RTC alongside whiteboard content. Use the `WhiteCombinePlayer` class to manage both the video player and the whiteboard playback player, to ensure consistent playback status and synchronized playback.
+
+The following example demonstrates how to achieve synchronized playback of RTC audio and video with a whiteboard using `WhiteCombinePlayer`:
+
+```swift
+import UIKit
+import AVKit
+import Whiteboard
+
+class CombineReplayViewController: UIViewController {
+    
+    var boardView: WhiteBoardView!
+    var whiteSDK: WhiteSDK!
+    var combinePlayer: WhiteCombinePlayer?
+    var playerView: UIView!
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        // Create video playback view
+        playerView = UIView(frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: 300))
+        view.addSubview(playerView)
+        
+        // Create whiteboard view
+        boardView = WhiteBoardView(frame: CGRect(x: 0, y: 300, width: view.bounds.width, height: view.bounds.height - 300))
+        view.addSubview(boardView)
+        
+        // Initialize WhiteSDK
+        let config = WhiteSdkConfiguration(app: "RMxxxAQ")
+        config.region = .US
+        whiteSDK = WhiteSDK(whiteBoardView: boardView, config: config)
+        
+        // Create combined player
+        let mediaUrl = URL(string: "https://example.com/video.m3u8")!
+        combinePlayer = WhiteCombinePlayer(mediaUrl: mediaUrl)
+        combinePlayer?.delegate = self
+        
+        // Configure playback parameters
+        let playerConfig = WhitePlayerConfig(room: "a7xxx69", roomToken: "NETLESSROOM_YWxxxjk")
+        playerConfig.beginTimestamp = NSNumber(value: Date(timeIntervalSince1970: 1609459200).timeIntervalSince1970)
+        playerConfig.duration = NSNumber(value: 45 * 60)
+        
+        // Create whiteboard playback player
+        whiteSDK.createReplayer(with: playerConfig, callbacks: self) { [weak self] success, player, error in
+            if let error = error {
+                print("Failed to create playback player:", error.localizedDescription)
+                return
+            }
+            
+            if success, let player = player {
+                // Configure combined player
+                self?.combinePlayer?.whitePlayer = player
+                
+                // Display video
+                if let nativePlayer = self?.combinePlayer?.nativePlayer {
+                    let playerLayer = AVPlayerLayer(player: nativePlayer)
+                    playerLayer.frame = self?.playerView.bounds ?? .zero
+                    self?.playerView.layer.addSublayer(playerLayer)
+                }
+                
+                // WhitePlayer needs to manually seek to 0 to trigger buffering behavior
+                player.seekToScheduleTime(0)
+                
+                print("Combined player created successfully")
+            }
+        }
+    }
+    
+    // Playback controls
+    func playVideo() {
+        combinePlayer?.play()
+    }
+    
+    func pauseVideo() {
+        combinePlayer?.pause()
+    }
+    
+    func seekToTime(_ time: TimeInterval) {
+        let cmTime = CMTime(seconds: time, preferredTimescale: 1)
+        combinePlayer?.seek(to: cmTime) { finished in
+            print("Seek completed:", finished)
+        }
+    }
+    
+    func setPlaybackSpeed(_ speed: CGFloat) {
+        combinePlayer?.playbackSpeed = speed
+    }
+}
+
+extension CombineReplayViewController: WhitePlayerEventDelegate {
+    
+    func phaseChanged(_ phase: WhitePlayerPhase) {
+        // Important! Must complete this operation for WhiteCombinePlayer to synchronize state correctly
+        combinePlayer?.updateWhitePlayerPhase(phase)
+        
+        switch phase {
+        case .playing:
+            print("Playing")
+        case .pause:
+            print("Paused")
+        case .ended:
+            print("Playback ended")
+        default:
+            break
+        }
+    }
+    
+    func stoppedWithError(_ error: Error) {
+        print("Playback error:", error.localizedDescription)
+    }
+}
+
+// MARK: - WhiteCombineDelegate
+extension CombineReplayViewController: WhiteCombineDelegate {
+    
+    func combinePlayerStartBuffering() {
+        // Either player enters buffering
+        print("Buffering started")
+    }
+    
+    func combinePlayerEndBuffering() {
+        // Both players finish buffering
+        print("Buffering ended")
+    }
+}
+```
+
+</PlatformWrapper>

@@ -1,0 +1,303 @@
+<PlatformWrapper platform="web">
+
+## Implement recording
+
+### Enable recording
+
+To enable whiteboard recording, set the required parameters when creating the room. Create a room with recording enabled by setting `isRecord: true` in the server-side API POST request:
+
+```javascript
+var url = "https://api.netless.link/v5/rooms";
+var requestInit = {
+    method: "POST",
+    headers: {
+        "content-type": "application/json",
+        "token": "NETLESSSDK_YWs9xxxxxxM2MjRi", // Replace with your SDK Token
+        "region": "us-sv", // Replace with your data center
+    },
+    body: JSON.stringify({
+        name: "My Fastboard Recording Room",
+        isRecord: true, // Enable recording
+    }),
+};
+
+fetch(url, requestInit).then(function(response) {
+    return response.json();
+}).then(function(roomJSON) {
+    // Room created successfully, get room information
+    console.log("Room UUID:", roomJSON.uuid);
+    console.log("Room recording enabled");
+}).catch(function(err) {
+    console.error("Failed to create room:", err);
+});
+```
+
+After you enable recording, all interactions in the room are automatically recorded.
+
+<Admonition type="caution">
+SDK tokens are important security credentials and should be used on the business server, not hardcoded in the front-end code.
+</Admonition>
+
+### Recorded content
+
+When the recording function is enabled, the following content is recorded automatically:
+
+- Whiteboard drawing operations (pen, graphics, text, etc.)
+- Scene switching and content changes
+- Display and operation of images, audio and video, and courseware (PPT, DOC)
+- All operations and state changes in a multi-window application
+- Changes in User perspective
+- Custom events (sent through `dispatchMagixEvent`)
+- Global state changes (`GlobalStatemodifications`)
+
+## Implement playback
+
+Use one of the following methods to implement recording playback.
+
+### Using the replay UI component (Recommended)
+
+```javascript
+import { replayFastboard, createReplayUI } from "@netless/fastboard";
+
+// Create the playback player
+const player = await replayFastboard({
+    sdkConfig: {
+        appIdentifier: "RMxxxAQ", // Replace with your App Identifier
+        region: "us-sv", // Replace with your data center
+    },
+    replayRoom: {
+        room: "a7xxx69", // Room UUID
+        roomToken: "NETLESSROOM_YWxxxjk", // Room Token
+        beginTimestamp: new Date("2023-01-01 08:00:00").getTime(), // Playback start time
+        duration: 45 * 60 * 1000, // Playback duration in milliseconds
+    },
+    managerConfig: {
+        cursor: true, // Show cursor
+    },
+});
+
+// Create and mount the playback UI
+const ui = createReplayUI(player, document.getElementById("whiteboard"));
+
+// Optional: Update UI configuration
+ui.update({ 
+    theme: "dark", 
+    language: "en-US" 
+});
+
+// Destroy when finished
+// ui.destroy();
+```
+
+### Using React hooks
+
+If you are using the React framework, you can use the `useReplayFastboard` hook:
+
+```javascript
+import React from "react";
+import { useReplayFastboard, ReplayFastboard } from "@netless/fastboard-react";
+
+function ReplayComponent() {
+    const player = useReplayFastboard(() => ({
+        sdkConfig: {
+            appIdentifier: "RMxxxAQ", // Replace with your App Identifier
+            region: "us-sv",
+        },
+        replayRoom: {
+            room: "a7xxx69", // Room UUID
+            roomToken: "NETLESSROOM_YWxxxjk", // Room Token
+            beginTimestamp: new Date("2023-01-01 08:00:00").getTime(),
+            duration: 45 * 60 * 1000,
+        },
+        managerConfig: {
+            cursor: true,
+        },
+    }));
+    
+    return (
+        <ReplayFastboard 
+            player={player} 
+            theme="light" 
+            language="en-US" 
+        />
+    );
+}
+```
+
+### Plugin configuration
+
+If you enabled `AppliancePlugin` or `AppInMainViewPlugin` when creating the live room, configure the same plugin for playback:
+
+```javascript
+const player = await replayFastboard({
+    sdkConfig: {
+        appIdentifier: "RMxxxAQ",
+        region: "us-sv",
+    },
+    replayRoom: {
+        room: "a7xxx69",
+        roomToken: "NETLESSROOM_YWxxxjk",
+        beginTimestamp: new Date("2023-01-01 08:00:00").getTime(),
+        duration: 45 * 60 * 1000,
+    },
+    // If AppliancePlugin was enabled in the live room, configure it for playback
+    enableAppliancePlugin: {
+        cdn: {
+            fullWorkerUrl: "path/to/fullWorker.js",
+            subWorkerUrl: "path/to/subWorker.js",
+        },
+        strokeWidth: {
+            min: 1,
+            max: 32
+        },
+        syncOpt: {
+            interval: 200
+        },
+    },
+    // If AppInMainViewPlugin was enabled in the live room, configure it for playback
+    enableAppInMainViewPlugin: true,
+});
+```
+
+### Player controls
+
+`FastboardPlayer` provides the following playback control functions:
+
+```javascript
+// Playback controls
+player.play();     // Start playback
+player.pause();    // Pause playback
+player.stop();     // Stop playback
+
+// Seek to a specific position (in milliseconds, relative to playback start time)
+player.seek(10 * 60 * 1000); // Seek to the 10-minute mark
+
+// Set playback speed
+player.setPlaybackRate(1.5); // Play at 1.5x speed
+player.setPlaybackRate(1.0); // Resume normal speed
+
+// Get playback status information
+console.log("Current playback progress:", player.currentTime.value); // Current playback position in milliseconds
+console.log("Total duration:", player.duration.value);                // Total playback duration in milliseconds
+console.log("Playback state:", player.phase.value);                   // Playback state
+console.log("Playback speed:", player.playbackRate.value);            // Current playback speed
+console.log("Can play:", player.canplay.value);                       // Whether ready to play
+```
+
+### Monitor player status
+
+You can listen for changes in the player's state by subscribing to observable properties:
+
+```javascript
+// Listen for playback progress changes
+const unsubscribeProgress = player.currentTime.subscribe(time => {
+    console.log("Current playback progress:", time + "ms");
+});
+
+// Listen for playback state changes
+const unsubscribePhase = player.phase.subscribe(phase => {
+    switch(phase) {
+        case "playing":
+            console.log("Playing");
+            break;
+        case "pause":
+            console.log("Paused");
+            break;
+        case "buffering":
+            console.log("Buffering");
+            break;
+        case "ended":
+            console.log("Playback ended");
+            break;
+        case "waitingFirstFrame":
+            console.log("Waiting for first frame");
+            break;
+    }
+});
+
+// Listen for playback speed changes
+const unsubscribeRate = player.playbackRate.subscribe(rate => {
+    console.log("Playback speed:", rate + "x");
+});
+
+// Unsubscribe
+// unsubscribeProgress();
+// unsubscribePhase();
+// unsubscribeRate();
+```
+
+### Custom rendering
+
+To customize the rendering, use the `bindContainer` method:
+
+```javascript
+// Render only the whiteboard content, without control UI
+player.bindContainer(document.getElementById("whiteboard"));
+
+// Optional: Move collector to a specific location
+player.bindCollector(document.getElementById("collector"));
+```
+
+### Synchronize whiteboard with RTC playback
+
+In real-world applications, you may need to replay whiteboard content simultaneously with audio and video recorded by RTC. Use the `@netless/combine-player` library to manage both the video player and the whiteboard playback player to ensure consistent playback status and synchronized playback.
+
+<Admonition type="info">
+The following access methods are supported only if `@netless/combine-player` version 1.1.7 or above is used.
+</Admonition>
+
+The following code demonstrates how to achieve synchronized playback of RTC audio and video with a whiteboard using `@netless/combine-player`:
+
+```javascript
+import { replayFastboard } from "@netless/fastboard";
+import CombinePlayerFactory from "@netless/combine-player";
+
+// Create the whiteboard playback player
+const player = await replayFastboard({
+    sdkConfig: {
+        appIdentifier: "RMxxxAQ", // Replace with your App Identifier
+        region: "us-sv",
+    },
+    replayRoom: {
+        room: "a7xxx69", // Room UUID
+        roomToken: "NETLESSROOM_YWxxxjk", // Room Token
+        beginTimestamp: new Date("2023-01-01 08:00:00").getTime(),
+        duration: 45 * 60 * 1000,
+    },
+    managerConfig: {
+        cursor: true,
+    },
+    // If plugins were enabled in the live room, configure them for playback
+    enableAppliancePlugin: {},
+});
+
+// Bind the whiteboard container
+const whiteboard = document.getElementById("whiteboard");
+player.bindContainer(whiteboard);
+
+// Configure video player parameters
+const factoryParams = {
+    url: "https://example.com/rtc-recording.mp4", // URL of the RTC recorded video
+    videoDOM: document.getElementById("videoDom"), // DOM element for the video player
+};
+
+// Create the synchronized player
+const combinePlayer = new CombinePlayerFactory(player.player, factoryParams).create(false);
+
+// Control playback using the synchronized player
+combinePlayer.play();   // Start playback
+combinePlayer.pause();  // Pause playback
+combinePlayer.seek(10 * 1000); // Seek to 10-second position (in milliseconds)
+
+// Listen for playback status changes
+combinePlayer.setOnStatusChange((status, message) => {
+    console.log("Playback status:", status, message);
+});
+
+// Get playback information
+console.log("Playback rate:", combinePlayer.playbackRate);
+console.log("Total duration:", combinePlayer.timeDuration);
+console.log("Current status:", combinePlayer.combinedStatus);
+```
+
+</PlatformWrapper>

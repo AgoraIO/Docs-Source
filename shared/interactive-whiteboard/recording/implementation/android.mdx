@@ -1,0 +1,405 @@
+<PlatformWrapper platform="android">
+
+## Implement recording​
+
+### Enable recording​
+
+To enable whiteboard recording, set the required parameters when creating the room. Create a room with recording enabled by setting `isRecord: true` in the server-side API POST request.
+
+The following example demonstrates how to create a room with recording enabled using a server-side API:
+
+```java
+// Note: Execute room creation on your business server, not on the client side
+String url = "https://api.netless.link/v5/rooms";
+OkHttpClient client = new OkHttpClient();
+
+JSONObject requestBody = new JSONObject();
+try {
+    requestBody.put("name", "My Fastboard Recording Room");
+    // highlight-start
+    requestBody.put("isRecord", true); // Enable recording
+    // highlight-end
+} catch (JSONException e) {
+    e.printStackTrace();
+}
+
+RequestBody body = RequestBody.create(
+    MediaType.parse("application/json"), 
+    requestBody.toString()
+);
+
+Request request = new Request.Builder()
+    .url(url)
+    .addHeader("token", "NETLESSSDK_YWs9xxxxxxM2MjRi") // Replace with your SDK Token
+    .addHeader("region", "us-sv") // Replace with your data center
+    .post(body)
+    .build();
+
+client.newCall(request).enqueue(new Callback() {
+    @Override
+    public void onResponse(Call call, Response response) throws IOException {
+        if (response.isSuccessful()) {
+            String responseBody = response.body().string();
+            try {
+                JSONObject json = new JSONObject(responseBody);
+                String uuid = json.getString("uuid");
+                Log.i(TAG, "Room UUID: " + uuid);
+                Log.i(TAG, "Room recording enabled");
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    @Override
+    public void onFailure(Call call, IOException e) {
+        Log.e(TAG, "Failed to create room: " + e.getMessage());
+    }
+});
+```
+
+### Recorded content​
+
+When the recording is enabled, the following content is recorded automatically:
+
+* Whiteboard drawing operations (pen, graphics, text, etc.)
+* Scene switching and content changes
+* Display and operation of images, audio and video, and courseware (PPT, DOC)
+* All operations and state changes in a multi-window application
+* Changes in user perspective
+* Custom events (events are sent through the `dispatchMagixEvent` method)
+* Global state changes (`GlobalState` modifications)
+
+## Implement playback​
+
+Fastboard Android SDK does not provide a wrapper for playback functionality. Use the underlying Whiteboard SDK directly to implement the playback function.
+
+## Initialize the playback player
+
+Use the `WhiteSdk.createPlayer` method to create a playback player. The following example demonstrates the complete creation process:
+
+```java
+import com.herewhite.sdk.WhiteSdk;
+import com.herewhite.sdk.WhiteSdkConfiguration;
+import com.herewhite.sdk.Player;
+import com.herewhite.sdk.PlayerConfiguration;
+import com.herewhite.sdk.PlayerListener;
+import com.herewhite.sdk.domain.PlayerPhase;
+import com.herewhite.sdk.domain.PlayerState;
+import com.herewhite.sdk.domain.SDKError;
+import com.herewhite.sdk.domain.Region;
+import com.herewhite.sdk.domain.WindowParams;
+import com.herewhite.sdk.domain.Promise;
+
+public class ReplayActivity extends AppCompatActivity implements PlayerListener {
+    
+    private static final String TAG = "ReplayActivity";
+    private WhiteboardView whiteboardView;
+    private WhiteSdk whiteSdk;
+    private Player player;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_replay);
+        
+        // Create the whiteboard view
+        whiteboardView = findViewById(R.id.whiteboard_view);
+        
+        // Configure and initialize WhiteSdk
+        initWhiteSdk();
+        
+        // Create the playback player
+        createReplayPlayer();
+    }
+    
+    private void initWhiteSdk() {
+        // Configure SDK
+        WhiteSdkConfiguration config = new WhiteSdkConfiguration("RMxxxAQ", true); // Replace with your App Identifier
+        config.setRegion(Region.us_sv); // Set data center
+        config.setUseMultiViews(true); // Enable multi-window playback
+        
+        // Initialize WhiteSdk
+        whiteSdk = new WhiteSdk(whiteboardView, this, config);
+    }
+    
+    private void createReplayPlayer() {
+        // Configure playback parameters
+        PlayerConfiguration playerConfig = new PlayerConfiguration(
+            "a7xxx69",  // Room UUID
+            "NETLESSROOM_YWxxxjk"  // Room Token
+        );
+        
+        // Set playback time range
+        playerConfig.setBeginTimestamp(1609459200000L); // Playback start time in milliseconds
+        playerConfig.setDuration(45 * 60 * 1000L);      // Playback duration in milliseconds
+        
+        // Configure multi-window parameters (if multi-window mode was used during recording)
+        WindowParams windowParams = new WindowParams();
+        windowParams.setContainerSizeRatio(9f / 16f); // Set window aspect ratio
+        playerConfig.setWindowParams(windowParams);
+        
+        // Create the playback player
+        whiteSdk.createPlayer(playerConfig, this, new Promise<Player>() {
+            @Override
+            public void then(Player p) {
+                player = p;
+                Log.i(TAG, "Playback player created successfully");
+                
+                // Initialize playback position and start playing
+                player.seekToScheduleTime(0);
+                player.play();
+            }
+            
+            @Override
+            public void catchEx(SDKError error) {
+                Log.e(TAG, "Failed to create playback player: " + error.getMessage());
+            }
+        });
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (player != null) {
+            player.stop();
+        }
+    }
+    
+    // Implement PlayerListener callback methods (see below)
+}
+```
+
+### Player controls
+
+The `Player` class provides comprehensive playback control functions:
+
+```java
+// Playback controls
+player.play();     // Start playback
+player.pause();    // Pause playback
+player.stop();     // Stop playback
+
+// Seek to a specific position (in milliseconds, relative to playback start time)
+player.seekToScheduleTime(10 * 60 * 1000); // Seek to the 10-minute mark
+
+// Set playback speed
+player.setPlaybackSpeed(1.5); // Play at 1.5x speed
+player.setPlaybackSpeed(1.0); // Resume normal speed
+
+// Get playback status information (synchronous methods)
+PlayerPhase phase = player.getPlayerPhase();
+PlayerTimeInfo timeInfo = player.getPlayerTimeInfo();
+Log.i(TAG, "Current playback progress: " + timeInfo.getScheduleTime());
+Log.i(TAG, "Total playback duration: " + timeInfo.getTimeDuration());
+Log.i(TAG, "Playback state: " + phase);
+
+// Set viewing mode
+player.setObserverMode(PlayerObserverMode.directory); // Follow mode: follows the recorded viewpoint changes
+player.setObserverMode(PlayerObserverMode.freedom);   // Free mode: allows manual viewpoint adjustment
+```
+
+### Monitor player status
+
+Listen for changes in the player's state by implementing the `PlayerListener` interface:
+
+```java
+public class ReplayActivity extends AppCompatActivity implements PlayerListener {
+    
+    // ... Other code ...
+    
+    @Override
+    public void onPhaseChanged(PlayerPhase phase) {
+        // Playback state change callback
+        Log.i(TAG, "Playback state: " + phase);
+        switch (phase) {
+            case waitingFirstFrame:
+                Log.i(TAG, "Waiting for first frame");
+                break;
+            case playing:
+                Log.i(TAG, "Playing");
+                break;
+            case pause:
+                Log.i(TAG, "Paused");
+                break;
+            case stopped:
+                Log.i(TAG, "Stopped");
+                break;
+            case ended:
+                Log.i(TAG, "Playback ended");
+                break;
+            case buffering:
+                Log.i(TAG, "Buffering");
+                break;
+        }
+    }
+    
+    @Override
+    public void onLoadFirstFrame() {
+        // First frame loaded callback
+        Log.i(TAG, "First frame loaded");
+    }
+    
+    @Override
+    public void onPlayerStateChanged(PlayerState modifyState) {
+        // Player state change callback
+        // Get scene state, global state, and other information here
+    }
+    
+    @Override
+    public void onStoppedWithError(SDKError error) {
+        // Playback error callback
+        Log.e(TAG, "Playback error: " + error.getMessage());
+    }
+    
+    @Override
+    public void onScheduleTimeChanged(long time) {
+        // Playback progress change callback (called approximately every 500ms)
+        Log.d(TAG, "Current playback progress: " + time + "ms");
+        
+        // Update UI to display playback progress
+        runOnUiThread(() -> {
+            int minutes = (int) (time / 60000);
+            int seconds = (int) ((time % 60000) / 1000);
+            // Update progress display
+        });
+    }
+    
+    @Override
+    public void onSliceChanged(String slice) {
+        // Slice change callback (generally not needed)
+    }
+    
+    @Override
+    public void onCatchErrorWhenAppendFrame(SDKError error) {
+        // Append frame error callback
+        Log.e(TAG, "Append frame error: " + error.getMessage());
+    }
+    
+    @Override
+    public void onCatchErrorWhenRender(SDKError error) {
+        // Render error callback
+        Log.e(TAG, "Render error: " + error.getMessage());
+    }
+}
+```
+
+### Synchronize whiteboard with RTC playback
+
+In real-world applications, you may need to simultaneously replay audio and video recorded by RTC alongside whiteboard content. Use the `PlayerSyncManager` class to manage both the video player and the whiteboard playback player to ensure consistent playback status and synchronized playback.
+
+The following example demonstrates how to achieve synchronized playback of RTC audio and video with a whiteboard using `PlayerSyncManager`:
+
+```java
+import com.herewhite.sdk.combinePlayer.PlayerSyncManager;
+import com.herewhite.sdk.combinePlayer.NativePlayer;
+
+public class SyncReplayActivity extends AppCompatActivity implements PlayerListener {
+    
+    private WhiteSdk whiteSdk;
+    private Player whitePlayer;
+    private PlayerSyncManager syncManager;
+    private NativePlayer mediaPlayer;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_sync_replay);
+        
+        // Create native media player (using ExoPlayer as an example)
+        mediaPlayer = new WhiteExoPlayer(this);
+        ((WhiteExoPlayer) mediaPlayer).setVideoPath("https://example.com/video.m3u8");
+        
+        // Create sync manager
+        syncManager = new PlayerSyncManager(mediaPlayer, new PlayerSyncManager.Callbacks() {
+            @Override
+            public void startBuffering() {
+                Log.d(TAG, "Buffering started");
+            }
+            
+            @Override
+            public void endBuffering() {
+                Log.d(TAG, "Buffering ended");
+            }
+        });
+        
+        // Initialize WhiteSdk and create whiteboard playback
+        WhiteSdkConfiguration config = new WhiteSdkConfiguration("RMxxxAQ", true);
+        config.setRegion(Region.us_sv);
+        whiteSdk = new WhiteSdk(whiteboardView, this, config);
+        
+        PlayerConfiguration playerConfig = new PlayerConfiguration("a7xxx69", "NETLESSROOM_YWxxxjk");
+        playerConfig.setBeginTimestamp(1609459200000L);
+        playerConfig.setDuration(45 * 60 * 1000L);
+        
+        whiteSdk.createPlayer(playerConfig, this, new Promise<Player>() {
+            @Override
+            public void then(Player player) {
+                whitePlayer = player;
+                
+                // Associate whiteboard player with sync manager
+                syncManager.setWhitePlayer(player);
+                
+                // Start synchronized playback
+                player.seekToScheduleTime(0);
+                syncManager.play();
+            }
+            
+            @Override
+            public void catchEx(SDKError error) {
+                Log.e(TAG, "Failed to create playback: " + error.getMessage());
+            }
+        });
+    }
+    
+    @Override
+    public void onPhaseChanged(PlayerPhase phase) {
+        // Important! Must synchronize whiteboard player phase changes
+        if (syncManager != null) {
+            syncManager.updateWhitePlayerPhase(phase);
+        }
+        
+        Log.i(TAG, "Playback state: " + phase);
+    }
+    
+    // Playback controls
+    private void play() {
+        if (syncManager != null) {
+            syncManager.play();
+        }
+    }
+    
+    private void pause() {
+        if (syncManager != null) {
+            syncManager.pause();
+        }
+    }
+    
+    private void seekTo(long time) {
+        if (syncManager != null) {
+            syncManager.seek(time);
+        }
+    }
+    
+    private void setPlaybackSpeed(float speed) {
+        if (syncManager != null) {
+            syncManager.setPlaybackSpeed(speed);
+        }
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (whitePlayer != null) {
+            whitePlayer.stop();
+        }
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+        }
+    }
+    
+    // Implement other PlayerListener methods...
+}
+```
+
+</PlatformWrapper>

@@ -159,13 +159,6 @@ const data = {
     PRODUCT: 'Conversational AI Engine',
   },
 
-  'on-premise-recording': {
-    NAME: 'On-Premise Recording',
-    PATH: 'on-premise-recording',
-    SDK: 'On-Premise Recording',
-    PRODUCT: 'On-Premise Recording',
-  },
-
   'open-ai-integration': {
     NAME: 'OpenAI Realtime API',
     PATH: 'open-ai-integration',
@@ -195,6 +188,7 @@ const data = {
     NAME: 'On-Premise Recording',
     PATH: 'on-premise-recording',
     SDK: 'On-Premise Recording SDK',
+    PRODUCT: 'On-Premise Recording',
   }
 };
 

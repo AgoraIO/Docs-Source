@@ -1,0 +1,292 @@
+---
+title: 'Project overview'
+sidebar_position: 4
+type: docs
+platform_selector: false
+description: >
+  TEN agent project overview.
+---
+
+The <Vpd k="NAME" /> project is built on the TEN Framework and follows a modular architecture. This page describes the project structure, configuration system, and web server API.
+
+<Vpd k="NAME" /> uses a graph-based configuration system built on the [TEN Framework concepts](https://claude.ai/ten_framework/concept_overview). The project organizes code into modular extensions that can be orchestrated through configuration files without modifying source code.
+The folder structure follows this pattern:
+
+```
+├── agents/
+│   └── ten_packages/
+│       ├── extension/
+│       │   ├── openai_chatgpt_python/
+│       │   │   ├── extension.py
+│       │   │   ├── ..
+│       │   │   └── requirements.txt
+│       │   ├── elevenlabs_tts
+│       │   └── ..
+│       └── property.json
+├── playground
+├── demo
+└── server
+```
+
+It contains the following important folders and files:
+
+- `property.json`: This file contains the orchestration of extensions. It is the main runtime configuration file.
+- `ten_packages/extension`: This folder contains the extension modules. Each extension module is a separate Python/Golang/C++ package.
+- `server`: This folder contains the web server code. It is responsible for handling the incoming requests and start/stop of agent processes.
+- `playground`: This folder contains the UI code for the playground. It is a web-based interface to interact with the agent.
+
+
+## Runtime configuration
+
+The main runtime configuration file is `property.json`. It contains the orchestration of extensions. The file is structured as follows:
+
+```json
+  "predefined_graphs": [
+    {
+      "name": "va_openai_azure_fashionai",
+      "auto_start": false,
+      "connections": [
+        // ...
+      ],
+      "nodes": [
+        // ...
+      ]
+    },
+    // ...
+  ]
+```
+
+The file contains the following orchestration info:
+
+- **Graphs**: Collections of nodes and connections that determine agent behavior
+- **Nodes**: Individual extension instances with specific configurations
+- **Connections**: Data flow paths between nodes
+
+```json
+{
+  "predefined_graphs": [
+    {
+      "name": "va_openai_azure_fashionai",
+      "auto_start": false,
+      "connections": [...],
+      "nodes": [...]
+    }
+  ]
+}
+```
+
+### Graphs
+
+The `predefined_graphs` property contains a list of available graphs. Each graph defines how agent should behave in a specific scenario. Each graph Each graph contains:
+
+- `name`: Unique identifier for the graph
+- `auto_start`: Whether to start this graph automatically
+- `nodes`: List of extension instances
+- `connections`: Data routing between nodes
+
+### Nodes
+
+The `nodes` section contains the list of extensions that are part of the graph. Each node includes the following:
+
+- `name`: Unique identifier of a node within the graph
+- `addon`: Specifies the extension module to use
+     You can create multiple instances of the same extension within a graph. For example, you might include several `chatgpt_openai_python` nodes, each using the same `addon` property but with unique `name` properties. This allows you to run parallel instances of an extension with different configurations or behaviors.
+- `property`: Extension-specific configuration
+
+```json
+json{
+  "name": "chatgpt_openai_python",
+  "addon": "chatgpt_openai_python",
+  "property": {
+    "api_key": "${env:OPENAI_API_KEY|}",
+    "model": "gpt-3.5-turbo",
+    "temperature": 0.5,
+    "max_tokens": 100,
+    "prompt": "You are a helpful assistant"
+  }
+}
+```
+
+#### Node Properties
+
+The `property` section of a node configures the extension's behavior. Each extension defines its available properties in the `manifest.json` file within its folder. You can customize an extension by setting these runtime properties. 
+
+#### Read environment variables
+
+Many extensions require API keys to function. Instead of hardcoding sensitive keys in `property.json`, use environment variables with the syntax `${env:<env_var_name>|<default_value>}`. The following example shows how to read and use the `OPENAI_API_KEY` environment variable:
+
+```json
+{
+  "name": "chatgpt_openai_python",
+  "addon": "chatgpt_openai_python",
+  "property": {
+    "api_key": "${env:OPENAI_API_KEY|}"
+  }
+}
+```
+
+### Connections
+
+The connections section defines how data flows between nodes. Each connection specifies:
+
+- **Source node**: Identified by `extension_group` and `extension` properties
+- **Data protocols**: Types of data that can flow: `audio_frame`, `video_frame`, `data`, or `cmd`
+- **Destinations**: Where each data type is routed
+
+For each protocol, you define destinations with:
+
+- `name`: The data property key
+- `dest`: List of target nodes
+
+The following example connects `agora_rtc` extension to `deepgram_asr` extension. The `agora_rtc` extension sends `pcm_frame` data to `deepgram_asr` extension.
+
+```json
+{
+  "extension_group": "default",
+  "extension": "agora_rtc",
+  "audio_frame": [
+    {
+      "name": "pcm_frame",
+      "dest": [
+        {
+          "extension_group": "default",
+          "extension": "deepgram_asr"
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Extension folder
+
+The `ten_packages/extension` folder contains extension modules written in Python, Go, or C++. Each extension is a self-contained package with its own structure.
+Extension folder names typically match the module name, though the definitive module name is specified in the extension's `manifest.json` file. Use this module name as the `addon` property value in your configuration.
+
+The extension folder is structured as follows:
+
+```
+<project_root>/
+├── ten_packages/
+│   └── extension/
+│       ├── sample_python_extension/
+│       │   ├── ...
+│       │   ├── extension.py
+│       │   ├── manifest.json
+│       │   └── property.json
+│       ├── sample_go_extension/
+│       │   ├── ...
+│       │   ├── <xxx>_extension.go
+│       │   ├── manifest.json
+│       │   └── property.json
+│       └── sample_cpp_extension/
+│           ├── ...
+│           ├── src/
+│           │   ├── main.cc
+│           │   └── ...
+│           ├── BUILD.gn
+│           ├── manifest.json
+│           └── property.json
+├── manifest.json
+└── property.json
+```
+
+### Extension common files
+
+- `manifest.json`: Defines the extension's metadata including name, version, available properties, and supported APIs such as `data`, `audio_frame`, and `video_frame`
+- `property.json`: Specifies default configuration values for the extension
+
+### Extension-specific files
+
+Each language has its own set of required files for extension development:
+
+| Language | Main logic file | Dependencies/Build file  |
+|----------|----------------|------------------------|
+| Python | `extension.py` | `requirements.txt`: Python dependencies required by the extension. Dependencies are installed automatically when you run `task use`. |
+| Go | `<name>_extension.go` | `go.mod`: Go module definition that specifies the module name and dependencies. |
+| C++ | `src/main.cc` | `BUILD.gn`: Build configuration that specifies the target name and dependencies. |
+
+The main logic file contains the core implementation of the extension for each language.
+
+
+## Web server
+The Go-based web server manages agent processes and handles HTTP requests from clients. Both the playground and demo interfaces communicate with this server, though you can also interact directly using curl or any HTTP client.
+
+### API endpoints
+The server exposes three endpoints for agent management:
+
+- [POST /start](#post-start): Start an agent with specified configuration
+- [POST /stop](#post-stop): Stop a running agent
+- [POST /ping](#post-ping): Maintain agent connection
+
+#### POST /start
+
+Starts an agent with a specified graph and property overrides. The agent joins the specified RTC channel and subscribes to the user's audio stream.
+
+| Parameter | Description |
+|-----------|-------------|
+| `request_id` | UUID for request tracking |
+| `channel_name` | RTC channel name (must match the channel your client joins) |
+| `user_uid` | User's RTC identifier for audio subscription |
+| `bot_uid` | Optional agent RTC identifier |
+| `graph_name` | Graph configuration name from `property.json` |
+| `properties` | Property overrides (temporary, doesn't modify `property.json`) |
+| `timeout` | Inactivity timeout in seconds (`-1` disables timeout, default: 60s, configurable using `WORKER_QUIT_TIMEOUT_SECONDS`) |
+
+Example:
+
+```bash
+curl 'http://localhost:8080/start' \
+  -H 'Content-Type: application/json' \
+  --data-raw '{
+    "request_id": "c1912182-924c-4d15-a8bb-85063343077c",
+    "channel_name": "test",
+    "user_uid": 176573,
+    "graph_name": "camera_va_openai_azure",
+    "properties": {
+      "openai_chatgpt": {
+        "model": "gpt-4o"
+      }
+    }
+  }'
+```
+
+#### POST /stop
+
+Stops a running agent instance.
+
+| Parameter | Description |
+|-----------|-------------|
+| `request_id` | UUID for request tracking |
+| `channel_name` | Channel name used when starting the agent |
+
+Example:
+
+```bash
+curl 'http://localhost:8080/stop' \
+  -H 'Content-Type: application/json' \
+  --data-raw '{
+    "request_id": "c1912182-924c-4d15-a8bb-85063343077c",
+    "channel_name": "test"
+  }'
+```
+
+#### POST /ping
+
+Maintains the agent connection by sending a keepalive signal. Not required if the agent was started with `timeout: -1`. Without pings, agents terminate after the configured timeout period.
+
+| Param        | Description                  |
+| ------------ | ------- |
+| `request_id`   | UUID for request tracking |
+| `channel_name` | Channel name of the active agent |
+
+Example:
+
+```bash
+curl 'http://localhost:8080/ping' \
+  -H 'Content-Type: application/json' \
+  --data-raw '{
+    "request_id": "c1912182-924c-4d15-a8bb-85063343077c",
+    "channel_name": "test"
+  }'
+```

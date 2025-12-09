@@ -27,7 +27,7 @@ To implement client-side screen capture, see [Screenshot Upload](../../video-cal
 
 Before recording, call the [`acquire`](../reference/restful-api#acquire) method to apply for a resource ID.
 
-#### An HTTP request example of `acquire`
+#### Example `acquire` request over HTTPS
 
 - Request URL: 
 
@@ -67,7 +67,7 @@ To capture screenshots, you need to configure the following parameters in `clien
 
 
 
-#### An HTTP request example of `start`
+#### Example `start` request over HTTPS
 
 - Request URL:
 	

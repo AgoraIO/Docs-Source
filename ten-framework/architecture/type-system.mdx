@@ -1,0 +1,213 @@
+---
+title: 'Type system'
+sidebar_position: 9
+platform_selector: false
+description: >
+  TEN framework type system reference: basic and composite data types, type conversion rules, schema validation, and language mappings for C++, Go, and Python.
+---
+
+The TEN framework uses a type system to define and validate data types for message properties and extension configurations. This type system ensures data integrity across different programming languages and provides automatic type conversion when safe to do so.
+
+The type system offers several key benefits:
+
+- **Cross-language compatibility**: Consistent type definitions work across C++, Go, and Python extensions
+- **Automatic validation**: Types defined in TEN schemas are validated at runtime
+- **Safe conversions**: Automatic type conversion when no data loss occurs
+- **Clear contracts**: Explicit type definitions make extension interfaces predictable
+
+You can declare types for message properties and extension properties through TEN schemas in your manifest files, or let the framework infer types from initial values.
+
+## Basic Types
+
+The TEN framework provides fundamental data types that map consistently across supported programming languages.
+
+### Numeric types
+
+| Type    | Description                   | C++ type             | Go type    | Python type |
+| :------ | :---------------------------- | :------------------- | :------------- | :-------|
+| `int8`    | An 8-bit signed integer      | `int8_t`               |  `int8`          | `int`     |
+| `int16`   | A 16-bit signed integer      | `int16_t`              | `int16`          | `int`     |
+| `int32`   | A 32-bit signed integer      | `int32_t`              | `int32`          | `int`     |
+| `int64`   | A 64-bit signed integer      | `int64_t`              | `int64`          | `int`     |
+| `uint8`   | An 8-bit unsigned integer    | `uint8_t`              | `uint8`          | `int`     |
+| `uint16`  | A 16-bit unsigned integer    | `uint16_t`             | `uint16`         | `int`     |
+| `uint32`  | A 32-bit unsigned integer    | `uint32_t`             | `uint32`         | `int`     |
+| `uint64`  | A 64-bit unsigned integer    | `uint64_t`             | `uint64`         | `int`     |
+| `float32` | A single precision (32-bit) IEEE 754 floating-point number | `float` | `float32`        | `float`   |
+| `float64` | A double-precision (64-bit) IEEE 754 floating-point number | `double`| `float64`        | `float`   |
+
+### Text and binary types
+
+| Type    | Description                   | C++ Type             | Go Type    | Python Type |
+| :------ | :---------------------------- | :------------------- | :------------- | :-------|
+| `string`  | A Unicode character sequence | `std::string` / `char*` | `string`         | `str`     |
+| `buf`     | A sequence of 8-bit unsigned bytes | `uint8_t*`            | `[]byte`       | `bytearray` / `memoryview` |
+
+### Boolean and pointer types
+
+| Type    | Description                   | C++ type             | Go type    | Python type |
+| :------ | :---------------------------- | :------------------- | :------------- | :-------|
+| `bool`    | A binary value, either true or false | `bool`  | `bool`           | `bool`    |
+| `ptr`     | A pointer to a memory address | `void*` | `unsafe.Pointer` |         |
+
+## Composite types
+
+Composite types allow you to work with structured data and collections.
+
+### Arrays
+Arrays contain collections of elements of the same type. They provide ordered storage for multiple values.
+
+### Objects  
+Objects represent complex key-value pairs where keys are always strings. They enable structured data with named properties.
+
+| Type   | Description              | Use cases |
+| :----- | :----------------------- | :-------- |
+| `array`  | A collection of elements of the same type | Lists, sequences, collections of similar data |
+| `object` | Complex key/value pairs with string keys | Configuration structures, nested properties |
+
+### Working with composite types
+
+You can access basic types directly using methods like `get_property()` and `set_property()`.
+
+```cpp
+// Get property value
+int32_t value = cmd.get_property_`int32`("property_name");
+
+// Set property value
+cmd.set_property("property_name", 100);
+```
+
+Composite types typically require serialization methods for access:
+
+```go
+type MyProp struct {
+    Name string `json:"name"`
+}
+
+var prop MyProp
+bytes, _ := json.Marshal(&prop)
+cmd.SetPropertyFromJSONBytes("property_name", bytes)
+```
+
+## Type schemas and validation
+
+The TEN framework determines property types through two methods: explicit schema definitions or automatic inference from initial values.
+
+### Schema-defined types
+
+When you specify a TEN schema in your manifest file, the framework uses the schema to determine property types and validate values:
+
+```json
+{
+ "api": {
+   "property": {
+     "timeout": {
+       "type": "`int32`"
+     },
+     "enabled": {
+       "type": "bool"
+     }
+   }
+ }
+}
+```
+
+Schema-defined types provide strict validation and ensure type safety across extension boundaries.
+
+### Inferred types
+When a TEN schema is not specified, the framework infers property types from initial value assignments:
+
+- **Direct assignment**: If you assign an `int32_t` value, the property becomes `int32_t`
+- **JSON assignment**: Types follow JSON processing rules; numbers default to `int64` for integers, `float64` for floating-point.
+
+### Type validation
+
+The framework validates types when:
+
+- Loading `property.json` files
+- Calling methods like `set_property_from_json()`
+- Sending messages with typed properties
+
+The following table summarizes the validation behavior:
+
+| Schema defined | Validation behavior |
+|:--------------:|---------------------|
+| Yes | Strict type checking against schema definition |
+| No  | Type inferred from first assignment, flexible thereafter |
+
+## Type conversion rules
+The TEN framework supports automatic type conversion between compatible types, but only when the conversion preserves data integrity.
+
+### Safe conversions
+Safe conversions move from lower to higher precision types and never lose data. The framework performs these conversions automatically:
+
+#### Integer promotions
+
+| From   | To (Allowed)                    |
+|--------|---------------------------------|
+| `int8`   | `int16` / `int32` / `int64`   |
+| `int16`  | `int32` / `int64`             |
+| `int32`  | `int64`                       |
+| `uint8`  | `uint16` / `uint32` / `uint64`|
+| `uint16` | `uint32` / `uint64`           |
+| `uint32` | `uint64`                      |
+
+#### Floating-point promotions
+
+| From   | To (Allowed)                  |
+|--------|-------------------------------|
+| `float32`   | `float64`                |
+
+
+Example of safe conversion:
+
+```cpp
+// Set property value. 
+// The type of `property_name` in TEN Runtime is `int32`.
+cmd.set_property("property_name", 100);
+ 
+// Get property value. Correct.
+int32_t value = cmd.get_property_int32("property_name");
+ 
+// Get property value. Correct. 
+// TEN Type System automatically converts the type to `int64`.
+int64_t value2 = cmd.get_property_int64("property_name");
+```
+
+### Unsafe conversions
+Unsafe conversions move from higher to lower precision types and may lose data. The framework checks for overflow and throws an error when data loss would occur. The TEN runtime performs unsafe conversions only when deserializing JSON documents into TEN properties that have defined TEN schemas:
+
+- **Loading `property.json` files**  
+    Integers are parsed as `int64` by default and floating-point numbers as `float64` by default. The framework applies unsafe conversion rules to match the target schema types.
+
+- **Calling `set_property_from_json()` methods**  
+    When passing serialized JSON strings, the framework performs unsafe conversion according to the defined schema requirements.
+
+#### Unsafe conversion scenarios
+
+In the TEN framework type system, unsafe conversion rules are as follows:
+
+- Converting `int64` to lower precision `int` types
+- Converting `int64` to any `uint` type
+- Converting `float64` to `float32`
+
+Example of unsafe conversion error:
+
+```cpp
+// Get property value. Incorrect use, an error is thrown.
+int16_t error_type = cmd.get_property_int16("property_name");
+```
+
+Unsafe conversions succeed only when the source value fits within the target type's range:
+
+| From     | To      | Valid value range                                       |
+|----------|---------|---------------------------------------------------------|
+| `int64`  | `int8`  | [-2^7, 2^7 - 1]                                      |
+| `int64`  | `int16` | [-2^15, 2^15 - 1]                                    |
+| `int64`  | `int32` | [-2^31, 2^31 - 1]                                    |
+| `int64`  | `uint8` | [0, 2^7 - 1]                                         |
+| `int64`  | `uint16`| [0, 2^15 - 1]                                        |
+| `int64`  | `uint32`| [0, 2^31 - 1]                                        |
+| `int64`  | `uint64`| [0, 2^63 - 1]                                        |
+| `float64`| `float32`| [-3.4028234663852886e+38, 3.4028234663852886e+38]  |
+

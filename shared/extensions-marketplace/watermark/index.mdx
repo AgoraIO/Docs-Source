@@ -1,0 +1,344 @@
+
+The Watermark extension works with Web SDK v4.24.0 or later to add image watermarks to video streams. The extension supports customizable watermark properties such as position, size, and transparency, and can be applied to both local and remote video tracks.
+
+## Understand the tech
+
+The Watermark extension integrates into the Web SDK's video processing pipeline to overlay images onto video streams in real-time. When enabled, the extension processes each video frame by compositing the watermark image at the specified position with the configured transparency level. 
+
+## Prerequisites
+
+To use the Watermark extension, ensure that:
+
+- You are using the latest version of Chrome (recommended), Edge, or Firefox desktop browser.
+- You have implemented the [SDK quickstart](/video-calling/get-started/get-started-sdk) in your project using the Web SDK version 4.24.0 or later.
+
+## Implementation
+
+Follow these steps to integrate the Watermark extension and add watermarks to your video streams.
+
+### Integrate the extension
+
+Use npm to integrate the [agora-extension-video-watermark](https://www.npmjs.com/package/agora-extension-video-watermark) package into your project.
+
+1. Install the Watermark extension:
+
+    ```shell
+    npm install agora-extension-video-watermark
+    ```
+
+2. Import the watermark module in your `.js` file:
+
+    ```typescript
+    import AgoraRTC from "agora-rtc-sdk-ng";
+    import { VideoWatermarkExtension, AgoraWatermarkImage } from "agora-extension-video-watermark";
+    import type { IVWProcessor } from "agora-extension-video-watermark";
+    ```
+
+### Register the extension
+
+Call `AgoraRTC.registerExtensions` and pass the created `VideoWatermarkExtension` instance to register the Watermark extension.
+
+<Admonition title="Note">
+Agora recommends creating only one `VideoWatermarkExtension` instance.
+</Admonition>
+
+```typescript
+import AgoraRTC from "agora-rtc-sdk-ng";
+import { VideoWatermarkExtension } from "agora-extension-video-watermark";
+
+// Create VideoWatermarkExtension instance
+const extension = new VideoWatermarkExtension();
+
+// Register the extension
+AgoraRTC.registerExtensions([extension]);
+```
+
+### Enable the extension
+
+Follow these steps to enable the Watermark extension:
+
+1. Call `createProcessor` to create an `IVWProcessor` instance:
+
+    ```typescript
+    // Create IVWProcessor instance
+    const processor = extension.createProcessor();
+    ```
+
+2. Call the SDK's `pipe` method and specify the `processorDestination` property to inject the extension into the video processing pipeline:
+
+    ```typescript
+    // Create a video track (local or remote)
+    const videoTrack = await AgoraRTC.createCameraVideoTrack();
+    // Inject the extension into the video processing pipeline
+    videoTrack.pipe(processor).pipe(videoTrack.processorDestination);
+    ```
+
+### Add watermarks
+
+The Watermark extension supports two methods for creating watermark images:
+
+- **Use an existing HTMLImageElement** 
+
+    If you already have an image element in the    DOM (for example, from an `<img>` tag), you can use it directly:
+
+    ```typescript
+        const image = document.getElementById('watermark-image') as HTMLImageElement;
+        const watermark = new AgoraWatermarkImage(
+        image,
+        10,    // x coordinate
+        10,    // y coordinate
+        100,   // width
+        50,    // height
+        0.8    // opacity (0.0-1.0)
+        );
+
+        // Add watermark to processor
+        processor.addVideoWatermark(watermark);
+    ```
+
+- **Use an image URL (asynchronous)**
+
+    You can also create a watermark from an image URL. This method loads the image asynchronously, so you must wait for the `.ready` Promise to complete before use:
+
+    ```typescript
+        const watermark = new AgoraWatermarkImage(
+        'https://example.com/watermark.png',
+        10,    // x coordinate
+        10,    // y coordinate
+        100,   // width (-1 uses original image width)
+        50,    // height (-1 uses original image height)
+        0.8    // opacity (0.0-1.0)
+        );
+
+        // Wait for image to load
+        await watermark.ready;
+
+        // Add watermark to processor
+        processor.addVideoWatermark(watermark);
+    ```
+
+    <Admonition title="Note">
+    - When loading images from URLs, the operation may fail due to <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cross-Origin_Resource_Policy">Cross-Origin Resource Policy (CORP)</a> restrictions. If image loading fails, the `ready` Promise is rejected with an error.
+    - To use the original image dimensions, set both `width` and `height` to `-1`.
+    </Admonition>
+
+### Enable the processor
+
+After adding watermarks, call `enable` to activate the processor:
+
+```typescript
+const enable = async () => {
+  const enabled = processor.enabled;
+  if (!enabled) {
+    await processor.enable();
+  }
+};
+
+await enable();
+```
+
+### Manage watermarks
+
+You can dynamically enable or disable the watermark as follows:
+
+```typescript
+// Enable watermark
+const enable = async () => {
+  const enabled = processor.enabled;
+  if (!enabled) {
+    await processor.enable();
+  }
+};
+
+// Disable watermark
+const disable = async () => {
+  const enabled = processor.enabled;
+  if (enabled) {
+    await processor.disable();
+  }
+};
+```
+
+### Release resources
+
+When you no longer need the Watermark extension, properly release resources:
+
+```typescript
+const release = async () => {
+  // Unpipe connections
+  processor.unpipe();
+  videoTrack.unpipe();
+  
+  // Reconnect to original destination
+  videoTrack.pipe(videoTrack.processorDestination);
+  
+  // Release processor resources
+  await processor.release();
+};
+
+await release();
+```
+
+### Complete sample code
+
+The following example demonstrates complete usage of the Watermark extension:
+
+<details>
+<summary>Sample code</summary>
+
+```typescript
+import AgoraRTC from "agora-rtc-sdk-ng";
+import { VideoWatermarkExtension, AgoraWatermarkImage } from "agora-extension-video-watermark";
+import type { IVWProcessor } from "agora-extension-video-watermark";
+
+// Create and register Watermark extension
+const extension = new VideoWatermarkExtension();
+AgoraRTC.registerExtensions([extension]);
+
+// Create processor
+const processor = extension.createProcessor();
+
+async function setupWatermark() {
+  try {
+    // Create video track
+    const videoTrack = await AgoraRTC.createCameraVideoTrack();
+    
+    // Inject extension into video processing pipeline
+    videoTrack.pipe(processor).pipe(videoTrack.processorDestination);
+    
+    // Create watermark (using URL method)
+    const watermark = new AgoraWatermarkImage(
+      'https://example.com/logo.png',
+      20,   // x coordinate
+      20,   // y coordinate
+      120,  // width
+      60,   // height
+      0.7   // opacity
+    );
+    
+    // Wait for watermark image to load
+    await watermark.ready;
+    
+    // Add watermark to processor
+    processor.addVideoWatermark(watermark);
+    
+    // Enable processor
+    await processor.enable();
+    
+    console.log("Watermark extension successfully enabled");
+    
+    // Play video track
+    videoTrack.play("video-container");
+    
+  } catch (error) {
+    console.error("Error setting up watermark:", error);
+  }
+}
+
+// Cleanup function
+async function cleanup() {
+  try {
+    await processor.disable();
+    processor.unpipe();
+    videoTrack.unpipe();
+    videoTrack.pipe(videoTrack.processorDestination);
+    await processor.release();
+    console.log("Resources cleaned up");
+  } catch (error) {
+    console.error("Error cleaning up resources:", error);
+  }
+}
+
+// Call setup function
+setupWatermark();
+```
+</details>
+
+## Reference
+
+This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
+
+### API reference
+
+This section provides the core API reference for the Watermark extension.
+
+#### addVideoWatermark
+
+Adds a watermark image to the video stream.
+
+```typescript
+addVideoWatermark(watermark: AgoraWatermarkImage): number;
+```
+
+**Parameters**
+
+- `watermark`: An `AgoraWatermarkImage` instance.
+
+**Returns**
+
+The watermark ID for subsequent watermark management. Returns `-1` if the operation fails.
+
+#### clearVideoWatermarks
+
+Removes all added video watermarks.
+
+```typescript
+clearVideoWatermarks(): boolean;
+```
+
+**Returns**
+
+- `true`: Successfully removed all watermarks.
+- `false`: Failed to remove watermarks.
+
+#### removeVideoWatermark
+
+Removes a specific video watermark by ID.
+
+```typescript
+removeVideoWatermark(id: number): boolean;
+```
+
+**Parameters**
+
+- `id`: The ID of the watermark to remove.
+
+**Returns**
+
+- `true`: Successfully removed the specified watermark.
+- `false`: Failed to remove the watermark.
+
+#### release
+
+Releases the `IVWProcessor` resources.
+
+```typescript
+release(): Promise<void>;
+```
+
+#### AgoraWatermarkImage
+
+Creates a watermark image instance.
+
+```typescript
+export class AgoraWatermarkImage {
+  public image: HTMLImageElement | null;
+  public x: number;
+  public y: number;
+  public width: number;
+  public height: number;
+  public alpha: number;
+  public ready: Promise<void>;
+  public imageReady: boolean = false;
+}
+```
+
+**Parameters**
+
+- `image`: The `HTMLImageElement` to use as the watermark. If `null`, no image is used.
+- `url`: The image URL to use as the watermark. If `null` or an empty string, no image is used.
+- `x`: The x-coordinate (in pixels) of the image on the video, relative to the top-left corner. Default is `0`.
+- `y`: The y-coordinate (in pixels) of the image on the video, relative to the top-left corner. Default is `0`.
+- `width`: The desired width (in pixels) of the watermark image. Default is `-1`, which uses the original width after the image loads.
+- `height`: The desired height (in pixels) of the watermark image. Default is `-1`, which uses the original height after the image loads.
+- `alpha`: The image opacity, from `0.0` (completely transparent) to `1.0` (completely opaque). Default is `1.0`.

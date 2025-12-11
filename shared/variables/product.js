@@ -159,13 +159,12 @@ const data = {
     PRODUCT: 'Conversational AI Engine',
   },
 
-  'on-premise-recording': {
-    NAME: 'On-Premise Recording',
-    PATH: 'on-premise-recording',
-    SDK: 'On-Premise Recording',
-    PRODUCT: 'On-Premise Recording',
+  'convo-ai-device-kit': {
+    NAME: 'ConvoAI Device Kit R1',
+    PATH: 'convo-ai-device-kit',
+    PRODUCT: 'ConvoAI Device Kit R1',
   },
-
+  
   'open-ai-integration': {
     NAME: 'OpenAI Realtime API',
     PATH: 'open-ai-integration',
@@ -195,13 +194,8 @@ const data = {
     NAME: 'On-Premise Recording',
     PATH: 'on-premise-recording',
     SDK: 'On-Premise Recording SDK',
-  },
-
-  'convo-ai-device-kit': {
-    NAME: 'Convo AI Device Kit',
-    PATH: 'convo-ai-device-kit',
-    PRODUCT: 'Convo AI Device Kit',
-  },
+    PRODUCT: 'On-Premise Recording',
+  }
 };
 
 export default data;

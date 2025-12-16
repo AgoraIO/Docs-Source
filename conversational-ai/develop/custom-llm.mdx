@@ -10,18 +10,22 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import CodeBlock from '@theme/CodeBlock';
 
-In <Vpd k="NAME" /> interaction scenarios, your use case may require a custom large language model (Custom LLM). This document explains how to integrate a custom LLM into Agora's <Vpd k="NAME" />.
+In <Vpd k="NAME" /> interaction scenarios, your use case may require a custom large language model (Custom LLM). This document explains how to integrate a custom LLM into <Vg k="COMPANY" />'s <Vpd k="NAME" />.
 
 ## Understand the tech
 
-Agora's <Vpd k="NAME" /> interacts with LLM services using the OpenAI API protocol. To integrate a custom LLM, you need to provide an HTTP service compatible with the OpenAI API, capable of handling requests and responses in the OpenAI API format.
+<Vg k="COMPANY" />'s <Vpd k="NAME" /> supports custom LLM endpoints using any of these standard provider interfaces:
+- **OpenAI Chat Completions API format**
+- **Anthropic Messages API format**
+- **Google Gemini API format**
 
-This approach enables you to implement additional custom functionalities, including but not limited to:
+Custom LLM integration enables you to implement advanced capabilities including:
 
-- **Retrieval-Augmented Generation (RAG)**: Allows the model to retrieve information from a specific knowledge base.
-- **Multimodal Capabilities**: Enables the model to generate output in both text and audio formats.
-- **Tool Invocation**: Allows the model to call external tools.
-- **Function Calling**: Enables the model to return structured data in the form of function calls.
+- **Retrieval-Augmented Generation (RAG)**: Retrieve information from your knowledge base to augment responses
+- **Multimodal Capabilities**: Generate output in both text and audio formats
+- **Tool Invocation**: Call external tools and APIs during conversations
+- **Function Calling**: Return structured data for client-side actions
+- **Multi-agent Workflows**: Coordinate multiple specialized agents for complex tasks
 
 ## Prerequisites
 Before you begin, ensure that you have:
@@ -30,19 +34,102 @@ Before you begin, ensure that you have:
 - Set up access to a custom LLM service.
 - Prepared a vector database or retrieval system if using Retrieval-Augmented Generation (RAG).
 
+<Admonition type="info">
+Deploy your Agent Manager and Custom LLM on separate servers. <Vg k="COMPANY" />'s orchestration makes HTTP requests to your Custom LLM endpoint, so running both on the same server can cause network routing conflicts and timeouts.
+</Admonition>
+
 ## Implementation
 
-Take the following steps to integrate your custom LLM into Agora's <Vpd k="NAME"/>.
+You can integrate your custom LLM in two ways: connect an existing service that uses a supported format, or build a new endpoint that wraps your model.
 
-### Create an OpenAI API-compatible service
+### Option 1: Connect an existing LLM service
 
-To integrate successfully with Agora's <Vpd k="NAME" />, your custom LLM service must provide an interface compatible with the OpenAI Chat Completions API. The key requirements include:
+If you already have an LLM service running with OpenAI, Anthropic, or Gemini-compatible APIs, simply point <Vpd k="NAME" /> to your endpoint:
 
-- **Endpoint**: A request-handling endpoint, such as `https://your-custom-llm-service/chat/completions`.
-- **Request format**: Must accept request parameters adhering to the OpenAI API protocol.
-- **Response format**: Should return OpenAI API-compatible responses and support the Server-Sent Events (SSE) standard for streaming.
+<Tabs groupId="provider">
+<TabItem value="openai" label="OpenAI" default>
 
-The following example demonstrates how to implement an OpenAI API-compliant interface:
+```json
+{
+  "llm": {
+    "url": "https://your-existing-llm-service.com/v1/chat/completions",
+    "api_key": "your_api_key",
+    "system_messages": [
+      {
+        "role": "system",
+        "content": "You are a helpful assistant."
+      }
+    ],
+    "params": {
+      "model": "your-model-name"
+    }
+  }
+}
+```
+
+Your service receives OpenAI Chat Completions API requests and returns streaming responses via Server-Sent Events (SSE).
+
+</TabItem>
+<TabItem value="anthropic" label="Anthropic">
+
+```json
+{
+  "llm": {
+    "url": "https://your-existing-llm-service.com/v1/messages",
+    "api_key": "your_api_key",
+    "system_messages": [
+      {
+        "role": "system",
+        "content": "You are a helpful assistant."
+      }
+    ],
+    "params": {
+      "model": "your-model-name",
+      "max_tokens": 1024
+    }
+  }
+}
+```
+
+Your service receives Anthropic Messages API requests and returns streaming responses via Server-Sent Events (SSE).
+
+</TabItem>
+<TabItem value="gemini" label="Google Gemini">
+
+```json
+{
+  "llm": {
+    "url": "https://your-existing-llm-service.com/v1/models/gemini-pro:generateContent",
+    "api_key": "your_api_key",
+    "system_messages": [
+      {
+        "role": "system",
+        "content": "You are a helpful assistant."
+      }
+    ],
+    "params": {
+      "model": "gemini-pro"
+    }
+  }
+}
+```
+
+Your service receives Google Gemini API requests and returns streaming responses via Server-Sent Events (SSE).
+
+</TabItem>
+</Tabs>
+
+Your service will receive requests in the provider format you've configured and should return responses in the same format with Server-Sent Events (SSE) streaming.
+
+### Option 2: Build a custom LLM endpoint
+
+To wrap your own model or add custom logic, create an HTTP service compatible with one of the supported provider formats. This example demonstrates the OpenAI format, which is widely adopted and well-documented. The key requirements include:
+
+- **Endpoint**: A request-handling endpoint, such as `https://your-custom-llm-service/chat/completions`
+- **Request format**: Accept request parameters following your chosen provider format (OpenAI, Anthropic, or Gemini)
+- **Response format**: Return responses in the same provider format with Server-Sent Events (SSE) streaming support
+
+The following example demonstrates how to implement an OpenAI-compatible interface:
 
 <Tabs groupId="language">
 <TabItem value="python" label="Python">
@@ -1271,13 +1358,27 @@ Agora provides open source sample projects on GitHub for your reference. Downloa
 
 ### Interface standards
 
-Custom LLM services must be compatible with the OpenAI Chat Completions API interface standard:
+Custom LLM services must be compatible with one of these provider interface standards:
 
-- **Request format**: Contains parameters such as model, message, and tool call configuration.
-- **Response format**: Contains the response generated by the model, metadata, and other information
-- **Streaming response**: Compliant with the SSE (Server-Sent Events) specification
+**OpenAI Chat Completions API:**
+- **Request format**: Contains parameters such as model, messages, tools, and streaming options
+- **Response format**: Returns choices with delta content and finish reasons
+- **Streaming**: Server-Sent Events (SSE) with `data:` prefixed chunks
 
-For detailed interface standards, please refer to:
+**Anthropic Messages API:**
+- **Request format**: Contains model, messages, max_tokens, and tool configurations
+- **Response format**: Returns message objects with content blocks and stop reasons
+- **Streaming**: Server-Sent Events (SSE) with typed event chunks
 
-- [OpenAI Chat Completions API documentation](https://platform.openai.com/docs/api-reference/chat)
+**Google Gemini API:**
+- **Request format**: Contains contents array with parts, generation config, and tools
+- **Response format**: Returns candidates with content and finish reasons
+- **Streaming**: Server-Sent Events (SSE) with JSON-formatted chunks
+
+All formats require proper SSE (Server-Sent Events) implementation for real-time streaming responses.
+
+**API documentation references:**
+- [OpenAI Chat Completions API](https://platform.openai.com/docs/api-reference/chat)
+- [Anthropic Messages API](https://docs.anthropic.com/en/api/messages)
+- [Google Gemini API](https://ai.google.dev/api/rest/v1/models/generateContent)
 - [<Vpd k="NAME" /> API Documentation](/conversational-ai/rest-api/agent/join)

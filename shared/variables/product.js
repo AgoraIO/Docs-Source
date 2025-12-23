@@ -159,6 +159,12 @@ const data = {
     PRODUCT: 'Conversational AI Engine',
   },
 
+  'convo-ai-device-kit': {
+    NAME: 'ConvoAI Device Kit R1',
+    PATH: 'convo-ai-device-kit',
+    PRODUCT: 'ConvoAI Device Kit R1',
+  },
+  
   'open-ai-integration': {
     NAME: 'OpenAI Realtime API',
     PATH: 'open-ai-integration',

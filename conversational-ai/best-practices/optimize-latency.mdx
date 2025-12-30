@@ -1,0 +1,415 @@
+---
+title: Optimize conversation latency
+sidebar_position: 2
+platform_selector: false
+description: >
+   Optimize end-to-end conversation latency in Agora Conversational AI
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+
+Latency is a key factor affecting user experience in conversational AI agent scenarios. This guide helps you understand and optimize conversation latency to improve user experience.
+
+## How latency works
+
+Understanding latency composition helps you identify optimization opportunities. The following sections explain how latency differs between cascaded and MLLM architectures.
+
+### Cascaded architecture latency
+
+When using the cascaded architecture with ASR, LLM, and TTS components, end-to-end latency consists of the following:
+
+```
+End-to-end latency = RTC latency 
+                    + Algorithm preprocessing latency 
+                    + ASR latency 
+                    + LLM latency 
+                    + TTS latency 
+                    (+ Avatar latency)
+```
+
+### Latency for each component
+
+The following table shows typical latency ranges for each component based on actual test data:
+
+| Component | Latency metric | Description | Typical latency range |
+|-----------|----------------|-------------|----------------------|
+| RTC | Audio and video latency | Includes audio capture, encoding, network transmission, decoding, and playback | 100-300 ms |
+| Algorithm preprocessing | Preprocessing latency | Includes VAD (Voice Activity Detection), graceful interruption (AIVAD), and other algorithm processing time | 80-120 ms |
+| ASR | `asr_ttlw` | Time To Last Word. The latency from when the user stops speaking to when ASR outputs the last word. | 100-150 ms |
+| LLM | `llm_ttfb` / `llm_ttfs` | TTFB: Time To First Byte, the first byte latency.<br/>TTFS: Time To First Sentence, the first sentence latency. | 270-950 ms |
+| TTS | `tts_ttfb` | Time To First Byte. The response latency from when the TTS request starts to when the first byte is received. | 60-110 ms |
+| Avatar rendering | Rendering latency | Avatar video rendering and synchronization latency (if enabled) | 50-200 ms |
+
+<Admonition type="info">
+Test data shows that LLM typically contributes the most to overall latency. Optimizing LLM selection and configuration is key to reducing end-to-end latency.
+</Admonition>
+
+### Real-world latency example
+
+The following example shows latency data from three conversation turns in an actual conversation. This data comes from the [`111 agent metrics`](/conversational-ai/develop/event-types#111-agent-metrics) event in Agora's [message notification service](/conversational-ai/develop/webhooks):
+
+```json
+{
+  "metrics": [
+    {
+        "turn_id": 1,
+        "tts_ttfb": 61
+    },
+    {
+        "turn_id": 2,
+        "asr_ttlw": 141,
+        "llm_ttfb": 270,
+        "llm_ttfs": 482,
+        "tts_ttfb": 90
+    },
+    {
+        "turn_id": 3,
+        "asr_ttlw": 103,
+        "llm_ttfb": 306,
+        "llm_ttfs": 948,
+        "tts_ttfb": 106
+    }
+  ]
+}
+```
+
+### MLLM architecture latency
+
+When using MLLM (Multimodal Large Language Model), the model processes audio input directly and generates audio output without separate ASR, LLM, and TTS components. This results in simpler latency composition:
+
+```text
+End-to-end latency = RTC latency 
+                    + Algorithm preprocessing latency 
+                    + MLLM latency
+```
+
+You can obtain the `mllm_ttfb` metric by listening to the `111 agent metrics` event. This metric represents the response latency from when the MLLM request starts to when the first byte is received.
+
+<Admonition type="info">
+* MLLM architecture typically achieves lower end-to-end latency by reducing data conversion and transmission between components.
+* When MLLM is enabled, the graceful interruption (AIVAD) feature is disabled, which reduces algorithm preprocessing latency.
+</Admonition>
+
+## Monitor latency metrics
+
+The Conversational AI engine provides two ways to monitor latency metrics for each conversation turn:
+
+### Use client components
+
+If you use client components (Android, iOS, or Web), you can listen to agent performance metrics in real time by registering the `onAgentMetrics` callback.
+
+<Tabs groupId="language">
+<TabItem value="android" label="Android">
+
+<CodeBlock showLineNumbers language="kotlin">
+{`api.addHandler(object : IConversationalAIAPIEventHandler {
+    override fun onAgentMetrics(agentUserId: String, metric: Metric) {
+        when (metric.type) {
+            ModuleType.ASR -> {
+                Log.d("Metrics", "ASR TTLW: \${metric.value}ms")
+            }
+            ModuleType.LLM -> {
+                // metric.name can be "ttfb" or "ttfs"
+                Log.d("Metrics", "LLM \${metric.name}: \${metric.value}ms")
+            }
+            ModuleType.TTS -> {
+                Log.d("Metrics", "TTS TTFB: \${metric.value}ms")
+            }
+            ModuleType.TOTAL -> {
+                Log.d("Metrics", "Total Delay: \${metric.value}ms")
+            }
+            else -> {
+                Log.d("Metrics", "\${metric.type}: \${metric.name} = \${metric.value}ms")
+            }
+        }
+    }
+})`}
+</CodeBlock>
+</TabItem>
+
+<TabItem value="ios" label="iOS">
+
+<CodeBlock showLineNumbers language="swift">
+{`func onAgentMetrics(agentUserId: String, metrics: Metric) {
+    switch metrics.type {
+    case .asr:
+        print("ASR TTLW: \(metrics.value)ms")
+    case .llm:
+        print("LLM \(metrics.name): \(metrics.value)ms")
+    case .tts:
+        print("TTS TTFB: \(metrics.value)ms")
+    case .total:
+        print("Total Delay: \(metrics.value)ms")
+    case .unknown:
+        print("Unknown metric: \(metrics.name) = \(metrics.value)ms")
+    }
+}`}
+</CodeBlock>
+</TabItem>
+
+<TabItem value="web" label="Web">
+
+<CodeBlock showLineNumbers language="ts">
+{`conversationalAIAPI.on(
+  EConversationalAIAPIEvents.AGENT_METRICS, 
+  (agentUserId: string, metrics: Metric) => {
+    console.log(\`[\${metrics.type}] \${metrics.name}: \${metrics.value}ms\`);
+    
+    if (metrics.type === 'TOTAL') {
+      console.log(\`Total delay for turn: \${metrics.value}ms\`);
+    }
+  }
+);`}
+</CodeBlock>
+</TabItem>
+</Tabs>
+
+For detailed integration steps and API reference, see [Receive webhook notifications](/conversational-ai/develop/webhooks).
+
+### Use Message Notification Service
+
+If you have enabled Agora's Message Notification Service, you can obtain agent performance metrics by receiving the `agent metrics` event where `eventType` is `111`.
+
+**Event callback example**
+
+```json
+{
+  "noticeId": "2000001428:4330:107",
+  "productId": 17,
+  "eventType": 111,
+  "notifyMs": 1611566412672,
+  "payload": {
+    "agent_id": "A42AC47Hxxxxxxxx4PK27ND25E",
+    "start_ts": 1000,
+    "stop_ts": 1672531200,
+    "channel": "test-channel",
+    "metrics": [
+      {
+          "turn_id": 1,
+          "tts_ttfb": 61
+      },
+      {
+        "turn_id": 2,
+        "asr_ttlw": 141,
+        "llm_ttfb": 270,
+        "llm_ttfs": 482,
+        "tts_ttfb": 90,
+      }
+    ]
+  }
+}
+```
+
+For detailed event field descriptions, see [Notification event 111 agent metrics](/conversational-ai/develop/event-types#111-agent-metrics).
+
+## Optimize cascaded architecture latency
+
+To reduce latency in cascaded architecture, focus on optimizing individual components, geographic deployment, and RTC settings.
+
+### Optimize LLM, ASR, and TTS components
+
+LLM is typically the component that contributes the most to latency. Optimizing LLM can significantly reduce overall latency.
+
+**Choose low-latency vendors**
+
+LLM, ASR, and TTS vendors and models vary significantly in response speed. Refer to the [Conversational AI Performance Lab](https://www.agora.io/en/conversational-ai-performance-lab) to compare performance metrics across vendors.
+
+**Optimize parameter configuration**
+
+When creating an agent, read the vendor documentation for ASR, LLM, and TTS to understand available parameters and tune them for your use case. The following are general optimization approaches:
+
+* **LLM**
+   * **Choose smaller models**: Models such as `gpt-4o-mini` and `claude-3-haiku` typically respond faster than larger models.
+   * **Limit `max_tokens`**: Reducing the maximum number of tokens generated can lower TTFS (first sentence latency).
+   * **Enable streaming response**: Ensure `stream: true` so the agent can start speaking as soon as possible.
+* **ASR**
+   * **Use vendor-recommended sampling rate**: Use the sampling rate recommended by the vendor, such as 16 kHz, to avoid unnecessary resampling.
+   * **Limit language model**: Use the `phrases` or `context` parameter to provide domain-specific vocabulary and improve recognition speed.
+* **TTS**
+   * **Disable non-essential features**: Some TTS vendors provide advanced parameters such as `profanity_filter`, `punctuation_filter`, and `diarization`. You can disable these based on your use case to improve response speed.
+
+The following example shows how to optimize LLM parameters:
+
+```json
+{
+  "properties": {
+    "llm": {
+      "url": "https://api.openai.com/v1/chat/completions",
+      "api_key": "your_api_key",
+      "params": {
+        "model": "gpt-4o-mini",  // Select the faster-responding model
+        "temperature": 0.7,
+        "max_tokens": 150,  // Limit the generation length to reduce latency
+        "stream": true  // Enable streaming response
+      }
+    }
+  }
+}
+```
+
+### Optimize geographic deployment
+
+**Understand the default location selection strategy**
+
+When regional access restrictions are not enabled or when using the `GLOBAL` region, the Conversational AI engine automatically selects the nearest server to deploy the agent based on the IP address of the configured LLM URL. The system includes the following capabilities:
+
+1. **Smart deployment**: The system deploys the Conversational AI engine service in the region that corresponds to the IP address of the LLM URL.
+2. **Proximity selection**: If no servers are available in the corresponding region, the system selects the nearest available region.
+3. **Failover**: When the service in a region becomes unavailable, the system switches to another available region.
+
+**Optimize deployment region**
+
+To minimize network latency, Agora recommends:
+
+1. **Deploy ASR, LLM, and TTS in the same region**: Choose vendors that support the same region to reduce cross-region network latency.
+2. **Use regional access restrictions**: If your users are concentrated in a specific region, use the `geofence` parameter to restrict the Conversational AI engine to servers in that region:
+
+```json
+{
+  "properties": {
+    "geofence": {
+      "area": "NORTH_AMERICA"  // Or EUROPE, ASIA, etc.
+    },
+    "llm": {
+      "url": "https://api.openai.com/v1/chat/completions"  // Use LLM endpoint in North America region
+    },
+    "tts": {
+      "url": "wss://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream-input"  // Use TTS endpoint in North America region
+    }
+  }
+}
+```
+
+For detailed regional access restriction configuration, see [Restrict agent zones](/conversational-ai/best-practices/regional-restrictions).
+
+### Optimize RTC latency
+
+RTC latency includes audio capture, encoding, network transmission, decoding, and playback. To optimize RTC latency, configure audio settings on the client side.
+
+**Use AI conversation scenario**
+
+Agora RTC SDK 4.5.1 and later supports the AI conversation scenario (`AUDIO_SCENARIO_AI_CLIENT`), which is specifically optimized for AI conversations and includes:
+
+* Optimized audio 3A algorithms (echo cancellation, noise reduction, and gain control)
+* Lower audio capture and playback latency
+* Audio processing tailored to AI voice characteristics
+
+<Tabs groupId="language">
+<TabItem value="android" label="Android">
+
+**Use the client-side component API (recommended)**
+
+<CodeBlock showLineNumbers language="kotlin">
+{`val config = ConversationalAIAPIConfig(
+    rtcEngine = rtcEngineInstance,
+    rtmClient = rtmClientInstance,
+    enableLog = true
+)
+val api = ConversationalAIAPIImpl(config)
+
+// Load optimal audio settings
+api.loadAudioSettings()`}
+</CodeBlock>
+
+**Configure the RTC SDK directly**
+
+<CodeBlock showLineNumbers language="kotlin">
+{`val config = RtcEngineConfig()
+config.mAudioScenario = Constants.AUDIO_SCENARIO_AI_CLIENT
+rtcEngine = RtcEngine.create(config)`}
+</CodeBlock>
+
+</TabItem>
+
+<TabItem value="ios" label="iOS">
+
+**Use the client-side component API (recommended)**
+
+<CodeBlock showLineNumbers language="swift">
+{`let config = ConversationalAIAPIConfig(
+    rtcEngine: rtcEngine, 
+    rtmEngine: rtmEngine,
+    enableLog: true
+)
+convoAIAPI = ConversationalAIAPIImpl(config: config)
+
+// Load optimal audio settings
+convoAIAPI.loadAudioSettings()`}
+</CodeBlock>
+
+**Configure the RTC SDK directly**
+
+<CodeBlock showLineNumbers language="swift">
+{`let config = AgoraRtcEngineConfig()
+config.audioScenario = .aiClient
+rtcEngine = AgoraRtcEngineKit.sharedEngine(with: config, delegate: delegate)
+`}
+</CodeBlock>
+
+</TabItem>
+</Tabs>
+
+For detailed audio setting optimization, see [Optimize audio](/conversational-ai/best-practices/audio-setup).
+
+## Optimize MLLM architecture latency
+
+If you use an MLLM (Multimodal Large Language Model) architecture, optimizing latency primarily relies on choosing low-latency MLLM vendors.
+
+MLLM vendors vary in real-time performance. The Conversational AI engine currently supports:
+
+* OpenAI Realtime API: Provides low-latency real-time audio processing capabilities
+* Google Gemini Live: Supports multimodal real-time interaction
+
+For detailed MLLM integration guides, see [MLLM overview](/conversational-ai/models/mllm/overview).
+
+## Latency optimization checklist
+
+Use the following checklist to systematically optimize your conversational AI agent latency:
+
+### Server-side optimization
+
+* **Choose low-latency LLM models**: Refer to [Artificial Analysis](https://artificialanalysis.ai/) to select models with excellent TTFT and throughput performance.
+* **Enable streaming response**: Ensure `stream: true`.
+* **Choose low-latency ASR and TTS vendors**: Use modes such as turbo or low-latency.
+* **Optimize geographic deployment**: Deploy ASR, LLM, and TTS in the same region.
+* **Configure regional access restrictions**: Use the `geofence` parameter to lock in the optimal region.
+* **Consider using MLLM**: If latency is a critical factor, evaluate the feasibility of MLLM architecture.
+
+### Client-side optimization
+
+* **Use AI conversation scenario**: Set `AUDIO_SCENARIO_AI_CLIENT` (RTC SDK 4.5.1 and later).
+* **Load optimal audio settings**: Call the `loadAudioSettings()` method of the client component.
+* **Integrate required audio plugins**: Ensure integration of AI noise reduction and AI echo cancellation plugins.
+* **Optimize network conditions**: Ensure stable user network connection and consider using SD-RTN™ to optimize network transmission.
+
+### Monitoring and analysis
+
+* **Monitor latency metrics in real time**: Obtain latency data for each conversation turn through client components or NCS.
+* **Identify latency bottlenecks**: Analyze which component contributes the most to latency.
+* **Continuously optimize**: Adjust configuration based on actual data and conduct A/B testing.
+
+## Balance latency and quality
+
+When optimizing latency, find a balance between response speed and conversation quality:
+
+| Optimization strategy | Latency impact | Quality impact | Recommended scenario |
+|----------------------|----------------|----------------|---------------------|
+| Use smaller LLM models | ✅ Significantly reduces | ⚠️ May reduce | Latency-sensitive scenarios with relatively simple conversations |
+| Limit `max_tokens` | ✅ Moderately reduces | ⚠️ May affect completeness | Scenarios requiring short responses |
+| Regional access restrictions | ✅ Moderately reduces | No impact | Users concentrated in a specific region |
+| Optimize RTC settings | ✅ Moderately reduces | No impact | All scenarios |
+
+<Admonition type="tip">
+Monitor latency metrics to identify bottlenecks, then optimize the highest-contributing component rather than pursuing minimal latency across all components.
+</Admonition>
+
+## Related resources
+
+* [Receive webhook notifications](/conversational-ai/develop/webhooks)
+* [Optimize audio](/conversational-ai/best-practices/audio-setup)
+* [Restrict agent zones](/conversational-ai/best-practices/regional-restrictions)
+* [MLLM overview](/conversational-ai/models/mllm/overview)
+* [Notification event types](/conversational-ai/develop/event-types)
+* [Conversational AI Performance Lab](https://www.agora.io/en/conversational-ai-performance-lab)

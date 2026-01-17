@@ -61,7 +61,7 @@ Use this list to quickly check what measures you have or have not taken to best 
 1. Enable token authentication in <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>.
 2. Disable **No certificate** in your project management page. Once it is done your app authenticates users with tokens only.
    ![img](https://web-cdn.agora.io/docs-files/1614134532547)
-3. [Deploy an <Vg k="SIG"/> token server](/signaling/develop/authentication-workflow) in your backend services.
+3. [Deploy an <Vg k="SIG"/> token server](/flexible-classroom/develop/integrate/authentication-workflow) in your backend services.
 4. Protect the token server and only allow the app backend server to connect to the token server.
 5. For additional security, you can also do the following:
    - Set the classroom ID to a one-time random string managed by your app.

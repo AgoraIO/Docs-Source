@@ -20,7 +20,7 @@ Agora Flexible Classroom is designed and built with multiple protection measures
 
 ## Classroom separation
 
-Agora creates independent and isolated classrooms for audio, video, or messaging data transmission with the room ID specified by the app developer. All classrooms are logically separated and only authenticated users from the same Agora [App ID](../reference/glossary#app-id) can join the same classroom.
+Agora creates independent and isolated classrooms for audio, video, or messaging data transmission with the room ID specified by the app developer. All classrooms are logically separated and only authenticated users from the same Agora [App ID](/flexible-classroom/reference/glossary#app-id) can join the same classroom.
 
 ## Token authentication
 
@@ -28,8 +28,8 @@ Agora Flexible Classroom uses the <Vg k="SIG"/> token for end user authenticatio
 
 The app developer can enable token authentication (App Certificate) in <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>. When enabled, all user’s request to join a classroom must be done with a valid <Vg k="SIG"/> token.
 
-- For more information on how to enable <Vg k="SIG"/> token authentication, see [Secure authentication with tokens](authentication-workflow).
-- For how to generate a <Vg k="SIG"/> token on the app backend, see [Secure authentication with tokens](authentication-workflow#token-generator-libraries).
+- For more information on how to enable <Vg k="SIG"/> token authentication, see [Secure authentication with tokens](/flexible-classroom/develop/integrate/authentication-workflow).
+- For how to generate a <Vg k="SIG"/> token on the app backend, see [Secure authentication with tokens](/flexible-classroom/develop/integrate/authentication-workflow).
 
 ## Data encryption and storage
 

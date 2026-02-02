@@ -13,6 +13,8 @@ import ParameterList, { Parameter } from '@site/src/components/rest-api/Paramete
 import PathParameter from '@site/src/components/rest-api/PathParameter';
 import { Tabs, TabItem } from '@site/src/components/rest-api/Tabs';
 
+import Examples from '@docs/shared/conversational-ai/rest-api/join-examples.mdx';
+
 <RestAPILayout>
   <LeftColumn
     title={frontMatter.title}
@@ -87,8 +89,12 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
     <Parameter name="advanced_features" type="object" required={false}>
       Advanced features configuration.
 
-      <Parameter name="enable_aivad" type="boolean" defaultValue="false" required={false}>
+      <Parameter name="enable_aivad" type="boolean" defaultValue="false" required={false} deprecated={true}>
         Whether to enable the intelligent interruption handling function (AIVAD). This feature is currently available only for English.
+
+        <Admonition type="caution">
+        This field is deprecated. Use `turn_detection.config.end_of_speech.mode.semantic` instead.
+        </Admonition>
       </Parameter>
 
       <Parameter name="enable_mllm" type="boolean" defaultValue="false" required={false}>
@@ -104,6 +110,10 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
 
       <Parameter name="enable_sal" type="boolean" defaultValue="false" required={false}>
         Enable Selective Attention Locking (SAL). When enabled, configure the `sal` field to set up speaker recognition or locking modes. See the `sal` parameter for configuration details.
+      </Parameter>
+
+      <Parameter name="enable_tools" type="boolean" defaultValue="false" required={false}>
+        Enable tool invocation. When enabled, the agent can invoke tools provided by the MCP server to implement advanced functionality.
       </Parameter>
     </Parameter>
 
@@ -256,6 +266,131 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
         </Admonition>
       </Parameter>
 
+      <Parameter name="mcp_servers" type="array" required={false} collapse={false}>
+        MCP (Model Context Protocol) server configuration. By configuring MCP servers, agents can call tools provided by external services to implement advanced functionality.
+        
+        <Parameter name="name" type="string" required={true}>
+          A unique identifier for the MCP server. Maximum 48 characters. Accepts only English letters and numbers.
+        </Parameter>
+        
+        <Parameter name="endpoint" type="string" required={true}>
+          The endpoint address of the MCP server. The agent uses this to communicate with the MCP server.
+        </Parameter>
+        
+        <Parameter name="transport" type="string" required={false} possibleValues="streamable_http">
+          Transport protocol type. 
+          - `streamable_http`: Streaming HTTP protocol
+        </Parameter>
+        
+        <Parameter name="headers" type="object" required={false}>
+          HTTP header information to include when requesting the MCP server, such as authentication information.
+        </Parameter>
+        
+        <Parameter name="allowed_tools" type="array" required={false}>
+          A list of tools that the agent is allowed to invoke. The agent can only use tools on this list.
+          
+          **Behavior:**
+          - **Empty or omitted**: All tools are enabled.
+          - **Empty array `[]`**: No tools are enabled.
+          - **`["*"]`**: All tools are enabled.
+          - **Specific tools `["aa", "bb", "cc"]`**: Only `aa`, `bb`, and `cc` are enabled.
+          - **Mix with wildcard `["aa", "bb", "*"]`**: All tools are enabled (wildcard takes precedence).
+        </Parameter>
+        
+        <Parameter name="timeout_ms" type="integer" required={false}>
+          The MCP server request timeout in milliseconds. After timeout, the agent stops waiting for the MCP server's response and continues executing subsequent logic.
+        </Parameter>
+      </Parameter>
+
+      <Parameter name="filler_words" type="object" collapse={false} required={false}>
+        Filler word configuration. Plays filler words while waiting for LLM responses to reduce user anxiety and improve conversation flow.
+        
+        Filler word playback follows these rules:
+        - **Playback order**: When multiple filler words or LLM responses are waiting to be played, they are played in the order they arrive.
+        - **Interruption control**: Inherits the interruption mode setting from global configuration in `turn_detection.config`.
+        
+        <Parameter name="enable" type="boolean" required={false} defaultValue="false">
+          Whether to enable filler words:
+          - `true`: Enable filler words.
+          - `false`: Disable filler words.
+        </Parameter>
+        
+        <Parameter name="trigger" type="object" required={false}>
+          Filler word trigger configuration. Defines when to trigger filler word playback.
+          
+          <Parameter name="mode" type="string" required={false} possibleValues="fixed_time">
+            Filler word trigger mode:
+            - `fixed_time`: Fixed time trigger. Triggers filler word playback when LLM response wait time exceeds the threshold.
+          </Parameter>
+          
+          <Parameter name="{mode}_config" type="object" required={false}>
+            Filler word trigger configuration parameters. The parameter name and structure vary depending on the trigger mode.
+            
+            <Admonition type="info">
+            - The configuration type must match `mode`. For example, when `mode` is `fixed_time`, you must provide `fixed_time_config`.
+            - You cannot provide multiple mode configurations simultaneously.
+            </Admonition>
+            
+            **Configuration example:**           
+
+            ```json
+            "fixed_time_config": {
+              "response_wait_ms": 1500
+            }
+            ```
+            
+            <Parameter name="response_wait_ms" type="integer" defaultValue="1500" possibleValues="[100, 10000]" required={false}>
+              LLM response wait threshold in milliseconds. Triggers filler word playback when the LLM waits this duration without generating a response, such as when waiting for RAG retrieval or tool call results.
+            </Parameter>
+          </Parameter>
+        </Parameter>
+        
+        <Parameter name="content" type="object" required={false}>
+          Filler word content configuration. Defines the source and selection rules for filler words.
+          
+          <Parameter name="mode" type="string" required={false} possibleValues="static">
+            Filler word content mode:
+            - `static`: Static filler words. Uses a predefined list of filler words.
+          </Parameter>
+          
+          <Parameter name="{mode}_config" type="object" required={false}>
+            Filler word content configuration parameters. The parameter name and structure vary depending on the content mode.
+            
+            <Admonition type="info">
+            - The configuration type must match `mode`. For example, when `mode` is `static`, you must provide `static_config`.
+            - You cannot provide multiple mode configurations simultaneously.
+            </Admonition>
+            
+            **Static filler word configuration example:**
+
+            ```json
+            "static_config": {
+              "phrases": [
+                "Please wait.",
+                "Okay.",
+                "Uh-huh."
+              ],
+              "selection_rule": "shuffle"
+            }
+            ```
+            
+            <Parameter name="phrases" type="array[string]" required={false}>
+              List of filler word phrases.
+              
+              **Limits:**
+              - Maximum 100 filler words.
+              - Each filler word must not exceed 50 English words.
+            </Parameter>
+            
+            <Parameter name="selection_rule" type="string" required={false} possibleValues="shuffle, round_robin">
+              Filler word selection rule:
+              - `shuffle`: Random shuffle. Already-used filler words are not repeated until all filler words have been used once. After all filler words are played, they are reshuffled randomly and a new round begins.
+              - `round_robin`: Round-robin. Selects and plays filler words sequentially from the list. After all filler words are played once, a new cycle begins.
+            </Parameter>
+          </Parameter>
+        </Parameter>
+      </Parameter>
+
     </Parameter>
 
     <Parameter name="mllm" type="object" required={false}>
@@ -326,79 +461,131 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
       </Parameter> 
     </Parameter>  
 
-    <Parameter name="turn_detection" type="object" required={false}>
-      Conversation turn detection settings. 
-      <span id="turn-detection"></span>
+    <Parameter name="turn_detection" type="object" required={false} collapse={false}>
+      Conversation turn detection settings. Controls the logic for voice activity detection and conversation turn determination. The previous version of `turn_detection` is deprecated. Refer to [Deprecated parameters](#deprecated-parameters) for details. Agora recommends switching to the latest parameters.
 
-      <Parameter name="type" type="string" defaultValue="agora_vad" possibleValues="agora_vad, server_vad,semantic_vad" required={false}>
-        Turn detection mechanism.
-        - `agora_vad`:  Agora VAD. Compatible with both cascade (ASR/LLM/TTS) and MLLM modes.
-        - `server_vad`: The model detects the start and end of speech based on audio volume and responds at the end of user speech. Only available when `mllm` is enabled and OpenAI Realtime or Gemini Live is selected. The detection behavior is controlled by the LLM provider.
-        - `semantic_vad`: Uses a turn detection model in conjunction with VAD to semantically estimate whether the user has finished speaking, then dynamically sets a timeout based on this probability for more natural conversations. Only available when `mllm` is enabled and OpenAI is selected.
+      This configuration supports multiple combinations of detection modes:
+      - **Start of Speech (SoS)**: Supports three modes: VAD, Keyword, and Disable.
+      - **End of Speech (EoS)**: Supports VAD and Semantic modes.
+
+      <Parameter name="mode" type="string" defaultValue="default" possibleValues="default" required={false}>
+        Conversation turn detection mode:
+        - `default`: Uses standard conversation turn detection configuration.
       </Parameter>
 
-      <Parameter name="interrupt_mode" type="string" defaultValue="interrupt" required={false}>
-        Sets the agent's behavior when human voice interrupts the agent while it is interacting (speaking or thinking). Choose from the following values:
-
-          - `interrupt`: The agent immediately stops the current interaction and processes the human voice input.
-          - `append`: The agent completes the current interaction, then processes the human voice input.
-          - `ignore`: The agent discards the human voice input without processing or storing it in the context.
-          - `keywords`: The agent stops its current interaction after detecting any of the keywords specified in `turn_detection.interrupt_keywords`.
-          - `adaptive`: The agent dynamically increases the voice continuity threshold while speaking to reduce accidental interruptions.
-
-          <Admonition type="info">
-          - Only the `interrupt` mode is supported when you integrate an `mllm`.
-          - `keyword` interruption mode and graceful interruption feature (`advanced_features.enable_aivad`) are mutually exclusive and cannot be enabled simultaneously.
-          </Admonition>
-      </Parameter>  
-
-      <Parameter name="interrupt_duration_ms" type="number" defaultValue="160" required={false}>
-        The amount of time in milliseconds that the user's voice must exceed the VAD threshold before an interruption is triggered.
-      </Parameter>
-
-      <Parameter name="interrupt_keywords" type="array[string]" required={false}>
-          Specifies the list of keywords that trigger an interruption when the `turn_detection.interrupt_mode` is set to `"keyword"`.
-
-          When the agent detects any of these keywords in the user's speech, it immediately stops its current interaction and processes the new input.
-
-          <Admonition type="info">
-          - Keyword recognition capabilities, such as support for multiple languages or dialects, depend on the ASR provider you choose.  
-          - You can configure up to 128 keywords.
-          </Admonition>
-      </Parameter>   
-
-      <Parameter name="prefix_padding_ms" type="integer" defaultValue="800" required={false}>
-        The extra forward padding time in milliseconds before the processing system starts to process the speech input. This padding helps capture the beginning of the speech.
-      </Parameter>
-
-      <Parameter name="silence_duration_ms" type="integer" defaultValue="640" required={false}>
-        The duration of audio silence in milliseconds. If no voice activity is detected during this period, the agent assumes that the user has stopped speaking.
-      </Parameter>
-
-      <Parameter name="threshold" type="number" defaultValue="0.5" possibleValues="(0.0, 1.0)" required={false}>
-        Identification sensitivity determines the level of sound in the audio signal that is considered voice activity. Lower values make it easier for the agent to detect speech, and higher values ignore weak sounds.
-      </Parameter>
-
-      <Parameter name="create_response" type="boolean" defaultValue="true" required={false}>
-        Whether to automatically generate a response when a VAD stop event occurs. Only available in `server_vad` and `semantic_vad` modes when using OpenAI Realtime API.
-      </Parameter>
-
-      <Parameter name="interrupt_response" type="boolean" defaultValue="true" required={false}>
-        Whether to automatically interrupt any ongoing response when a VAD start event occurs. Only available in `server_vad` and `semantic_vad` modes when using OpenAI Realtime API.
-      </Parameter>
-
-      <Parameter name="eagerness" type="string" defaultValue="auto" possibleValues="auto,low,high" required={false}>
-        The eagerness of the model to respond:
-        - `auto`: Equivalent to medium
-        - `low`: Wait longer for the user to continue speaking
-        - `high`: Respond more quickly
+      <Parameter name="config" type="object" required={false}>
+        Detailed configuration for conversation turn detection.
         
-        Only available in `semantic_vad` mode when using OpenAI Realtime API.
-      </Parameter>      
+        <Parameter name="speech_threshold" type="number" defaultValue="0.5" possibleValues="(0.0, 1.0)" required={false}>
+          Voice activity detection sensitivity. Determines the sound level in the audio signal that is considered voice activity. Lower values make it easier for the agent to detect speech, and higher values ignore weak sounds.
+        </Parameter>
+        
+        <Parameter name="start_of_speech" type="object" required={false}>
+          Start of Speech (SoS) detection configuration. Determines when a user begins speaking.
+          
+          <Parameter name="mode" type="string" required={true} possibleValues="vad, keywords, disabled">
+            Start of speech detection mode:
+            - `vad`: Based on VAD (Voice Activity Detection). Uses audio signal detection.
+            - `keywords`: (Beta) Based on keyword trigger. Conversation begins when the agent detects a specified keyword.
+            - `disabled`: Disables start of speech detection. Does not actively trigger new conversation turns.
+          </Parameter>
+          
+          <Parameter name="{mode}_config" type="object" required={false}>
+            Start of speech detection configuration parameters. The structure and supported fields vary depending on the detection mode.
+            
+            <Admonition type="info">
+            - The configuration type must match `mode`. For example, when `mode` is `vad`, you must provide `vad_config`.
+            - You cannot provide multiple mode configurations simultaneously.
+            </Admonition>
+            
+            **Configuration examples:**
+            
+            - `vad_config`
+
+              ```json
+              "vad_config": {
+                "interrupt_duration_ms": 160,
+                "speaking_interrupt_duration_ms": 160,
+                "prefix_padding_ms": 800
+              }
+              ```
+
+            - `keywords_config`
+
+              ```json
+              "keywords_config": {
+                "interrupt_duration_ms": 160,
+                "prefix_padding_ms": 800,
+                "triggered_keywords": ["Are you there", "hello"]
+              }       
+              ```
+
+            - `disabled_config`
+
+              ```json
+              "disabled_config": {
+                  "strategy": "append"
+              }              
+              ```              
+            
+            <Parameter name="strategy" type="string" required={false} possibleValues="append, ignored">
+              Voice processing strategy when the agent is interacting (speaking or thinking):
+              - `append`: Append mode. Human voice does not interrupt the agent. The agent processes the human voice input after the current interaction ends.
+              - `ignored`: Ignore mode. The agent ignores human voice input. If the agent receives human voice while speaking or thinking, the agent discards the input without storing it in context.
+            </Parameter>
+          </Parameter>
+        </Parameter>
+        
+        <Parameter name="end_of_speech" type="object" required={false}>
+          End of Speech (EoS) detection configuration. Determines when a user ends their speech.
+          
+          <Parameter name="mode" type="string" required={false} possibleValues="vad, semantic">
+            End of speech detection mode. Possible values:
+            - `vad`: Based on VAD (Voice Activity Detection). Detects silence duration.
+            - `semantic`: Based on semantic triggering. Uses semantic understanding to determine when conversation ends.
+          </Parameter>
+          
+          <Parameter name="{mode}_config" type="object" required={false}>
+            End of speech detection configuration parameters. The structure and supported fields vary depending on the detection mode.
+            
+            <Admonition type="info">
+            - The configuration type must match `mode`. For example, when `mode` is `vad`, you must provide `vad_config`.
+            - You cannot provide multiple mode configurations simultaneously.
+            </Admonition>
+            
+            **Configuration examples:**
+
+            - `vad_config`
+
+              ```json
+              "vad_config": {
+                "silence_duration_ms": 640
+              }
+              ```
+            
+            - `semantic_config`
+
+              ```json
+              "semantic_config": {
+                  "silence_duration_ms": 320,
+                  "max_wait_ms": 3000
+              }
+              ```
+            
+            <Parameter name="silence_duration_ms" type="integer" defaultValue="320" possibleValues="[0, 2000]" required={false}>
+              Silence duration threshold in milliseconds. The minimum silence duration at the end of a speech segment,  to ensure that a brief pause does not prematurely end the speech segment.
+            </Parameter>
+            
+            <Parameter name="max_wait_ms" type="integer" defaultValue="3000" possibleValues="[0, 10000]" required={false}>
+              Maximum wait time in milliseconds. The maximum time to wait for semantic determination. After timeout, the conversation end is determined based on the current state.
+            </Parameter>
+          </Parameter>
+        </Parameter>
+      </Parameter>
     </Parameter>
 
     <Parameter name="sal" type="object" required={false}>
-      Selective Attention Locking (SAL) configuration.
+      Selective Attention Locking (SAL) configuration. **(Beta)**
 
       <Parameter name="sal_mode" type="string" defaultValue="locking" possibleValues="locking, recognition" required={false}>
 
@@ -557,6 +744,87 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
 
 - If the returned status code is not `200`, the request failed. The response body includes the `detail` and `reason` for failure. Refer to [status codes](/conversational-ai/rest-api/reference) to understand the possible reasons for failure.
 
+
+### Reference
+
+#### Deprecated parameters
+
+The following turn detection configuration is deprecated. To create more natural conversations and reduce unintended interruptions, Agora recommends using the latest version of `turn_detection` above.
+
+<ParameterList title="Turn detection">
+
+  <Parameter name="turn_detection" type="object" required={false} collapse={true}>
+  
+    Conversation turn detection settings. 
+    <span id="turn-detection"></span>
+
+    <Parameter name="type" type="string" defaultValue="agora_vad" possibleValues="agora_vad, server_vad,semantic_vad" required={false}>
+      Turn detection mechanism.
+      - `agora_vad`:  Agora VAD. Compatible with both cascade (ASR/LLM/TTS) and MLLM modes.
+      - `server_vad`: The model detects the start and end of speech based on audio volume and responds at the end of user speech. Only available when `mllm` is enabled and OpenAI Realtime or Gemini Live is selected. The detection behavior is controlled by the LLM provider.
+      - `semantic_vad`: Uses a turn detection model in conjunction with VAD to semantically estimate whether the user has finished speaking, then dynamically sets a timeout based on this probability for more natural conversations. Only available when `mllm` is enabled and OpenAI is selected.
+    </Parameter>
+
+    <Parameter name="interrupt_mode" type="string" deprecated={true} defaultValue="interrupt" required={false}>
+      Sets the agent's behavior when human voice interrupts the agent while it is interacting (speaking or thinking). Choose from the following values:
+
+        - `interrupt`: The agent immediately stops the current interaction and processes the human voice input.
+        - `append`: The agent completes the current interaction, then processes the human voice input.
+        - `ignore`: The agent discards the human voice input without processing or storing it in the context.
+        - `keywords`: The agent stops its current interaction after detecting any of the keywords specified in `turn_detection.interrupt_keywords`.
+        - `adaptive`: The agent dynamically increases the voice continuity threshold while speaking to reduce accidental interruptions.
+
+        <Admonition type="info">
+        - Only the `interrupt` mode is supported when you integrate an `mllm`.
+        - `keyword` interruption mode and graceful interruption feature (`advanced_features.enable_aivad`) are mutually exclusive and cannot be enabled simultaneously.
+        </Admonition>
+    </Parameter>        
+
+    <Parameter name="interrupt_duration_ms" type="number" defaultValue="160" deprecated={true} required={false}>
+      The amount of time in milliseconds that the user's voice must exceed the VAD threshold before an interruption is triggered.
+    </Parameter>
+
+    <Parameter name="interrupt_keywords" type="array[string]" deprecated={true} required={false}>
+        Specifies the list of keywords that trigger an interruption when the `turn_detection.interrupt_mode` is set to `"keyword"`.
+
+        When the agent detects any of these keywords in the user's speech, it immediately stops its current interaction and processes the new input.
+
+        <Admonition type="info">
+        - Keyword recognition capabilities, such as support for multiple languages or dialects, depend on the ASR provider you choose.  
+        - You can configure up to 128 keywords.
+        </Admonition>
+    </Parameter>   
+
+    <Parameter name="prefix_padding_ms" type="integer" defaultValue="800" deprecated={true} required={false}>
+      The extra forward padding time in milliseconds before the processing system starts to process the speech input. This padding helps capture the beginning of the speech.
+    </Parameter>
+
+    <Parameter name="silence_duration_ms" type="integer" defaultValue="640" deprecated={true} required={false}>
+      The duration of audio silence in milliseconds. If no voice activity is detected during this period, the agent assumes that the user has stopped speaking.
+    </Parameter>
+
+    <Parameter name="threshold" type="number" defaultValue="0.5" possibleValues="(0.0, 1.0)" deprecated={true} required={false}>
+      Identification sensitivity determines the level of sound in the audio signal that is considered voice activity. Lower values make it easier for the agent to detect speech, and higher values ignore weak sounds.
+    </Parameter>
+
+    <Parameter name="create_response" type="boolean" defaultValue="true" required={false}>
+      Whether to automatically generate a response when a VAD stop event occurs. Only available in `server_vad` and `semantic_vad` modes when using OpenAI Realtime API.
+    </Parameter>
+
+    <Parameter name="interrupt_response" type="boolean" defaultValue="true" required={false}>
+      Whether to automatically interrupt any ongoing response when a VAD start event occurs. Only available in `server_vad` and `semantic_vad` modes when using OpenAI Realtime API.
+    </Parameter>
+
+    <Parameter name="eagerness" type="string" defaultValue="auto" possibleValues="auto,low,high" required={false}>
+      The eagerness of the model to respond:
+      - `auto`: Equivalent to medium
+      - `low`: Wait longer for the user to continue speaking
+      - `high`: Respond more quickly
+      
+      Only available in `semantic_vad` mode when using OpenAI Realtime API.
+    </Parameter>  
+  </Parameter>    
+</ParameterList>
 </LeftColumn>
 
 <RightColumn>
@@ -565,183 +833,10 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
 This endpoint requires [Basic Auth](/conversational-ai/rest-api/restful-authentication).
 </Section>
 
-<Section title="Request example">
-
-  <Tabs groupId="code-examples">
-    <TabItem value="curl" label="curl" default>
-      ```bash
-      curl --request post \
-      --url https://api.agora.io/api/conversational-ai-agent/v2/projects/:appid/join \
-      --header 'Authorization: Basic <your_base64_encoded_credentials>' \
-      --data '
-      {
-          "name": "unique_name",
-          "properties": {
-              "channel": "channel_name",
-              "token": "token",
-              "agent_rtc_uid": "1001",
-              "remote_rtc_uids": [
-                  "1002"
-              ],
-              "idle_timeout": 120,
-              "advanced_features": {
-                  "enable_aivad": true
-              },
-              "llm": {
-                  "url": "https://api.openai.com/v1/chat/completions",
-                  "api_key": "<your_llm_key>",
-                  "system_messages": [
-                      {
-                          "role": "system",
-                          "content": "You are a helpful chatbot."
-                      }
-                  ],
-                  "max_history": 32,
-                  "greeting_message": "Hello, how can I assist you today?",
-                  "failure_message": "Please hold on a second.",
-                  "params": {
-                      "model": "gpt-4o-mini"
-                  }
-              },
-              "tts": {
-                  "vendor": "microsoft",
-                  "params": {
-                      "key": "<your_tts_api_key>",
-                      "region": "eastus",
-                      "voice_name": "en-US-AndrewMultilingualNeural"
-                  }
-              },
-              "asr": {
-                  "language": "en-US"
-              }
-          }
-      }'
-      ```
-    </TabItem>
-    <TabItem value="python" label="Python">
-
-    ```python
-    import requests
-    import json
-
-    url = "https://api.agora.io/api/conversational-ai-agent/v2/projects/:appid/join"
-
-    headers = {"Authorization": "Basic <your_base64_encoded_credentials>"}
-
-    data = {
-        "name": "unique_name",
-        "properties": {
-            "channel": "channel_name",
-            "token": "token",
-            "agent_rtc_uid": "1001",
-            "remote_rtc_uids": ["1002"],
-            "idle_timeout": 120,
-            "advanced_features": {
-                "enable_aivad": True
-            },
-            "llm": {
-                "url": "https://api.openai.com/v1/chat/completions",
-                "api_key": "<your_llm_key>",
-                "system_messages": [
-                    {
-                        "role": "system",
-                        "content": "You are a helpful chatbot."
-                    }
-                ],
-                "max_history": 32,
-                "greeting_message": "Hello, how can I assist you today?",
-                "failure_message": "Please hold on a second.",
-                "params": {
-                    "model": "gpt-4o-mini"
-                }
-            },
-            "tts": {
-                "vendor": "microsoft",
-                "params": {
-                    "key": "<your_tts_api_key>",
-                    "region": "eastus",
-                    "voice_name": "en-US-AndrewMultilingualNeural"
-                }
-            },
-            "asr": {
-                "language": "en-US"
-            }
-        }
-    }
-
-    response = requests.post(url, headers=headers, data=json.dumps(data))
-
-    print(response.status_code)
-    print(response.json())
-    ```
-    </TabItem>
-
-    <TabItem value="node" label="Node.js">
-
-    ```js
-    const axios = require("axios");
-
-    const url = "https://api.agora.io/api/conversational-ai-agent/v2/projects/:appid/join";
-
-    const headers = {
-      "Authorization": "Basic <your_base64_encoded_credentials>"
-    };
-
-    const data = {
-      name: "unique_name",
-      properties: {
-        channel: "channel_name",
-        token: "token",
-        agent_rtc_uid: "1001",
-        remote_rtc_uids: ["1002"],
-        idle_timeout: 120,
-        advanced_features: {
-          enable_aivad: true
-        },
-        llm: {
-          url: "https://api.openai.com/v1/chat/completions",
-          api_key: "<your_llm_key>",
-          system_messages: [
-            {
-              role: "system",
-              content: "You are a helpful chatbot."
-            }
-          ],
-          max_history: 32,
-          greeting_message: "Hello, how can I assist you today?",
-          failure_message: "Please hold on a second.",
-          params: {
-            model: "gpt-4o-mini"
-          }
-        },
-        tts: {
-          vendor: "microsoft",
-          params: {
-            key: "<your_tts_api_key>",
-            region: "eastus",
-            voice_name: "en-US-AndrewMultilingualNeural"
-          }
-        },
-        asr: {
-          language: "en-US"
-        }
-      }
-    };
-
-    axios
-      .post(url, data, { headers })
-      .then(response => {
-        console.log("Status:", response.status);
-        console.log("Response:", response.data);
-      })
-      .catch(error => {
-        console.error("Error:", error.response ? error.response.data : error.message);
-      });
-    ```
-    </TabItem>
-  </Tabs>
-
+<Section title="Request examples">
+<Examples />
 </Section>
+
 <Section title="Response example">
 
   ```json

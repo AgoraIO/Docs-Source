@@ -35,17 +35,6 @@ Before you begin, make sure you have:
     - [Customer ID and Customer Secret](/conversational-ai/rest-api/restful-authentication#generate-customer-id-and-customer-secret): Used for HTTP Basic Authentication when calling RESTful APIs. Keep these secret. Never expose them to clients.
 - **AI provider API keys**: API keys from your chosen providers like OpenAI or Azure. Don't have these yet? See the [AI models](#ai-models) section for details on which keys you need and where to get them.
 
-### Client applications
-
-To interact with your AI agents, use one of the following demo client applications:
-
-- [Web Demo (TypeScript)](https://github.com/AgoraIO-Community/Conversational-AI-Demo/tree/main/Web/Scenes/VoiceAgent)
-- [Android Demo](https://github.com/AgoraIO-Community/Conversational-AI-Demo/tree/main/Android)
-- [iOS Demo](https://github.com/AgoraIO-Community/Conversational-AI-Demo/tree/main/iOS)
-
-<Admonition type="info">
-For the best conversational experience, <Vg k="COMPANY" /> recommends using <Vpd k="NAME" /> with specific <Vg k="COMPANY" /> Video/Voice SDK versions. For details, [contact technical support](https://agoraio.zendesk.com/hc/en-us).
-</Admonition>
 
 ## AI models
 
@@ -87,9 +76,8 @@ Choose the ASR-LLM-TTS pipeline when you need:
 - Support for specific languages or voices not available in MLLM models
 - Integration with custom LLM endpoints or RAG systems with complete visibility into text transcripts
 
-
-
 </TabItem>
+
 <TabItem value="mllm" label="MLLM (Voice-to-Voice)">
 
 ### MLLM (Multimodal Large Language Model)
@@ -142,7 +130,7 @@ If you're just getting started, use the ASR-LLM-TTS pipeline. It's easier to deb
 
 This section shows you how to build a complete backend server with endpoints to start and stop conversational AI agents. Choose your preferred language. All three examples produce the same functionality.
 
-### Project initialization
+### Initialize the project
 
 Create a new project directory and initialize it for your chosen language.
 
@@ -216,12 +204,13 @@ Install the packages you need to run an HTTP server, make API calls, and load en
 <Tabs groupId="language">
 <TabItem value="node" label="Node.js" default>
 
-<CodeBlock language="bash">{`npm install express dotenv agora-token`}</CodeBlock>
+<CodeBlock language="bash">{`npm install express dotenv agora-token cors`}</CodeBlock>
 
 What these packages do:
-- **express**: Handles HTTP requests and API endpoints
-- **dotenv**: Loads credentials from your `.env` file
-- **agora-token**: Generates RTC tokens for agent authentication
+- `express`: Handles HTTP requests and API endpoints
+- `dotenv`: Loads credentials from your `.env` file
+- `agora-token`: Generates RTC tokens for agent authentication
+- `cors`: Enables cross-origin requests from your client app
 
 Node.js 18+ includes fetch built-in, so you don't need an extra package for API calls.
 
@@ -264,9 +253,9 @@ Go's standard library already includes HTTP client functionality (`net/http`), s
 </TabItem>
 </Tabs>
 
-### Environment configuration
+### Configure the environment
 
-Create a `.env` file to store your credentials. 
+Update the `.env` file to store your credentials. 
 
 <Admonition type="caution">
 Keep your `.env` file secure. Add it to `.gitignore` immediately to prevent accidentally committing credentials to version control.
@@ -296,7 +285,12 @@ PORT=3000`}</CodeBlock>
 
 ### Generate authentication credentials
 
-Your server authenticates with <Vg k="COMPANY" />'s APIs using HTTP Basic Authentication. You also need to generate RTC tokens for agents to join channels.
+Your server authenticates with <Vg k="COMPANY" />'s APIs using HTTP Basic Authentication. It generates RTC tokens for both the client and agent to join channels securely:
+
+- **Client token**: Generated for the client's UID. The client uses this token to authenticate when joining the channel.
+- **Agent token**: Generated for the agent's UID (1001). The agent uses this token when calling Agora's `/join` API.
+
+Both tokens are scoped to the same channel and expire after the specified time. 
 
 <Tabs groupId="language">
 <TabItem value="node" label="Node.js" default>
@@ -310,15 +304,17 @@ function generateBasicAuth(customerId, customerSecret) \{
   const credentials = \`\$\{customerId\}:\$\{customerSecret\}\`;
   return Buffer.from(credentials).toString('base64');
 \}\n
-// Generate RTC token for agent to join channel
-function generateRtcToken(appId, appCertificate, channelName, uid, role, expireTime) \{
+// Generate RTC token for a specific UID
+function generateRtcToken(channelName, uid) \{
+  const currentTimestamp = Math.floor(Date.now() / 1000);
+  const expireTimestamp = currentTimestamp + 3600; // Token expires in 1 hour
   return RtcTokenBuilder.buildTokenWithUid(
-    appId,
-    appCertificate,
+    AGORA_APP_ID,
+    AGORA_APP_CERTIFICATE,
     channelName,
     uid,
-    role,
-    expireTime
+    RtcRole.PUBLISHER,
+    expireTimestamp
   );
 \}`}</CodeBlock>
 
@@ -327,20 +323,22 @@ function generateRtcToken(appId, appCertificate, channelName, uid, role, expireT
 
 <CodeBlock language="python">{`from agora_token_builder import RtcTokenBuilder, RtcRole
 import base64
-from datetime import datetime, timedelta\n
+from datetime import datetime\n
 \# Generate Base64 credentials for Agora API authentication
 def generate_basic_auth(customer_id: str, customer_secret: str) -> str:
-    credentials = f"\{customer_id\}:\{customer_secret\}"
+    credentials = customer_id + ":" + customer_secret
     return base64.b64encode(credentials.encode()).decode()\n
-\# Generate RTC token for agent to join channel
-def generate_rtc_token(app_id: str, app_certificate: str, channel_name: str, uid: int, role: int, expire_time: int) -> str:
+\# Generate RTC token for a specific UID
+def generate_rtc_token(channel_name: str, uid: int) -> str:
+    current_timestamp = int(datetime.now().timestamp())
+    expire_timestamp = current_timestamp + 3600  \# Token expires in 1 hour
     return RtcTokenBuilder.buildTokenWithUid(
-        app_id,
-        app_certificate,
+        AGORA_APP_ID,
+        AGORA_APP_CERTIFICATE,
         channel_name,
         uid,
-        role,
-        expire_time
+        RtcRole.Publisher,
+        expire_timestamp
     )`}</CodeBlock>
 
 </TabItem>
@@ -351,14 +349,23 @@ def generate_rtc_token(app_id: str, app_certificate: str, channel_name: str, uid
     "time"
     "github.com/AgoraIO-Community/go-tokenbuilder/rtctokenbuilder2"
 )\n
-// Generate Base64 credentials for Agora API authentication
+\# Generate Base64 credentials for Agora API authentication
 func generateBasicAuth(customerID, customerSecret string) string \{
     credentials := customerID + ":" + customerSecret
     return base64.StdEncoding.EncodeToString([]byte(credentials))
 \}\n
-// Generate RTC token for agent to join channel
-func generateRtcToken(appID, appCertificate, channelName string, uid uint32, role rtctokenbuilder2.Role, expireTime uint32) (string, error) \{
-    token := rtctokenbuilder2.BuildTokenWithUid(appID, appCertificate, channelName, uid, role, expireTime)
+\# Generate RTC token for a specific UID
+func generateRtcToken(channelName string, uid uint32) (string, error) \{
+    currentTimestamp := uint32(time.Now().Unix())
+    expireTimestamp := currentTimestamp + 3600 \# Token expires in 1 hour
+    token := rtctokenbuilder2.BuildTokenWithUid(
+        config.AppID,
+        config.AppCertificate,
+        channelName,
+        uid,
+        rtctokenbuilder2.RolePublisher,
+        expireTimestamp,
+    )
     return token, nil
 \}`}</CodeBlock>
 
@@ -366,6 +373,229 @@ func generateRtcToken(appID, appCertificate, channelName string, uid uint32, rol
 </Tabs>
 
 For more details on authentication, see [RESTful authentication](/conversational-ai/rest-api/restful-authentication).
+
+### Start an agent
+
+When a client requests to start interaction with an agent:
+
+1. Extract channel, agent name, and user UID from the request
+2. Generate tokens for both client and agent
+3. Configure the agent workflow 
+4. Call the `/join` API to deploy the agent
+5. Return connection details to the client
+
+<Tabs groupId="language">
+<TabItem value="node" label="Node.js" default>
+
+<CodeBlock language="javascript">{`app.post('/agents/start', async (req, res) => \{
+  const \{ channelName, agentName, userUid \} = req.body;\n
+  // Client UID from request
+  const clientUid = String(userUid).trim();
+  const agentUid = 1001;\n
+  // Generate TWO tokens: one for client, one for agent
+  const clientToken = generateRtcToken(channelName, parseInt(clientUid));
+  const agentToken = generateRtcToken(channelName, agentUid);\n
+  // Configure agent with ASR-LLM-TTS pipeline
+  const agentConfig = \{
+    name: agentName,
+    properties: \{
+      channel: channelName,
+      token: agentToken,  // Agent uses its own token
+      agent_rtc_uid: String(agentUid),
+      remote_rtc_uids: [clientUid],  // Agent listens to client's UID
+      llm: \{
+        url: "https://api.openai.com/v1/chat/completions",
+        api_key: OPENAI_API_KEY,
+        system_messages: [
+          \{
+            role: "system",
+            content: "You are a helpful AI assistant powered by Agora's Conversational AI Engine."
+          \}
+        ],
+        greeting_message: "Hello! How can I help you today?",
+        params: \{ model: "gpt-4o-mini" \}
+      \},
+      asr: \{ language: "en-US" \},
+      tts: \{
+        vendor: "microsoft",
+        params: \{
+          key: MICROSOFT_TTS_KEY,
+          region: MICROSOFT_TTS_REGION,
+          voice_name: "en-US-AndrewMultilingualNeural"
+        \}
+      \}
+    \}
+  \};\n
+  // Call Agora API to start the agent
+  const response = await fetch(
+    \`https://api.agora.io/api/conversational-ai-agent/v2/projects/\$\{AGORA_APP_ID\}/join\`,
+    \{
+      method: 'POST',
+      headers: \{
+        'Authorization': \`Basic \$\{basicAuth\}\`,
+        'Content-Type': 'application/json'
+      \},
+      body: JSON.stringify(agentConfig)
+    \}
+  );\n
+  const data = await response.json();\n
+  // Return agent information to client
+  res.json(\{
+    success: true,
+    agentId: data.agent_id,
+    channelName: channelName,
+    token: clientToken,          // Token for CLIENT to use
+    clientUid: clientUid,        // Client's UID
+    agentUid: String(agentUid),  // Agent's UID
+    status: data.status,
+    createTime: data.create_ts
+  \});
+\});`}</CodeBlock>
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+<CodeBlock language="python">{`@app.post("/agents/start")
+async def start_agent(request: StartAgentRequest):
+    \# Client UID from request, Agent UID hardcoded
+    client_uid = str(request.userUid).strip()
+    agent_uid = 1001\n
+    \# Generate TWO tokens: one for client, one for agent
+    client_token = generate_rtc_token(request.channelName, int(client_uid))
+    agent_token = generate_rtc_token(request.channelName, agent_uid)\n
+    \# Configure agent with ASR-LLM-TTS pipeline
+    agent_config = \{
+        "name": request.agentName,
+        "properties": \{
+            "channel": request.channelName,
+            "token": agent_token,
+            "agent_rtc_uid": str(agent_uid),
+            "remote_rtc_uids": [client_uid],
+            "llm": \{
+                "url": "https://api.openai.com/v1/chat/completions",
+                "api_key": OPENAI_API_KEY,
+                "system_messages": [
+                    \{
+                        "role": "system",
+                        "content": "You are a helpful AI assistant powered by Agora's Conversational AI Engine."
+                    \}
+                ],
+                "greeting_message": "Hello! How can I help you today?",
+                "params": \{"model": "gpt-4o-mini"\}
+            \},
+            "asr": \{"language": "en-US"\},
+            "tts": \{
+                "vendor": "microsoft",
+                "params": \{
+                    "key": MICROSOFT_TTS_KEY,
+                    "region": MICROSOFT_TTS_REGION,
+                    "voice_name": "en-US-AndrewMultilingualNeural"
+                \}
+            \}
+        \}
+    \}\n
+    \# Call Agora API to start the agent
+    response = requests.post(
+        f"https://api.agora.io/api/conversational-ai-agent/v2/projects/\{AGORA_APP_ID\}/join",
+        json=agent_config,
+        headers=\{
+            "Authorization": f"Basic \{basic_auth\}",
+            "Content-Type": "application/json"
+        \}
+    )\n
+    data = response.json()\n
+    \# Return agent information to client
+    return \{
+        "success": True,
+        "agentId": data["agent_id"],
+        "channelName": request.channelName,
+        "token": client_token,
+        "clientUid": client_uid,
+        "agentUid": str(agent_uid),
+        "status": data["status"],
+        "createTime": data["create_ts"]
+    \}`}</CodeBlock>
+
+</TabItem>
+<TabItem value="go" label="Go">
+
+<CodeBlock language="go">{`\# Start agent endpoint
+func startAgent(c *gin.Context) \{
+    var req StartAgentRequest
+    if err := c.ShouldBindJSON(&req); err != nil \{
+        c.JSON(http.StatusBadRequest, gin.H\{
+            "error": "Missing required fields",
+        \})
+        return
+    \}\n
+    \# Client UID from request, Agent UID hardcoded
+    clientUid := strings.TrimSpace(req.UserUid)
+    agentUid := uint32(1001)\n
+    \# Generate TWO tokens: one for client, one for agent
+    clientToken, _ := generateRtcToken(req.ChannelName, uint32(1002))
+    agentToken, _ := generateRtcToken(req.ChannelName, agentUid)\n
+    \# Configure agent with ASR-LLM-TTS pipeline
+    agentConfig := map[string]interface\{\}\{
+        "name": req.AgentName,
+        "properties": map[string]interface\{\}\{
+            "channel":         req.ChannelName,
+            "token":           agentToken,
+            "agent_rtc_uid":   fmt.Sprintf("%d", agentUid),
+            "remote_rtc_uids": []string\{clientUid\},
+            "llm": map[string]interface\{\}\{
+                "url":     "https://api.openai.com/v1/chat/completions",
+                "api_key": config.OpenAIKey,
+                "system_messages": []map[string]string\{
+                    \{
+                        "role":    "system",
+                        "content": "You are a helpful AI assistant.",
+                    \},
+                \},
+                "greeting_message": "Hello! How can I help you?",
+                "params": map[string]string\{
+                    "model": "gpt-4o-mini",
+                \},
+            \},
+            "asr": map[string]string\{
+                "language": "en-US",
+            \},
+            "tts": map[string]interface\{\}\{
+                "vendor": "microsoft",
+                "params": map[string]string\{
+                    "key":        config.MicrosoftTTSKey,
+                    "region":     config.MicrosoftTTSRegion,
+                    "voice_name": "en-US-AndrewMultilingualNeural",
+                \},
+            \},
+        \},
+    \}\n
+    \# Call Agora API to start the agent
+    url := fmt.Sprintf("https://api.agora.io/api/conversational-ai-agent/v2/projects/%s/join", config.AppID)
+    jsonData, _ := json.Marshal(agentConfig)
+    httpReq, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+    httpReq.Header.Set("Authorization", "Basic "+basicAuth)
+    httpReq.Header.Set("Content-Type", "application/json")\n
+    client := &http.Client\{Timeout: 10 * time.Second\}
+    resp, _ := client.Do(httpReq)
+    defer resp.Body.Close()\n
+    body, _ := io.ReadAll(resp.Body)
+    var agentResp AgentResponse
+    json.Unmarshal(body, &agentResp)\n
+    \# Return agent information to client
+    c.JSON(http.StatusOK, gin.H\{
+        "success":    true,
+        "agentId":    agentResp.AgentID,
+        "channelName": req.ChannelName,
+        "token":       clientToken,
+        "clientUid":   clientUid,
+        "agentUid":    fmt.Sprintf("%d", agentUid),
+        "status":      agentResp.Status,
+        "createTime":  agentResp.CreateTS,
+    \})
+\}`}</CodeBlock>
+
+</TabItem>
+</Tabs>
 
 ### Complete server implementation
 
@@ -376,8 +606,16 @@ This backend server provides start and stop agent endpoints to manage agents thr
 
 <CodeBlock language="javascript">{`require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
 const \{ RtcTokenBuilder, RtcRole \} = require('agora-token');\n
-const app = express();
+const app = express();\n
+// Enable CORS for client requests
+app.use(cors(\{
+  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+\}));\n
 app.use(express.json());\n
 // Load environment variables
 const \{
@@ -395,7 +633,7 @@ function generateBasicAuth(customerId, customerSecret) \{
   const credentials = \`\$\{customerId\}:\$\{customerSecret\}\`;
   return Buffer.from(credentials).toString('base64');
 \}\n
-// Generate RTC token for agent to join channel
+// Generate RTC token for a specific UID
 function generateRtcToken(channelName, uid) \{
   const currentTimestamp = Math.floor(Date.now() / 1000);
   const expireTimestamp = currentTimestamp + 3600; // Token expires in 1 hour
@@ -416,36 +654,30 @@ app.get('/health', (req, res) => \{
 // Start agent endpoint
 app.post('/agents/start', async (req, res) => \{
   try \{
-    const \{ channelName, agentName, userUids \} = req.body;\n
+    const \{ channelName, agentName, userUid \} = req.body;\n
     // Validate required fields
-    if (!channelName || !agentName) \{
+    if (!channelName || !agentName || !userUid) \{
       return res.status(400).json(\{
         error: 'Missing required fields',
-        required: ['channelName', 'agentName']
+        required: ['channelName', 'agentName', 'userUid']
       \});
     \}\n
-    // Parse userUids - split comma-separated string
-    if (typeof userUids !== 'string') \{
-      return res.status(400).json(\{
-        error: 'userUids must be a comma-separated string'
-      \});
-    \}\n
-    const remoteRtcUids = userUids.split(',').map(uid => uid.trim()).filter(uid => uid.length > 0);\n
-    if (remoteRtcUids.length === 0) \{
-      return res.status(400).json(\{
-        error: 'userUids cannot be empty'
-      \});
-    \}\n
-    const agentUid = 1001; // Define your agent UID to easily identify the agent streams on the client-side
-    const token = generateRtcToken(channelName, agentUid);\n
+    // Client UID from request, Agent UID hardcoded
+    const clientUid = String(userUid).trim();
+    const agentUid = 1001;\n
+    // Generate TWO tokens: one for client, one for agent
+    const clientToken = generateRtcToken(channelName, parseInt(clientUid));
+    const agentToken = generateRtcToken(channelName, agentUid);\n
+    console.log(\`Starting agent for client UID: \$\{clientUid\}, Agent UID: \$\{agentUid\}\`);
+    console.log(\`Channel: \$\{channelName\}\`);\n
     // Configure agent with ASR-LLM-TTS pipeline
     const agentConfig = \{
       name: agentName,
       properties: \{
         channel: channelName,
-        token: token,
+        token: agentToken,  // Agent uses its own token
         agent_rtc_uid: String(agentUid),
-        remote_rtc_uids: remoteRtcUids.map(uid => String(uid)),
+        remote_rtc_uids: [clientUid],  // Agent listens to client's UID
         enable_string_uid: false,
         idle_timeout: 120,
         llm: \{
@@ -478,6 +710,7 @@ app.post('/agents/start', async (req, res) => \{
       \}
     \};\n
     // Call Agora API to start the agent
+    // This is the critical step where the agent joins the channel
     const response = await fetch(
       \`https://api.agora.io/api/conversational-ai-agent/v2/projects/\$\{AGORA_APP_ID\}/join\`,
       \{
@@ -491,15 +724,22 @@ app.post('/agents/start', async (req, res) => \{
     );\n
     const data = await response.json();\n
     if (!response.ok) \{
+      console.error('Agora API error:', data);
       return res.status(response.status).json(\{
         error: 'Failed to start agent',
         details: data
       \});
     \}\n
+    console.log(\`Agent started successfully: \$\{data.agent_id\}\`);\n
     // Return agent information to client
+    // Client uses token and channelName to join the same channel
     res.json(\{
       success: true,
       agentId: data.agent_id,
+      channelName: channelName,
+      token: clientToken,          // Token for CLIENT to use (generated for clientUid)
+      clientUid: clientUid,        // Client's UID
+      agentUid: String(agentUid),  // Agent's UID
       status: data.status,
       createTime: data.create_ts
     \});
@@ -515,6 +755,7 @@ app.post('/agents/start', async (req, res) => \{
 app.post('/agents/:agentId/stop', async (req, res) => \{
   try \{
     const \{ agentId \} = req.params;\n
+    console.log(\`Stopping agent: \$\{agentId\}\`);\n
     // Call Agora API to stop the agent
     const response = await fetch(
       \`https://api.agora.io/api/conversational-ai-agent/v2/projects/\$\{AGORA_APP_ID\}/agents/\$\{agentId\}/leave\`,
@@ -528,11 +769,13 @@ app.post('/agents/:agentId/stop', async (req, res) => \{
     );\n
     if (!response.ok) \{
       const data = await response.json();
+      console.error('Agora API error:', data);
       return res.status(response.status).json(\{
         error: 'Failed to stop agent',
         details: data
       \});
     \}\n
+    console.log(\`Agent stopped successfully: \$\{agentId\}\`);\n
     res.json(\{
       success: true,
       message: 'Agent stopped successfully'
@@ -549,6 +792,8 @@ app.post('/agents/:agentId/stop', async (req, res) => \{
 app.listen(PORT, () => \{
   console.log(\`Agora AI backend server running on port \$\{PORT\}\`);
   console.log(\`Health check: http://localhost:\$\{PORT\}/health\`);
+  console.log(\`Start agent: POST http://localhost:\$\{PORT\}/agents/start\`);
+  console.log(\`Stop agent: POST http://localhost:\$\{PORT\}/agents/:agentId/stop\`);
 \});`}</CodeBlock>
 
 Run your server:
@@ -563,6 +808,7 @@ import base64
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import requests
 from dotenv import load_dotenv
@@ -571,6 +817,14 @@ import uvicorn\n
 \# Load environment variables
 load_dotenv()\n
 app = FastAPI(title="Agora AI Backend")\n
+\# Enable CORS for client requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+)\n
 \# Configuration
 AGORA_APP_ID = os.getenv("AGORA_APP_ID")
 AGORA_APP_CERTIFICATE = os.getenv("AGORA_APP_CERTIFICATE")
@@ -584,7 +838,7 @@ PORT = int(os.getenv("PORT", 3000))\n
 def generate_basic_auth(customer_id: str, customer_secret: str) -> str:
     credentials = f"\{customer_id\}:\{customer_secret\}"
     return base64.b64encode(credentials.encode()).decode()\n
-\# Generate RTC token for agent to join channel
+\# Generate RTC token for a specific UID
 def generate_rtc_token(channel_name: str, uid: int) -> str:
     current_timestamp = int(datetime.now().timestamp())
     expire_timestamp = current_timestamp + 3600  \# Token expires in 1 hour
@@ -601,7 +855,7 @@ basic_auth = generate_basic_auth(AGORA_CUSTOMER_ID, AGORA_CUSTOMER_SECRET)\n
 class StartAgentRequest(BaseModel):
     channelName: str
     agentName: str
-    userUids: str  \# Comma-separated string of UIDs\n
+    userUid: str  \# Single UID\n
 \# Health check endpoint
 @app.get("/health")
 async def health_check():
@@ -610,23 +864,28 @@ async def health_check():
 @app.post("/agents/start")
 async def start_agent(request: StartAgentRequest):
     try:
-        \# Parse userUids - split comma-separated string
-        remote_rtc_uids = [uid.strip() for uid in request.userUids.split(',') if uid.strip()]\n
-        if len(remote_rtc_uids) == 0:
+        \# Validate required fields
+        if not request.channelName or not request.agentName or not request.userUid:
             raise HTTPException(
                 status_code=400,
-                detail="userUids cannot be empty"
+                detail="Missing required fields: channelName, agentName, userUid"
             )\n
-        agent_uid = 1001  \# Define your agent UID to easily identify the agent streams on the client-side
-        token = generate_rtc_token(request.channelName, agent_uid)\n
+        \# Client UID from request, Agent UID hardcoded
+        client_uid = str(request.userUid).strip()
+        agent_uid = 1001\n
+        \# Generate TWO tokens: one for client, one for agent
+        client_token = generate_rtc_token(request.channelName, int(client_uid))
+        agent_token = generate_rtc_token(request.channelName, agent_uid)\n
+        print(f"Starting agent for client UID: \{client_uid\}, Agent UID: \{agent_uid\}")
+        print(f"Channel: \{request.channelName\}")\n
         \# Configure agent with ASR-LLM-TTS pipeline
         agent_config = \{
             "name": request.agentName,
             "properties": \{
                 "channel": request.channelName,
-                "token": token,  \# Generated token for agent authentication
+                "token": agent_token,  \# Agent uses its own token
                 "agent_rtc_uid": str(agent_uid),
-                "remote_rtc_uids": [str(uid) for uid in remote_rtc_uids],
+                "remote_rtc_uids": [client_uid],  \# Agent listens to client's UID
                 "enable_string_uid": False,
                 "idle_timeout": 120,
                 "llm": \{
@@ -659,6 +918,7 @@ async def start_agent(request: StartAgentRequest):
             \}
         \}\n
         \# Call Agora API to start the agent
+        \# This is the critical step where the agent joins the channel
         response = requests.post(
             f"https://api.agora.io/api/conversational-ai-agent/v2/projects/\{AGORA_APP_ID\}/join",
             json=agent_config,
@@ -668,23 +928,33 @@ async def start_agent(request: StartAgentRequest):
             \}
         )\n
         if response.status_code != 200:
+            print(f"Agora API error: \{response.json()\}")
             raise HTTPException(
                 status_code=response.status_code,
                 detail=response.json()
             )\n
         data = response.json()
+        print(f"Agent started successfully: \{data['agent_id']\}")\n
+        \# Return agent information to client
+        \# Client uses token and channelName to join the same channel
         return \{
             "success": True,
             "agentId": data["agent_id"],
+            "channelName": request.channelName,
+            "token": client_token,  \# Token for CLIENT to use (generated for clientUid)
+            "clientUid": client_uid,  \# Client's UID
+            "agentUid": str(agent_uid),  \# Agent's UID
             "status": data["status"],
             "createTime": data["create_ts"]
         \}
     except requests.exceptions.RequestException as e:
+        print(f"Error starting agent: \{str(e)\}")
         raise HTTPException(status_code=500, detail=str(e))\n
 \# Stop agent endpoint
 @app.post("/agents/\{agent_id\}/stop")
 async def stop_agent(agent_id: str):
     try:
+        print(f"Stopping agent: \{agent_id\}")\n
         \# Call Agora API to stop the agent
         response = requests.post(
             f"https://api.agora.io/api/conversational-ai-agent/v2/projects/\{AGORA_APP_ID\}/agents/\{agent_id\}/leave",
@@ -694,17 +964,24 @@ async def stop_agent(agent_id: str):
             \}
         )\n
         if response.status_code != 200:
+            print(f"Agora API error: \{response.json()\}")
             raise HTTPException(
                 status_code=response.status_code,
                 detail=response.json()
             )\n
+        print(f"Agent stopped successfully: \{agent_id\}")\n
         return \{
             "success": True,
             "message": "Agent stopped successfully"
         \}
     except requests.exceptions.RequestException as e:
+        print(f"Error stopping agent: \{str(e)\}")
         raise HTTPException(status_code=500, detail=str(e))\n
 if __name__ == "__main__":
+    print(f"Agora AI backend server running on port \{PORT\}")
+    print(f"Health check: http://localhost:\{PORT\}/health")
+    print(f"Start agent: POST http://localhost:\{PORT\}/agents/start")
+    print(f"Stop agent: POST http://localhost:\{PORT\}/agents/\{agent_id\}/stop")
     uvicorn.run(app, host="0.0.0.0", port=PORT)`}</CodeBlock>
 
 Run your server:
@@ -724,12 +1001,14 @@ import (
     "log"
     "net/http"
     "os"
+    "strconv"
+    "strings"
     "time"\n
     "github.com/gin-gonic/gin"
     "github.com/joho/godotenv"
     "github.com/AgoraIO-Community/go-tokenbuilder/rtctokenbuilder2"
 )\n
-// Config holds environment variables
+\# Config holds environment variables
 type Config struct \{
     AppID              string
     AppCertificate     string
@@ -740,13 +1019,13 @@ type Config struct \{
     MicrosoftTTSRegion string
     Port               string
 \}\n
-// StartAgentRequest represents the request body for starting an agent
+\# StartAgentRequest represents the request body for starting an agent
 type StartAgentRequest struct \{
     ChannelName string \`json:"channelName"\`
     AgentName   string \`json:"agentName"\`
-    UserUIDs    string \`json:"userUids"\` // Comma-separated string of UIDs
+    UserUid     string \`json:"userUid"\` \# Single UID
 \}\n
-// AgentResponse represents the response from Agora API
+\# AgentResponse represents the response from Agora API
 type AgentResponse struct \{
     AgentID   string \`json:"agent_id"\`
     CreateTS  int64  \`json:"create_ts"\`
@@ -754,10 +1033,10 @@ type AgentResponse struct \{
 \}\n
 var config Config
 var basicAuth string\n
-// Generate RTC token for agent to join channel
+\# Generate RTC token for a specific UID
 func generateRtcToken(channelName string, uid uint32) (string, error) \{
     currentTimestamp := uint32(time.Now().Unix())
-    expireTimestamp := currentTimestamp + 3600 // Token expires in 1 hour
+    expireTimestamp := currentTimestamp + 3600 \# Token expires in 1 hour
     token := rtctokenbuilder2.BuildTokenWithUid(
         config.AppID,
         config.AppCertificate,
@@ -769,7 +1048,7 @@ func generateRtcToken(channelName string, uid uint32) (string, error) \{
     return token, nil
 \}\n
 func main() \{
-    // Load environment variables
+    \# Load environment variables
     if err := godotenv.Load(); err != nil \{
         log.Println("No .env file found")
     \}\n
@@ -783,80 +1062,74 @@ func main() \{
         MicrosoftTTSRegion: os.Getenv("MICROSOFT_TTS_REGION"),
         Port:               getEnv("PORT", "3000"),
     \}\n
-    // Generate Base64 credentials for Agora API authentication
+    \# Generate Base64 credentials for Agora API authentication
     basicAuth = generateBasicAuth(config.CustomerID, config.CustomerSecret)\n
-    // Setup HTTP server
+    \# Setup HTTP server
     gin.SetMode(gin.ReleaseMode)
     router := gin.Default()\n
-    // Routes
+    \# Routes
     router.GET("/health", healthCheck)
     router.POST("/agents/start", startAgent)
     router.POST("/agents/:agentId/stop", stopAgent)\n
-    // Start server
+    \# Start server
     log.Printf("Agora AI backend server running on port %s", config.Port)
     log.Printf("Health check: http://localhost:%s/health", config.Port)
     if err := router.Run(":" + config.Port); err != nil \{
         log.Fatal("Failed to start server:", err)
     \}
 \}\n
-// Helper function to generate Base64 authentication string
+\# Helper function to generate Base64 authentication string
 func generateBasicAuth(customerID, customerSecret string) string \{
     credentials := customerID + ":" + customerSecret
     return base64.StdEncoding.EncodeToString([]byte(credentials))
 \}\n
-// Helper function to get environment variable with default
+\# Helper function to get environment variable with default
 func getEnv(key, defaultVal string) string \{
     if value := os.Getenv(key); value != "" \{
         return value
     \}
     return defaultVal
 \}\n
-// Health check endpoint
+\# Health check endpoint
 func healthCheck(c *gin.Context) \{
     c.JSON(http.StatusOK, gin.H\{
         "status":    "ok",
         "timestamp": time.Now().Format(time.RFC3339),
     \})
 \}\n
-// Start agent endpoint
+\# Start agent endpoint
 func startAgent(c *gin.Context) \{
     var req StartAgentRequest
     if err := c.ShouldBindJSON(&req); err != nil \{
         c.JSON(http.StatusBadRequest, gin.H\{
             "error":    "Missing required fields",
-            "required": []string\{"channelName", "agentName", "userUids"\},
+            "required": []string\{"channelName", "agentName", "userUid"\},
         \})
         return
     \}\n
-    // Parse userUids - split comma-separated string
-    uids := strings.Split(req.UserUIDs, ",")
-    remoteRtcUids := make([]string, 0, len(uids))
-    for _, uid := range uids \{
-        uid = strings.TrimSpace(uid)
-        if uid != "" \{
-            remoteRtcUids = append(remoteRtcUids, uid)
-        \}
-    \}\n
-    if len(remoteRtcUids) == 0 \{
-        c.JSON(http.StatusBadRequest, gin.H\{
-            "error": "userUids cannot be empty",
-        \})
-        return
-    \}\n
-    agentUID := uint32(1001) // Define your agent UID to easily identify the agent streams on the client-side
-    token, err := generateRtcToken(req.ChannelName, agentUID)
+    \# Client UID from request, Agent UID hardcoded
+    clientUid := strings.TrimSpace(req.UserUid)
+    agentUid := uint32(1001)\n
+    \# Generate TWO tokens: one for client, one for agent
+    clientUidInt, _ := strconv.ParseUint(clientUid, 10, 32)
+    clientToken, err := generateRtcToken(req.ChannelName, uint32(clientUidInt))
     if err != nil \{
-        c.JSON(http.StatusInternalServerError, gin.H\{"error": "Failed to generate token"\})
+        c.JSON(http.StatusInternalServerError, gin.H\{"error": "Failed to generate client token"\})
         return
     \}\n
-    // Configure agent with ASR-LLM-TTS pipeline
+    agentToken, err := generateRtcToken(req.ChannelName, agentUid)
+    if err != nil \{
+        c.JSON(http.StatusInternalServerError, gin.H\{"error": "Failed to generate agent token"\})
+        return
+    \}\n
+    \# Configure agent with ASR-LLM-TTS pipeline
     agentConfig := map[string]interface\{\}\{
         "name": req.AgentName,
         "properties": map[string]interface\{\}\{
             "channel":           req.ChannelName,
-            "token":             token, // Generated token for agent authentication
-            "agent_rtc_uid":     fmt.Sprintf("%d", agentUID),
-            "remote_rtc_uids":   remoteRtcUids,
+            "token":             agentToken,
+            "agent_rtc_uid":     fmt.Sprintf("%d", agentUid),
+            "remote_rtc_uids":   []string\{clientUid\},
             "enable_string_uid": false,
             "idle_timeout":      120,
             "llm": map[string]interface\{\}\{
@@ -888,13 +1161,13 @@ func startAgent(c *gin.Context) \{
             \},
         \},
     \}\n
-    // Marshal config to JSON
+    \# Marshal config to JSON
     jsonData, err := json.Marshal(agentConfig)
     if err != nil \{
         c.JSON(http.StatusInternalServerError, gin.H\{"error": "Failed to create request"\})
         return
     \}\n
-    // Call Agora API to start the agent
+    \# Call Agora API to start the agent
     url := fmt.Sprintf("https://api.agora.io/api/conversational-ai-agent/v2/projects/%s/join", config.AppID)
     httpReq, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
     if err != nil \{
@@ -927,17 +1200,22 @@ func startAgent(c *gin.Context) \{
         c.JSON(http.StatusInternalServerError, gin.H\{"error": "Failed to parse response"\})
         return
     \}\n
+    \# Return agent information to client
     c.JSON(http.StatusOK, gin.H\{
         "success":    true,
         "agentId":    agentResp.AgentID,
-        "status":     agentResp.Status,
-        "createTime": agentResp.CreateTS,
+        "channelName": req.ChannelName,
+        "token":       clientToken,
+        "clientUid":   clientUid,
+        "agentUid":    fmt.Sprintf("%d", agentUid),
+        "status":      agentResp.Status,
+        "createTime":  agentResp.CreateTS,
     \})
 \}\n
-// Stop agent endpoint
+\# Stop agent endpoint
 func stopAgent(c *gin.Context) \{
     agentID := c.Param("agentId")\n
-    // Call Agora API to stop the agent
+    \# Call Agora API to stop the agent
     url := fmt.Sprintf("https://api.agora.io/api/conversational-ai-agent/v2/projects/%s/agents/%s/leave",
         config.AppID, agentID)
     httpReq, err := http.NewRequest("POST", url, nil)
@@ -975,57 +1253,61 @@ Run your server:
 </TabItem>
 </Tabs>
 
-### Test your server
+## Test your server
 
 Test your endpoints to ensure everything works correctly:
 
-1. **Health check:**
+### Check server health
 
-    <CodeBlock language="bash">{`curl http://localhost:3000/health`}</CodeBlock>
+<CodeBlock language="bash">{`curl http://localhost:3000/health`}</CodeBlock>
 
-    Expected response:
+Expected response:
 
-    <CodeBlock language="json">{`\{
-     "status": "ok",
-     "timestamp": "2025-01-15T10:30:00.000Z"
-   \}`}</CodeBlock>
+<CodeBlock language="json">{`\{
+  "status": "ok",
+  "timestamp": "2026-02-02T10:30:00.000Z"
+\}`}</CodeBlock>
 
-2. **Start an agent:**
+### Start an agent
 
-    <CodeBlock language="bash">{`curl -X POST http://localhost:3000/agents/start \\
-     -H "Content-Type: application/json" \\
-     -d '\{
-       "channelName": "test-channel",
-       "agentName": "test-agent-1",
-       "userUids": "1002"
-     \}'`}</CodeBlock>
+<CodeBlock language="bash">{`curl -X POST http://localhost:3000/agents/start \\
+    -H "Content-Type: application/json" \\
+    -d '\{
+    "channelName": "test-channel",
+    "agentName": "test-agent-1",
+    "userUid": "1002"
+    \}'`}</CodeBlock>
 
-    Expected response:
+Expected response:
 
-    <CodeBlock language="json">{`\{
-     "success": true,
-     "agentId": "1NT29X10YHxxxxxWJOXLYHNYB",
-     "status": "RUNNING",
-     "createTime": 1737111452
-   \}`}</CodeBlock>
+<CodeBlock language="json">{`\{
+  "success": true,
+  "agentId": "1NT29X10YHxxxxxWJOXLYHNYB",
+  "channelName": "test-channel",
+  "token": "007eAAA...",
+  "clientUid": "1002",
+  "agentUid": "1001",
+  "status": "RUNNING",
+  "createTime": 1737111452
+\}`}</CodeBlock>
 
-    <Admonition type="info">
-    Store the `agentId` returned from the start endpoint. You'll need it to stop, query, or update the agent. In production, save this to a database associated with the user's session.
-    </Admonition>
+<Admonition type="info">
+Store the `agentId` returned from the start endpoint. You'll need it to stop, query, or update the agent. In production, save this to a database associated with the user's session.
+</Admonition>
 
-3. **Stop the agent:**
+### Stop the agent
 
-    <CodeBlock language="bash">{`curl -X POST http://localhost:3000/agents/1NT29X10YHxxxxxWJOXLYHNYB/stop`}</CodeBlock>
+<CodeBlock language="bash">{`curl -X POST http://localhost:3000/agents/1NT29X10YHxxxxxWJOXLYHNYB/stop`}</CodeBlock>
 
-    Expected response:
+Expected response:
 
-    <CodeBlock language="json">{`\{
-     "success": true,
-     "message": "Agent stopped successfully"
-   \}`}</CodeBlock>
+<CodeBlock language="json">{`\{
+  "success": true,
+  "message": "Agent stopped successfully"
+\}`}</CodeBlock>
 
 
-### Using MLLM instead of the pipeline
+### Use MLLM instead of the pipeline
 
 To use multimodal voice-to-voice models instead of the ASR-LLM-TTS pipeline, modify the agent configuration in the start endpoint:
 
@@ -1033,14 +1315,13 @@ To use multimodal voice-to-voice models instead of the ASR-LLM-TTS pipeline, mod
 <TabItem value="node" label="Node.js" default>
 
 <CodeBlock language="javascript">{`// Replace the agent_config in the /agents/start endpoint with:
-// Note: userUids should already be normalized to an array from the request
 const agentConfig = \{
   name: agentName,
   properties: \{
     channel: channelName,
-    token: token,
+    token: agentToken,
     agent_rtc_uid: String(agentUid), // Use the defined agent UID
-    remote_rtc_uids: remoteRtcUids, // Already normalized to array
+    remote_rtc_uids: [clientUid],
     enable_string_uid: false,
     idle_timeout: 120,
     advanced_features: \{
@@ -1071,9 +1352,9 @@ agent_config = \{
     "name": request.agentName,
     "properties": \{
         "channel": request.channelName,
-        "token": token,  \# Generated token
+        "token": agent_token,  \# Generated token
         "agent_rtc_uid": str(agent_uid),  \# Use the defined agent UID
-        "remote_rtc_uids": remote_rtc_uids,  \# Already normalized to list
+        "remote_rtc_uids": [client_uid],  \# Already normalized to list
         "enable_string_uid": False,
         "idle_timeout": 120,
         "advanced_features": \{
@@ -1103,9 +1384,9 @@ agentConfig := map[string]interface\{\}\{
     "name": req.AgentName,
     "properties": map[string]interface\{\}\{
         "channel":           req.ChannelName,
-        "token":             token,  // Generated token
-        "agent_rtc_uid":     fmt.Sprintf("%d", agentUID),  // Use the defined agent UID
-        "remote_rtc_uids":   remoteRtcUids,  // Already normalized to []string
+        "token":             agentToken,  // Generated token
+        "agent_rtc_uid":     fmt.Sprintf("%d", agentUid),  
+        "remote_rtc_uids":   []string{clientUid},
         "enable_string_uid": false,
         "idle_timeout":      120,
         "advanced_features": map[string]bool\{
@@ -1134,13 +1415,57 @@ agentConfig := map[string]interface\{\}\{
 When `enable_mllm` is `true`, do NOT include `asr`, `llm`, or `tts` configurations. The MLLM handles all voice processing internally.
 </Admonition>
 
+## Client application
+
+Before implementing the client code, understand what your backend endpoint expects and returns.
+
+* Client sends to `/agents/start` endpoint:
+
+    ```json
+    {
+      "channelName": "support-room-123",
+      "agentName": "SupportBot",
+      "userUid": "1002"
+    }
+    ```
+
+* Backend returns to client:
+
+    ```json
+    {
+      "success": true,
+      "agentId": "1NT29X10YHxxxxxWJOXLYHNYB",
+      "channelName": "support-room-123",
+      "token": "007eAAA...",
+      "clientUid": "1002",
+      "agentUid": "1001",
+      "status": "RUNNING",
+      "createTime": 1737111452
+    }
+    ```
+
+    **Key parameters returned**:
+
+    - `agentId`: The agent identifier. Use this ID to stop the agent when you are done.
+    - `channelName`: Client uses this to join the same channel where the agent is waiting.
+    - `token`: Client uses this to authenticate when joining the channel. Always, generate the token on the server-side, never expose your App Certificate to clients.
+    - `clientUid`: The client's unique identifier in the channel; matches the `userUid` sent in the request.
+    - `agentUid`: The agent's unique identifier in the channel. Client uses this to identify the agent's audio stream.
+
+To implement a client that connects to the server and enables users to interact with AI agents, follow the [Voice AI client quickstart](client-quickstart) or explore the [Recipes](/conversational-ai/get-started/recipes) page.
+
+<Admonition type="info">
+For the best conversational experience, <Vg k="COMPANY" /> recommends using <Vpd k="NAME" /> with specific <Vg k="COMPANY" /> Video/Voice SDK versions. For details, [contact technical support](https://agoraio.zendesk.com/hc/en-us).
+</Admonition>
+
 ## Reference
 
 ### Next steps
 
 You now have a working backend server that manages Conversational AI agents. Here's what to explore next:
 
-- Test with a [demo client application](#client-applications) (Web, Android, or iOS)
+- Implement a [Voice AI client](client-quickstart) to work with your server
+- Explore the [Recipes](/conversational-ai/get-started/recipes) page for more backend and client implementation examples
 - Explore [Custom LLM integration](/conversational-ai/develop/custom-llm) for RAG and function calling
 - Configure [agent interruption behavior](/conversational-ai/develop/interrupt-agent)
 - Set up [webhooks](/conversational-ai/develop/webhooks) for agent event notifications

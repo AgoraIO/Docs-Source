@@ -1,256 +1,150 @@
 ---
 title: 'Voice AI client quickstart'
-sidebar_position: 5
+sidebar_position: 4
 type: docs
 platform_selector: false
 description: >
-  Build a front-end client app for conversational AI
+  Build a React web client to interact with Conversational AI agents.
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import CodeBlock from '@theme/CodeBlock';
-
-This guide shows you how to build a client application using Agora's React SDK to connect users to your AI agent through real-time audio. You will create a basic app that joins the same channel as your AI agent, enabling natural voice conversations with minimal latency. Optionally, you can enhance your interface with pre-built components from the Agora AI Agent UIKit.
-
-The following diagram shows how the client app, backend server, and AI agent work together:
+This guide shows you how to build a React web client that connects to <Vpd k="NAME" /> agents. Your client captures and publishes local audio, subscribes to the agent’s audio stream, and manages the RTC connection. The backend manages agent lifecycle and credential generation.
 
 <details>
-<summary>Conversational AI client-server architecture</summary>
+<summary>Client application workflow</summary>
 
 ![](/images/conversational-ai/convo-ai-backend.svg)
 </details>
 
 ## Prerequisites
 
-Before you begin, ensure you have:
+<Admonition type="info" title="Important">
+This guide assumes you have a backend server already running from the [Agent quickstart](quickstart). The client connects to this server to manage agent lifecycle. If you haven't built the backend yet, do that first.
+</Admonition>
 
-- **Development Environment**: Node.js LTS and npm installed
-- **Configured <Vg k="COMPANY" /> project**:
-    - [Enable <Vg k="COMPANY" /> conversational AI](../get-started/manage-agora-account#enable-conversational-ai) for your project. **This is critical**. Without it, your API calls will fail.
-    - [App ID](../get-started/manage-agora-account#get-the-app-id): Identifies your <Vg k="COMPANY" /> project
-    - [App Certificate](/conversational-ai/get-started/manage-agora-account#get-the-app-certificate): Used to generate RTC tokens (found in <Vg k="CONSOLE" /> alongside your App ID). Keep this secret and never expose it in client-side code.
-- **Backend server**: A server that manages Conversational AI Engine agents through RESTful APIs. See [Agent quickstart](../get-started/quickstart) to set up your backend.
+Before you begin, make sure you have:
 
+- **App ID**:  Identifies your Agora project.
+- **Backend server running**: Complete the [Agent quickstart](quickstart) first. Your client communicates with this server to start and stop agents.
+- **Node.js 16+**: For running the development server with Vite
 
-## Set up your project
+## Understand the tech
 
-This section shows you how to set up your React project and install the RTC SDK and Agora AI Agent UIKit.
+The backend manages the agent lifecycle and returns the credentials you need. Your client only needs to join the channel and handle local audio. Implement this workflow in your client:
 
-### Create a project
+1. **User initiates conversation**: Clicks "Start Conversation" button
+2. **Backend creates agent**: Client calls backend `/agents/start` endpoint with channel and user details
+3. **Backend returns connection details**: Agora channel name, RTC token, and agent information
+4. **Client joins channel**: Uses Agora RTC SDK to join the channel with the token
+5. **Real-time communication**: Client publishes local audio and receives agent audio
+6. **Cleanup**: When conversation ends, client stops publishing and calls backend `/agents/:agentId/stop`
 
-To create a new React project:
+#### Data flow
 
-1. Open a terminal and run:
+Before implementing the client code, understand what your backend endpoint expects and returns.
 
-    ```bash
-    npm create vite@latest agora-ai-client -- --template react-ts
+* Client sends to `/agents/start` endpoint:
+
+    ```json
+    {
+      "channelName": "support-room-123",
+      "agentName": "SupportBot",
+      "userUid": "1002"
+    }
     ```
 
-    This creates a new project folder named `agora-ai-client`. 
-    
-1. Navigate to the project folder:
+* Backend returns to client:
 
-    ```bash
-     cd agora-ai-client
-    ```    
+    ```json
+    {
+      "success": true,
+      "agentId": "1NT29X10YHxxxxxWJOXLYHNYB",
+      "channelName": "support-room-123",
+      "token": "007eAAA...",
+      "clientUid": "1002",
+      "agentUid": "1001",
+      "status": "RUNNING",
+      "createTime": 1737111452
+    }
+    ```
 
-### Install the SDK
+    **Key parameters returned**:
 
-Use one of the following methods to install the project dependencies:
-
-<Tabs>
-<TabItem value="npm" label="NPM" default>
-
-Navigate to the project folder and run the following command to install the <Vpd k="SDK" />:
-
-<CodeBlock language="bash">
-{`npm install agora-rtc-react@latest agora-rtc-sdk-ng@latest`}
-</CodeBlock>
-</TabItem>
-
-<TabItem value="cdn" label="CDN">
-
-To integrate React JS dependencies and the <Vg k="COMPANY" /> SDK using CDN, add the following code to your HTML file:
-
-<CodeBlock language="html" showLineNumbers>
-{`<!-- Include the React development libraries (must be introduced in this order) -->
-<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-
-<!-- If the above React libraries have already been integrated through npm, skip them and include only the Agora RTC React SDK -->
-<script src="https://download.agora.io/sdk/release/agora-rtc-react.2.3.0.js"></script>`}
-</CodeBlock>
-
-</TabItem>    
-</Tabs>
-
-### Install AI Agent UIKit (Optional)
-
-Agora AI Agent UIKit provides pre-built, customizable React components specifically designed for AI agents, voice conversations, and real-time interactions.
-
-To install the UIKit:
-
-```bash
-npm install @agora/ai-agent-uikit
-```
-
-The UIKit requires Tailwind CSS. If you haven't configured Tailwind in your project, follow the [Tailwind installation guide](https://tailwindcss.com/docs/guides/vite).
+    - `agentId`: The agent identifier. Use this ID to stop the agent when you are done.
+    - `channelName`: Client uses this to join the same channel where the agent is waiting.
+    - `token`: Client uses this to authenticate when joining the channel. Always, generate the token on the server-side, never expose your App Certificate to clients.
+    - `clientUid`: The client's unique identifier in the channel; matches the `userUid` sent in the request.
+    - `agentUid`: The agent's unique identifier in the channel. Client uses this to identify the agent's audio stream.
 
 ## Implementation
 
-This guide includes [complete sample code](#complete-sample-code) that demonstrates connecting to your AI agent. To understand the core API calls in the sample code, review the following implementation steps.
+Follow these steps to create a basic voice AI client.
 
-### Import Agora hooks and components
+### Create a React project
 
-To use <Vpd k="SDK"/> in your component, include the following imports:
+Set up a new React project with Vite for fast development:
 
-```jsx
-import {
-    LocalUser, // Manages the local user's audio track
-    RemoteUser, // Plays the AI agent's audio
-    useIsConnected, // Returns whether the SDK is connected to Agora's server
-    useJoin, // Automatically joins and leaves a channel on mount and unmount
-    useLocalMicrophoneTrack, // Creates a local microphone audio track
-    usePublish, // Publishes the local track
-    useRemoteUsers, // Retrieves the list of remote users (your AI agent)
-} from "agora-rtc-react";
-import { useState, useEffect } from "react";
-import AgoraRTC, { AgoraRTCProvider } from "agora-rtc-react";
+```bash
+npm create vite@latest agora-ai-client -- --template react
+cd agora-ai-client
+npm install
+mkdir -p src/components
+touch src/components/AgoraAIClient.jsx
+touch .env.local
 ```
 
-### Initialize the client
+Your project structure should look like this:
 
-Use the `createClient` method to create a client object for the `<AgoraRTCProvider />` component. Wrap your app component with `<AgoraRTCProvider />` to enable state management and access to SDK hooks.
-
-Set the `mode` property to `"rtc"` for real-time communication with your AI agent:
-
-```jsx
-export const AgoraAIClient  = () => {
-  const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-  return(
-      <AgoraRTCProvider client={client}>
-        <Basics />
-      </AgoraRTCProvider>
-  );
-}
+```
+agora-ai-client/
+├── src/
+│   ├── App.jsx
+│   ├── components/
+│   │   └── AgoraAIClient.jsx
+│   ├── main.jsx
+│   └── index.css
+├── .env.local
+├── package.json
+└── vite.config.js
 ```
 
-### Join a channel
+### Install dependencies
 
-To join a channel and connect to your AI agent, use the `useJoin` hook with the following parameters:
+Install the Agora RTC SDK:
 
-- **App ID**: Your Agora project [App ID](../get-started/manage-agora-account#get-the-app-id).
-
-- **Channel name**: The name of the channel where your AI agent is running. In a production environment, your backend server provides this channel name when starting an agent session.
-
-- **Authentication token**: An RTC token that authenticates the user when joining the channel. In production, obtain this token from your backend server. For testing, [generate a temporary token](../get-started/manage-agora-account#generate-temporary-tokens) in Agora Console.
-
-- **User ID**: A unique identifier for the user in the channel. This must match the user ID specified in the `remote_rtc_uids` parameter when starting your AI agent on the backend server.
-
-Add the following to `Basics`:
-
-```jsx
-const [appId, setAppId] = useState("<-- Insert App ID -->");
-const [channel, setChannel] = useState("<-- Insert Channel Name -->");
-const [token, setToken] = useState("<-- Insert Token -->");
-const [uid, setUid] = useState("<-- Insert User ID -->");
-const [calling, setCalling] = useState(false);
-
-useJoin({appid: appId, channel: channel, token: token ? token : null, uid: uid}, calling);
+```bash
+npm install agora-rtc-react agora-rtc-sdk-ng
 ```
 
-### Publish the audio track
+What these packages do:
+- **agora-rtc-react**: React hooks for Agora Video SDK integration
+- **agora-rtc-sdk-ng**: Agora's core Video/Audio SDK with WebRTC support
 
-After joining a channel, publish the local audio track using the `usePublish` hook. Add the following to `Basics`:
+### Configure environment variables
 
-```jsx
-const [micOn, setMic] = useState(true);
-const { localMicrophoneTrack } = useLocalMicrophoneTrack(micOn);
+Create a `.env.local` file in your project root:
 
-usePublish([localMicrophoneTrack]);
+```bash
+# Agora Configuration
+VITE_AGORA_APP_ID=your_app_id_here
+
+# Backend Server
+VITE_BACKEND_URL=http://localhost:3000
 ```
 
-### Play AI agent audio
+- `VITE_AGORA_APP_ID`: Your Agora project's App ID. The client uses this to authenticate with Agora's RTC service.
+- `VITE_BACKEND_URL`: URL where your backend server is running. The client calls this server to start and stop agents.
 
-To receive and play audio from your AI agent, use the `useRemoteUsers` hook with the `RemoteUser` component. In a typical conversation, `remoteUsers` contains one user representing your AI agent. Follow these steps:
+<Admonition type="caution">
+In production, use environment-specific values. For example, use different backend URLs for development and production environments. Never commit `.env.local` to version control.
+</Admonition>
 
-1. **Retrieve the list of remote users**
+### Build the Agora client provider
 
-   Use the `useRemoteUsers` hook to get the AI agent in the channel:
-
-   ```jsx
-   const remoteUsers = useRemoteUsers();
-   ```
-
-2. **Play the AI agent's audio**
-
-    Render the `RemoteUser` component for each user to subscribe and play audio streams:
-
-    ```jsx
-    {remoteUsers.map((user) => (
-      <div key={user.uid}>
-        <RemoteUser user={user}>
-        </RemoteUser>
-      </div>
-    ))}
-    ```
-
-### Add agent visualization (Optional)
-
-To demonstrate the use of the Agora AI Agent UIKit, this guide adds the `AgentVisualizer` component to the interface. The component displays appropriate animations as your AI agent listens, analyzes, and responds. 
-
-1. Import the component from the UIKit package:
-
-    ```jsx
-    import { AgentVisualizer } from "@agora/ai-agent-uikit";
-    ```
-
-1. Add state tracking to your `Basics` component:
-
-    ```jsx
-    const [agentState, setAgentState] = useState("not-joined"); 
-
-    // Update agent state based on connection
-    // Available states: "not-joined", "joining", "ambient", "listening", "analyzing", "talking", "disconnected"
-    useEffect(() => { // Import useEffect from React
-      if (!calling) {
-        setAgentState("not-joined");
-      } else if (calling && !isConnected) {
-        setAgentState("joining");
-      } else if (isConnected && remoteUsers.length === 0) {
-        setAgentState("joining");
-      } else if (isConnected && remoteUsers.length > 0) {
-        setAgentState("ambient");
-      }
-    }, [calling, isConnected, remoteUsers.length]);
-    // You can further customize this logic to use additional states like "listening", "analyzing", and "talking" based on audio activity
-    ```
-
-
-1. Add the visualizer to your UI and update its state based on the agent's activity:
-
-    ```jsx
-    <AgentVisualizer 
-      state={agentState}
-      size="md" // Choose from "sm" (small), "md" (medium), or "lg" (large)
-    />
-    ```
-
-### Leave the channel​
-
-To end the conversation and leave the channel, click the **End Conversation** button, close the browser window, or destroy the component.
-
-
-### Complete sample code
-
-A complete code sample demonstrating the basic process of real-time interaction is provided for your reference. To use the complete sample, add the following to your `src/App.tsx` file.
-
-<details>
-<summary>Complete sample code for Conversational AI client app</summary>
+Create a wrapper component that initializes Agora's RTC client and provides it to your application:
 
 ```jsx
-import {
+import AgoraRTC, {
+  AgoraRTCProvider,
   LocalUser,
   RemoteUser,
   useIsConnected,
@@ -259,154 +153,455 @@ import {
   usePublish,
   useRemoteUsers,
 } from "agora-rtc-react";
-import { useState, useEffect } from "react"; 
-import AgoraRTC, { AgoraRTCProvider } from "agora-rtc-react";
-
-// Optional: Comment out this line if not using AI Agent UIKit
-import { AgentVisualizer } from "@agora/ai-agent-uikit";
-
+import { useState, useMemo } from "react";
 
 export const AgoraAIClient = () => {
-  const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-  return(
-        <AgoraRTCProvider client={client}>
-          <Basics />
-        </AgoraRTCProvider>
+  const client = useMemo(
+    () =>
+      AgoraRTC.createClient({
+        mode: "rtc",
+        codec: "vp8",
+      }),
+    [],
   );
-}
 
-const Basics = () => {
+  return (
+    <AgoraRTCProvider client={client}>
+      <ConversationUI />
+    </AgoraRTCProvider>
+  );
+};
+```
+
+### Handle agent startup
+
+Add a `startAgent` function that calls your backend to start an agent.
+
+1. Client sends channel name, agent name, and user UID to backend
+2. Backend creates the agent and returns RTC token + channel details
+3. Client stores these details and sets `calling = true` to trigger Agora connection
+4. `useJoin` hook detects the change and joins the channel with the provided token
+
+```jsx
+const startAgent = async () => {
+  if (calling) return;
+
+  try {
+    setError("");
+    setIsLoading(true);
+
+    const response = await fetch(`${backendUrl}/agents/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        channelName: `channel-${Date.now()}`,
+        agentName: "VoiceAgent",
+        userUid: "1002",
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to start agent");
+    }
+
+    const data = await response.json();
+
+    if (data.success) {
+      setChannel(data.channelName);
+      setToken(data.token);
+      setUid(parseInt(data.clientUid));
+      setAgentUid(parseInt(data.agentUid));
+      setAgentId(data.agentId);
+      setCalling(true);
+    }
+  } catch (err) {
+    console.error("Failed to start agent:", err);
+    setError(err.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
+```
+
+### Handle agent shutdown
+
+Add the function to stop the agent when conversation ends:
+
+```jsx
+const stopAgent = async () => {
+    try {
+      if (agentId) {
+        await fetch(`${backendUrl}/agents/${agentId}/stop`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    } catch (err) {
+      console.error("Failed to stop agent:", err);
+    }
+
+    setCalling(false);
+    setChannel("");
+    setToken("");
+    setUid(0);
+    setAgentUid(0);
+    setAgentId("");
+
+    if (localMicrophoneTrack) {
+      localMicrophoneTrack.stop();
+      localMicrophoneTrack.close();
+    }
+  };
+```
+
+### Render the UI
+
+Build a simple UI that shows:
+
+- Connection status when not connected (shows App ID and start button)
+- Agent connection status when connected (channel, UIDs, agent status)
+- Local and remote audio streams using `<LocalUser>` and `<RemoteUser>` components
+- Microphone toggle and end conversation buttons
+
+Refer to the complete client code for implementation details.
+
+### Complete client implementation
+
+The following implementation combines the previous steps into a single component file. Create a new file `src/components/AgoraAIClient.jsx` with the following code:
+
+```jsx
+import AgoraRTC, {
+  AgoraRTCProvider,
+  LocalUser,
+  RemoteUser,
+  useIsConnected,
+  useJoin,
+  useLocalMicrophoneTrack,
+  usePublish,
+  useRemoteUsers,
+} from "agora-rtc-react";
+import { useState, useMemo } from "react";
+
+export const AgoraAIClient = () => {
+  const client = useMemo(
+    () =>
+      AgoraRTC.createClient({
+        mode: "rtc",
+        codec: "vp8",
+      }),
+    [],
+  );
+
+  return (
+    <AgoraRTCProvider client={client}>
+      <ConversationUI />
+    </AgoraRTCProvider>
+  );
+};
+
+const ConversationUI = () => {
+  const [appId] = useState(import.meta.env.VITE_AGORA_APP_ID || "");
+  const [backendUrl] = useState(
+    import.meta.env.VITE_BACKEND_URL || "http://localhost:3000",
+  );
+
+  // Connection state
   const [calling, setCalling] = useState(false);
-  const isConnected = useIsConnected(); // Store the user's connection status
-  const [appId, setAppId] = useState("<-- Insert App ID -->");
-  const [channel, setChannel] = useState("<-- Insert Channel Name -->");
-  const [token, setToken] = useState("<-- Insert Token -->");
-  const [uid, setUid] = useState("<-- Insert User ID -->");
-  const [micOn, setMic] = useState(true);
+  const [channel, setChannel] = useState("");
+  const [token, setToken] = useState("");
+  const [uid, setUid] = useState(0);
+  const [agentUid, setAgentUid] = useState(0);
+  const [agentId, setAgentId] = useState("");
 
+  // UI state
+  const [micOn, setMic] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // Agora hooks
+  const isConnected = useIsConnected();
   const { localMicrophoneTrack } = useLocalMicrophoneTrack(micOn);
-  
-  useJoin({appid: appId, channel: channel, token: token ? token : null, uid: uid}, calling);
+
+  useJoin({ appid: appId, channel, token: token || null, uid }, calling);
   usePublish([localMicrophoneTrack]);
 
   const remoteUsers = useRemoteUsers();
 
-  // Optional: AI Agent UIKit - Comment out this section if not using the visualizer
-  const [agentState, setAgentState] = useState("not-joined");
+  const startAgent = async () => {
+    if (calling) return;
 
-  useEffect(() => {
-    if (!calling) {
-      setAgentState("not-joined");
-    } else if (calling && !isConnected) {
-      setAgentState("joining");
-    } else if (isConnected && remoteUsers.length === 0) {
-      setAgentState("joining");
-    } else if (isConnected && remoteUsers.length > 0) {
-      setAgentState("ambient");
+    try {
+      setError("");
+      setIsLoading(true);
+
+      const response = await fetch(`${backendUrl}/agents/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          channelName: `channel-${Date.now()}`,
+          agentName: "VoiceAgent",
+          userUid: "1002",
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to start agent");
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setChannel(data.channelName);
+        setToken(data.token);
+        setUid(parseInt(data.clientUid));
+        setAgentUid(parseInt(data.agentUid));
+        setAgentId(data.agentId);
+        setCalling(true);
+      }
+    } catch (err) {
+      console.error("Failed to start agent:", err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
-  }, [calling, isConnected, remoteUsers.length]);
-  // End of AI Agent UIKit section
+  };
+
+  const stopAgent = async () => {
+    try {
+      if (agentId) {
+        await fetch(`${backendUrl}/agents/${agentId}/stop`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    } catch (err) {
+      console.error("Failed to stop agent:", err);
+    }
+
+    setCalling(false);
+    setChannel("");
+    setToken("");
+    setUid(0);
+    setAgentUid(0);
+    setAgentId("");
+
+    if (localMicrophoneTrack) {
+      localMicrophoneTrack.stop();
+      localMicrophoneTrack.close();
+    }
+  };
 
   return (
-    <>
-      <div>
-        {/* Optional: Comment out this line if not using AI Agent UIKit */}
-        <AgentVisualizer state={agentState} size="md" />
-        
-        {isConnected ? (
-          <div>
-            <div>
+    <div
+      style={{
+        padding: "20px",
+        fontFamily: "Arial, sans-serif",
+        maxWidth: "800px",
+        margin: "0 auto",
+      }}
+    >
+      <h1>Agora Conversational AI</h1>
+
+      {error && (
+        <div
+          style={{
+            padding: "15px",
+            backgroundColor: "#ffebee",
+            borderRadius: "4px",
+            marginBottom: "20px",
+            color: "#c62828",
+          }}
+        >
+          Error: {error}
+        </div>
+      )}
+
+      {isConnected ? (
+        <div style={{ marginTop: "20px" }}>
+          <div
+            style={{
+              padding: "15px",
+              backgroundColor: "#444444",
+              borderRadius: "4px",
+              marginBottom: "20px",
+            }}
+          >
+            <h3>Connected to Agent</h3>
+            <p>
+              <strong>Channel:</strong> {channel}
+            </p>
+            <p>
+              <strong>Your UID:</strong> {uid}
+            </p>
+            <p>
+              <strong>Agent UID:</strong> {agentUid}
+            </p>
+            <p>
+              <strong>Status:</strong>{" "}
+              {remoteUsers.length > 0
+                ? "Agent connected"
+                : "Waiting for agent..."}
+            </p>
+          </div>
+
+          <div style={{ marginBottom: "20px" }}>
+
+            {/* Local user */}
               <LocalUser
                 audioTrack={localMicrophoneTrack}
-                playAudio={false} // Plays the local user's audio track. You use this to test your mic before joining a channel.
-                micOn={micOn}
-              >
-                <samp>You</samp>
-              </LocalUser>
-            </div>
+                playAudio={false}
+                micOn={micOn}/>
+
+            {/* Remote agent */}
             {remoteUsers.map((user) => (
-              <div key={user.uid}>
-                <RemoteUser user={user}>
-                  <samp>AI Agent: {user.uid}</samp>
-                </RemoteUser>
+              <div key={user.uid} style={{ marginBottom: "10px" }}>
+                <RemoteUser user={user}/>
               </div>
             ))}
-          </div>
-        ) : (
-          <div>
-            <input
-              onChange={e => setAppId(e.target.value)}
-              placeholder="<Your app ID>"
-              value={appId}
-            />
-            <input
-              onChange={e => setChannel(e.target.value)}
-              placeholder="<Your channel Name>"
-              value={channel}
-            />
-            <input
-              onChange={e => setToken(e.target.value)}
-              placeholder="<Your token>"
-              value={token}
-            />
-            <input
-              onChange={e => setUid(e.target.value)}
-              placeholder="<Your user ID>"
-              value={uid}
-            />            
 
-            <button
-              disabled={!appId || !channel || !uid}
-              onClick={() => setCalling(true)}
-            >
-              <span>Start Conversation</span>
-            </button>
-          </div>
-        )}
-      </div>
-      {isConnected && (
-        <div style={{padding: "20px"}}>
-          <div>
-            <button onClick={() => setMic(a => !a)}>
-              {micOn ? "Disable mic" : "Enable mic" }
-            </button>
-            <button
-              onClick={() => setCalling(a => !a)}
+            {remoteUsers.length === 0 && (
+              <div
+                style={{
+                  padding: "10px",
+                  backgroundColor: "#fff3cd",
+                  borderRadius: "4px",
+                  color: "#856404",
+                }}
               >
-              {calling ? "End Conversation" : "Start Conversation"}
+                ⏳ Waiting for agent to connect...
+              </div>
+            )}
+          </div>
+
+          <div>
+            <button
+              onClick={() => setMic((prev) => !prev)}
+              style={{
+                marginRight: "10px",
+                padding: "10px 20px",
+                cursor: "pointer",
+              }}
+            >
+              {micOn ? "Disable Mic" : "Enable Mic"}
+            </button>
+            <button
+              onClick={stopAgent}
+              style={{
+                padding: "10px 20px",
+                backgroundColor: "#cc0000",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              End Conversation
             </button>
           </div>
         </div>
+      ) : (
+        <div style={{ marginTop: "20px" }}>
+          <div style={{ marginBottom: "20px" }}>
+            <p>
+              <strong>App ID:</strong> {appId || "Not set in .env.local"}
+            </p>
+          </div>
+
+          <button
+            onClick={startAgent}
+            disabled={!appId || isLoading}
+            style={{
+              padding: "12px 24px",
+              fontSize: "16px",
+              backgroundColor: isLoading || !appId ? "#cccccc" : "#0066cc",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: isLoading || !appId ? "not-allowed" : "pointer",
+            }}
+          >
+            {isLoading ? "Starting..." : "Start Conversation"}
+          </button>
+        </div>
       )}
-    </>
+    </div>
   );
 };
-  
+
 export default AgoraAIClient;
 ```
 
-</details>
+To add the component to your app, update your `App.jsx` to use the client component:
 
-## Test your application
+```jsx
+import AgoraAIClient from "./components/AgoraAIClient";
+import "./App.css";
 
-To test your AI voice client:
+function App() {
+  return <AgoraAIClient />;
+}
 
-1. Start your AI agent using the backend server:
+export default App;
+```
 
-    Follow the instructions in the [Agent quickstart](../get-started/quickstart) to start an agent session. 
+## Test the complete flow
 
-1. Start the development server:
-    
-    ```bash
-    npm run dev
-    ```
+1. **Start backend server** (from [Agent quickstart](quickstart)):
 
-1. Open your browser and navigate to the local development URL (typically `http://localhost:5173`).
 
-1. Enter your App ID, channel name, and RTC token in the input fields.
+1. **Configure environment variables**
 
-    Ensure you use the same App ID, channel name and user ID you used to start the agent session.
+    Update the app ID and the backend sever URL in `.env.local`
 
-1. Click **Start Conversation** to connect to your AI agent.
 
-1. Speak into your microphone and listen for the AI agent's response.
+1. **Start client** (in a separate terminal):
+   ```bash
+   npm run dev
+   ```
+
+   Open your browser to `http://localhost:5173` (or the URL Vite provides). You should see:
+
+    - Your App ID (from `.env.local`)
+    - A "Start Conversation" button
+    - Error messages if anything is misconfigured
+
+1. **Test the conversation**:
+   - Click "Start Conversation"
+   - Grant microphone permissions when prompted
+   - Speak to the agent
+   - Click "End Conversation" to stop
+
+## Reference
+
+### Troubleshooting
+
+#### Agent not connecting
+
+If you see "Waiting for agent..." but the agent never connects:
+
+1. **Backend not running**: Ensure backend server is running on `VITE_BACKEND_URL`.
+2. **Backend error**: Check backend console for API errors.
+3. **Channel mismatch**: Verify client joins same channel as backend created.
+4. **Token expired**: Tokens expire after 1 hour. Reconnect to get fresh token.
+
+#### Connection errors
+
+If you see connection errors in the console:
+
+1. **Check CORS**: Backend must allow requests from client origin. 
+2. **Check credentials**: Ensure `VITE_AGORA_APP_ID` and `VITE_BACKEND_URL` are correct.
+3. **Check browser console**: Use error messages to identify specific issues.
+
+### API reference
+
+Key hooks from `agora-rtc-react`:
+
+- [`useJoin`](https://api-ref.agora.io/en/video-sdk/reactjs/2.x/functions/useJoin.html): Joins the RTC channel with specified credentials
+- [`useLocalMicrophoneTrack`](https://api-ref.agora.io/en/video-sdk/reactjs/2.x/functions/useLocalMicrophoneTrack.html): Manages local microphone audio track
+- [`usePublish`](https://api-ref.agora.io/en/video-sdk/reactjs/2.x/functions/usePublish.html): Publishes local tracks to the channel
+- [`useRemoteUsers`](https://api-ref.agora.io/en/video-sdk/reactjs/2.x/functions/useRemoteUsers.html): Returns list of remote users in the channel
+- [`useIsConnected`](https://api-ref.agora.io/en/video-sdk/reactjs/2.x/functions/useIsConnected.html): Returns true when connected to RTC channel
+
+For complete API reference, see the [agora-rtc-react documentation](https://api-ref.agora.io/en/video-sdk/reactjs/2.x/modules.html).

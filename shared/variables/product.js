@@ -157,7 +157,7 @@ const data = {
     SDK: 'Conversational AI SDK',
     AGENT: 'Conversational AI agent',
     PRODUCT: 'Conversational AI Engine',
-    STUDIO: 'Convo AI Studio',
+    STUDIO: 'Agent Studio',
   },
 
   'convo-ai-device-kit': {

@@ -22,12 +22,15 @@ Before you begin, ensure that you have the following from [Agora Console](https:
 Never expose your App Certificate in client-side code or public repositories. Generate tokens on your server only.
 </Admonition>
 
+### Using the Conversational AI SDK 
 
-### Install the SDK
+If you are already using the Conversational AI SDK in your project, use the SDK token generation utility. If you want a standalone token generation dependency without the full SDK, use the <Vg k="COMPANY" /> [token builder library](#using-the-token-builder-library).
+
+#### Install the SDK
 
 The Agora Conversational AI SDKs include a utility that generates the `agora token` used in the `Authorization` header when calling the Conversational AI REST API. If you are already using one of these SDKs in your project, no additional installation is needed.
 
-<Tabs>
+<Tabs groupId="language">
 <TabItem value="nodejs" label="Node.js" default>
 Use one of the following to install the SDK:
 
@@ -62,12 +65,12 @@ pip install agent-server-sdk-python
 </TabItem>
 </Tabs>
 
-### Generate tokens
+#### Sample code
 
 The following sample code generates a token and uses it to start a Conversational AI agent. 
 
 
-<Tabs>
+<Tabs groupId="language">
 <TabItem value="nodejs" label="Node.js" default>
 
 ```js
@@ -276,6 +279,249 @@ To use string UIDs, pass a string value for `agent_uid` and set `enable_string_u
 <Admonition type="caution">
 The Agora RESTful API only supports HTTPS with TLS 1.0, 1.1, or 1.2 for encrypted communication. Requests over plain HTTP are not supported and will fail to connect.
 </Admonition>
+
+### Using the token builder library
+
+
+<Tabs groupId="language">
+<TabItem value="nodejs" label="Node.js" default>
+
+```bash
+npm install agora-token
+```
+</TabItem>
+
+<TabItem value="golang" label="Golang">
+
+```bash
+go get github.com/AgoraIO/Tools/DynamicKey/AgoraDynamicKey/go/src/rtctokenbuilder2
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python">
+
+```bash
+git clone https://github.com/AgoraIO/Tools.git
+cd Tools/DynamicKey/AgoraDynamicKey/python3/src
+```
+
+</TabItem>
+</Tabs>
+
+#### Install the library
+
+
+#### Sample code
+
+<Tabs groupId="language">
+<TabItem value="nodejs" label="Node.js" default>
+Use one of the following to install the SDK:
+
+```js
+const https = require('https');
+const { RtcTokenBuilder, RtcRole } = require('agora-token');
+
+// App credentials. Keep these on the server and never expose them to clients
+const appId = '<your_app_id>';
+const appCertificate = '<your_app_certificate>';
+
+// Token parameters. ChannelName must match properties.channel in the request body
+const channelName = '<your_channel_name>';
+const agentUid = '<your_agent_uid>';          // Must match agent_rtc_uid in the request body
+const tokenExpirationInSeconds = 86400;       // Valid range: 1–86400 (24 hours maximum)
+const privilegeExpirationInSeconds = 86400;
+
+// Generate a combined RTC + RTM token
+const token = RtcTokenBuilder.buildTokenWithRtm(
+  appId,
+  appCertificate,
+  channelName,
+  agentUid,
+  RtcRole.PUBLISHER,
+  tokenExpirationInSeconds,
+  privilegeExpirationInSeconds
+);
+
+// Use the token to start a Conversational AI agent
+const data = JSON.stringify({
+  name: '<agent_identifier>',
+  pipeline_id: '<your_agents_pipeline_id>',
+  properties: {
+    channel: channelName,
+    // The token the agent uses to join the RTC channel. This is a separate
+    // token from the Authorization header token, but in most cases the same
+    // value can be used for both.
+    token: token,
+    agent_rtc_uid: agentUid,
+    remote_rtc_uids: ['<remote_user_uid>'],
+    enable_string_uid: false,
+  },
+});
+
+const options = {
+  hostname: 'api.agora.io',
+  path: `/api/conversational-ai-agent/v2/projects/${appId}/join`,
+  method: 'POST',
+  headers: {
+    'Authorization': 'agora token=' + token,
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(data),
+  },
+};
+
+const req = https.request(options, (res) => {
+  console.log(`Status code: ${res.statusCode}`);
+  res.on('data', (d) => { process.stdout.write(d); });
+});
+
+req.on('error', (error) => { console.error(error); });
+req.write(data);
+req.end();
+```
+</TabItem>
+
+<TabItem value="golang" label="Golang">
+
+```go
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"net/http"
+
+	rtctokenbuilder "github.com/AgoraIO/Tools/DynamicKey/AgoraDynamicKey/go/src/rtctokenbuilder2"
+)
+
+func main() {
+	// App credentials — keep these on the server and never expose them to clients
+	appId := "<your_app_id>"
+	appCertificate := "<your_app_certificate>"
+
+	// Token parameters — channelName must match properties.channel in the request body
+	channelName := "<your_channel_name>"
+	agentUid := "<your_agent_uid>"              // Must match agent_rtc_uid in the request body
+	tokenExpirationInSeconds := uint32(86400)   // Valid range: 1–86400 (24 hours maximum)
+	privilegeExpirationInSeconds := uint32(86400)
+
+	// Generate a combined RTC + RTM token
+	token, err := rtctokenbuilder.BuildTokenWithRtm(
+		appId,
+		appCertificate,
+		channelName,
+		agentUid,
+		rtctokenbuilder.RolePublisher,
+		tokenExpirationInSeconds,
+		privilegeExpirationInSeconds,
+	)
+	if err != nil {
+		fmt.Printf("Failed to generate token: %v\n", err)
+		return
+	}
+
+	// Use the token to start a Conversational AI agent
+	body := fmt.Sprintf(`{
+  "name": "<agent_identifier>",
+  "pipeline_id": "<your_agents_pipeline_id>",
+  "properties": {
+    "channel": "%s",
+    "token": "%s",
+    "agent_rtc_uid": "%s",
+    "remote_rtc_uids": ["<remote_user_uid>"],
+    "enable_string_uid": false
+  }
+}`, channelName, token, agentUid)
+
+	url := fmt.Sprintf("https://api.agora.io/api/conversational-ai-agent/v2/projects/%s/join", appId)
+
+	req, err := http.NewRequest("POST", url, bytes.NewBufferString(body))
+	if err != nil {
+		fmt.Printf("Failed to create request: %v\n", err)
+		return
+	}
+
+	req.Header.Set("Authorization", "agora token="+token)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("Request failed: %v\n", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	fmt.Printf("Status code: %d\n", resp.StatusCode)
+}
+```
+</TabItem>
+
+<TabItem value="python" label="Python">
+
+```python
+import json
+import http.client
+from RtcTokenBuilder2 import RtcTokenBuilder, Role_Publisher
+
+# App credentials — keep these on the server and never expose them to clients
+app_id = '<your_app_id>'
+app_certificate = '<your_app_certificate>'
+
+# Token parameters — channel_name must match properties.channel in the request body
+channel_name = '<your_channel_name>'
+agent_uid = '<your_agent_uid>'            # Must match agent_rtc_uid in the request body
+token_expiration_in_seconds = 86400       # Valid range: 1–86400 (24 hours maximum)
+privilege_expiration_in_seconds = 86400
+
+# Generate a combined RTC + RTM token
+token = RtcTokenBuilder.build_token_with_rtm(
+    app_id,
+    app_certificate,
+    channel_name,
+    agent_uid,
+    Role_Publisher,
+    token_expiration_in_seconds,
+    privilege_expiration_in_seconds,
+)
+
+# Use the token to start a Conversational AI agent
+payload = json.dumps({
+    'name': '<agent_identifier>',
+    'pipeline_id': '<your_agents_pipeline_id>',
+    'properties': {
+        'channel': channel_name,
+        # The token the agent uses to join the RTC channel. This is a separate
+        # token from the Authorization header token, but in most cases the same
+        # value can be used for both.
+        'token': token,
+        'agent_rtc_uid': agent_uid,
+        'remote_rtc_uids': ['<remote_user_uid>'],
+        'enable_string_uid': False,
+    }
+})
+
+headers = {
+    'Authorization': 'agora token=' + token,
+    'Content-Type': 'application/json'
+}
+
+conn = http.client.HTTPSConnection('api.agora.io')
+conn.request(
+    'POST',
+    f'/api/conversational-ai-agent/v2/projects/{app_id}/join',
+    payload,
+    headers
+)
+
+res = conn.getresponse()
+print(f'Status code: {res.status}')
+print(res.read().decode('utf-8'))
+```
+
+</TabItem>
+</Tabs>
+
 
 ### Additional considerations
 

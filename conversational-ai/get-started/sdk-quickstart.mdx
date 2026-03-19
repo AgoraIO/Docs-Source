@@ -1,0 +1,294 @@
+---
+title: 'Server SDK quickstart'
+sidebar_position: 2
+type: docs
+platform_selector: false
+description: Build a voice AI agent server in TypeScript using the Agora Conversational AI SDK.
+---
+
+This page shows you how to build a Node.js server using the that starts and stops a voice AI agent using the Agora Conversational AI TypeScript SDK. The SDK wraps the Conversational AI REST API with typed vendor configuration, automatic token generation, and a session lifecycle API.
+
+## Understand the tech
+
+The SDK provides two layers. 
+
+| Layer | What it does | Entry point |
+|---|---|---|
+| **Agentkit** | Typed vendor classes, session lifecycle, automatic token generation | `Agent`, `AgentSession` |
+| **Raw client** | Directly maps to every REST endpoint | `session.raw`, `client.agents.*` |
+
+Agentkit is built on top of the raw client. If you need an API endpoint not exposed by agentkit for example, fetching conversation history, call it directly through `session.raw`.
+
+This guide uses the higher-level Agentkit layer.
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- [Enabled Agora Conversational AI](../get-started/manage-agora-account) for your project.
+- Completed the [Voice Calling](/voice-calling/get-started/get-started-sdk) or [Video Calling](/video-calling/get-started/get-started-sdk) quickstart. 
+- Your **App ID** and **App Certificate** from [Agora Console](https://console.agora.io). The SDK uses the App Certificate to generate tokens automatically on every request.
+- API keys for your chosen STT, LLM, and TTS providers. This guide uses Deepgram, OpenAI, and ElevenLabs as examples.
+- Node.js 18 or later.
+
+## Install the SDK
+
+```bash
+npm install agora-agent-server-sdk
+```
+
+The package name on npm is `agora-agent-server-sdk`. Imports use `agora-agent-sdk`.
+
+## Set up environment variables
+
+Store credentials in a `.env` file. Never commit this file or expose its contents client-side; your App Certificate must stay on the server.
+
+<EnvFile 
+  fileName=".env"
+  credentials={[
+    // Agora credentials (from console)
+    { key: 'appId', envVar: 'AGORA_APP_ID' },
+    { key: 'appCertificate', envVar: 'AGORA_APP_CERT' },
+  ]}
+  customVariables={[
+    // User-provided values (placeholders)
+    { blank: true },
+    { envVar: 'DEEPGRAM_API_KEY', placeholder: '<your_deepgram_key>', comment: 'ASR,LLM and TTS vendor keys' },
+    { envVar: 'OPENAI_API_KEY', placeholder: '<your_openai_key>'},
+    { envVar: 'ELEVENLABS_API_KEY', placeholder: '<your_elevenlabs_key>' },
+    { envVar: 'ELEVENLABS_VOICE_ID', placeholder: '<your_voice_id>' },
+    
+    // Fixed values (pre-filled)
+    // { envVar: 'MICROSOFT_TTS_REGION', value: 'eastus', comment: 'Azure region for TTS service' },
+  ]}
+/>
+
+## Implementation
+
+### Create a client
+
+`AgoraClient` holds your credentials and handles authentication. Pass your App ID and App Certificate to use app-credentials mode. The SDK auto-generates a temporary token scoped to each channel before every request.
+
+```typescript
+import { AgoraClient, Area } from 'agora-agent-sdk';
+
+const client = new AgoraClient({
+  area: Area.US, // Sets the regional API endpoint
+  appId: process.env.AGORA_APP_ID!,
+  appCertificate: process.env.AGORA_APP_CERT!,
+});
+```
+
+Use the region closest to your users: `Area.US`, `Area.EU`, `Area.AP`, or `Area.CN`.
+
+### Define an agent
+
+`Agent` is a reusable configuration object. Define it once at startup and call
+`createSession()` on it for each user conversation. 
+
+```typescript
+import { Agent, OpenAI, ElevenLabsTTS, DeepgramSTT } from 'agora-agent-sdk';
+
+const agent = new Agent({
+  name: 'support-assistant',
+  instructions: 'You are a helpful voice assistant. Keep responses concise.',
+  greeting: 'Hello! How can I help you today?',
+  maxHistory: 20,
+})
+  .withLlm(new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY!,
+    model: 'gpt-4o-mini',
+  }))
+  .withTts(new ElevenLabsTTS({
+    key: process.env.ELEVENLABS_API_KEY!,
+    modelId: 'eleven_flash_v2_5',
+    voiceId: process.env.ELEVENLABS_VOICE_ID!,
+    sampleRate: 24000,
+  }))
+  .withStt(new DeepgramSTT({
+    apiKey: process.env.DEEPGRAM_API_KEY!,
+    model: 'nova-2',
+    language: 'en-US',
+  }));
+```
+
+`instructions` becomes the LLM system prompt. `greeting` is the first thing the agent says when it joins the channel. For the full list of `Agent` options and vendor classes, see the [SDK reference](./sdk-reference-typescript).
+
+### Create and start a session
+
+Call `agent.createSession()` to bind the agent to a specific RTC channel, then register event listeners, then call `session.start()`.
+
+Register listeners **before** calling `start()` — otherwise you may miss the `started` event.
+
+```typescript
+import { ExpiresIn } from 'agora-agent-sdk';
+
+const session = agent.createSession(client, {
+  channel: 'your-channel-name', // must match the channel your client app has joined
+  agentUid: '1',                // UID the agent uses inside the channel
+  remoteUids: ['100'],          // UIDs the agent listens and responds to
+  idleTimeout: 120,             // seconds before auto-stop if the channel is empty
+  expiresIn: ExpiresIn.hours(1),
+});
+
+// Register before start()
+session.on('started', ({ agentId }) => {
+  console.log('Agent is live:', agentId);
+});
+
+session.on('stopped', ({ agentId }) => {
+  console.log('Agent has left:', agentId);
+});
+
+session.on('error', (err) => {
+  console.error('Session error:', err);
+});
+
+const agentId = await session.start();
+```
+
+`start()` transitions the session through `idle → starting → running` and returns the `agentId`. The `agentId` is the same value as the `agent_id` returned by the REST API.
+
+You can check the session state at any time with `session.status`.
+
+### Interact with a running session
+
+Once the session is in the `running` state, you can instruct the agent or change its configuration mid-session.
+
+```typescript
+// Make the agent speak a specific message
+await session.say('One moment while I look that up for you.');
+
+// Interrupt the agent mid-speech
+await session.interrupt();
+
+// Update LLM params without restarting the session
+await session.update({
+  llm: {
+    system_messages: [{ role: 'system', content: 'You are now in concise mode.' }],
+  },
+});
+```
+
+### Stop the session
+
+Call `session.stop()` when the user ends the conversation. This transitions the session through `running → stopping → stopped` and removes the agent from the channel.
+
+```typescript
+await session.stop();
+```
+
+## Complete example
+
+The following is a minimal Express server your client app can call to manage agent sessions.
+
+<details>
+<summary>Complete server code example</summary>
+
+```typescript
+import 'dotenv/config';
+import express from 'express';
+import {
+  AgoraClient,
+  Area,
+  Agent,
+  ExpiresIn,
+  OpenAI,
+  ElevenLabsTTS,
+  DeepgramSTT,
+  AgoraError,
+} from 'agora-agent-sdk';
+
+const app = express();
+app.use(express.json());
+
+// Initialized once at startup — shared across all requests
+const client = new AgoraClient({
+  area: Area.US,
+  appId: process.env.AGORA_APP_ID!,
+  appCertificate: process.env.AGORA_APP_CERT!,
+});
+
+const agent = new Agent({
+  name: 'support-assistant',
+  instructions: 'You are a helpful voice assistant. Keep responses concise.',
+  greeting: 'Hello! How can I help you today?',
+  maxHistory: 20,
+})
+  .withLlm(new OpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-4o-mini' }))
+  .withTts(new ElevenLabsTTS({
+    key: process.env.ELEVENLABS_API_KEY!,
+    modelId: 'eleven_flash_v2_5',
+    voiceId: process.env.ELEVENLABS_VOICE_ID!,
+    sampleRate: 24000,
+  }))
+  .withStt(new DeepgramSTT({ apiKey: process.env.DEEPGRAM_API_KEY!, model: 'nova-2', language: 'en-US' }));
+
+// Maps agentId → session object.
+// In production, use a database or Redis so any server process can stop any session.
+const sessions = new Map<string, ReturnType<typeof agent.createSession>>();
+
+// POST /sessions/start
+// Called by your client app after the user joins the Agora channel.
+// Body: { channel: string, userId: string }
+// Returns: { agentId: string }
+app.post('/sessions/start', async (req, res) => {
+  const { channel, userId } = req.body;
+
+  const session = agent.createSession(client, {
+    channel,
+    agentUid: '1',
+    remoteUids: [userId],
+    idleTimeout: 120,
+    expiresIn: ExpiresIn.hours(1),
+  });
+
+  session.on('error', (err) => console.error(`Session error [${channel}]:`, err));
+
+  try {
+    const agentId = await session.start();
+    sessions.set(agentId, session);
+    res.json({ agentId });
+  } catch (err) {
+    if (err instanceof AgoraError) {
+      res.status(err.statusCode).json({ error: err.message });
+    } else {
+      res.status(500).json({ error: 'Failed to start agent' });
+    }
+  }
+});
+
+// POST /sessions/stop
+// Called by your client app when the user ends the conversation.
+// Body: { agentId: string }
+app.post('/sessions/stop', async (req, res) => {
+  const { agentId } = req.body;
+  const session = sessions.get(agentId);
+
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+
+  try {
+    await session.stop();
+    sessions.delete(agentId);
+    res.json({ status: 'stopped' });
+  } catch (err) {
+    if (err instanceof AgoraError) {
+      res.status(err.statusCode).json({ error: err.message });
+    } else {
+      res.status(500).json({ error: 'Failed to stop agent' });
+    }
+  }
+});
+
+app.listen(3000, () => console.log('Server listening on port 3000'));
+```
+</details>
+
+## Next steps
+
+- [SDK reference — TypeScript](./sdk-reference-typescript) — full reference for `AgoraClient`, `Agent`, `AgentSession`, all vendor classes, and error types
+- [Authentication](./authentication) — pre-built tokens and Basic Auth
+- [MLLM flow](./guides/mllm-flow) — use OpenAI Realtime or Gemini Live for end-to-end audio without separate STT or TTS
+- [REST API reference](../rest-api/agent/join) — the underlying API the SDK calls, with the full list of agent configuration parameters

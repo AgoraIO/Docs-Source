@@ -1,0 +1,421 @@
+---
+title: TypeScript API reference
+sidebar_position: 1
+sidebar_label: Node
+platform_selector: false
+description: Full API reference for the Agora Conversational AI TypeScript SDK — AgoraClient, Agent, AgentSession, and vendor classes.
+---
+## AgoraClient
+
+`AgoraClient` extends the Fern-generated base client with regional domain pool support and three authentication modes.
+```typescript
+import { AgoraClient, Area } from 'agora-agent-sdk';
+```
+
+### Constructor
+```typescript
+new AgoraClient(options: AgoraClient.Options)
+```
+
+The authentication mode is resolved automatically from the options you provide.
+
+| Option | Type | Required | Description |
+|---|---|---|---|
+| `area` | [`Area`](#area) | Yes | Region for API routing |
+| `appId` | `string` | Yes | Agora App ID |
+| `appCertificate` | `string` | Yes | Agora App Certificate. Keep this secret and never expose it client-side |
+| `customerId` | `string` | No | Customer ID for Basic Auth |
+| `customerSecret` | `string` | No | Customer Secret for Basic Auth |
+| `authToken` | `string` | No | Pre-built `agora token=<value>` string |
+| `timeout` | `number` | No | Request timeout in milliseconds |
+| `maxRetries` | `number` | No | Maximum retry attempts |
+| `fetch` | `typeof fetch` | No | Custom fetch implementation for unsupported runtimes |
+
+Authentication mode is resolved from the options you provide:
+
+| Options provided | Resolved [`authMode`](#agoraauthmode) |
+|---|---|
+| `customerId` + `customerSecret` | `"basic"` |
+| `authToken` | `"token"` |
+| Neither | `"app-credentials"` |
+
+See [Authentication](/conversational-ai/get-started/authentication) for details on each mode.
+
+### Properties
+
+The following read-only properties are available on any `AgoraClient` instance.
+
+| Property | Type | Description |
+|---|---|---|
+| `appId` | `string` | The Agora App ID |
+| `appCertificate` | `string` | The Agora App Certificate |
+| `authMode` | [`AgoraAuthMode`](#agoraauthmode) | The resolved authentication mode |
+| `pool` | `Pool` | The underlying domain pool instance used for regional routing |
+
+### Methods
+
+The following methods are available in addition to the Fern-generated sub-client methods.
+
+#### `stopAgent(agentSessionId)`
+
+Stops a running agent session by ID without requiring a reference to the `AgentSession` object. Use this in stateless server architectures where the stop handler runs in a different process from the one that called `start()`.
+```typescript
+await client.stopAgent(agentSessionId);
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `agentSessionId` | `string` | The agent ID returned by [`session.start()`](#start) |
+
+#### `nextRegion()`
+
+Cycles to the next region prefix in the domain pool. Call this after a request failure to try a different regional endpoint.
+```typescript
+client.nextRegion();
+```
+
+#### `selectBestDomain(signal?)`
+
+Triggers a manual DNS resolution check to select the best domain suffix. Runs automatically every 30 seconds, but can be called manually after a network change.
+```typescript
+await client.selectBestDomain();
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `signal` | `AbortSignal` | Optional abort signal to cancel the DNS check |
+
+#### `getCurrentURL()`
+
+Returns the full API URL currently in use.
+```typescript
+const url = client.getCurrentURL();
+// Example: 'https://api-us-west-1.agora.io/api/conversational-ai-agent'
+```
+
+### Sub-clients
+
+`AgoraClient` exposes Fern-generated sub-clients for direct REST API access. You typically do not need these when using the [agentkit layer](#agent).
+
+| Property | Description |
+|---|---|
+| `client.agents` | Start, stop, update, speak, interrupt, get, list agents |
+| `client.telephony` | Telephony operations |
+| `client.phoneNumbers` | Phone number management |
+
+For full method signatures and request parameters, see the [REST API reference](/conversational-ai/rest-api/agent/join).
+
+
+## Agent
+
+`Agent` is an immutable configuration object. Each builder method returns a new `Agent` instance — the original is never modified. Define one `Agent` at startup and call `createSession()` on it for each user conversation.
+```typescript
+import { Agent } from 'agora-agent-sdk';
+```
+
+### Constructor
+```typescript
+new Agent(options?: AgentOptions)
+```
+
+All options are optional. Use the [builder methods](#builder-methods) to set vendor configuration after construction.
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `name` | `string` | `undefined` | Agent name, used as the default session name |
+| `instructions` | `string` | `undefined` | LLM system prompt |
+| `greeting` | `string` | `undefined` | First message spoken when the session starts |
+| `failureMessage` | `string` | `undefined` | Message spoken when an LLM call fails |
+| `maxHistory` | `number` | `undefined` | Maximum conversation turns kept in LLM context |
+| `turnDetection` | `TurnDetectionConfig` | `undefined` | Voice activity detection settings |
+| `sal` | `SalConfig` | `undefined` | Selective Attention Locking configuration |
+| `avatar` | `AvatarConfig` | `undefined` | Avatar configuration |
+| `advancedFeatures` | `AdvancedFeatures` | `undefined` | Enable MLLM mode, AI-VAD, and other advanced features |
+| `parameters` | `SessionParams` | `undefined` | Session parameters including silence and farewell config |
+| `geofence` | `GeofenceConfig` | `undefined` | Regional access restriction |
+| `labels` | `Labels` | `undefined` | Custom key-value labels returned in notification callbacks |
+| `rtc` | `RtcConfig` | `undefined` | RTC media encryption |
+| `fillerWords` | `FillerWordsConfig` | `undefined` | Filler words played while waiting for the LLM response |
+
+### Builder methods
+
+All builder methods return a **new** `Agent` instance. The original is never modified.
+
+#### `withLlm(vendor)`
+
+Sets the LLM vendor. Pass an instance of [`OpenAI`](#openai), [`AzureOpenAI`](#azureopenai), [`Anthropic`](#anthropic), or [`Gemini`](#gemini).
+```typescript
+withLlm(vendor: BaseLLM): Agent<TTSSampleRate>
+```
+
+#### `withTts(vendor)`
+
+Sets the TTS vendor. The sample rate type is captured and tracked for [avatar](#avatar-vendors) compatibility.
+```typescript
+withTts<SR extends number>(vendor: BaseTTS<SR>): Agent<SR>
+```
+
+#### `withStt(vendor)`
+
+Sets the STT vendor. Pass an instance of any [STT vendor class](#stt-vendors).
+```typescript
+withStt(vendor: BaseSTT): Agent<TTSSampleRate>
+```
+
+#### `withMllm(vendor)`
+
+Sets the MLLM vendor for multimodal mode. Pass [`OpenAIRealtime`](#openairealtime) or [`VertexAI`](#vertexai). Requires `advancedFeatures: { enable_mllm: true }` in the constructor.
+```typescript
+withMllm(vendor: BaseMLLM): Agent<TTSSampleRate>
+```
+
+#### `withAvatar(vendor)`
+
+Sets the avatar vendor. The `this` constraint enforces at compile time that the agent's TTS sample rate matches the avatar's required rate.
+```typescript
+withAvatar<RequiredSR extends number>(
+  this: Agent<RequiredSR>,
+  vendor: BaseAvatar<RequiredSR>
+): Agent<RequiredSR>
+```
+
+#### `withTurnDetection(config)`
+
+Configures voice activity detection. Use `config.start_of_speech` and `config.end_of_speech` for the SOS/EOS model.
+```typescript
+withTurnDetection(config: TurnDetectionConfig): Agent<TTSSampleRate>
+```
+
+#### `withInstructions(text)`
+
+Overrides the LLM system prompt on a new `Agent` instance.
+```typescript
+withInstructions(instructions: string): Agent<TTSSampleRate>
+```
+
+#### `withGreeting(text)`
+
+Overrides the greeting message on a new `Agent` instance.
+```typescript
+withGreeting(greeting: string): Agent<TTSSampleRate>
+```
+
+#### `withName(name)`
+
+Overrides the agent name on a new `Agent` instance.
+```typescript
+withName(name: string): Agent<TTSSampleRate>
+```
+
+#### Other builder methods
+
+The following methods follow the same pattern — each returns a new `Agent` instance with the updated configuration.
+
+| Method | Parameter type | Description |
+|---|---|---|
+| `withSal(config)` | `SalConfig` | Set Selective Attention Locking configuration |
+| `withAdvancedFeatures(features)` | `AdvancedFeatures` | Set advanced features |
+| `withParameters(parameters)` | `SessionParams` | Set session parameters |
+| `withFailureMessage(message)` | `string` | Set the message spoken when the LLM fails |
+| `withMaxHistory(n)` | `number` | Set the maximum conversation history length |
+| `withGeofence(geofence)` | `GeofenceConfig` | Set geofence configuration |
+| `withLabels(labels)` | `Labels` | Set custom labels |
+| `withRtc(rtc)` | `RtcConfig` | Set RTC configuration |
+| `withFillerWords(fillerWords)` | `FillerWordsConfig` | Set filler words configuration |
+
+### `createSession(client, options)`
+
+Creates an [`AgentSession`](#agentsession) bound to a specific client and channel. Does not start the agent — call [`session.start()`](#start) to join the channel.
+```typescript
+createSession(
+  client: AgoraClient,
+  options: SessionOptions,
+): AgentSession
+```
+
+`SessionOptions` fields:
+
+| Option | Type | Required | Description |
+|---|---|---|---|
+| `channel` | `string` | Yes | Channel name to join |
+| `agentUid` | `string` | Yes | The agent's RTC UID |
+| `remoteUids` | `string[]` | Yes | Remote user UIDs the agent listens and responds to |
+| `name` | `string` | No | Session name. Defaults to agent name or `agent-{timestamp}` |
+| `token` | `string` | No | Pre-built RTC+RTM token. Omit to auto-generate from app credentials |
+| `expiresIn` | `number` | No | Token lifetime in seconds. Only applies when the token is auto-generated. Valid range: 1–86400. Use [`ExpiresIn`](#expiresin) helpers for clarity |
+| `idleTimeout` | `number` | No | Seconds before the agent auto-exits when no audio is detected. `0` disables the timeout |
+| `enableStringUid` | `boolean` | No | Use string UIDs instead of numeric UIDs |
+| `debug` | `boolean` | No | Log API requests to the console |
+
+### Properties
+
+Read-only properties available on any `Agent` instance.
+
+| Property | Type | Description |
+|---|---|---|
+| `name` | `string \| undefined` | Agent name |
+| `instructions` | `string \| undefined` | LLM system prompt |
+| `greeting` | `string \| undefined` | Greeting message |
+| `failureMessage` | `string \| undefined` | Message spoken when LLM fails |
+| `maxHistory` | `number \| undefined` | Maximum conversation history length |
+| `llm` | `LlmConfig \| undefined` | LLM configuration |
+| `tts` | `TtsConfig \| undefined` | TTS configuration |
+| `stt` | `SttConfig \| undefined` | STT configuration |
+| `mllm` | `MllmConfig \| undefined` | MLLM configuration |
+| `avatar` | `AvatarConfig \| undefined` | Avatar configuration |
+| `turnDetection` | `TurnDetectionConfig \| undefined` | Turn detection configuration |
+| `sal` | `SalConfig \| undefined` | SAL configuration |
+| `advancedFeatures` | `AdvancedFeatures \| undefined` | Advanced features |
+| `parameters` | `SessionParams \| undefined` | Session parameters |
+| `geofence` | `GeofenceConfig \| undefined` | Geofence configuration |
+| `labels` | `Labels \| undefined` | Custom labels |
+| `rtc` | `RtcConfig \| undefined` | RTC configuration |
+| `fillerWords` | `FillerWordsConfig \| undefined` | Filler words configuration |
+| `config` | `AgentOptions` | Full read-only configuration snapshot |
+
+## AgentSession
+
+`AgentSession` manages the full lifecycle of a running agent. Obtain an `AgentSession` by calling [`agent.createSession()`](#createsessionclient-options) — do not call the constructor directly.
+```typescript
+import { AgentSession } from 'agora-agent-sdk';
+```
+
+### State machine
+
+A session progresses through the following states:
+```
+idle ──► starting ──► running ──► stopping ──► stopped
+                         │
+                         ▼
+                       error
+```
+
+| Transition | Trigger |
+|---|---|
+| `idle → starting` | `start()` called |
+| `starting → running` | API responds with agent ID |
+| `starting → error` | API request fails |
+| `running → stopping` | `stop()` called |
+| `stopping → stopped` | API confirms agent stopped |
+| `stopping → error` | Stop request fails and agent was not already stopped |
+| `running → error` | Unrecoverable error during interaction |
+
+`start()` can also be called from `stopped` or `error` state to restart the session.
+
+### Methods
+
+The following methods are available on an `AgentSession` instance.
+
+#### `start()`
+
+Starts the agent session. Generates tokens if not provided, sends the start request, and returns the agent ID.
+```typescript
+start(): Promise<string>
+```
+
+- Transitions: `idle` / `stopped` / `error` → `starting` → `running`
+- Throws if called in `starting`, `running`, or `stopping` state
+- Throws if avatar configuration has a TTS sample rate mismatch
+
+#### `stop()`
+
+Stops the agent session and removes the agent from the channel. If the agent has already stopped (for example due to idle timeout), resolves silently rather than throwing a 404 error.
+```typescript
+stop(): Promise<void>
+```
+
+- Transitions: `running` → `stopping` → `stopped`
+- Throws if called outside `running` state
+
+#### `say(text, options?)`
+
+Instructs the agent to speak the given text.
+```typescript
+say(text: string, options?: SayOptions): Promise<void>
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `text` | `string` | Yes | The text for the agent to speak |
+| `options.priority` | [`SpeakPriority`](#speakpriority) | No | Message priority |
+| `options.interruptable` | `boolean` | No | Whether this message can be interrupted by the user |
+
+- Only valid in `running` state
+
+#### `interrupt()`
+
+Interrupts the agent's current speech.
+```typescript
+interrupt(): Promise<void>
+```
+
+- Only valid in `running` state
+
+#### `update(config)`
+
+Updates the agent configuration mid-session without restarting. Accepts a partial configuration object in REST API format.
+```typescript
+update(config: AgentConfigUpdate): Promise<void>
+```
+
+- Only valid in `running` state
+
+#### `getHistory()`
+
+Fetches the conversation history for this session. Requires a valid agent ID — `start()` must have been called successfully.
+```typescript
+getHistory(): Promise<ConversationHistory>
+```
+
+#### `getInfo()`
+
+Fetches current agent metadata from the API. Requires a valid agent ID.
+```typescript
+getInfo(): Promise<SessionInfo>
+```
+
+#### `on(event, handler)`
+
+Subscribes to a session event. Register handlers **before** calling `start()` to avoid missing the `started` event.
+```typescript
+on<T>(event: AgentSessionEvent, handler: AgentSessionEventHandler<T>): void
+```
+
+#### `off(event, handler)`
+
+Unsubscribes a previously registered event handler.
+```typescript
+off<T>(event: AgentSessionEvent, handler: AgentSessionEventHandler<T>): void
+```
+
+### Events
+
+The session emits the following events. See [`AgentSessionEvent`](#agentsessionevent) and [`AgentSessionEventHandler`](#agentsessioneventhandler) for type details.
+
+| Event | Payload type | Description |
+|---|---|---|
+| `"started"` | `{ agentId: string }` | Agent successfully joined the channel |
+| `"stopped"` | `{ agentId: string }` | Agent left the channel |
+| `"error"` | `Error` | An unrecoverable error occurred |
+
+### Properties
+
+The following read-only properties are available on any `AgentSession` instance.
+
+| Property | Type | Description |
+|---|---|---|
+| `status` | `string` | Current session state. One of `"idle"`, `"starting"`, `"running"`, `"stopping"`, `"stopped"`, `"error"` |
+| `id` | `string \| null` | Agent ID, populated after `start()` resolves |
+| `agent` | `Agent` | The agent configuration this session was created from |
+| `appId` | `string` | The Agora App ID for this session |
+| `raw` | `AgentsClient` | Direct access to the Fern-generated `AgentsClient` for advanced operations |
+
+#### Using `session.raw`
+
+Use `session.raw` to call REST API endpoints not yet exposed by the agentkit layer. You must pass `appid` and `agentId` manually.
+```typescript
+await session.raw.someNewEndpoint({
+  appid: session.appId,
+  agentId: session.id!,
+});
+```

@@ -10,7 +10,7 @@ This article introduces the billing policy for the on-premise recording service 
 
 Starting in April 2021, Agora further divided HD+ video into Full HD, 2K, and 2K+ video and set a more fine-grained pricing.
 
-<div class="alert note"><ul><li>Your billing details may differ if you have signed a contract with Agora.</li><li>If the previous pricing set for HD and HD+ video still applies to you, see <a href="#question">What is the previous pricing for audio and video?</a> for detailed video categorization and unit price.</li></ul></div>
+<Admonition type="info"><ul><li>Your billing details may differ if you have signed a contract with Agora.</li><li>If the previous pricing set for HD and HD+ video still applies to you, see <a href="#question">What is the previous pricing for audio and video?</a> for detailed video categorization and unit price.</li></ul></Admonition>
 
 ## Overview
 
@@ -20,7 +20,7 @@ Billing for the on-premise recording service begins once you use the Agora On-Pr
 
 On the first day of each month, Agora sends you the bill via email, and five days later deducts the payment from your account. For details, see [Billing, fee deduction, and account suspension](../../video-calling/reference/billing-policies).
 
-<div class="alert note">Agora gives each Agora account 10,000 free-of-charge minutes each month. For more information on the deduction sequence and applicable products, see<a href="https://docs.agora.io/en/faq/billing_free"> Agora's free-of-charge policy for the first 10,000 minutes</a>.</div>
+<Admonition type="info">Agora gives each Agora account 10,000 free-of-charge minutes each month. For more information on the deduction sequence and applicable products, see<a href="https://docs.agora.io/en/faq/billing_free"> Agora's free-of-charge policy for the first 10,000 minutes</a>.</Admonition>
 
 ## Composition
 
@@ -30,7 +30,7 @@ At the end of each month, Agora adds up the usage duration (in seconds) of audio
 
 **Cost = audio charges + video charges = audio pricing × audio service minutes + video pricing × video service minutes**
 
-<div class="alert note"><ul><li>If the recording server successfully records both audio and video at the same time, then Agora only charges for the video minutes.</li><li>During a recording, the idle minutes are charged based on the audio pricing. The cost is the audio pricing × idle minutes.</li></ul></div>
+<Admonition type="info"><ul><li>If the recording server successfully records both audio and video at the same time, then Agora only charges for the video minutes.</li><li>During a recording, the idle minutes are charged based on the audio pricing. The cost is the audio pricing × idle minutes.</li></ul></Admonition>
 
 ### Service minutes
 
@@ -41,7 +41,7 @@ Service minutes comprise the following:
 - **Video minutes**: The duration that the recording server records video in a channel.
 - **Audio minutes**: The remaining duration after deducting the video minutes from the total duration when the recording server is in the channel, regardless of whether the recording server records any audio.
 
-<div class="alert note">If you create a recording instance and record multiple audio and video streams at the same time in a channel, the total service minutes per streams are not additive. For example: <ul><li>If a recording instance records the video streams of both user A and user B for the same 10 minutes, the billing for the recording service is for 10 minutes of video.</li><li>If a recording instance records the audio stream of user A and the video stream of user B for the same 10 minutes, the billing for the recording device is also for 10 minutes of video.</li></ul>If you use multiple recording instances at the same time in a channel, then the service minutes per recording instance are additive.</div>
+<Admonition type="info">If you create a recording instance and record multiple audio and video streams at the same time in a channel, the total service minutes per streams are not additive. For example: <ul><li>If a recording instance records the video streams of both user A and user B for the same 10 minutes, the billing for the recording service is for 10 minutes of video.</li><li>If a recording instance records the audio stream of user A and the video stream of user B for the same 10 minutes, the billing for the recording device is also for 10 minutes of video.</li></ul>If you use multiple recording instances at the same time in a channel, then the service minutes per recording instance are additive.</Admonition>
 
 ### Unit Price
 
@@ -86,8 +86,9 @@ The unit pricing for audio and video is as follows:
                 </tbody>
             </table>      
 
->① Agora determines video category based on aggregate video resolution, which is the sum of resolutions of all the video streams a user subscribes to at the same time. For details, see <a href="#aggregate">Aggregate video resolution</a>.
-
+<Admonition type="info">
+Agora determines video category based on aggregate video resolution, which is the sum of resolutions of all the video streams a user subscribes to at the same time. For details, see <a href="#aggregate">Aggregate video resolution</a>.
+</Admonition>
 
 <a name="aggregate"></a>
 #### Aggregate video resolution
@@ -101,6 +102,7 @@ Agora adds up the resolution of all the video streams recorded at the same time 
 | 2K                             | From greater than 2,073,600 (1920 × 1080) to 3,686,400 (2560 × 1440)  |
 | 2K+                            | From greater than 3,686,400 (2560 × 1440) to 8,847,360 (4096 × 2160)  |
 
+
 For example, if the recording server records two video streams with resolutions of 1280 × 720 and 1920 × 1080 at the same time, the aggregated resolution is (1280 × 720) + (1920 × 1080) = 2,995,200. Because 2,995,200 is greater than 2,073,600 but less than 3,686,400, the recording service is charged based on the 2K video pricing.
 
 
@@ -108,7 +110,7 @@ For example, if the recording server records two video streams with resolutions 
 
 This section shows how to calculate the monthly audio and video service minutes of each category, as well as the total cost based on the corresponding unit price.
 
-### Scenario description
+### Use-case description
 
 Suppose you have an enabled project named Test under your Agora account, and the project uses the Agora On-Premise Recording SDK to implement the recording function.
 
@@ -227,7 +229,7 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
                     </tr>
                     <tr>
                         <td class="confluenceTd" colspan="1"
-                            rowspan="1">2020-02-04</td>
+                            rowspan="1">2025-02-04</td>
                         <td class="confluenceTd" colspan="1"
                             rowspan="1">6,000</td>
                         <td class="confluenceTd" colspan="1"
@@ -251,7 +253,7 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
                     </tr>
                     <tr>
                         <td class="confluenceTd"
-                            rowspan="1" colspan="1">2020-02-09</td>
+                            rowspan="1" colspan="1">2025-02-09</td>
                         <td class="confluenceTd"
                             owspan="1" colspan="1">12,000</td>
                         <td class="confluenceTd"
@@ -275,7 +277,7 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
                     </tr>
                     <tr>
                         <td class="confluenceTd"
-                            rowspan="1" colspan="1">2020-02-13</td>
+                            rowspan="1" colspan="1">2025-02-13</td>
                         <td class="confluenceTd"
                             rowspan="1" colspan="1">0</td>
                         <td class="confluenceTd"
@@ -299,7 +301,7 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
                     </tr>
                     <tr>
                         <td class="confluenceTd" colspan="1"
-                            rowspan="1">2020-02-15</td>
+                            rowspan="1">2025-02-15</td>
                         <td class="confluenceTd" colspan="1"
                             rowspan="1">0</td>
                         <td class="confluenceTd" colspan="1"
@@ -401,7 +403,7 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
             </table>
 
 
-<div class="alert note"><ul><li>Agora rounds up the monthly total fees to two decimal places.</li><li>Agora gives each Agora account 10,000 minutes of free time per month. Because the monthly total service minutes in the above example do not exceed 10,000 minutes, the service is free of charge and the bill would show $US 0.</li></ul></div>
+<Admonition type="info"><ul><li>Agora rounds up the monthly total fees to two decimal places.</li><li>Agora gives each Agora account 10,000 minutes of free time per month. Because the monthly total service minutes in the above example do not exceed 10,000 minutes, the service is free of charge and the bill would show $US 0.</li></ul></Admonition>
 
 
 ## Considerations
@@ -414,7 +416,7 @@ At the end of each month, Agora adds up the usage duration (in seconds) of audio
 
 
 
-### Video resolution in the dual-stream scenario
+### Video resolution in the dual-stream use-case
 
 When the user being recorded enables [dual-stream mode](../../video-calling/reference/glossary#dual-stream-mode), the recording service can receive only one stream at a time:
 
@@ -426,33 +428,25 @@ When the user being recorded enables [dual-stream mode](../../video-calling/refe
 When calculating the aggregate resolution, Agora counts the resolution of 225,280 (640 × 352) as 640 × 360.
 
 <a name="question"></a>
-## Q&A
 
-
+## FAQs
 
 <details>
-	<summary><font color="#3ab7f8">Question: How does Agora charge if I use different recording modes?</font></summary>
+<summary>How does Agora charge if I use different recording modes?</summary>
 
-Your recording fee has nothing to do with the recording mode you choose. Regardless of whether you use the individual mode or composite mode, your recording fee relates only to the number of the streams recorded, the recording time, and the aggregate recording resolutions. The number of the streams recorded does not affect the recording duration, but affects the aggregate recording resolution.
+Your recording fee has nothing to do with the recording mode you choose. Regardless of whether you use the individual mode or composite mode, your recording fee relates only to the number of streams recorded, the recording time, and the aggregate recording resolution. The number of streams recorded does not affect the recording duration, but affects the aggregate recording resolution.
 
 </details>
 
-
-
 <details>
-	<summary><font color="#3ab7f8">Question: Does Agora charge the screen capture function separately?</font></summary>
+<summary>Does Agora charge for screen capture separately?</summary>
 
-Agora does not charge for the screen capture function separately. Screen capture is a different form of the recording function. The recording service joins the corresponding channel and subscribes to the specified video streams all the time in order to capture screens at the specified interval. Therefore, if you have enabled the screen capture function, Agora charges you for the full-time recording of the corresponding stream, but do not charge you for the screen capture function separately.
+Agora does not charge for screen capture separately. Screen capture is a variation of the recording function. The recording service joins the corresponding channel and subscribes to the specified video streams in order to capture screens at the specified interval. Therefore, if you have enabled screen capture, Agora charges you for the full-time recording of the corresponding stream, but does not charge you for screen capture separately.
 
 </details>
-
-
-
-
-
-
 
 ## Relevant links
 
-- [Agora's free-of-charge policy for the first 10,000 minutes](https://docs.agora.io/en/faq/billing_free)
-- [Billing, free deduction, and account suspension](https://docs.agora.io/en/faq/billing_account)
+- [RTC Pricing](/video-calling/overview/pricing)
+- [Agora's free-of-charge policy for the first 10,000 minutes](/help/account-and-billing/billing_free)
+- [Billing, free deduction, and account suspension](/help/account-and-billing/billing_account)

@@ -1,6 +1,274 @@
-
 <PlatformWrapper platform="unreal">
 
+This section shows you how to implement custom audio capture and render audio from an external source using the SDK.
 
+### Initialize MediaEngine
+
+Before implementing custom audio features, obtain the `MediaEngine` interface from the initialized `RtcEngine`:
+
+```cpp
+void InitAgoraEngine(FString APP_ID, FString TOKEN, FString CHANNEL_NAME)
+{
+   // Initialize RtcEngine context and event handler
+   agora::rtc::RtcEngineContext RtcEngineContext;
+   UserRtcEventHandler = MakeShared<FUserRtcEventHandler>(this);
+   std::string StdStrAppId = TCHAR_TO_UTF8(*APP_ID);
+   RtcEngineContext.appId = StdStrAppId.c_str();
+   RtcEngineContext.eventHandler = UserRtcEventHandler.Get();
+   RtcEngineContext.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_LIVE_BROADCASTING;
+   
+   // Initialize the RtcEngine
+   int ret = AgoraUERtcEngine::Get()->initialize(RtcEngineContext);
+   
+   // Query for the MediaEngine interface
+   AgoraUERtcEngine::Get()->queryInterface(AGORA_IID_MEDIA_ENGINE, (void**)&MediaEngine);
+}
+```
+
+<Admonition type="info" title="Note">
+The MediaEngine is not created directly. Instead, it's obtained as an interface from the initialized RtcEngine using the `queryInterface` method with `AGORA_IID_MEDIA_ENGINE`.
+</Admonition>
+
+### Custom audio capture
+
+Refer to the following call sequence diagram to implement custom audio capture in your app:
+
+<details>
+<summary>Custom audio capture process</summary>
+
+![Custom audio capture](/images/video-sdk/custom-audio-capture-with-custom-track.svg)
+</details>
+
+Follow these steps to implement custom audio capture in your project:
+
+1. **Enable and configure custom audio source**  
+  Before calling `joinChannel` to join the channel, call `setExternalAudioSource` to enable and configure custom audio capture.
+
+   ```cpp
+   void SetExternalAudioSource()
+   {
+       // Specify the custom audio source
+       int ret = MediaEngine->setExternalAudioSource(true, SAMPLE_RATE, CHANNEL, 1);
+       UBFL_Logger::Print(FString::Printf(TEXT("%s ret %d"), *FString(FUNCTION_MACRO), ret), LogMsgViewPtr);
+   }
+
+   void JoinChannel()
+   {
+       // Enable audio and set client role
+       AgoraUERtcEngine::Get()->enableAudio();
+       AgoraUERtcEngine::Get()->setClientRole(CLIENT_ROLE_BROADCASTER);
+       
+       // Join the channel
+       int ret = AgoraUERtcEngine::Get()->joinChannel(TCHAR_TO_UTF8(*Token), TCHAR_TO_UTF8(*ChannelName), "", 0);
+   }
+   ```
+
+2. **Implement audio capture and processing**  
+  Use methods outside the SDK to implement audio capture and processing yourself.
+
+3. **Send audio frames to SDK**  
+  Call `pushAudioFrame` to send the captured audio frames to the SDK for later use.
+
+   1. Load audio data from a file and start a thread to push the frames:
+
+       ```cpp
+       void StartPushAudio()
+       {
+           FString LoadDir = FPaths::ProjectContentDir() / TEXT("Audio/Agora.io-Interactions.wav");
+           TArray<uint8> AudioData;
+           FFileHelper::LoadFileToArray(AudioData, *LoadDir, 0);
+           Runnable = new FAgoraCaptureRunnable(MediaEngine, AudioData.GetData(), AudioData.Num() * sizeof(uint8));
+           FRunnableThread* RunnableThread = FRunnableThread::Create(Runnable, TEXT("AgoraUE-UserThread"));
+       }
+       ```
+
+   2. This class reads audio data at 10ms intervals, converts it into `AudioFrame` format, and sends it to the Agora SDK using `pushAudioFrame`.
+
+       ```cpp
+       class FAgoraCaptureRunnable : public FRunnable
+       {
+       public:
+           FAgoraCaptureRunnable(agora::media::IMediaEngine* MediaEngine, const uint8* audioData, int dataLength)
+               : MediaEngine(MediaEngine), dataLength(dataLength)
+           {
+               this->audioData = new uint8[dataLength];
+               FMemory::Memcpy(this->audioData, audioData, dataLength * sizeof(uint8));
+           }
+
+           virtual uint32 Run() override
+           {
+               auto tic = getTimeStamp();
+               bStopThread = false;
+               const uint8* Ptr = reinterpret_cast<const uint8*>(audioData);
+
+               while (!bStopThread)
+               {
+                   if (MediaEngine == nullptr) break;
+                   
+                   auto toc = getTimeStamp();
+                   if ((toc - tic) >= 10) // Push every 10ms
+                   {
+                       if (dataLength <= 0) break;
+                       
+                       if (sendByte == nullptr)
+                       {
+                           sendByte = FMemory::Malloc(SAMPLE_RATE / PUSH_FREQ_PER_SEC * 
+                                                    agora::rtc::BYTES_PER_SAMPLE::TWO_BYTES_PER_SAMPLE * CHANNEL);
+                       }
+                       
+                       FMemory::Memcpy(sendByte, Ptr, SAMPLE_RATE / PUSH_FREQ_PER_SEC * 
+                                      agora::rtc::BYTES_PER_SAMPLE::TWO_BYTES_PER_SAMPLE * CHANNEL);
+                       
+                       // Prepare audio frame
+                       agora::media::IAudioFrameObserverBase::AudioFrame externalAudioFrame;
+                       externalAudioFrame.bytesPerSample = agora::rtc::BYTES_PER_SAMPLE::TWO_BYTES_PER_SAMPLE;
+                       externalAudioFrame.type = agora::media::IAudioFrameObserver::FRAME_TYPE_PCM16;
+                       externalAudioFrame.samplesPerChannel = SAMPLE_RATE / PUSH_FREQ_PER_SEC;
+                       externalAudioFrame.samplesPerSec = SAMPLE_RATE;
+                       externalAudioFrame.channels = CHANNEL;
+                       externalAudioFrame.buffer = sendByte;
+                       externalAudioFrame.renderTimeMs = 10;
+                       
+                       // Push audio frame to SDK
+                       agora::rtc::track_id_t trackId = 0;
+                       int ret = MediaEngine->pushAudioFrame(&externalAudioFrame, trackId);
+                       
+                       Ptr += SAMPLE_RATE / PUSH_FREQ_PER_SEC * 2 * CHANNEL;
+                       dataLength -= SAMPLE_RATE / PUSH_FREQ_PER_SEC * 2 * CHANNEL;
+                       tic = toc;
+                   }
+                   FPlatformProcess::Sleep(0.001f);
+               }
+               return 0;
+           }
+
+       private:
+           agora::media::IMediaEngine* MediaEngine = nullptr;
+           uint8* audioData = nullptr;
+           void* sendByte = nullptr;
+           int dataLength = 0;
+           bool bStopThread = false;
+           
+           // Audio configuration
+           const int CHANNEL = 2;
+           const int SAMPLE_RATE = 48000;
+           const int PUSH_FREQ_PER_SEC = 100;
+       };
+       ```
+
+### Custom audio rendering
+
+This section shows you how to implement custom audio rendering. Refer to the following call sequence diagram to implement custom audio rendering in your <Vpl k="CLIENT" />:
+
+<details>
+<summary>Custom audio rendering workflow</summary>
+
+![Custom Audio Rendering Workflow](/images/video-sdk/custom-audio-render.svg)
+</details>
+
+To implement custom audio rendering, use the following methods:
+
+1. **Enable and configure custom audio sink**  
+  Before calling `joinChannel` to join the channel, call `setExternalAudioSink` to enable and configure custom audio rendering.
+
+   ```cpp
+   void SetExternalAudioSink()
+   {
+       // Enable custom audio rendering
+       // Sample rate (Hz) can be set to 16000, 32000, 44100 or 48000
+       // Number of channels can be set to 1 or 2
+       int CHANNEL = 1;
+       int SAMPLE_RATE = 44100;
+       int ret = MediaEngine->setExternalAudioSink(true, SAMPLE_RATE, CHANNEL);
+   }
+   ```
+
+2. **Pull and render remote audio data**  
+  To pull audio frames for custom rendering, call `pullAudioFrame` in a dedicated thread. After pulling the frame, send the audio buffer to your custom sound player (such as a `USoundWaveProcedural` wrapper like `AgoraSoundWaveProcedural`).
+
+   ```cpp
+   class FAgoraRenderRunnable : public FRunnable
+   {
+   public:
+       FAgoraRenderRunnable(agora::media::IMediaEngine* InMediaEngine, UAgoraSoundWaveProcedural* InAgoraSoundWaveProcedural)
+           : MediaEngine(InMediaEngine), AgoraSoundWaveProcedural(InAgoraSoundWaveProcedural)
+       {
+       }
+
+       virtual uint32 Run() override
+       {
+           constexpr int PUSH_FREQ_PER_SEC = 100;
+           constexpr int SAMPLE_RATE = 44100;
+           constexpr int CHANNEL = 1;
+           
+           auto tic = getTimeStamp();
+           bStopThread = false;
+           
+           // Prepare the external audio frame
+           agora::media::IAudioFrameObserverBase::AudioFrame externalAudioFrame;
+           externalAudioFrame.avsync_type = 0; // Reserved parameter
+           externalAudioFrame.bytesPerSample = agora::rtc::BYTES_PER_SAMPLE::TWO_BYTES_PER_SAMPLE;
+           externalAudioFrame.type = agora::media::IAudioFrameObserver::FRAME_TYPE_PCM16;
+           externalAudioFrame.samplesPerChannel = SAMPLE_RATE / PUSH_FREQ_PER_SEC;
+           externalAudioFrame.samplesPerSec = SAMPLE_RATE;
+           externalAudioFrame.channels = CHANNEL;
+           externalAudioFrame.renderTimeMs = 10;
+           externalAudioFrame.buffer = FMemory::Malloc(
+               externalAudioFrame.samplesPerChannel *
+               externalAudioFrame.bytesPerSample *
+               externalAudioFrame.channels
+           );
+           
+           while (!bStopThread)
+           {
+               if (MediaEngine == nullptr) break;
+               
+               auto toc = getTimeStamp();
+               if ((toc - tic) >= 10) // Pull every 10 ms
+               {
+                   tic = getTimeStamp();
+                   
+                   // Pull remote audio data
+                   int ret = MediaEngine->pullAudioFrame(&externalAudioFrame);
+                   if (ret == 0 && AgoraSoundWaveProcedural)
+                   {
+                       // Send the frame to custom renderer (e.g., USoundWaveProcedural wrapper)
+                       AgoraSoundWaveProcedural->AddToFrames(externalAudioFrame);
+                   }
+                   else if (ret != 0)
+                   {
+                       FPlatformProcess::Sleep(0.01f); // Sleep 10ms if no data
+                       continue;
+                   }
+               }
+               FPlatformProcess::Sleep(0.001f);  // Yield to CPU
+           }
+           
+           // Free audio buffer after loop
+           FMemory::Free(externalAudioFrame.buffer);
+           return 0;
+       }
+
+   private:
+       agora::media::IMediaEngine* MediaEngine = nullptr;
+       UAgoraSoundWaveProcedural* AgoraSoundWaveProcedural = nullptr;
+       bool bStopThread = false;
+   };
+   ```
+
+  - After joining the channel, call `pullAudioFrame` to get the audio data sent by the remote user.
+  - Use your own audio renderer to process the audio data and then play the rendered data.
+
+### Using raw audio data callback
+
+This section explains how to implement custom audio rendering.
+
+To retrieve audio data for playback, implement collection and processing of raw audio data. Refer to [Raw audio processing](./advanced-features/stream-raw-audio).
+
+Follow these steps to call the raw audio data API in your project for custom audio rendering:
+
+1. Retrieve audio data for playback using the `onRecordAudioFrame`, `onPlaybackAudioFrame`, `onMixedAudioFrame`, or `onPlaybackAudioFrameBeforeMixing` callback.
+
+2. Independently render and play the audio data.
 
 </PlatformWrapper>

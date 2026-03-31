@@ -1,0 +1,169 @@
+import CodeBlock from '@theme/CodeBlock';
+
+1. **Integrate the toolkit**
+
+    Copy the [`ConversationalAIAPI`](https://github.com/AgoraIO-Community/Conversational-AI-Demo/tree/main/iOS/Scenes/ConvoAI/ConvoAI/ConvoAI/Classes/ConversationalAIAPI) folder to your project and import the toolkit before calling the toolkit APIs. Refer to [Folder structure](#folder-structure) to understand the role of each file.
+
+1. **Create a toolkit instance**
+
+    Create a configuration object with the <Vg k="VSDK"/> and <Vg k="SIG" /> engine instances, then use the configuration to create a toolkit instance.
+
+    <CodeBlock language="swift" showLineNumbers>
+    {`// Create configuration objects for the Video SDK and Chat SDK instances
+    let config = ConversationalAIAPIConfig(
+        rtcEngine: rtcEngine, 
+        rtmEngine: rtmEngine,
+        enableLog: true
+    )
+    /// Create component instance
+    convoAIAPI = ConversationalAIAPIImpl(config: config)`}
+    </CodeBlock>
+
+1. **Register events**
+
+    Call the `addHandler` method to register and implement agent-related event callbacks.
+
+    <CodeBlock language="swift" showLineNumbers>
+    {`// Make your class conform to the ConversationalAIAPIEventHandler protocol
+    class ConversationViewController: UIViewController, ConversationalAIAPIEventHandler {
+        
+        // Implement protocol methods
+        func onAgentStateChanged(agentUserId: String, event: StateChangeEvent) {
+            // Update the UI to reflect the agent's current state
+            DispatchQueue.main.async {
+                self.updateAgentStatus(event.state)
+            }
+        }
+        
+        func onAgentInterrupted(agentUserId: String, event: InterruptEvent) {
+            // Called when the agent is interrupted. Update the UI or log the event.
+            print("Agent \\(agentUserId) interrupted at turn \\(event.turnId)")
+            DispatchQueue.main.async {
+                self.showInterruptNotification()
+            }
+        }
+        
+        func onAgentMetrics(agentUserId: String, metrics: Metric) {
+            // Monitor agent performance metrics for debugging and optimization
+            switch metrics.type {
+            case .llm:
+                print("LLM latency: \\(metrics.value)ms")
+                // Log LLM response time for performance analysis
+            case .tts:
+                print("TTS latency: \\(metrics.value)ms")
+                // Log TTS synthesis time
+            case .unknown:
+                print("Unknown metric: \\(metrics.name) = \\(metrics.value)")
+            }
+        }
+        
+        func onAgentError(agentUserId: String, error: ModuleError) {
+            // Handle agent error events
+            print("Error in \\(error.type): \\(error.message) (code: \\(error.code))")
+            
+            DispatchQueue.main.async {
+                switch error.type {
+                case .llm:
+                    // LLM error. You may want to retry or use a fallback.
+                    self.showErrorMessage("AI processing failed. Please try again later.")
+                case .tts:
+                    // TTS error. Consider switching to text mode.
+                    self.showErrorMessage("Speech synthesis failed.")
+                case .mllm:
+                    // MLLM error
+                    self.showErrorMessage("Multimodal AI processing failed.")
+                case .unknown:
+                    // Other error types
+                    self.showErrorMessage("System error: \\(error.message)")
+                }
+            }
+        }
+        
+        // Helper method for updating the UI with the agent's current state
+        private func updateAgentStatus(_ state: AgentState) {
+            let (text, color): (String, UIColor) = {
+                switch state {
+                case .idle:
+                    return ("Idle", .gray)
+                case .silent:
+                    return ("Waiting...", .gray)
+                case .listening:
+                    return ("Listening...", .blue)
+                case .thinking:
+                    return ("Thinking...", .orange)
+                case .speaking:
+                    return ("Speaking...", .green)
+                case .unknown:
+                    return ("Unknown", .red)
+                }
+            }()
+            
+            statusLabel.text = text
+            statusLabel.textColor = color
+        }
+        
+        private func showInterruptNotification() {
+            statusLabel.text = "Conversation interrupted"
+            statusLabel.textColor = .red
+        }
+        
+        private func showErrorMessage(_ message: String) {
+            let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+        }
+    }
+
+    // Register the event callback handler
+    convoAIAPI.addHandler(handler: self)`}
+    </CodeBlock>
+
+1. **Subscribe to the channel**
+
+    Transcript data is delivered through <Vg k="SIG" /> channel messages. To receive transcript data, call `subscribeMessage` before starting the agent session.
+
+    <CodeBlock language="swift" showLineNumbers>
+    {`convoAIAPI.subscribeMessage(channelName: channelName) { error in
+        if let error = error {
+            print("Subscription failed: \\(error.message)")
+        } else {
+            print("Subscription successful")
+        }
+    }`}
+    </CodeBlock>
+
+1. **Agent joins the channel**
+
+    To [start a <Vpd k="AGENT" />](/conversational-ai/rest-api/agent/join), configure the following parameters in your `POST` request:
+
+    | Parameter                         | Required | Description                                    |
+    | --------------------------------- | -------- | ---------------------------------------------- |
+    | `advanced_features.enable_rtm`    | Yes      | Enables the Chat service. |
+    | `parameters.data_channel`         | Yes      | Sets the data transmission channel to `"rtm"`. |
+    | `parameters.enable_metrics`       | Optional | Enables collection of agent performance data.  |
+    | `parameters.enable_error_message` | Optional | Enables reporting of agent error events.       |
+
+    After a successful request, the agent joins the specified Video SDK channel and the user can begin interacting with it.
+
+1. **Unsubscribe from the channel**
+
+    After each agent session ends, unsubscribe from channel messages to release tra resources.
+
+    <CodeBlock language="swift" showLineNumbers>
+    {`// Unsubscribe from channel messages
+    convoAIAPI.unsubscribeMessage(channelName: channelName) { error in
+        if let error = error {
+            print("Unsubscription failed: \\(error.message)")
+        } else {
+            print("Unsubscribed successfully")
+        }
+    }`}
+    </CodeBlock>
+
+1. **Release resources**
+
+    At the end of each call, use the `destroy` method to clean up the cache.
+
+    <CodeBlock language="swift" showLineNumbers>
+    {`convoAIAPI.destroy()`}
+    </CodeBlock>

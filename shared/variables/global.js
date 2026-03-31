@@ -1,7 +1,9 @@
 
 export const COMPANY = 'Agora';
 export const URL_ROOT = 'docs.agora.io/en';
-  export const AGORA_BACKEND = `${COMPANY} SD-RTN™`;
+export const SDRTN = `SDRTN®`;
+export const AGORA_BACKEND = `${COMPANY} ${SDRTN}`;
+export const BACKEND_NAME = `Software-Defined Real-Time Network (SDRTN®)`;
 export const CLIENT = platform => (platform === 'unity' ? 'game' : 'app');
 export const VSDK_RELEASE_API = '4.x'
 export const VSDK_PREVIOUS_RELEASE_API = '3.x'
@@ -76,7 +78,7 @@ export const API_REF_SIG_WEB = '../reference/api';
 export const API_REF_SIG_APPLE = '../reference/api';
 export const API_REF_SIG_UNITY = '../reference/api';
 export const API_REF_SIG_LNX_CPP = '../reference/api';
-
+export const API_REF_SIG_FLUTTER = '../reference/api';
 
 export const CONSOLE = `${COMPANY} Console`;
 export const TOKEN = 'token';
@@ -89,7 +91,7 @@ export const RTES = `${RTE} SDK`;
 export const APP_ID_LINK = `http://agora.io`;
 export const AGORA_CONSOLE_URL = `https://console.agora.io/v2`;
 export const AGORA_WEBDEMO_URL = `https://webdemo.agora.io`;
-export const API_REF_ANDROID = `http://api.agora.io/android`;
+export const API_REF_ANDROID = `https://api.agora.io/android`;
 
 export const PLATFORM = `${AGORA_BACKEND}`;
 export const VIDEO = 'Video Calling';
@@ -139,10 +141,17 @@ export const SIG2_SDK_API_IOS = 'https://agoraio.github.io/AgoraRtm_Apple/docume
 export const SIG2_SDK_API_MACOS = 'https://agoraio.github.io/AgoraRtm_Apple/documentation/agorartm';
 export const SIG_SDK_API_WEB = `${SIG_SDK_API_REF_ROOT}/web/${SIG_RELEASE_API}`;
 export const SIG_SDK_API_REST = `https://agoradocs.vercel.app/signaling/reference/user-channel-events`;
+export const SIG_SDK_API_RN = `/signaling/reference/api`;
 
 export const SPATIAL = '3D Spatial Audio';
 
 export const CHAT = `Chat`;
+export const CHAT_ONE = `One-to-one chat`;
+export const CHAT_ONE_LOWER = CHAT_ONE.toLowerCase();
+export const CHAT_GROUP = `Group chat`;
+export const CHAT_GROUP_LOWER = CHAT_GROUP.toLowerCase();
+export const CHAT_ROOM = `Chat room`;
+export const CHAT_ROOM_LOWER = CHAT_ROOM.toLowerCase();
 export const CHAT_SDK = `${CHAT} SDK`;
 export const CHAT_RELEASE_API = `1.x`;
 export const API_REF_ROOT_CHAT_SDK = `${API_ROOT}/chat-sdk`;
@@ -180,11 +189,13 @@ export const RTEE_VB = 'Virtual Background';
 export const RTEE_FU = 'FaceUnity';
 export const RTEE_AF = 'ActiveFence';
 export const RTEE_MK = 'MetaKit';
+export const RTEE_FC = 'Facial Capture';
 export const RTEE_CM = 'Camera Movement';
 export const RTEE_AF_D = `ActiveOS`;
 export const RTEE_HT3D = `HTEffect 3D Avatar`
 export const RTEE_LDCI = `LiveData Conversation Intelligence`
 export const RTEE_DUB = `Dubbing AI Voice Changer`
+export const RTEE_VAD = `Voice Activity Detection`
 export const AA = `${COMPANY} Analytics`;
 export const AA_DI = `Data Insights`;
 export const AA_DIP = `Data Insights Plus`;
@@ -198,10 +209,12 @@ export const MPUSH = 'Media Push';
 export const MPULL = 'Media Pull';
 export const REC = 'Recording';
 export const MOD = 'Moderation';
-export const CP = 'Cloud Proxy';
+export const CP = 'Cloud proxy';
 export const RTMPC = 'RTMP Converter';
 export const TRANS = 'Transcoding';
 export const OPREC = 'On-Premise Recording';
+export const OPREC_SDK = `${OPREC} SDK`;
+export const STT = 'Speech to Text';
 export const OPREC_RELEASE_API = `3.x`;
 export const API_REF_ROOT_OPREC_SDK = `${API_ROOT}/on-premise-recording-sdk`;
 export const OPREC_SDK_API_CPP  = `${API_REF_ROOT_OPREC_SDK}/linux-cpp/${OPREC_RELEASE_API}`;
@@ -214,9 +227,9 @@ export const CREC_FCS = 'https://download.agora.io/acrsdk/release/cloud_recordin
 export const CREC_TRANS_SCRIPT = 'https://download.agora.io/acrsdk/release/rtsc-ha_transcoder.v1.1.9-202204180321-release-prod.tar.gz'
 
 
-export const CGATE = 'Cloud Gateway';
+export const CGATE = 'Server Gateway';
 
-export const CGATE_RELEASE_API = `3.x`;
+export const CGATE_RELEASE_API = `4.x`;
 export const API_REF_ROOT_CGATE_SDK = `${API_ROOT}/server-gateway-sdk`;
 export const CGATE_SDK_API_CPP  = `${API_REF_ROOT_CGATE_SDK}/linux-cpp/${CGATE_RELEASE_API}`;
 export const CGATE_SDK_API_JAVA  = `${API_REF_ROOT_CGATE_SDK}/linux-java/${CGATE_RELEASE_API}`
@@ -321,3 +334,5 @@ export const AGORA_VIDEO_DOC_APP_UNITY = 'https://github.com/AgoraIO/video-sdk-s
 export const AGORA_VIDEO_DOC_APP_REACTNATIVE = 'https://github.com/AgoraIO/video-sdk-samples-reactnative'
 export const AGORA_VIDEO_DOC_APP_ELECTRON = 'https://github.com/AgoraIO/video-sdk-samples-electron'
 export const AGORA_VIDEO_DOC_APP_WINDOWS = 'https://github.com/AgoraIO/video-sdk-samples-windows'
+
+export const STATUS_PAGE = 'Status Page'

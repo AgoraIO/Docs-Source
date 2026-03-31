@@ -8,6 +8,8 @@ const data = {
     BETA_API_FOLDER: 'video-call-4.x-beta',
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
     STREAM: 'interactive live streaming or broadcast streaming',
+    MEDIA: 'audio and video',
+    MEDIA_DEVICES: 'camera and microphone',
   },
 
   'voice-calling': {
@@ -17,6 +19,8 @@ const data = {
     SDK: 'Voice SDK',
     PRODUCT: 'Voice Calling',
     STREAM: 'interactive live streaming or broadcast streaming',
+    MEDIA: 'audio',
+    MEDIA_DEVICES: 'microphone',
   },
 
   'interactive-live-streaming': {
@@ -27,6 +31,19 @@ const data = {
     PRODUCT: 'Interactive Live Streaming',
     IOS_PACKAGE_NAME: 'AgoraRtcEngine_iOS',
     STREAM: 'interactive live streaming',
+    MEDIA: 'audio and video',
+    MEDIA_DEVICES: 'camera and microphone',
+  },
+
+  'broadcast-streaming': {
+    NAME: 'Broadcast Streaming',
+    SDK_LITE: 'Lite SDK',
+    PATH: 'broadcast-streaming',
+    SDK: 'Video SDK',
+    PRODUCT: 'Broadcast Streaming',
+    STREAM: 'broadcast streaming',
+    MEDIA: 'audio and video',
+    MEDIA_DEVICES: 'camera and microphone',
   },
 
   'agora-analytics': {
@@ -44,6 +61,13 @@ const data = {
       STREAM: 'interactive live streaming or broadcast streaming',
   },
 
+  'flexible-classroom': {
+      NAME: 'Flexible Classroom',
+      PATH: 'flexible-classroom',
+      SDK: 'Flexible Classroom',
+      PRODUCT: 'Flexible Classroom',
+  },
+
   'cloud-recording': {
       NAME: 'Cloud Recording',
       PATH: 'cloud-recording',
@@ -56,9 +80,8 @@ const data = {
       NAME: 'Signaling',
       PATH: 'signaling',
       SDK: 'Signaling SDK',
-      PRODUCT: 'Signalling',
+      PRODUCT: 'Signaling',
       STREAM: 'interactive live streaming or broadcast streaming',
-      PRODUCT: 'Signalling',
       IOS_PACKAGE_NAME: 'AgoraRTM_iOS',
       MACOS_PACKAGE_NAME: 'AgoraRTM_macOS'
   },
@@ -69,15 +92,6 @@ const data = {
       SDK: 'Server Gateway SDK',
       PRODUCT: 'Server Gateway',
       STREAM: 'interactive live streaming or broadcast streaming',
-  },
-
-  'broadcast-streaming': {
-    NAME: 'Broadcast Streaming',
-    SDK_LITE: 'Lite SDK',
-    PATH: 'broadcast-streaming',
-    SDK: 'Video SDK',
-    PRODUCT: 'Broadcast Streaming',
-    STREAM: 'broadcast streaming',
   },
 
   'iot': {
@@ -123,11 +137,65 @@ const data = {
     PRODUCT: 'Real-Time STT'
   },
 
+  'cloud-transcoding': {
+    NAME: 'Cloud Transcoding',
+    PATH: 'cloud-transcoding',
+    SDK: 'Cloud Transcoding',
+    PRODUCT: 'Cloud Transcoding'
+  },
+
   'interactive-whiteboard': {
     NAME: 'Interactive Whiteboard',
     PATH: 'interactive-whiteboard',
     SDK: 'Whiteboard SDK',
     PRODUCT: 'Interactive Whiteboard',
+  },
+
+  'conversational-ai': {
+    NAME: 'Conversational AI Engine',
+    PATH: 'conversational-ai',
+    SDK: 'Conversational AI SDK',
+    AGENT: 'Conversational AI agent',
+    PRODUCT: 'Conversational AI Engine',
+    STUDIO: 'Agent Studio',
+  },
+
+  'convo-ai-device-kit': {
+    NAME: 'Convo AI Device Kit R1',
+    PATH: 'convo-ai-device-kit',
+    PRODUCT: 'Convo AI Device Kit R1',
+  },
+  
+  'open-ai-integration': {
+    NAME: 'OpenAI Realtime API',
+    PATH: 'open-ai-integration',
+    SDK: 'OpenAI Realtime API',
+    PRODUCT: 'OpenAI Realtime API',
+  },
+
+  'ten-framework': {
+    NAME: 'TEN Framework',
+    PATH: 'ten-framework',
+    SDK: 'TEN Framework',
+    PRODUCT: 'TEN Framework',
+    MANAGER: 'TEN Manager',
+    DESIGNER: 'TEN Designer',
+  },
+
+  'ten-agent': {
+    NAME: 'TEN Agent',
+    PATH: 'ten-agent',
+    SDK: 'TEN Agent',
+    PRODUCT: 'TEN Agent',
+    MANAGER: 'TEN Manager',
+    DESIGNER: 'TEN Designer',
+  },
+
+  'on-premise-recording': {
+    NAME: 'On-Premise Recording',
+    PATH: 'on-premise-recording',
+    SDK: 'On-Premise Recording SDK',
+    PRODUCT: 'On-Premise Recording',
   }
 };
 

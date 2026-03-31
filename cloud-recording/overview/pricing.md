@@ -1,15 +1,38 @@
 ---
-title: "Pricing for Cloud Recording"
+title: "Pricing"
 sidebar_position: 3
 type: docs
 platform_selector: false
 description: >
-   Depending on the number of minutes you intend to record, estimate your monthly Cloud Recording cost.
+   Estimate your monthly Cloud Recording cost.
 ---
+
+{/* import PricingCalculator from '@site/src/components/PricingCalculator.jsx'; */}
 
 This page explains how <Vg k="COMPANY" /> calculates your monthly bill for Cloud Recording. 
 
 If you have already signed a contract with <Vg k="COMPANY" />, the billing terms and conditions within that contract take precedence.
+
+{ /*
+<Admonition type="info">
+The Agora Pricing calculator helps you estimate your channel and <Vpd k="NAME" /> costs. Use this tool to understand the pricing policy and estimate your session costs or monthly expenses.
+</Admonition>
+
+<details>
+<summary>Pricing Calculator</summary>
+
+Use this calculator to estimate your <Vpd k="NAME" /> costs.
+
+<PricingCalculator />
+
+<div style={{ height: '20px' }}></div>
+
+<Admonition type="caution" title="Disclaimer">
+The costs estimated by this calculator are indicative and may not match actual billing. Accuracy in all cases is not guaranteed, and the calculations should be used as estimates only. Actual billing is based on Agora's official pricing policy and may vary. Please refer to Agora's [Pricing](../overview/pricing) policy for complete and up-to-date information.
+</Admonition>
+
+</details>
+*/}
 
 ## Cloud Recording pricing
 
@@ -17,18 +40,20 @@ The unit pricing for audio and video usage is as follows:
 
 | Service Type    | Category                       | Pricing, US$/1,000 minutes |
 |:----------------|:-------------------------------|:---------------------------|
-| Recording Audio | N/A                            | 1.49                       |
+| Recording Audio | Audio                          | 1.49                       |
 | Recording Video | High-Definition (HD)           | 5.99                       |
 | Recording Video | Full High-Definition (Full HD) | 13.49                      |
 | Recording Video | 2K                             | 23.99                      |
 | Recording Video | 2K+                            | 53.99                      |
 | Cloud-Based Screenshot Upload | All definitions  | 2.49 or free               |
 
-**Note**: Cloud-Based Screenshot Upload is free if bundled with Cloud Recording, that is, initiated along with Cloud Recording in a single task.  
+<Admonition type="info" title="Note">
+Cloud-Based Screenshot Upload is free if bundled with Cloud Recording, that is, initiated along with Cloud Recording in a single task.  
+</Admonition>
 
-Agora determines video category based on **aggregate video resolution**, which is the sum of resolutions of all the video 
-streams a user subscribes to at the same time. Agora adds up the resolution of all the video streams recorded at the same 
-time to get the aggregate resolution, which categorizes video as follows:
+### Video category
+
+Agora determines video category based on **aggregate video resolution**, which is the sum of resolutions of all the video streams a user subscribes to at the same time. Agora adds up the resolution of all the video streams recorded at the same time to get the aggregate resolution, which categorizes video as follows:
 
 | Video category                 | Aggregate video resolution                      |
 | :----------------------------- | :----------------------------------------------------------- |
@@ -290,7 +315,7 @@ In the subsequent 520 seconds, the aggregate resolution is 640 x 360 + 1280 x 72
 
 At the end of each month, Agora adds up the usage duration (in seconds) of audio and video in each category, and divides them by 60 to get the respective service minutes (rounded up to the next integer). For example, if the duration of audio service of the month is 59 seconds, then the audio service minutes is calculated as 1 minute; if the duration of video service is 61 seconds, then the video service minutes is calculated as 2 minutes. The error of service minutes for each month is within 1 minute. 
 
-### Aggregate video resolution in dual-stream scenarios
+### Aggregate video resolution in dual-stream use-cases
 
 When the user being recorded enables [dual-stream mode](../reference/glossary#dual-stream-mode), the recording service can receive only one stream at a time:
 

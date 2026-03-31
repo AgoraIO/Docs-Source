@@ -44,11 +44,15 @@ const data = {
     RTC_JOIN_CHANNEL_EX: 'joinChannelExByToken',
     RTC_EVENT_HANDLER_PARAMETER: 'delegate' // In joinChannel API
   },
+  
 
   'react-native': {
     NAME: 'React Native',
     PATH: 'react-native',
-    CLIENT: 'app'
+    CLIENT: 'app',
+    RTC_CONNECTION: 'RtcConnection',
+    RTC_ENGINE_EX: 'IRtcEngineEx',
+    RTC_JOIN_CHANNEL_EX: 'joinChannelEx'
   },
   'react-js': {
     NAME: 'ReactJS',
@@ -58,14 +62,22 @@ const data = {
   'electron': {
     NAME: 'Electron',
     PATH: 'electron',
-    CLIENT: 'app'
+    CLIENT: 'app',
+    RTC_CONNECTION: 'RtcConnection',
+    RTC_ENGINE_EX: 'IRtcEngineEx',
+    RTC_JOIN_CHANNEL_EX: 'joinChannelEx'
   },
 
   
   'unity': {
     NAME: 'Unity',
     PATH: 'unity',
-    CLIENT: 'game'
+    CLIENT: 'game',
+    RTC_EVENT_HANDLER_CLASS: 'IRtcEngineEventHandler',
+    RTC_CONNECTION: 'RtcConnection',
+    RTC_ENGINE: 'RtcEngine',
+    RTC_ENGINE_EX: 'IRtcEngineEx',
+    RTC_JOIN_CHANNEL_EX: 'JoinChannelEx',
   },
 
   'windows': {
@@ -98,6 +110,12 @@ const data = {
     CLIENT: 'app'
   },
 
+  'linux-java': {
+    NAME: 'Linux Java',
+    PATH: 'linux-java',
+    CLIENT: 'app'
+  },
+
   'unreal': {
     NAME: 'Unreal Engine',
     PATH: 'unreal',
@@ -108,6 +126,12 @@ const data = {
     NAME: 'Unreal (Blueprint)',
     PATH: 'blueprint',
     CLIENT: 'game'
+  },
+
+  'python': {
+    NAME: 'Python',
+    PATH: 'python',
+    CLIENT: 'app'
   }
 
 };

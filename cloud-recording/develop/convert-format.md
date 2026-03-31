@@ -7,15 +7,15 @@ description: >
   Use FFmpeg to convert an M3U8 file to MP4 or use Agora's Format Converter script to batch convert multiple TS files into MP4 or audio formats.
 ---
 
-From April 29, 2021, you can get MP4 files from a composite recording by setting the `avFileType` parameter. You no longer need to use the Format Converter script.
-
-## Overview
-
 Composite recording mode generates one M3U8 file and multiple TS files which include the audio and video of all or specified user IDs in a channel. You can use FFmpeg to convert an M3U8 file to MP4 or use Agora's Format Converter script to batch convert multiple TS files into MP4 or audio formats.
 
 ## Convert using FFmpeg
 
-You can use FFmpeg to convert an M3U8 file to MP4. Install [FFmpeg](http://ffmpeg.org/download.html) and run the following command:
+<Admonition type = "info">
+Since April 29, 2021, you can get MP4 files from a composite recording by setting the `avFileType` parameter. You no longer need to use the Format Converter script.
+</Admonition>
+
+You can use FFmpeg to convert an M3U8 file to MP4. Install [FFmpeg](https://ffmpeg.org/download.html) and run the following command:
 
 ```
 ffmpeg -i input.m3u8 -vcodec copy -acodec copy -absf aac_adtstoasc output.mp4
@@ -34,7 +34,7 @@ Recommended systems for transcoding:
 - Ubuntu 14.04 and later x64
 - CentOS 6.5 and later (7.0 recommended) x64
 
-To run the script, you need to install [FFmpeg](http://ffmpeg.org/download.html) 3.3 or later and Python 2, version 2.7 or later.
+To run the script, you need to install [FFmpeg](https://ffmpeg.org/download.html) 3.3 or later and Python 2, version 2.7 or later.
 
 #### File preparation
 

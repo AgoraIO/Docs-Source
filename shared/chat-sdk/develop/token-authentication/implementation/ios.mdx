@@ -1,0 +1,199 @@
+<PlatformWrapper platform="[ios, macos]">
+
+```objc
+import UIKit
+import AgoraChat
+
+class ViewController: UIViewController {
+    
+    var userId = "<User ID of the local user>"
+    var token = "<Your authentication token>"
+    var appKey = "<App key from Agora console>"
+    
+    var agoraChatClient: AgoraChatClient!
+    var isJoined: Bool = false
+    
+    @IBOutlet weak var btnJoinLeave: UIButton!
+    @IBOutlet weak var etRecipient: UITextField!
+    @IBOutlet weak var etMessageText: UITextField!
+    @IBOutlet weak var scrollView: UITextView!
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        // Fetch and initialize the token
+        fetchAndInitializeToken()
+
+        // Set up the chat client and listeners
+        setupChatClient()
+    }
+
+    func showLog(_ text: String) {
+        DispatchQueue.main.async {
+            let alert = UIAlertController(title: "", message: text, preferredStyle: .alert)
+            self.present(alert, animated: true)
+            alert.dismiss(animated: true, completion: nil)
+        }
+    }
+
+    func setupChatClient() {
+        if (appKey.isEmpty) {
+            showLog("You need to set your AppKey")
+            return
+        }
+        let options = AgoraChatOptions(appkey: appKey)  // Create AgoraChatOptions with your app key
+        agoraChatClient = AgoraChatClient.shared()
+        options.enableConsoleLog = true  // Enable printing logs on console
+        agoraChatClient.initializeSDK(with: options)  // Initialize the AgoraChatClient
+        agoraChatClient.chatManager?.add(self, delegateQueue: nil)  // Adds the chat delegate to receive messages
+    }
+
+    // Fetch and initialize the token when the app starts
+    func fetchAndInitializeToken() {
+        // Here you can implement your token fetching logic. For example:
+        let tokenFromServer = fetchNewToken(userId: userId, expireSeconds: 3600)
+        if let token = tokenFromServer {
+            self.token = token
+            initializeChatClient(token: token)
+        } else {
+            showLog("Failed to fetch token.")
+        }
+    }
+    
+    // Method to fetch a new token (implement your server call here)
+    func fetchNewToken(userId: String, expireSeconds: Int) -> String? {
+        // Implement the network call to fetch the token from your server
+        // Here, we just return a dummy token for illustration
+        return "<Fetched Token>"
+    }
+    
+    // Initialize the Agora Chat client with the fetched token
+    func initializeChatClient(token: String) {
+        let options = AgoraChatOptions(appkey: appKey)
+        agoraChatClient = AgoraChatClient.shared()
+        options.enableConsoleLog = true
+        agoraChatClient.initializeSDK(with: options)
+        agoraChatClient.chatManager?.add(self, delegateQueue: nil)
+    }
+
+    // Join/Leave the chat
+    @objc func joinLeave() {
+        if (isJoined) {
+            let result: AgoraChatError? = agoraChatClient.logout(true)
+            guard result == nil else {
+                showLog(result!.errorDescription)
+                return
+            }
+
+            showLog("Signed out")
+            DispatchQueue.main.async {
+                self.btnJoinLeave.setTitle("Join", for: .normal)
+                self.isJoined = false
+            }
+        } else {
+            let result: AgoraChatError? = agoraChatClient.login(withUsername: userId, agoraToken: token)
+            guard result == nil else {
+                if (result!.code.rawValue == 200) {  // Already joined
+                    isJoined = true
+                    showLog("Already signed in")
+                    DispatchQueue.main.async {
+                        self.btnJoinLeave.setTitle("Leave", for: .normal)
+                    }
+                } else {
+                    showLog(result!.errorDescription)
+                }
+                return
+            }
+
+            showLog("Signed in")
+            isJoined = true
+
+            DispatchQueue.main.async {
+                self.btnJoinLeave.setTitle("Leave", for: .normal)
+            }
+        }
+    }
+
+    // Send message
+    @objc func sendMessage() {
+        let toSendName = etRecipient.text!.trimmingCharacters(in: .whitespaces)
+        let content = etMessageText.text!.trimmingCharacters(in: .whitespaces)
+
+        if (toSendName.isEmpty || content.isEmpty) {
+            showLog("Enter a recipient name and a message.")
+            return
+        }
+
+        // Create a ChatMessage
+        let message = AgoraChatMessage(
+            conversationID: toSendName,
+            from: agoraChatClient.currentUsername!,
+            to: toSendName,
+            body: AgoraChatTextMessageBody(text: content),
+            ext: nil
+        )
+
+        // Send the message
+        agoraChatClient.chatManager?.send(message, progress: nil) { _, err in
+            if let err = err {
+                self.showLog("Error occurred when sending the message. \(err.errorDescription)")
+            } else {
+                self.showLog("Message sent successfully.")
+                DispatchQueue.main.async {
+                    self.displayMessage(messageText: content, isSentMessage: true)
+                    self.etMessageText.text = ""
+                }
+            }
+        }
+    }
+
+    // Display the sent or received message
+    func displayMessage(messageText: String, isSentMessage: Bool) {
+        DispatchQueue.main.async {
+            self.scrollView.text.append(
+                DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
+                + ":  " + messageText + "\r\n"
+            )
+            self.scrollView.scrollRangeToVisible(NSRange(location: self.scrollView.text.count, length: 1))
+        }
+    }
+}
+
+// Add message event callbacks
+extension ViewController: AgoraChatManagerDelegate {
+    func messagesDidReceive(_ aMessages: [AgoraChatMessage]) {
+        for message in aMessages {
+            let msgBody = message.body as! AgoraChatTextMessageBody
+            DispatchQueue.main.async {
+                self.displayMessage(messageText: msgBody.text, isSentMessage: false)
+            }
+            showLog("Received a message from \(message.from)")
+        }
+    }
+}
+
+// Add connection event callbacks
+extension ViewController: AgoraChatClientDelegate {
+    func connectionStateDidChange(_ aConnectionState: AgoraChatConnectionState) {
+        if aConnectionState == .connected {
+            showLog("Connected to the chat server.")
+        } else {
+            if isJoined {
+                showLog("Disconnected from the chat server.")
+                isJoined = false
+            }
+        }
+    }
+
+    func tokenWillExpire(_ aErrorCode: AgoraChatErrorCode) {
+        showLog("Token will expire (log in using new token)")
+    }
+
+    func tokenDidExpire(_ aErrorCode: AgoraChatErrorCode) {
+        showLog("Token expired (log in using new token)")
+        // Here, you can fetch a new token and re-login the user
+        fetchAndInitializeToken()
+    }
+}
+```
+</PlatformWrapper>

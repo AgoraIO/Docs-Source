@@ -22,7 +22,6 @@ message.setChatType(ChatMessage.GroupChat);
      @Override
      public void onSuccess() {
          showToast("Message sending succeeds");
-          dialog.dismiss();
      }
      @Override
      public void onError(int code, String error) {
@@ -32,9 +31,33 @@ message.setChatType(ChatMessage.GroupChat);
  ChatClient.getInstance().chatManager().sendMessage(message);
 ```
 
+### Send a message to online users only
+
+Agora Chat supports delivering messages only to users that are currently online. An example of using this function is displaying the votes in a group voting: Only users that are online need to see the changes in real time, while the others only need the final result.
+
+All types of messages in one-to-one chats and chat groups support this function. Compared to an ordinary message, a message that is delivered only to online users has the following differences:
+
+- Does not support offline storage: If the recipient is offline when sending a message, the message cannot be received, even after logging in again. For ordinary messages, when the recipient is online, the message reminder is received in real time; when the recipient is offline, the offline push message is sent in real time. When the recipient is online again, the Chat server actively pushes the offline message to the client.
+- Support local storage: After a message is successfully sent, it is added to the database.
+- Roaming storage is not supported by default: Sent messages are not stored on the Chat message server by default, so users cannot obtain the messages on other devices. If you need to activate roaming storage of online messages, contact support@agora.io.
+
+To deliver messages to online users only, you need to set `ChatMessage#deliverOnlineOnly` to `true` when sending the message. The following is an example of sending a text message to only online users:
+
+```java
+// Create a text message, `content` is the text content of the message.
+// `conversationId` is the message receiver. It is the peer user ID in single chat and the group ID in group chat.
+ChatMessage message = ChatMessage.createTextSendMessage(content, conversationId);
+// Whether the message is only delivered to online users. (Default) `false`: Delivered regardless of whether the user is online or not; `true`: Only delivered to online users. If the user is offline, the message will not be delivered.
+message.deliverOnlineOnly(true);
+// Conversation type: Single chat is ChatMessage.ChatType.Chat, group chat is ChatMessage.ChatType.GroupChat, the default is single chat.
+message.setChatType(ChatMessage.ChatType.Chat);
+// Send a message.
+ChatClient.getInstance().chatManager().sendMessage(message);
+```
+
 ### Set message priority
 
-In high-concurrency scenarios, you can set a certain message type or messages from a chat room member as high, normal, or low priority.
+In high-concurrency use-cases, you can set a certain message type or messages from a chat room member as high, normal, or low priority.
 In this case, low-priority messages are dropped first to reserve resources for the high-priority ones, for example, gifts and announcements, when the server is overloaded.
 This ensures that the high-priority messages can be dealt with first when loads of messages are being sent in high concurrency or high frequency.
 Note that this feature can increase the delivery reliability of high-priority messages, but cannot guarantee the deliveries.
@@ -43,11 +66,13 @@ Even high-priorities messages can be dropped when the server load goes too high.
 You can set the priority for all types of messages in the chat room.
 
 ```java
+// Set `content` as the content of the text message.
+// Set `conversationId` to chat room ID in room chat.
 ChatMessage message = ChatMessage.createTextSendMessage(content, conversationId);
 message.setChatType(ChatMessage.ChatType.ChatRoom);
-// Set the message priority. The default value is `Normal`, indicating the normal priority.
+// Set the message priority. The default value is `PriorityNormal`, indicating the normal priority.
 message.setPriority(ChatMessage.ChatRoomMessagePriority.PriorityHigh);
-sendMessage(message);
+ChatClient.getInstance().chatManager().sendMessage(message);
 ```
 
 ### Receive a message
@@ -74,11 +99,11 @@ ChatClient.getInstance().chatManager().removeMessageListener(msgListener);
 
 After a message is sent, you can recall it. The `recallMessage` method recalls a message that is saved both locally and on the server, whether it is a historical message, offline message or a roaming message on the server, or a message in the memory or local database of the message sender or recipient.
 
-The default time limit for recalling a message is two minutes. You can extend this time frame to up to 7 days in Agora Console. To do so, select a project that enables Agora Chat, then click **Configure** > **Features** > **Message recall**.
+The default time limit for recalling a message is two minutes. You can extend this time frame to up to 7 days in <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>. To do so, select a project that enables <Vg k="COMPANY"/> Chat, then click **Configure** > **Features** > **Message recall**.
 
 ![message-recall](/images/chat/message-recall.png)
 
-<div class="alert info">Except CMD messages, you can recall all types of message.</div>
+<div class="alert info">1. Except CMD messages, you can recall all types of message. 2. If an attachment message, like an image, voice, video, or file message, is recalled, the attachment of the message is also deleted.</div>
 
 ```java
 try {
@@ -113,8 +138,9 @@ Refer to the following code example to create and send a voice message:
 // Set voiceUri as the local URI of the audio file, and duration as the length of the file in seconds.
 ChatMessage message = ChatMessage.createVoiceSendMessage(voiceUri, duration, conversationId);
 // Sets the chat type as one-to-one chat, group chat, or chatroom.
-if (chatType == CHATTYPE_GROUP)
+if (chatType == CHATTYPE_GROUP) {
     message.setChatType(ChatType.GroupChat);
+}
 ChatClient.getInstance().chatManager().sendMessage(message);
 ```
 
@@ -125,6 +151,9 @@ VoiceMessageBody voiceBody = (VoiceMessageBody) msg.getBody();
 // Retrieves the URL of the audio file on the server.
 String voiceRemoteUrl = voiceBody.getRemoteUrl();
 // Retrieves the URI if the audio file on the local device.
+//If 'ChatClient.getInstance().getOptions().setAutodownloadThumbnail' is set as `false` or the attachment has not been downloaded yet,
+//the file may not exist in 'voiceLocalUri' and you can manually call 'ChatClient.getInstance().chatManager().downloadAttachment(message)' to download the attachment,
+//and call the 'message. SetMessageStatusCallback (the callback)' to see if the download succeeds.
 Uri voiceLocalUri = voiceBody.getLocalUri();
 ```
 
@@ -159,7 +188,8 @@ Uri imgLocalUri = imgBody.getLocalUri();
 Uri thumbnailLocalUri = imgBody.thumbnailLocalUri();
 ```
 
-<div class="alert note">If <code>ChatClient.getInstance().getOptions().getAutodownloadThumbnail()</code> is set as <code>true</code> on the recipient's client, the SDK automatically downloads the thumbnail after receiving the message. If not, you need to call <code>ChatClient.getInstance().chatManager().downloadThumbnail(message)</code> to download the thumbnail and get the path from the <code>thumbnailLocalUri</code> member in <code>messageBody</code>.</div>
+<Admonition type="info" title="Note">If <code>ChatClient.getInstance().getOptions().getAutodownloadThumbnail()</code> is set as <code>true</code> on the recipient's client, the SDK automatically downloads the thumbnail after receiving the message. If not, you need to call <code>ChatClient.getInstance().chatManager().downloadThumbnail(message)</code> to download the thumbnail and get the path from the <code>thumbnailLocalUri</code> member in <code>messageBody</code>.
+If the file does not exist in <code>imgLocalUri</code>, you can manually call <code>ChatClient.getInstance().chatManager().downloadAttachment(message)</code> to download the attachment, and call the <code>message. SetMessageStatusCallback (the callback)</code>to see if the download succeeds.</Admonition>
 
 #### Send and receive a video message
 
@@ -170,59 +200,45 @@ Refer to the following code example to create and send a video message:
 ```java
 String thumbPath = getThumbPath(videoUri);
 ChatMessage message = ChatMessage.createVideoSendMessage(videoUri, thumbPath, videoLength, conversationId);
-sendMessage(message);
+// Sets the chat type as one-to-one chat, group chat, or chatroom.
+if (chatType == CHATTYPE_GROUP) {
+    message.setChatType(ChatType.GroupChat);
+}
+ChatClient.getInstance().chatManager().sendMessage(message);
 ```
 
 By default, when the recipient receives the message, the SDK downloads the thumbnail of the video message.
 
 If you do not want the SDK to automatically download the video thumbnail, set `ChatClient.getInstance().getOptions().setAutodownloadThumbnail` as `false`, and to download the thumbnail, you need to call `ChatClient.getInstance().chatManager().downloadThumbnail(message)`, and get the path of the thumbnail from the `thumbnailLocalUri` member in `messageBody`.
 
-To download the actual video file, call `SChatClient.getInstance().chatManager().downloadAttachment(message)`, and get the path of the video file from the `getLocalUri` member in `messageBody`.
+To download the actual video file, call `ChatClient.getInstance().chatManager().downloadAttachment(message)`, and get the path of the video file from the `getLocalUri` member in `messageBody`.
 
 ```java
 // If you received a message with video attachment, you need download the attachment before you open it.
 if (message.getType() == ChatMessage.Type.VIDEO) {
   VideoMessageBody messageBody = (VideoMessageBody)message.getBody();
-  // Get the URL of the video on the server.
-  String videoRemoteUrl = messageBody.getRemoteUrl();
-  // Download the video.
-  ChatClient.getInstance().chatManager().downloadAttachment(message);
-      // Set Callback to know whether the download is finished.
-  		public void onError(final int error, String message) {
-			EMLog.e(TAG, "offline file transfer error:" + message);
-			runOnUiThread(new Runnable() {
-				@Override
-				public void run() {
-					if (EaseShowBigImageActivity.this.isFinishing() || EaseShowBigImageActivity.this.isDestroyed()) {
-					    return;
-					}
-                    image.setImageResource(default_res);
-                    pd.dismiss();
-                    if (error == Error.FILE_NOT_FOUND) {
-						Toast.makeText(getApplicationContext(), R.string.Image_expired, Toast.LENGTH_SHORT).show();
-					}
-				}
-			});
-		}
-		public void onProgress(final int progress, String status) {
-			EMLog.d(TAG, "Progress: " + progress);
-			final String str2 = getResources().getString(R.string.Download_the_pictures_new);
-			runOnUiThread(new Runnable() {
-				@Override
-				public void run() {
-                    if (EaseShowBigImageActivity.this.isFinishing() || EaseShowBigImageActivity.this.isDestroyed()) {
-                        return;
-                    }
-					pd.setMessage(str2 + progress + "%");
-				}
-			});
-		}
-	};
 
-	msg.setMessageStatusCallback(callback);
-	ChatClient.getInstance().chatManager().downloadAttachment(msg);
-  // After the download finishes, get the URI of the local file.
-  Uri videoLocalUri = messageBody.getLocalUri();
+  // Set Callback to know whether the download is finished.
+  final CallBack callback = new CallBack() {
+        public void onSuccess() {
+            EMLog.e(TAG, "onSuccess" );
+            // After the download finishes onSuccess, get the URI of the local file.
+            Uri videoLocalUri = messageBody.getLocalUri();
+
+        }
+
+        public void onError(final int error, String message) {
+            EMLog.e(TAG, "offline file transfer error:" + message);
+        }
+
+        public void onProgress(final int progress, String status) {
+            EMLog.d(TAG, "Progress: " + progress);
+        }
+   };
+
+	    message.setMessageStatusCallback(callback);
+
+        ChatClient.getInstance().chatManager().downloadAttachment(message);
 }
 ```
 
@@ -234,7 +250,10 @@ Refer to the following code example to create, send, and receive a file message:
 // Set fileLocalUri as the URI of the file message on the local device.
 ChatMessage message = ChatMessage.createFileSendMessage(fileLocalUri, conversationId);
 // Sets the chat type as one-to-one chat, group chat, or chatroom.
-if (chatType == CHATTYPE_GROUP)    message.setChatType(ChatType.GroupChat);ChatClient.getInstance().chatManager().sendMessage(message);
+if (chatType == CHATTYPE_GROUP){
+    message.setChatType(ChatType.GroupChat);
+}
+ChatClient.getInstance().chatManager().sendMessage(message);
 ```
 
 While sending a file message, refer to the following sample code to get the progress for uploading the attachment file:
@@ -245,7 +264,6 @@ message.setMessageStatusCallback(new CallBack() {
     @Override
     public void onSuccess() {
         showToast("Message sending succeeds");
-        dialog.dismiss();
     }
     @Override
     public void onError(int code, String error) {
@@ -271,6 +289,8 @@ String fileRemoteUrl = fileMessageBody.getRemoteUrl();
 Uri fileLocalUri = fileMessageBody.getLocalUri();
 ```
 
+<Admonition type="info">If the file does not exist in fileLocalUri, you can manually call <code>ChatClient.getInstance().chatManager().downloadAttachment(message)</code> to download the attachment, and call the <code>message. SetMessageStatusCallback (the callback)</code>to see if the download succeeds.</Admonition>
+
 ### Send a location message
 
 To send and receive a location message, you need to integrate a third-party map service provider. When sending a location message, you get the longitude and latitude information of the location from the map service provider; when receiving a location message, you extract the received longitude and latitude information and displays the location on the third-party map.
@@ -279,8 +299,9 @@ To send and receive a location message, you need to integrate a third-party map 
 // Sets the latitude and longitude information of the address.
 ChatMessage message = ChatMessage.createLocationSendMessage(latitude, longitude, locationAddress, conversationId);
 // Sets the chat type as one-to-one chat, group chat, or chatroom.
-if (chatType == CHATTYPE_GROUP)
+if (chatType == CHATTYPE_GROUP) {
     message.setChatType(ChatType.GroupChat);
+}
 ChatClient.getInstance().chatManager().sendMessage(message);
 ```
 
@@ -288,12 +309,14 @@ ChatClient.getInstance().chatManager().sendMessage(message);
 
 CMD messages are command messages that instruct a specified user to take a certain action. The recipient deals with the command messages themselves.
 
-<div class="alert note"><ul><li>CMD messages are not stored in the local database.</li><li>Actions beginning with <code>em_</code> and <code>easemob::</code> are internal fields. Do not use them.</li></ul></div>
+<Admonition type="info"><ul><li>CMD messages are not stored in the local database.</li><li>Actions beginning with <code>em_</code> and <code>easemob::</code> are internal fields. Do not use them.</li></ul></Admonition>
 
 ```java
 ChatMessage cmdMsg = ChatMessage.createSendMessage(ChatMessage.Type.CMD);
 // Sets the chat type as one-to-one chat, group chat, or chat room.
-cmdMsg.setChatType(ChatType.GroupChat);
+if (chatType == CHATTYPE_GROUP){
+    cmdMsg.setChatType(ChatType.GroupChat);
+}
 String action="action1";
 // You can customize the action.
 CmdMessageBody cmdBody = new CmdMessageBody(action);
@@ -303,12 +326,12 @@ cmdMsg.addBody(cmdBody);
 ChatClient.getInstance().chatManager().sendMessage(cmdMsg);
 ```
 
-To notify the recipient that a CMD message is received, use a separate delegate so that users can deal with the message differently.
+To notify the recipient that a CMD message is received, use a separate listener so that users can deal with the message differently.
 
 ```java
 MessageListener msgListener = new MessageListener()
 {
-  // Occurs when the message is received
+  // Occurs when the normal message is received
   @Override
   public void onMessageReceived(List<ChatMessage> messages) {
   }
@@ -321,16 +344,16 @@ MessageListener msgListener = new MessageListener()
 
 ### Send a customized message
 
-Custom messages are self-defined key-value pairs that include the message type and the message content.
-
 The following code example shows how to create and send a customized message:
 
 ```java
 ChatMessage customMessage = ChatMessage.createSendMessage(ChatMessage.Type.CUSTOM);
 // Set event as the customized message type, for example, gift.
-event = "gift"CustomMessageBody customBody = new CustomMessageBody(event);
+event = "gift"CustomMessageBody;
+customBody = new CustomMessageBody(event);
 // The data type of params is Map<String, String>.
-customBody.setParams(params);customMessage.addBody(customBody);
+customBody.setParams(params);
+customMessage.addBody(customBody);
 // Sets the message recipient: user ID of the recipient for one-to-one chat, group ID for group chat, or chat room ID for a chat room.
 customMessage.setTo(to);
 // Sets the chat type as one-to-one chat, group chat, or chat room
@@ -340,7 +363,7 @@ customMessage.setChatType(chatType);ChatClient.getInstance().chatManager().sendM
 
 ### Use message extensions
 
-If the message types listed above do not meet your requirements, you can use message extensions to add attributes to the message. This can be applied in more complicated messaging scenarios.
+If the message types listed above do not meet your requirements, you can use message extensions to add attributes to the message. This can be applied in more complicated messaging use-cases.
 
 ```java
 ChatMessage message = ChatMessage.createTextSendMessage(content, conversationId);
@@ -350,6 +373,58 @@ message.setAttribute("attribute1", "value");message.setAttribute("attribute2", t
 ChatClient.getInstance().chatManager().sendMessage(message);
 // Retrieves the message attributes when receiving the message.
 message.getStringAttribute("attribute1",null);message.getBooleanAttribute("attribute2", false)
+```
+
+### Forward a single message
+
+You can use the `Message#addBody` and `Message#setAttribute` methods to create a new message identical to the original one, including its body and extended fields. After creating the message, you can forward it using the `ChatManager#sendMessage` method.
+
+You can forward all types of messages in individual chats, chat groups, and chat rooms. For messages with attachments, there's no need to re-upload the attachments during forwarding.
+
+However, if the original message expires (for example, deleted from the server due to storage limitations), the recipient can view the attachment address after forwarding but won't be able to download the attachment.
+
+To forward a single message, refer to the following code:
+
+```java
+// messageId: ID of the message for forwarding.
+String messageId = "";
+ChatMessage targetMessage = ChatClient.getInstance().chatManager().getMessage(messageId);
+// to: The peer user ID for one-to-one chat, group ID for a group chat, and chat room ID for a room chat.
+String to = "the conversationId you want to send to";
+ChatMessage newMessage = ChatMessage.createSendMessage(targetMessage.getType());
+newMessage.setTo(to);
+// chatType: ChatMessage.ChatType.Chat for one-to-one chat, ChatMessage.ChatType.GroupChat for group chat, or ChatMessage.ChatType.ChatRoom.
+// The default value is `ChatMessage.ChatType.Chat`. For a group chat, add the following line.
+//newMessage.setChatType(ChatMessage.ChatType.GroupChat);
+
+// Create a new message with the body and extension fields of the original message.
+MessageBody targetMessageBody = targetMessage.getBody();
+newMessage.addBody(targetMessageBody);
+Map<String, Object> ext = targetMessage.ext();
+//Traverse extension fields.
+if (ext != null) {
+    for (Map.Entry<String, Object> entry : ext.entrySet()) {
+        Object value = entry.getValue();
+        if (value instanceof Long) {
+            newMessage.setAttribute(entry.getKey(), (long) value);
+        } else if (value instanceof Integer) {
+            newMessage.setAttribute(entry.getKey(), (int) value);
+        } else if (value instanceof String) {
+            newMessage.setAttribute(entry.getKey(), (String) value);
+        } else if (value instanceof Boolean) {
+            newMessage.setAttribute(entry.getKey(), (boolean) value);
+        } else if (value instanceof Double) {
+            newMessage.setAttribute(entry.getKey(), (double) value);
+        } else if (value instanceof Float) {
+            newMessage.setAttribute(entry.getKey(), (float) value);
+        } else if (value instanceof JSONArray) {
+            newMessage.setAttribute(entry.getKey(), (JSONArray) value);
+        } else if (value instanceof JSONObject) {
+            newMessage.setAttribute(entry.getKey(), (JSONObject) value);
+        }
+    }
+}
+ChatClient.getInstance().chatManager().sendMessage(newMessage);
 ```
 
 ### Forward multiple messages
@@ -370,24 +445,21 @@ To forward and receive combined messages, refer to the following code:
     // Send the message
     ChatClient.getInstance().chatManager().sendMessage(message);
     ```
+1. Download and parse combined messages:
 
-2. Download and parse combined messages:
+   ```java
+   ChatClient.getInstance().chatManager().downloadAndParseCombineMessage(combinedMessage, new ValueCallBack<List<ChatMessage>>() {
+               @Override
+               public void onSuccess(List<ChatMessage> value) {
 
-    ```java
-    ChatClient.getInstance().chatManager().downloadAndParseCombineMessage(combinedMessage, new ValueCallBack<List<ChatMessage>>() {
-                @Override
-                public void onSuccess(List<ChatMessage> value) {
+               }
 
-                }
+               @Override
+               public void onError(int error, String errorMsg) {
 
-                @Override
-                public void onError(int error, String errorMsg) {
-
-                }
-            });
+               }
+           });
     ```
-
-For further details see [Multiple messages forwarding limitations](../../reference/limitations#multiple-messages-forwarding-limitations).
 
 ### Modify sent messages
 
@@ -429,7 +501,6 @@ To modify a sent message, refer to the following code:
     // Create a MessageListener object
     MessageListener messageListener = new MessageListener() {
                 //……
-
                 @Override
                 public void onMessageContentChanged(ChatMessage messageModified, String operatorId, long operationTime) {
                     // int operationCount = messageModified.getBody().operationCount();

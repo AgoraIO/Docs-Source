@@ -1,0 +1,194 @@
+<PlatformWrapper platform="react-native">
+
+```typescript
+// Import dependencies.
+import React, { useEffect, useState } from 'react';
+import {
+  ChatClient,
+  ChatOptions,
+  ChatMessageChatType,
+} from 'react-native-agora-chat';
+
+// Define the App component.
+const App = () => {
+  // Define state variables.
+  const title = 'AgoraChatQuickstart';
+  const serverURL = '<Add the token server URL here>';
+  const appKey = '<your appKey>'; // Replace with your app key.
+  const [username, setUsername] = useState('<your userId>'); // Replace with your user ID.
+  const [chatToken, setChatToken] = useState(''); // Initially empty; will be fetched dynamically.
+  const [targetId, setTargetId] = useState('');
+  const [content, setContent] = useState('');
+
+  // Chat client and manager instances.
+  const chatClient = ChatClient.getInstance();
+  const chatManager = chatClient.chatManager;
+  let isInitialized = false; // Track SDK initialization.
+
+  // Function to fetch the Agora token.
+  const fetchToken = async (userId) => {
+    try {
+      console.log('Fetching token...');
+      // Replace the URL with your token server endpoint.
+      const response = await fetch(serverURL);
+      if (!response.ok) {
+        throw new Error(`Token fetch failed: ${response.statusText}`);
+      }
+      const data = await response.json();
+      console.log('Token fetched successfully.');
+      return data.token; // Adjust based on your server's response format.
+    } catch (error) {
+      console.error(`Error fetching token: ${error.message}`);
+      return null;
+    }
+  };
+
+  // Effect to initialize the SDK and fetch the token.
+  useEffect(() => {
+    // Registers listeners for incoming messages.
+    const setMessageListener = () => {
+      const msgListener = {
+        onMessagesReceived: (messages) => {
+          messages.forEach((message) => {
+            console.log(`Received msgId: ${message.msgId}`);
+          });
+        },
+        onCmdMessagesReceived: () => {},
+        onMessagesRead: () => {},
+        onGroupMessageRead: () => {},
+        onMessagesDelivered: () => {},
+        onMessagesRecalled: () => {},
+        onConversationsUpdate: () => {},
+        onConversationRead: () => {},
+      };
+      chatManager.removeAllMessageListener();
+      chatManager.addMessageListener(msgListener);
+    };
+
+    // Initializes the Agora Chat SDK.
+    const init = () => {
+      const options = new ChatOptions({
+        autoLogin: false,
+        appKey,
+      });
+
+      chatClient.removeAllConnectionListener();
+      chatClient
+        .init(options)
+        .then(() => {
+          console.log('SDK initialized successfully');
+          isInitialized = true;
+
+          // Set connection listeners.
+          const connectionListener = {
+            onTokenWillExpire: async () => {
+              console.log('Token is about to expire. Fetching a new token...');
+              const newToken = await fetchToken(username);
+              if (newToken) {
+                chatClient.renewAgoraToken(newToken);
+                setChatToken(newToken);
+                console.log('Token renewed successfully.');
+              }
+            },
+            onTokenDidExpire: async () => {
+              console.log('Token expired. Fetching a new token...');
+              const newToken = await fetchToken(username);
+              if (newToken) {
+                chatClient.renewAgoraToken(newToken);
+                setChatToken(newToken);
+                console.log('Token renewed successfully.');
+              }
+            },
+            onConnected: () => {
+              console.log('Connected to the chat server.');
+              setMessageListener();
+            },
+            onDisconnected: (errorCode) => {
+              console.log(`Disconnected from the chat server: ${errorCode}`);
+            },
+          };
+          chatClient.addConnectionListener(connectionListener);
+        })
+        .catch((error) => {
+          console.error(
+            `SDK initialization failed: ${
+              error instanceof Object ? JSON.stringify(error) : error
+            }`,
+          );
+        });
+    };
+
+    // Fetch the token and initialize the SDK.
+    const initializeApp = async () => {
+      const token = await fetchToken(username);
+      if (token) {
+        setChatToken(token);
+        init();
+      }
+    };
+
+    initializeApp();
+  }, [chatClient, chatManager, appKey, username]);
+
+  // Handles login with the specified username and token.
+  const login = () => {
+    if (!isInitialized) {
+      console.error('Perform initialization first.');
+      return;
+    }
+    console.log('Starting login...');
+    chatClient
+      .loginWithAgoraToken(username, chatToken)
+      .then(() => {
+        console.log('Login successful.');
+      })
+      .catch((error) => {
+        console.error(`Login failed: ${JSON.stringify(error)}`);
+      });
+  };
+
+  // Handles logout from the server.
+  const logout = () => {
+    if (!isInitialized) {
+      console.error('Perform initialization first.');
+      return;
+    }
+    console.log('Starting logout...');
+    chatClient
+      .logout()
+      .then(() => {
+        console.log('Logout successful.');
+      })
+      .catch((error) => {
+        console.error(`Logout failed: ${JSON.stringify(error)}`);
+      });
+  };
+
+  // Render the UI.
+  return (
+    <div>
+      <h1>{title}</h1>
+      <div>
+        <button onClick={login}>Login</button>
+        <button onClick={logout}>Logout</button>
+        <input
+          type="text"
+          placeholder="Target ID"
+          value={targetId}
+          onChange={(e) => setTargetId(e.target.value)}
+        />
+        <input
+          type="text"
+          placeholder="Message Content"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default App;
+```
+
+</PlatformWrapper>

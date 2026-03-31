@@ -1,17 +1,161 @@
-Agora provides a <Vg k="NCS_LONG"/> (<Vg k="NCS"/>) service that can send notifications about <Vg k="COMPANY"/> <Vpd k="NAME"/> events. You can set up an HTTP/HTTPS server to receive such notifications. When an event occurs, the <Vpd k="NAME"/> service notifies the <Vg k="NCS_LONG"/> service, and then the <Vg k="NCS_LONG"/> service notifies your server of that event through an HTTP/HTTPS request.
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
 
+Agora provides the <Vg k="NCS_LONG" /> service (<Vg k="NCS" />), which sends notifications about <Vg k="COMPANY" /> <Vpd k="NAME" /> events. You can set up an HTTPS server to receive these notifications. When an event occurs, the <Vpd k="NAME" /> service notifies the <Vg k="NCS_LONG" /> service, which then sends an HTTPS request to your server.
 
-<Admonition type="caution" title="Note">Best practice is that core apps do not rely on <Vg k="NCS"/>. If your apps already rely heavily on <Vg k="NCS"/>, contact support@agora.io and enable the redundant message notification function. This doubles the received notifications and reduces the probability of message loss. After enabling the message notification function, you need to deduplicate messages based on SID. Message notification still cannot guarantee a 100% arrival rate.</Admonition>
-
-### Callback information
+## Callback information
 
 After you enable <Vg k="NCS_LONG"/>, when a specified event occurs, the <Vg k="NCS_LONG"/> server sends an HTTP/HTTPS request as a callback. The request body provides the main information of the callback in a JSON object. The JSON object contains different fields for different events.
 
-- The fields in the red rectangle are common for all callback events.
-- The fields in the blue rectangle are common for all <Vpd k="NAME"/> events. For details, see [Payload fields](#payload-fields).
-- The values of `eventType`, `serviceType`, and `details` depend on the event. For details, see `EventType`.
+The structure of the message notification callback in version 7.x differs from that in versions 5.x and 6.x. Refer to the relevant section based on your implementation.
 
-#### Payload fields
+## v7.x
+
+This section explains the structure of the message notification callback for version 7.x.
+
+### Request body
+
+The message notification callback request body includes the following fields:
+
+| Field       | Type        | Description       |
+| ----------- | ----------- | ----------------------- |
+| `sid`       | String      | The agent ID.     |
+| `noticeId`  | String      | The notification ID. Uniquely identifies an event notification from the Agora service.      |
+| `productId` | Number      | The service ID. `20` indicates speech-to-text service.         |
+| `eventType` | Number      | The type of event. See [Event types](#event-types) for details. |
+| `notifyMs`  | Number      | The Unix timestamp (in milliseconds) when the Agora messaging server sends the notification.       |
+| `payload`   | JSON object | Event-specific data. The structure of `payload` depends on the `eventType`. For details, see [Event types](#event-types). |
+
+**Example**:
+
+```json
+{
+    "sid": "agent_id",
+    "noticeId": "e94f5b6fd69446ea9d75da90a59ca8a2",
+    "productId": 20,
+    "eventType": 101,
+    "notifyMs": 1750235972193,
+    "payload": {...}
+}
+```
+
+### Event types
+
+The Agora message notification service supports the following events for the speech-to-text service:
+
+| `eventType` | `event_name`   | Description        |
+| ----------- | -------------- | --- |
+| `101`       | `agent joined` | The agent joins the channel. |
+| `102`       | `agent left`   | The agent leaves the channel.   |
+
+#### Event 101: Agent joined
+
+The `eventType` value `101` indicates that an agent has joined a channel. The `payload` contains the following fields:
+
+| Field      | Type     | Description            |
+| ---------- | -------- | ------------------------ |
+| `agent_id` | `String` | The task ID associated with the agent.  |
+| `start_ts` | `Number` | The timestamp (in milliseconds) when the task started. |
+| `channel`  | `String` | The name of the channel the agent joined.              |
+
+**Example**:
+
+```json
+{
+    "agent_id": "agent_id",
+    "channel": "stt_ncs93369",
+    "start_ts": 1750235971
+}
+```
+
+#### Event 102: Agent left
+
+The `eventType` value `102` indicates that an agent left the channel. The `payload` includes the following fields:
+
+| Field      | Type     | Description  |
+| ---------- | -------- | ---- |
+| `agent_id` | `String` | The task ID associated with the agent.       |
+| `start_ts` | `Number` | The timestamp (in milliseconds) when the task started.        |
+| `stop_ts`  | `Number` | The timestamp (in milliseconds) when the task ended.          |
+| `channel`  | `String` | The name of the channel the agent was in.    |
+| `status`   | `String` | The status of the task:<br/>= `STOPPED`: The task ended normally or due to idle timeout.<br/>- `FAILED`: The task failed.       |
+| `message`  | `String` | The reason the agent exited the channel:<br/>- `OK`: The agent exited normally.<br/>- `Idle for too long`: The task timed out due to inactivity.<br/>- `RTC connection error`: The agent exited due to a connection error.<br/>- `Fatal ASR error`: The task exited because of an ASR module error.<br/>- `Fatal Translation error`: The task exited due to a translation module error. |
+
+**Example**:
+
+<Tabs groupId="examples">
+<TabItem value="stop" label="Normal stop" default>
+<CodeBlock language="json" showLineNumbers>
+{`{
+    "agent_id": "agent_id",
+    "channel": "stt_ncs93369",
+    "message": "OK",
+    "start_ts": 1750235971,
+    "status": "STOPPED",
+    "stop_ts": 1750235984
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="timeout" label="Idle timeout" default>
+<CodeBlock language="json" showLineNumbers>
+{`{
+    "agent_id": "agent_id",
+    "channel": "stt_ncs93369",
+    "message": "Idle for too long",
+    "start_ts": 1750235971,
+    "status": "STOPPED",
+    "stop_ts": 1750235984
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="connection" label="Connection error" default>
+<CodeBlock language="json" showLineNumbers>
+{`{
+    "agent_id": "agent_id",
+    "channel": "stt_ncs93369",
+    "message": "RTC connection error",
+    "start_ts": 1750235971,
+    "status": "FAILED",
+    "stop_ts": 1750235984
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="moduleError" label="ASR error" default>
+<CodeBlock language="json" showLineNumbers>
+{`{
+    "agent_id": "agent_id",
+    "channel": "stt_ncs93369",
+    "message": "Fatal ASR error",
+    "start_ts": 1750235971,
+    "status": "FAILED",
+    "stop_ts": 1750235984
+}`}
+</CodeBlock>
+</TabItem>
+<TabItem value="moduleTranslationError" label="Translation error" default>
+<CodeBlock language="json" showLineNumbers>
+{`{
+    "agent_id": "agent_id",
+    "channel": "stt_ncs93369",
+    "message": "Fatal Translation error",
+    "start_ts": 1750235971,
+    "status": "FAILED",
+    "stop_ts": 1750235984
+}`}
+</CodeBlock>
+</TabItem>
+</Tabs>
+
+
+## v5.x and v6.x
+
+This section explains the structure of the message notification callback for SDK versions 5.x and 6.x.
+
+- The following [Payload fields](#payload-fields) are common for all <Vpd k="NAME"/> events.
+- The values of `eventType`, `serviceType`, and `details` depend on the event. 
+
+### Payload fields
 
 The `payload` JSON object, which is the main body of a notification, includes the following fields in each type of event notification:
 
@@ -48,12 +192,50 @@ The `payload` JSON object, which is the main body of a notification, includes th
 - `msgName`: String. The message name, `cloud_recording_file_infos`.
 - `fileList`: String. The name of the M3U8 file.
 
+**Example**:
+
+```json
+{
+    "cname": "test",
+    "subBotUid": "91",
+    "pubBotUid": "22",
+    "taskId": "ec4b91009a47366703b821bb12345678",
+    "sequence": 0,
+    "serviceScene": "Real-Time STT + Real-Time Translation",
+    "sendts": 1715670681,
+    "serviceType": 2,
+    "details": {
+        "fileList": "ec4b91009a47366703b821bb12345678_test.m3u8",
+        "msgName": "voice_ai_file_infos"
+    }
+}
+```
+
 #### `30 uploader_started`
 
 `eventType 30` indicates that the upload service has started. `details` includes the following fields:
 
 - `msgName`: String. The message name, uploader_started.
 - `status`: Number. The event status. 0 indicates normal status; other values indicate abnormal status.
+
+**Example**:
+
+```json
+{
+    "cname": "test",
+    "subBotUid": "91",
+    "pubBotUid": "22",
+    "taskId": "c662ce961441cd8dc22f858ab7cec4d4",
+    "sequence": 0,
+    "serviceScene": "Real-Time STT + Real-Time Translation",
+    "sendts": 1715331647,
+    "serviceType": 2,
+    "details": {
+        "msgName": "uploader_started",
+        "status": 0
+    }
+}
+```
 
 #### `31 uploaded`
 
@@ -72,6 +254,45 @@ The `payload` JSON object, which is the main body of a notification, includes th
     - `2`: Service for a specific UID.
 - `sliceStartTime`: Number. The Unix time (ms) when the recording starts.
 
+**Example**:
+
+```json
+{
+    "cname": "test",
+    "subBotUid": "91",
+    "pubBotUid": "22",
+    "taskId": "c662ce961441cd8dc22f858ab7cec4d4",
+    "sequence": 0,
+    "serviceScene": "Real-Time STT + Real-Time Translation",
+    "sendts": 1715331732,
+    "serviceType": 2,
+    "details": {
+        "status": 0,
+        "fileList": [
+            {
+ "fileName": "en-US_c662ce961441cd8dc22f858ab7cec4d4_test.m3u8",
+ "trackType": "audio",
+ "mode": 2,
+ "sliceStartTime": 1715331647844
+            },
+            {
+ "fileName": "ar-SA_c662ce961441cd8dc22f858ab7cec4d4_test.m3u8",
+ "trackType": "audio",
+ "mode": 2,
+ "sliceStartTime": 1715331647844
+            },
+            {
+ "fileName": "c662ce961441cd8dc22f858ab7cec4d4_test.m3u8",
+ "trackType": "audio",
+ "mode": 2,
+ "sliceStartTime": 1715331647844
+            }
+        ],
+        "msgName": "uploaded"
+    }
+}
+```
+
 #### `32 backuped`
 
 `eventType 32` indicates that all the `.vtt` files are uploaded, but at least one of them is uploaded to Agora Cloud Backup. Agora Cloud Backup automatically uploads the files to the specified third-party cloud storage. `details` includes the following fields:
@@ -89,6 +310,45 @@ The `payload` JSON object, which is the main body of a notification, includes th
     - `2`: Service for specific uid.
 - `sliceStartTime: Number. The Unix time (ms) when the recording starts.
 
+**Example**:
+
+```json
+{
+    "cname": "test",
+    "subBotUid": "91",
+    "pubBotUid": "22",
+    "taskId": "c662ce961441cd8dc22f858ab7cec4d4",
+    "sequence": 0,
+    "serviceScene": "Real-Time STT + Real-Time Translation",
+    "sendts": 1715331732,
+    "serviceType": 2,
+    "details": {
+        "status": 0,
+        "fileList": [
+            {
+ "fileName": "en-US_c662ce961441cd8dc22f858ab7cec4d4_test.m3u8",
+ "trackType": "audio",
+ "mode": 2,
+ "sliceStartTime": 1715331647844
+            },
+            {
+ "fileName": "ar-SA_c662ce961441cd8dc22f858ab7cec4d4_test.m3u8",
+ "trackType": "audio",
+ "mode": 2,
+ "sliceStartTime": 1715331647844
+            },
+            {
+ "fileName": "c662ce961441cd8dc22f858ab7cec4d4_test.m3u8",
+ "trackType": "audio",
+ "mode": 2,
+ "sliceStartTime": 1715331647844
+            }
+        ],
+        "msgName": "backuped"
+    }
+}
+```
+
 #### `33 uploading_progress`
 
 `eventType 33` indicates the current upload progress. It notifies you of the `.vtt` files upload progress once every minute after the <Vpd k="NAME"/> service starts. `details` includes the following fields:
@@ -96,7 +356,36 @@ The `payload` JSON object, which is the main body of a notification, includes th
 - `msgName`: String. The message name, `uploading_progress`.
 - `progress`: Number. An ever-increasing number between 0 and 10,000, equal to the ratio of the number of the uploaded files to the number of the recorded files multiplied by 10,000. After the recording service exits and when the number reaches 10,000, the upload completes.
 
-### What are the differences between the <Vg k="NCS_LONG"/> service and the `query` method?
+**Example**:
+
+```json
+{
+    "cname": "test",
+    "subBotUid": "91",
+    "pubBotUid": "22",
+    "taskId": "c662ce961441cd8dc22f858ab7cec4d4",
+    "sequence": 0,
+    "serviceScene": "Real-Time STT + Real-Time Translation",
+    "sendts": 1715331707,
+    "serviceType": 2,
+    "details": {
+        "msgName": "uploading_progress",
+        "progress": 10000
+    }
+}
+```
+
+
+<Admonition type="caution" title="Best Practice">
+Agora does not recommended that core applications rely heavily on <Vg k="NCS_LONG"/>. If your application currently depends heavily on NCS, contact support@agora.io to enable the redundant message notification function. This feature doubles the number of received notifications, thereby reducing the probability of message loss. However, after enabling this function, you must check the message SID to manage duplicate messages. Please note that message notifications still cannot guarantee a 100% arrival rate.
+</Admonition>
+
+
+## Reference
+
+This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
+
+### What are the differences between the <Vg k="NCS_LONG"/> service and the query method?
 
 You can monitor the status of the <Vpd k="NAME"/> service either through the `query` method or by the <Vg k="NCS_LONG"/> service, to take action when required. Both options have pros and cons.
 
@@ -120,4 +409,5 @@ You can use the <Vg k="NCS_LONG"/> service as a complementary option to monitor 
     - The server passively receives messages, and the messages may get lost.
     - The confirmation message of the message delivery may get lost, causing the message to be re-sent. In such a case, you need to deduplicate the notifications.
 - The messages may not arrive in the correct order.
+
 

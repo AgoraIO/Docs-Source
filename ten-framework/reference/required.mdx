@@ -1,0 +1,121 @@
+---
+title: 'Required fields'
+sidebar_position: 2
+type: docs
+platform_selector: false
+description: >
+  Required fields
+---
+
+In the TEN framework, only message schemas can include `required` fields. Extension properties cannot include `required` fields.
+
+This means that schemas for `cmd_in`, `cmd_out`, `data_in`, `data_out`, `audio_frame_in`, `audio_frame_out`, `video_frame_in`, and `video_frame_out` can define `required` fields.
+
+For message schemas, the `required` field is valid only in the following three locations:
+
+- At the same level as `property` in `<foo>_in` or `<foo>_out`
+- Inside the `property` of `result` in `<foo>_in` or `<foo>_out`
+- Within a `property` of type `object` (for nested structures)
+
+Examples of these scenarios are shown below.
+
+```json
+{
+  "api": {
+    "cmd_in": [
+      {
+        "name": "foo",
+        "property": {
+          "a": {
+            "type": "int8"
+          },
+          "b": {
+            "type": "uint8"
+          },
+          "c": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "d": {
+            "type": "object",
+            "properties": {
+              "e": {
+                "type": "float32"
+              }
+            }
+          },
+          "exampleObject": {
+            "type": "object",
+            "properties": {
+              "foo": {
+                "type": "int32"
+              },
+              "bar": {
+                "type": "string"
+              }
+            },
+            "required": ["foo"] // 3.
+          }
+        },
+        "required": ["a", "b"], // 1.
+        "result": {
+          "property": {
+            "ccc": {
+              "type": "buf"
+            },
+            "detail": {
+              "type": "buf"
+            }
+          },
+          "required": ["ccc"] // 2.
+        }
+      }
+    ]
+  }
+}
+```
+
+## Use of `required`
+
+### Message sent from an extension
+
+When an extension calls `send_<foo>(msg_X)` or `return_result(result_Y)`, the framework checks `msg_X` or `result_Y` against their respective schemas in the extension. If `msg_X` or `result_Y` is missing any of the fields marked as `required` in the schema, the schema check fails, indicating an error.
+
+The handling of these three scenarios is identical, though they are discussed separately:
+
+1. If `send_<foo>` is sending a TEN command and the schema check fails:
+
+   `send_<foo>` returns false immediately. If an error parameter is provided, it includes the schema check failure error message.
+
+2. If `return_result` fails the schema check:
+
+   `return_result` returns false. If an error parameter is provided, it includes the schema check failure error message.
+
+3. If `send_<foo>` is sending a general data-like TEN message, such as data, audio frame, or video frame:
+
+   `send_<foo>` returns false. If an error parameter is provided, it includes the schema check failure error message.
+
+### Message received by an extension
+
+Before TEN runtime passes `msg_X` or `result_Y` to an extension's `on*<foo>()` or result handler, it checks whether all `required` fields defined in the schema of `msg_X` or `result_Y` are present. If a `required` field is missing, the schema check fails.
+
+1. If the incoming message is a TEN command:
+
+   `ten_runtime` returns an error `status_code` result to the previous extension.
+
+2. If the incoming message is a TEN command result:
+
+   `ten_runtime` changes the `status_code` of the result to error, adds the missing `required` fields, and sets the values of these fields to their default values based on their type.
+
+3. If the incoming message is a TEN data-like message:
+
+   `ten_runtime` simply drops the data-like message.
+
+## Behavior of graph check
+
+TEN Manager has a function called Graph Check, which is used to verify the semantic correctness of a graph. The checks related to required fields are as follows:
+
+1. For a connection, the `required` fields of the source must be a superset of the `required` fields of the destination.
+2. If the same field name appears in both the source and destination `required` fields, their types must be compatible.

@@ -1,0 +1,181 @@
+<PlatformWrapper platform="windows">
+
+```csharp
+using System.Net.Http;
+using System.Text.Json;
+using System.Windows;
+using AgoraChat;
+using AgoraChat.MessageBody;
+
+private readonly string userId = "<User ID of the local user>";
+private string token = "";
+private readonly string app_key = "<App key from Agora console>";
+private readonly string tokenServerUrl = "<Your token server URL>";
+private bool isJoined = false;
+// Update the UI from callbacks on a separate thread
+private readonly System.Windows.Threading.Dispatcher? Dip = null;
+
+public partial class MainWindow : Window, IConnectionDelegate, IChatManagerDelegate
+{
+    public MainWindow()
+    {
+        // Initialize window component
+        InitializeComponent();
+        // Initialize the thread dispatcher            
+        Dip = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+        // Initialize Chat SDK client
+        setupChatClient();
+        // Add connection and chat delegates to handle callbacks
+        SDKClient.Instance.AddConnectionDelegate(this);
+        SDKClient.Instance.ChatManager.AddChatManagerDelegate(this);
+        // Execute the CloseWindow method when the app closes
+        Closed += CloseWindow;
+    }
+
+    private void setupChatClient()
+    {
+        var options = new Options(appKey: app_key);
+        options.UsingHttpsOnly = true;
+        // Initialize the chat SDKClient
+        SDKClient.Instance.InitWithOptions(options);
+    }
+
+    private async void JoinLeave_Click(object sender, RoutedEventArgs e)
+    {
+        Button button = (Button)this.FindName("btnJoinLeave");
+
+        if (isJoined)
+        {
+            SDKClient.Instance.Logout(true, callback: new CallBack(
+                onSuccess: () =>
+                {
+                    showLog("Sign out from Agora Chat succeed");
+                    Dip?.Invoke(() =>
+                    {
+                        button.Content = "Join";
+                    });
+                    isJoined = false;
+                },
+                onError: (code, desc) =>
+                {
+                    showLog(desc);
+                }
+            ));
+        }
+        else
+        {
+            // Generate token
+            token = await GenerateTokenAsync(userId);
+
+            if (string.IsNullOrEmpty(token))
+            {
+                showLog("Failed to generate token. Please try again.");
+                return;
+            }
+
+            // Log in to the Chat service with userId and Agora token.
+            SDKClient.Instance.LoginWithAgoraToken(userId, token, callback: new CallBack(
+                onSuccess: () =>
+                {
+                    showLog("Sign in to Agora Chat succeed");
+                    isJoined = true;
+                    Dip?.Invoke(() =>
+                    {
+                        button.Content = "Leave";
+                    });
+                },
+                onError: (code, desc) =>
+                {
+                    if (code == 200)
+                    { // Already joined
+                        isJoined = true;
+                        Dip?.Invoke(() =>
+                        {
+                            button.Content = "Leave";
+                        });
+                    }
+                    else
+                    {
+                        showLog(desc);
+                    }
+                }
+            ));
+        }
+    }
+
+    public void OnAuthFailed() 
+    {
+        showLog("User authentication failed.");
+    }
+
+    public void OnTokenExpired() 
+    {
+        showLog("The token has expired.");
+    }
+
+    public async void OnTokenWillExpire()
+    {
+        showLog("The token is about to expire. Fetching a new token...");
+
+        // Fetch a new token from the token server
+        string newToken = await GenerateTokenAsync(userId);
+
+        if (!string.IsNullOrEmpty(newToken))
+        {
+            // Renew the token with Agora Chat SDK
+            SDKClient.Instance.RenewToken(newToken, new CallBack(
+                onSuccess: () =>
+                {
+                    showLog("Token renewed successfully.");
+                    token = newToken; // Update the local token variable
+                },
+                onError: (code, desc) =>
+                {
+                    showLog($"Failed to renew token: {desc}");
+                }
+            ));
+        }
+        else
+        {
+            showLog("Failed to fetch a new token. Please check the token server.");
+        }
+    }
+
+
+    private void CloseWindow(object sender, EventArgs e)
+    {
+        SDKClient.Instance.ChatManager.RemoveChatManagerDelegate(this);
+        SDKClient.Instance.DeleteConnectionDelegate(this);
+    }
+
+    private async Task<string> GenerateTokenAsync(string userId)
+    {
+        try
+        {
+            using HttpClient client = new HttpClient();
+            var response = await client.GetAsync($"{tokenServerUrl}?userId={userId}");
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonResponse);
+                if (result != null && result.ContainsKey("token"))
+                {
+                    return result["token"];
+                }
+            }
+            else
+            {
+                showLog($"Token server error: {response.ReasonPhrase}");
+            }
+        }
+        catch (Exception ex)
+        {
+            showLog($"Exception while fetching token: {ex.Message}");
+        }
+        return string.Empty;
+    }
+
+}
+```
+
+</PlatformWrapper>

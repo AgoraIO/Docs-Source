@@ -7,27 +7,24 @@ description:
    Use the Cloud Recording RESTful API to make a web page recording and push media stream to the CDN during a web page recording.
 ---
 
-## Overview
-
-This guide includes the key steps in using the Cloud Recording RESTful API to make a web page recording.
-
 Agora Cloud Recording supports three recording modes:
 
 - Individual recording
 - Composite recording
 - Web page recording
 
-In web page recording mode, the content and audio of a specified web page are recorded in a single file.
+This guide outlines the key steps for using the Cloud Recording RESTful API to record a web page.
+In this recording mode, the content and audio of the specified web page are captured in a single file.
 
-![](https://web-cdn.agora.io/docs-files/1640248515342)
+![](/images/cloud-recording/web-page-recording.svg)
 
-You can use web page recording to reproduce scenarios such as online classes and video conferences. For example, if your web application integrates both the Agora SDK and a third-party whiteboard SDK, web page recording can record everything on the web page instead of only the audio and video streams.
+You can use web page recording to reproduce use-cases such as online classes and video conferences. For example, if your web application integrates both the Agora SDK and a third-party whiteboard SDK, web page recording can record everything on the web page instead of only the audio and video streams.
 
-![](https://web-cdn.agora.io/docs-files/1640248552826)
+![](/images/cloud-recording/web-page-layout.svg)
 
 In web page recording mode, you can also convert the content and audio of the page into a media stream and push it to the CDN during the recording process.
 
-![](https://web-cdn.agora.io/docs-files/1640247686729)
+![](/images/cloud-recording/web-page-push-cdn.svg)
 
 ## Prerequisites
 
@@ -43,28 +40,29 @@ In web page recording mode, you can also convert the content and audio of the pa
 
 Before recording, call the [`acquire`](../reference/restful-api#acquire) method to apply for a resource ID. Note that you must set `scene` as `1`.
 
-#### An HTTP request example of `acquire`
+#### Example `acquire` request over HTTPS
 
 - Request URL: 
 
-```html
-https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
-```
+    ```html
+    https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
+    ```
+
 - `Content-type`: `application/json;charset=utf-8`
 - `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
 
 - Request body:
 
-```json
-{
-    "cname": "httpClient463224",
-    "uid": "527841",
-    "clientRequest": {
-        "resourceExpiredHour": 24,
-        "scene": 1
+    ```json
+    {
+        "cname": "httpClient463224",
+        "uid": "527841",
+        "clientRequest": {
+            "resourceExpiredHour": 24,
+            "scene": 1
+        }
     }
-}
-```
+    ```
 
 ### Start recording
 
@@ -80,87 +78,88 @@ In web page recording mode, you can configure the following parameters in `clien
 | `recordingFileConfig`    | Configures the recorded files.            | Optional |
 | `extensionServiceConfig` | Configures web page recording.            | Required |
 
-#### An HTTP request example of `start`
+#### Example `start` request over HTTPS
 
 - Request URL:
 
-```html
-https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/web/start
-```
+    ```html
+    https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/web/start
+    ```
 
 - `Content-type:` `application/json;charset=utf-8`
 - `Authorization:` Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
 - Request body:
 
-```json
-{
-    "cname": "httpClient463224",
-    "uid": "527841",
-    "clientRequest": {
-        "token": "<token if any>",
-        "extensionServiceConfig": {
-            "errorHandlePolicy": "error_abort",
-            "extensionServices": [
-                {
-                    "serviceName": "web_recorder_service",
-                    "errorHandlePolicy": "error_abort",
-                    "serviceParam": {
-                        "url": "https://xxxxx",
-                        "audioProfile": 0,
-                        "videoWidth": 1280,
-                        "videoHeight": 720,
-                        "maxRecordingHour": 3
+    ```json
+    {
+        "cname": "httpClient463224",
+        "uid": "527841",
+        "clientRequest": {
+            "token": "<token if any>",
+            "extensionServiceConfig": {
+                "errorHandlePolicy": "error_abort",
+                "extensionServices": [
+                    {
+                        "serviceName": "web_recorder_service",
+                        "errorHandlePolicy": "error_abort",
+                        "serviceParam": {
+                            "url": "https://xxxxx",
+                            "audioProfile": 0,
+                            "videoWidth": 1280,
+                            "videoHeight": 720,
+                            "maxRecordingHour": 3
+                        }
                     }
-                }
-            ]
-        },
-        "recordingFileConfig": {
-            "avFileType": [
-                "hls",
-                "mp4"
-            ]
-        },
-        "storageConfig": {
-            "vendor": 2,
-            "region": 3,
-            "bucket": "xxxxx",
-            "accessKey": "xxxxx",
-            "secretKey": "xxxxx",
-            "fileNamePrefix": [
-                "directory1",
-                "directory2"
-            ]
+                ]
+            },
+            "recordingFileConfig": {
+                "avFileType": [
+                    "hls",
+                    "mp4"
+                ]
+            },
+            "storageConfig": {
+                "vendor": 2,
+                "region": 3,
+                "bucket": "xxxxx",
+                "accessKey": "xxxxx",
+                "secretKey": "xxxxx",
+                "fileNamePrefix": [
+                    "directory1",
+                    "directory2"
+                ]
+            }
         }
     }
-}
-```
+    ```
 
 ### Stop recording    
 
-The charging will continue until the web page recording stops. You should set a reasonable `maxRecordingHour` based on the actual business scenario or actively stop the web page recording.
+The charging will continue until the web page recording stops. You should set a reasonable `maxRecordingHour` based on the actual business use-case or actively stop the web page recording.
 
 When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the [`acquire`](../reference/restful-api#acquire) method for a new resource ID.
 
-#### An HTTP request example of `stop`
+#### Example `stop` request over HTTPS
 
 - The request URL is: 
 
- ```html
- http://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/web/stop
- ```
+    ```html
+    https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/web/stop
+    ```
+
 - `Content-type`: `application/json;charset=utf-8`
 
 - `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
 
 - Request body:
 
-```json
-{
-    "cname": "httpClient463224",
-    "uid": "527841",
-    "clientRequest": {}
-}
-```
+    ```json
+    {
+        "cname": "httpClient463224",
+        "uid": "527841",
+        "clientRequest": {}
+    }
+    ```
 
 ## Implement Pushing Stream to the CDN during a Web Page Recording
 
@@ -168,28 +167,29 @@ When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave
 
 Before starting the process, call the [`acquire`](../reference/restful-api#acquire) method to apply for a resource ID. Note that you must set `scene` as `1`.
 
-#### An HTTP request example of `acquire`
+#### Example `acquire` request over HTTPS
 
 - Request URL: 
 
-```html
-https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
-```
+    ```html
+    https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
+    ```
+
 - `Content-type`: `application/json;charset=utf-8`
 - `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
 
 - Request body:
 
-```json
-{
-    "cname": "httpClient463224",
-    "uid": "527841",
-    "clientRequest": {
-        "resourceExpiredHour": 24,
-        "scene": 1
+    ```json
+    {
+        "cname": "httpClient463224",
+        "uid": "527841",
+        "clientRequest": {
+            "resourceExpiredHour": 24,
+            "scene": 1
+        }
     }
-}
-```
+    ```
 
 ### Start a process
 
@@ -205,71 +205,72 @@ In web page recording mode, you can configure the following parameters in `clien
 | `recordingFileConfig`    | Configures the recorded files.            | Optional |
 | `extensionServiceConfig` | Configures web page recording.            | Required |
 
-#### An HTTP request example of `start`
+#### Example `start` request over HTTPS
 
 - Request URL:
 
-```html
-https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/web/start
-```
+    ```html
+    https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/web/start
+    ```
 
 - `Content-type:` `application/json;charset=utf-8`
 - `Authorization:` Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
+
 - Request body:
 
-```json
-{
-    "cname": "httpClient463224",
-    "uid": "527841",
-    "clientRequest": {
-        "token": "<token>",
-        "extensionServiceConfig": {
-            "extensionServices": [
-                {
-                    "serviceName": "web_recorder_service",
-                    "errorHandlePolicy": "error_abort",
-                    "serviceParam": {
-                        "url": "https://xxxxx",
-                        "audioProfile": 0,
-                        "videoWidth": 1280,
-                        "videoHeight": 720,
-                        "maxRecordingHour": 3,
-                        "maxVideoDuration": 200
+    ```json
+    {
+        "cname": "httpClient463224",
+        "uid": "527841",
+        "clientRequest": {
+            "token": "<token>",
+            "extensionServiceConfig": {
+                "extensionServices": [
+                    {
+                        "serviceName": "web_recorder_service",
+                        "errorHandlePolicy": "error_abort",
+                        "serviceParam": {
+                            "url": "https://xxxxx",
+                            "audioProfile": 0,
+                            "videoWidth": 1280,
+                            "videoHeight": 720,
+                            "maxRecordingHour": 3,
+                            "maxVideoDuration": 200
+                        }
+                    },
+                    {
+                        "serviceName": "rtmp_publish_service",
+                        "errorHandlePolicy": "error_ignore",
+                        "serviceParam": {
+                            "outputs": [
+                                {
+                                    "rtmpUrl": "rtmp://xxx"
+                                }
+                            ]
+                        }
                     }
-                },
-                {
-                    "serviceName": "rtmp_publish_service",
-                    "errorHandlePolicy": "error_ignore",
-                    "serviceParam": {
-                        "outputs": [
-                            {
-                                "rtmpUrl": "rtmp://xxx"
-                            }
-                        ]
-                    }
-                }
-            ]
-        },
-        "recordingFileConfig": {
-            "avFileType": [
-                "hls",
-                "mp4"
-            ]
-        },
-        "storageConfig": {
-            "vendor": 2,
-            "region": 3,
-            "bucket": "xxxxx",
-            "accessKey": "xxxxx",
-            "secretKey": "xxxxx",
-            "fileNamePrefix": [
-                "directory1",
-                "directory2"
-            ]
+                ]
+            },
+            "recordingFileConfig": {
+                "avFileType": [
+                    "hls",
+                    "mp4"
+                ]
+            },
+            "storageConfig": {
+                "vendor": 2,
+                "region": 3,
+                "bucket": "xxxxx",
+                "accessKey": "xxxxx",
+                "secretKey": "xxxxx",
+                "fileNamePrefix": [
+                    "directory1",
+                    "directory2"
+                ]
+            }
         }
     }
-}
-```
+    ```
 
 ### Stop the process    
 
@@ -279,22 +280,22 @@ When a recording and stream pushing finishes, call [`stop`](../reference/restful
 
 - The request URL is: 
 
- ```html
- http://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/web/stop
- ```
+    ```html
+    https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/web/stop
+    ```
 - `Content-type`: `application/json;charset=utf-8`
 
 - `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
 
 - Request body:
 
-```json
-{
-    "cname": "httpClient463224",
-    "uid": "527841",
-    "clientRequest": {}
-}
-```
+    ```json
+    {
+        "cname": "httpClient463224",
+        "uid": "527841",
+        "clientRequest": {}
+    }
+    ```
 
 ## Recorded files
 
@@ -320,8 +321,8 @@ Web page recording mode is free to use by November 1, 2021. See [Pricing for Web
 ### RESTful API requests
 
 - Recording starts approximately five seconds after you send a request. We recommend you send the request in advance to ensure that everything you want to record is captured.
-- Web page recording does not support the `update` and `updateLayout` methods.
-- If the URL you specify in the `start` method cannot be accessed, the recording service exits automatically after the `start` call. To ensure that the recording service starts successfully, see [Best Practices in Integrating Cloud Recording](/cloud-recording/develop/integration-best-practices#ensure-the-recording-service-starts-successfully).
+- Web page recording does not support the `updateLayout` method.
+- If the URL you specify in the `start` method cannot be accessed, the recording service exits automatically after the `start` call. To ensure that the recording service starts successfully, see [Best Practices in Integrating Cloud Recording](/cloud-recording/best-practices/integration-best-practices#ensure-the-recording-service-starts-successfully).
 
 ### Other considerations
 

@@ -1,7 +1,94 @@
 <PlatformWrapper platform="ios">
 
-<Admonition type="info" title="Info">
-The sample code is available for the Android platform. If your target platform is iOS, please refer to the <a href="?platform=android#implementation" onclick="location.reload()">Android implementation</a> and the iOS [API reference](#api-reference).
+To implement a client-customized composite layout for the audience, follow these steps:
+
+1. Call `joinChannel` [2/2] to join the channel where the composite stream is located.
+
+1. Obtain the following information about the composite video stream through the `didTranscodedStreamLayoutInfoUpdatedWithUserId` callback triggered by the SDK:
+
+    - The width and height of the composite stream, and the user ID of the user publishing it.
+    - The user ID of each host publishing a sub-stream within the composite stream.
+    - The x and y coordinates of each sub-stream on the composite canvas.
+    - The width and height of each sub-stream.
+    - The rendering state of each sub-stream on the composite canvas:
+        - Normal rendering
+        - Displayed as a placeholder
+        - Displayed as a black image
+
+1. Call `setupRemoteVideo` to configure local rendering of the remote video stream. Set the following key parameters:
+
+    - `sourceType`: Set to `.transCoded`, indicating the video source is a transcoded composite stream.
+    - `uid`: The user ID of the user forwarding the composite stream to the current channel, obtained from the `didTranscodedStreamLayoutInfoUpdatedWithUserId` callback.
+    - `view`: The remote video view displayed locally. Use this parameter to set the display position of each sub-stream in the local view.
+    - `subviewUid`: The user ID corresponding to a specific sub-stream within the composite stream.
+
+    <Admonition type="info" title="Information">
+    - When `subviewUid` is not `0`, the default value of `setupMode` is `.replace` (add a view).
+    - If `subviewUid` is set, the setting of `cropArea` does not take effect.
+    </Admonition>
+
+    Use the following sample code as a reference for calling `setupRemoteVideoEx` in a multi-channel scenario. Calling `setupRemoteVideo` in a single-channel scenario is similar.
+
+    ```swift
+    agoraKit.joinChannelEx(byToken: nil, connection: connection, delegate: self, mediaOptions: mediaOptions)
+
+    func rtcEngine(_ engine: AgoraRtcEngineKit, didTranscodedStreamLayoutInfoUpdatedWithUserId uid: UInt, videoLayoutInfo: AgoraVideoLayoutInfo) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+
+            guard let layoutList = videoLayoutInfo.layoutList else { return }
+
+            for subLayout in layoutList {
+                let subUid = subLayout.uid
+                if self.userViews[subUid] != nil {
+                    continue
+                }
+                // Dynamically add the view
+                let view = UIView()
+                view.translatesAutoresizingMaskIntoConstraints = false
+                self.containerView.addSubview(view)
+                self.userViews[subUid] = view
+
+                // Configure AgoraRtcVideoCanvas; set uid and subviewUid as shown,
+                // and configure other parameters as needed
+                let canvas = AgoraRtcVideoCanvas()
+                // User ID of the user forwarding the composite stream to the current channel
+                canvas.uid = uid
+                // User ID corresponding to a specific sub-stream
+                canvas.subviewUid = subUid
+                canvas.view = view
+                canvas.renderMode = .fit
+                canvas.sourceType = .transCoded
+                self.agoraKit.setupRemoteVideoEx(canvas, connection: connection)
+
+                // To remove a specific sub-stream, use the following code
+                // Do not include this in the same flow as the add code above.
+                let canvasToRemove = AgoraRtcVideoCanvas()
+                canvasToRemove.uid = uid
+                canvasToRemove.subviewUid = subUid
+                canvasToRemove.view = view // Set to the view you want to remove
+                canvasToRemove.setupMode = .remove
+                self.agoraKit.setupRemoteVideoEx(canvasToRemove, connection: connection)
+            }
+        }
+    }
+    ```
+
+1. When the layout of the composite stream changes, the `didTranscodedStreamLayoutInfoUpdatedWithUserId` callback fires again. Each time it fires, call `setupRemoteVideo` with the updated information to adjust the local rendering layout.
+
+    <Admonition type="info" title="Information">
+    Layout changes can occur in the following situations:
+
+    - The coordinates of a sub-stream on the composite canvas change.
+    - The width or height of the composite stream or a sub-stream changes.
+    - The state of a sub-stream changes. When the host publishing a sub-stream leaves the channel, the `videoState` parameter for that sub-stream changes from `0` (normal) to `1` (no video available). To stop rendering that host's video, call `setupRemoteVideo` with `subviewUid` set to that host's user ID and `setupMode` set to `.remove`.
+    </Admonition>
+
+1. Listen for the `didOfflineOfUid` callback. When the user forwarding the composite stream leaves the channel, stop rendering the composite stream on the receiving end.
+
+<Admonition type="caution" title="Note">
+- Client-customized composite layout is currently supported on mobile platforms only.
+- If a watermark is applied to the composite stream, the watermark renders within its designated region and may appear split across sub-stream boundaries.
 </Admonition>
 
 </PlatformWrapper>

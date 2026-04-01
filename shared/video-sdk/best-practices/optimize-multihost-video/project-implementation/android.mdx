@@ -1,31 +1,33 @@
 <PlatformWrapper platform="android">
-Refer to the following steps, to implement a client-customized composite layout for the audience:
+
+To implement a client-customized composite layout for the audience, follow these steps:
 
 1. Call `joinChannel` [2/2] to join the channel where the composite stream is located.
 
-1. Obtain the following information about the composite video stream through the `onTranscodedStreamLayoutInfo` callback, triggered by the SDK:
-    * The width and height of the composite video stream, and the user ID of the user publishing this video stream.
-    * The user ID of the user publishing the composite sub-video stream.
-    * The x and y coordinates of the composite sub-video stream on the composite canvas.
-    * The width and height of the composite sub-video stream.
-    * The status of the composite sub-video stream on the composite canvas: 
+1. Obtain the following information about the composite video stream through the `onTranscodedStreamLayoutInfo` callback triggered by the SDK:
+
+    - The width and height of the composite stream, and the user ID of the user publishing it.
+    - The user ID of each host publishing a sub-stream within the composite stream.
+    - The x and y coordinates of each sub-stream on the composite canvas.
+    - The width and height of each sub-stream.
+    - The rendering state of each sub-stream on the composite canvas:
         - Normal rendering
         - Displayed as a placeholder
         - Displayed as a black image
 
-1. Call `setupRemoteVideo` to set the rendering mode of the remote video stream locally. Set the key parameters as follows:
+1. Call `setupRemoteVideo` to configure local rendering of the remote video stream. Set the following key parameters:
 
-    * `sourceType`: Set to `VIDEO_SOURCE_TRANSCODED`, indicating the video source is a transcoded composite video stream.
-    * `uid`: The user ID that forwards the composite video stream to the current channel. This is the `uid` obtained in the `onTranscodedStreamLayoutInfo` callback.
-    * `view`: The remote video view displayed locally. You can use this parameter to set the position of each sub-video stream in the local view.
-    * `subviewUid`: The user ID corresponding to a sub-video stream in the composite video stream.
+    - `sourceType`: Set to `VIDEO_SOURCE_TRANSCODED`, indicating the video source is a transcoded composite stream.
+    - `uid`: The user ID of the user forwarding the composite stream to the current channel, obtained from the `onTranscodedStreamLayoutInfo` callback.
+    - `view`: The remote video view displayed locally. Use this parameter to set the display position of each sub-stream in the local view.
+    - `subviewUid`: The user ID corresponding to a specific sub-stream within the composite stream.
 
-    <Admonition type="info" title="information">
-    - When the value of `subviewUid` is not 0, the default value of `setupMode` is `VIEW_SETUP_MODE_REPLACE` (add a view).
-    - If `subviewUid` is set, the setting of `cropArea` does not take effect.
+    <Admonition type="info" title="Information">
+    - When `subviewUid` is not `0`, the default value of `setupMode` is `VIEW_SETUP_MODE_REPLACE` (add a view).
+    - If `subviewUid` is set, the setting of `rect` does not take effect.
     </Admonition>
 
-1. The following sample code demonstrates the use of `setupRemoteVideoEx` in a multi-channel scenario, which is similar to calling `setupRemoteVideo` in a non-multi-channel scenario.
+    Use the following sample code as a reference for calling `setupRemoteVideoEx` in a multi-channel scenario. Calling `setupRemoteVideo` in a single-channel scenario is similar.
 
     ```java
     mRtcEngine.joinChannelEx(null, connection, mediaOptions, new IRtcEngineEventHandler() {
@@ -38,25 +40,32 @@ Refer to the following steps, to implement a client-customized composite layout 
                     int size = info.layoutNumber;
                     viewGrids.setChildCount(info.layoutNumber);
                     for (int i = 0; i < size; i++) {
-                        if(mUserViews.containsKey(info.layoutList[i].uid)) {
+                        if (mUserViews.containsKey(info.layoutList[i].uid)) {
                             continue;
                         }
+
                         // Dynamically add the view
                         TextureView textureView = new TextureView(VideoChatViewActivity.this);
-                        textureView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                        textureView.setLayoutParams(new ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT));
                         users.add(info.layoutList[i].uid);
                         views.add(textureView);
                         mUserViews.put(info.layoutList[i].uid, textureView);
                         viewGrids.addView(textureView);
-                        // Set up VideoCanvas, other parameters besides uid and subviewUid can be set according to actual needs
+
+                        // Configure VideoCanvas; set uid and subviewUid as shown,
+                        // and configure other parameters as needed
                         VideoCanvas canvas = new VideoCanvas(textureView);
-                        // The user ID that forwards the composite video stream to the current channel
+                        // User ID of the user forwarding the composite stream to the current channel
                         canvas.uid = uid;
-                        // The user ID for a specific sub-video stream in the composite video
+                        // User ID corresponding to a specific sub-stream
                         canvas.subviewUid = info.layoutList[i].uid;
                         canvas.renderMode = Constants.RENDER_MODE_FIT;
                         mRtcEngine.setupRemoteVideoEx(canvas, connection);
-                        // To remove a specific sub-video stream, add the following code
+
+                        // To remove a specific sub-stream, use the following code
+                        // Do not include this in the same flow as the add code above.
                         VideoCanvas canvasToRemove = new VideoCanvas(textureView); // Set textureView to the view you want to remove
                         canvasToRemove.uid = uid;
                         canvasToRemove.subviewUid = info.layoutList[i].uid;
@@ -69,20 +78,21 @@ Refer to the following steps, to implement a client-customized composite layout 
     });
     ```
 
-1. When the layout information of the composite video stream changes, the `onTranscodedStreamLayoutInfo` callback is triggered again. Based on the specific information reported by each callback, re-invoke `setupRemoteVideo` to adjust the local view rendering layout.
+1. When the layout of the composite stream changes, the `onTranscodedStreamLayoutInfo` callback fires again. Each time it fires, call `setupRemoteVideo` with the updated information to adjust the local rendering layout.
 
-    <Admonition type="info" title="information">
-    The layout information may change in the following situations:
-        * The coordinates of the sub-video in the composite canvas change.
-        * The width or height of the combined video or sub-video changes.
-        * The state of the combined video stream changes. When the host publishing that sub-video stream exits the channel, the `videoState` parameter of that video stream changes from `0` (normal) to `1` (the video stream has no video picture). To stop rendering the video of that host, set `subviewUid` to the user ID of that sub-video stream and set `setupMode` to `VIEW_SETUP_MODE_REMOVE` (remove the view) when calling `setupRemoteVideo`.
+    <Admonition type="info" title="Information">
+    Layout changes can occur in the following situations:
+
+    - The coordinates of a sub-stream on the composite canvas change.
+    - The width or height of the composite stream or a sub-stream changes.
+    - The state of a sub-stream changes. When the host publishing a sub-stream leaves the channel, the `videoState` parameter for that sub-stream changes from `0` (normal) to `1` (no video available). To stop rendering that host's video, call `setupRemoteVideo` with `subviewUid` set to that host's user ID and `setupMode` set to `VIEW_SETUP_MODE_REMOVE`.
     </Admonition>
 
-1. Listen to the `onUserOffline` callback. When the user forwarding the composite stream exits the channel, stop rendering the composite stream.
+1. Listen for the `onUserOffline` callback. When the user forwarding the composite stream leaves the channel, stop rendering the composite stream on the receiving end.
 
 <Admonition type="caution" title="Note">
-- Currently, the custom composite layout function is only supported on mobile devices.
-- When a watermark is added to the composite video stream, the watermark is rendered along with its area, which may result in it being segmented.
+- Client-customized composite layout is currently supported on mobile platforms only.
+- If a watermark is applied to the composite stream, the watermark renders within its designated region and may appear split across sub-stream boundaries.
 </Admonition>
 
 </PlatformWrapper>

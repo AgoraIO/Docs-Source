@@ -110,6 +110,12 @@ const data = {
     CLIENT: 'app'
   },
 
+  'linux-java': {
+    NAME: 'Linux Java',
+    PATH: 'linux-java',
+    CLIENT: 'app'
+  },
+
   'unreal': {
     NAME: 'Unreal Engine',
     PATH: 'unreal',

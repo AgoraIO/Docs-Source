@@ -24,7 +24,7 @@ For details, see [Merge Audio and Video Files](../develop/merge-files).
 Use the [Agora Cloud Recording RESTful API Callback Service](../reference/rest-api-overview) to acquire the start timestamp of the recording. The `startUtcMs` parameter in the `recorder_slice_start` event indicates the time when Agora Cloud Recording starts to record a user ID, or the start time of the first slice file for the user ID. `startUtcMs` is the UTC time in ms.
 
 <Admonition type="info">
-Contact [support@agora.io](http://support@agora.io) to enable the callback service. 
+Contact [support@agora.io](mailto:support@agora.io) to enable the callback service. 
 </Admonition>
 
 You can also get the start timestamp by parsing the M3U8 file.

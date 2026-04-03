@@ -1,6 +1,184 @@
-
 <PlatformWrapper platform="unreal">
 
+Follow these steps to implement raw audio data processing functionality in your <Vpl k="CLIENT" />:
 
+1. **Initialize MediaEngine and register the audio observer**
+
+   Before joining a channel, obtain the MediaEngine interface and create an instance of `IAudioFrameObserver`, then call `registerAudioFrameObserver` to register it:
+
+   ```cpp
+   void InitAgoraEngine(FString APP_ID, FString TOKEN, FString CHANNEL_NAME)
+   {
+       // Initialize RtcEngine context and event handler
+       agora::rtc::RtcEngineContext RtcEngineContext;
+       UserRtcEventHandlerEx = MakeShared<FUserRtcEventHandlerEx>(this);
+       std::string StdStrAppId = TCHAR_TO_UTF8(*APP_ID);
+       RtcEngineContext.appId = StdStrAppId.c_str();
+       RtcEngineContext.eventHandler = UserRtcEventHandlerEx.Get();
+       RtcEngineContext.channelProfile = agora::CHANNEL_PROFILE_TYPE::CHANNEL_PROFILE_LIVE_BROADCASTING;
+       
+       // Initialize the RtcEngine
+       int ret = AgoraUERtcEngine::Get()->initialize(RtcEngineContext);
+       
+       // Query for the MediaEngine interface
+       AgoraUERtcEngine::Get()->queryInterface(AGORA_IID_MEDIA_ENGINE, (void**)&MediaEngine);
+       
+       // Create and register audio frame observer
+       UserAudioFrameObserver = MakeShared<FUserAudioFrameObserver>(this);
+       MediaEngine->registerAudioFrameObserver(UserAudioFrameObserver.Get());
+   }
+   ```
+
+2. **Configure audio parameters**
+
+   Set the audio frame format by initializing the `AudioParams` structure. This determines the sample rate, number of channels, and other audio processing configurations.
+
+    ```cpp
+    void InitConfig()
+    {
+        // Configure AudioParam
+        audioParams.channels = 2;
+        audioParams.sample_rate = 44100;
+        audioParams.mode = agora::rtc::RAW_AUDIO_FRAME_OP_MODE_TYPE::RAW_AUDIO_FRAME_OP_MODE_READ_WRITE;
+        audioParams.samples_per_call = 1024;
+    }
+    ```
+
+3. **Implement audio frame observer class**
+
+   Create a class that inherits from `IAudioFrameObserver` and implement the required callbacks to receive and process audio frames. Returning `false` from any of these callbacks indicates that the processing of the audio frame was invalid.
+
+    ```cpp
+    class FUserAudioFrameObserver : public agora::media::IAudioFrameObserver
+    {
+    public:
+        FUserAudioFrameObserver(UProcessAudioRawDataWidget* InWidgetPtr) : WidgetPtr(InWidgetPtr) {}
+
+        bool onPlaybackAudioFrameBeforeMixing(const char* channelId, agora::rtc::uid_t uid, AudioFrame& audioFrame) override
+        {
+            if (!IsWidgetValid())
+                return false;
+
+            if(WidgetPtr->GetFirstRemoteUID() == uid){
+                // Process audio frames for specific remote user
+                WidgetPtr->GetAgoraSoundWaveProcedural()->AddToFrames(audioFrame);
+            }
+            return true;
+        }
+
+        bool onRecordAudioFrame(const char* channelId, AudioFrame& audioFrame) override
+        {
+            if (!IsWidgetValid())
+                return false;
+            
+            // Process recorded audio frames
+            return true;
+        }
+
+        bool onPlaybackAudioFrame(const char* channelId, AudioFrame& audioFrame) override
+        {
+            if (!IsWidgetValid())
+                return false;
+            
+            // Process playback audio frames
+            return true;
+        }
+
+        bool onMixedAudioFrame(const char* channelId, AudioFrame& audioFrame) override
+        {
+            // Process mixed audio frames
+            return true;
+        }
+
+        bool onEarMonitoringAudioFrame(AudioFrame& audioFrame) override
+        {
+            // Process ear monitoring audio frames
+            return true;
+        }
+
+        // Required methods to specify which callbacks to receive and their parameters
+        int getObservedAudioFramePosition() override
+        {
+            return (int)(AUDIO_FRAME_POSITION::AUDIO_FRAME_POSITION_PLAYBACK |
+                AUDIO_FRAME_POSITION::AUDIO_FRAME_POSITION_RECORD |
+                AUDIO_FRAME_POSITION::AUDIO_FRAME_POSITION_BEFORE_MIXING |
+                AUDIO_FRAME_POSITION::AUDIO_FRAME_POSITION_MIXED |
+                AUDIO_FRAME_POSITION::AUDIO_FRAME_POSITION_EAR_MONITORING);
+        }
+
+        agora::media::IAudioFrameObserverBase::AudioParams getPlaybackAudioParams() override
+        {
+            if (!IsWidgetValid())
+                return agora::media::IAudioFrameObserverBase::AudioParams();
+            return WidgetPtr->GetAudioParams();
+        }
+
+        agora::media::IAudioFrameObserverBase::AudioParams getRecordAudioParams() override
+        {
+            if (!IsWidgetValid())
+                return agora::media::IAudioFrameObserverBase::AudioParams();
+            return WidgetPtr->GetAudioParams();
+        }
+
+        agora::media::IAudioFrameObserverBase::AudioParams getMixedAudioParams() override
+        {
+            if (!IsWidgetValid())
+                return agora::media::IAudioFrameObserverBase::AudioParams();
+            return WidgetPtr->GetAudioParams();
+        }
+
+        agora::media::IAudioFrameObserverBase::AudioParams getEarMonitoringAudioParams() override
+        {
+            if (!IsWidgetValid())
+                return agora::media::IAudioFrameObserverBase::AudioParams();
+            return WidgetPtr->GetAudioParams();
+        }
+
+    private:
+        UProcessAudioRawDataWidget* WidgetPtr;
+        
+        bool IsWidgetValid() const
+        {
+            return WidgetPtr && IsValid(WidgetPtr);
+        }
+    };
+    ```
+
+4. **Join channel and configure audio**
+
+   Join the channel and optionally configure audio settings. You can mute the original playback to handle audio independently.
+
+    ```cpp
+    void OnBtnJoinChannelClicked()
+    {
+        // Mute the playback volume of SDK (not UE) to handle audio independently
+        AgoraUERtcEngine::Get()->adjustPlaybackSignalVolume(0);
+
+        AgoraUERtcEngine::Get()->enableAudio();
+        AgoraUERtcEngine::Get()->setClientRole(CLIENT_ROLE_BROADCASTER);
+        int ret = AgoraUERtcEngine::Get()->joinChannel(TCHAR_TO_UTF8(*Token), TCHAR_TO_UTF8(*ChannelName), "", 0);
+    }
+    ```
+
+5. **Unregister the audio frame observer**
+        
+    Call `registerAudioFrameObserver` with `nullptr` to unregister the audio frame observer before leaving the channel:
+
+    ```cpp
+    void UnInitAgoraEngine()
+    {
+        if (AgoraUERtcEngine::Get() != nullptr)
+        {
+            AgoraUERtcEngine::Get()->leaveChannel();
+            if (MediaEngine != nullptr)
+            {
+                // Unregister the audio frame observer
+                MediaEngine->registerAudioFrameObserver(nullptr);
+            }
+            AgoraUERtcEngine::Get()->unregisterEventHandler(UserRtcEventHandlerEx.Get());
+            AgoraUERtcEngine::Release();
+        }
+    }
+    ```
 
 </PlatformWrapper>

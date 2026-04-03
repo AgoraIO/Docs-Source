@@ -1,0 +1,429 @@
+---
+title: 'SDK Quickstart'
+sidebar_position: 2
+type: docs
+platform_selector: false
+description: >
+   Start cloud transcoding using the Go SDK.
+---
+
+This article explains how to use the Agora Go SDK to start cloud transcoding. The Go SDK helps developers integrate Agora's RESTful API more easily. It offers the following features:
+
+- **Simplified communication**: The SDK encapsulates RESTful API requests and responses to simplify communication.
+- **Ensured availability**: If DNS resolution fails, network errors occur, or requests time out, the SDK automatically switches to the optimal domain to ensure REST service availability.
+- **Easy-to-use API**: The SDK provides a simple and intuitive API that makes it easy to perform common tasks such as creating and destroying cloud transcoding sessions.
+- **Additional benefits**: Built with Go, the SDK offers efficiency, concurrency, and scalability.
+
+## Understand the tech
+
+When you use the Go SDK for <Vpd k="NAME" />:
+
+1. Call `Acquire()` to get a builder token for your transcoding task
+2. Call `Create()` with your configuration to start transcoding specified streams
+3. The service processes and publishes the transcoded streams to your target channels
+4. Viewers can subscribe to either original or transcoded streams
+
+The following sections show you how to implement this workflow.
+
+## Prerequisites
+
+Before you start, ensure that you have:
+
+- [Go](https://go.dev/dl/) 1.18 or higher
+- Followed the [Enable Cloud Transcoding](../get-started/manage-agora-account) guide to:
+  - Set up your <Vg k="COMPANY" /> account and activate the <Vpd k="NAME" /> service
+  - Obtain your App ID from <Vg k="CONSOLE" />
+  - Obtain your Customer ID and Customer Secret for REST API authentication
+  - Generate RTC tokens for your channels (valid for up to 24 hours)
+- A way to test transcoding input streams:
+  - Implement the [Video Calling Quickstart](/video-calling/get-started/get-started-sdk), or
+  - Use the Agora [Web Demo](https://webdemo-global.agora.io/index.html) to simulate audio and video streams
+
+## Set up your project
+
+Follow these steps to create and configure a new project:
+
+1. Create an empty project folder named `test-transcoder`.
+
+2. Navigate to the `test-transcoder` directory and initialize a Go module:
+
+    ```bash
+    go mod init test-transcoder
+    ```
+
+3. Create a `main.go` file in the project directory for implementing your cloud transcoding task.
+
+4. Install the Go SDK:
+
+    ```bash
+    # Install the Go SDK
+    go get -u github.com/AgoraIO-Community/agora-rest-client-go
+
+    # Update dependencies
+    go mod tidy
+    ```
+
+5. Add the required imports to `main.go`:
+
+    ```go
+    package main
+
+    import (
+      "context"
+      "log"
+      "time"
+
+      "github.com/AgoraIO-Community/agora-rest-client-go/agora"
+      "github.com/AgoraIO-Community/agora-rest-client-go/agora/auth"
+      "github.com/AgoraIO-Community/agora-rest-client-go/agora/domain"
+      agoraLogger "github.com/AgoraIO-Community/agora-rest-client-go/agora/log"
+      "github.com/AgoraIO-Community/agora-rest-client-go/services/cloudtranscoder"
+      cloudTranscoderAPI "github.com/AgoraIO-Community/agora-rest-client-go/services/cloudtranscoder/api"
+    )
+    ```
+
+### Implement cloud transcoding
+
+This section introduces the minimal workflow for cloud transcoding. For demonstration purposes, this example only transcodes the host's audio.
+
+### Define variables
+In the `main.go`, add the following code to define and configure the key parameters. 
+
+```go
+// Define key parameters
+const (
+  appId             = "<your_app_id>"
+  token             = "<your_token>"           // Token for the transcoder in the input channel
+  username          = "<your_customer_key>"    // Your customer ID
+  password          = "<your_customer_secret>" // Your customer secret
+  inputChannelName  = "show"                   // Channel name for the input stream
+  inputUId          = 0                        // User ID for the input stream
+  inputToken        = "<your_token>"           // Token for the input stream user
+  outputChannelName = "show"                   // Channel name for the output stream
+  outputUId         = 0                        // User ID for the transcoder in the output channel
+  outputToken       = "<your_token>"           // Token for the transcoder in the output channel
+  instanceId        = "quickstart"             // Instance ID of the transcoder
+)
+```
+
+<Admonition type="info">
+- In this example, the stream from the host of the `show` channel is used as the input stream for the transcoder. To simplify parameter configuration, the transcoder's output stream is also published to the same channel. The input and output streams share the same token.
+
+- For <Vpd k="NAME" />, multiple input streams must come from the same channel, while the output can be one or more streams and may be assigned to any channel.
+</Admonition>
+
+### Create and initialize the client
+
+In `main.go`, add the following code to create and initialize the client.
+
+```go
+config := &agora.Config{
+  AppID:      appId,
+  Credential: auth.NewBasicAuthCredential(username, password),
+  // Specify the region where the server is located. Options include US, EU, AP, CN.
+  // The client automatically switches to use the best domain based on the configured region.
+  DomainArea: domain.US,
+  // Specify the log output level. Options include DebugLevel, InfoLevel, WarningLevel, ErrLevel.
+  // To disable log output, set logger to DiscardLogger.
+  Logger: agoraLogger.NewDefaultLogger(agoraLogger.DebugLevel),
+}
+
+client, err := cloudtranscoder.NewClient(config)
+if err != nil {
+  log.Fatal(err)
+}
+```
+
+### Get cloud transcoding resources
+
+Before creating a cloud transcoding task, call the `Acquire` method to obtain a builder token `tokenName`. A token can only be used for a single cloud transcoding task.
+
+```go
+// Call the Acquire API of the cloud transcoder service client
+acquireResp, err := client.Acquire(context.TODO(), &cloudTranscoderAPI.AcquireReqBody{
+  InstanceId: instanceId,
+})
+if err != nil {
+  log.Fatalln(err)
+}
+if acquireResp.IsSuccess() {
+  log.Printf("acquire success:%+v\n", acquireResp)
+} else {
+  log.Fatalf("acquire failed:%+v\n", acquireResp)
+}
+
+tokenName := acquireResp.SuccessResp.TokenName
+
+if tokenName == "" {
+  log.Fatalln("tokenName is empty")
+}
+
+log.Printf("tokenName:%s\n", tokenName)
+```
+
+### Start cloud transcoding
+
+Call `Create` to create a Cloud Transcoding task and start transcoding. In this example, the audio and video streams of two hosts in the same channel are mixed and combined.
+
+```go
+// Create a cloud transcoding task and start cloud transcoding
+createResp, err := client.Create(context.TODO(), tokenName, &cloudTranscoderAPI.CreateReqBody{
+  Services: &cloudTranscoderAPI.CreateReqServices{
+    CloudTranscoder: &cloudTranscoderAPI.CloudTranscoderPayload{
+      ServiceType: "cloudTranscoderV2",
+      Config: &cloudTranscoderAPI.CloudTranscoderConfig{
+        Transcoder: &cloudTranscoderAPI.CloudTranscoderConfigPayload{
+          IdleTimeout: 300,
+          AudioInputs: []cloudTranscoderAPI.CloudTranscoderAudioInput{
+            {
+              Rtc: &cloudTranscoderAPI.CloudTranscoderRtc{
+                RtcChannel: inputChannelName,
+                RtcUID:     inputUId,
+                RtcToken:   inputToken,
+              },
+            },
+          },
+          Outputs: []cloudTranscoderAPI.CloudTranscoderOutput{
+            {
+              Rtc: &cloudTranscoderAPI.CloudTranscoderRtc{
+                RtcChannel: outputChannelName,
+                RtcUID:     outputUId,
+                RtcToken:   outputToken,
+              },
+              AudioOption: &cloudTranscoderAPI.CloudTranscoderOutputAudioOption{
+                ProfileType: "AUDIO_PROFILE_MUSIC_STANDARD",
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+})
+if err != nil {
+  log.Fatalln(err)
+}
+
+if createResp.IsSuccess() {
+  log.Printf("create success:%+v\n", createResp)
+} else {
+  log.Printf("create failed:%+v\n", createResp)
+  return
+}
+
+taskId := createResp.SuccessResp.TaskID
+
+if taskId == "" {
+  log.Fatalln("taskId is empty")
+}
+
+log.Printf("taskId:%s\n", taskId)
+
+// Wait for 10 seconds before stopping the cloud transcoding
+time.Sleep(time.Second * 10)
+```
+
+### Stop cloud transcoding
+
+When the transcoding task is complete, call the `Delete` method to end cloud transcoding:
+
+```go
+// Stop the cloud transcoding task
+deleteResp, err := client.Delete(context.TODO(), taskId, tokenName)
+if err != nil {
+  log.Println(err)
+  return
+}
+
+if deleteResp.IsSuccess() {
+  log.Printf("delete success:%+v\n", deleteResp)
+} else {
+  log.Printf("delete failed:%+v\n", deleteResp)
+  return
+}
+```
+
+### Complete example code
+
+The complete sample code for this example is presented here for your reference and use.
+
+<details>
+<summary>Complete sample code</summary>
+
+```go
+package main
+
+import (
+  "context"
+  "log"
+  "time"
+
+  "github.com/AgoraIO-Community/agora-rest-client-go/agora"
+  "github.com/AgoraIO-Community/agora-rest-client-go/agora/auth"
+  "github.com/AgoraIO-Community/agora-rest-client-go/agora/domain"
+  agoraLogger "github.com/AgoraIO-Community/agora-rest-client-go/agora/log"
+  "github.com/AgoraIO-Community/agora-rest-client-go/services/cloudtranscoder"
+  cloudTranscoderAPI "github.com/AgoraIO-Community/agora-rest-client-go/services/cloudtranscoder/api"
+)
+
+// Define key parameters
+const (
+  appId             = "<your_app_id>"
+  token             = "<your_token>"           // Token for the transcoder in the input channel
+  username          = "<your_customer_key>"    // Your customer ID
+  password          = "<your_customer_secret>" // Your customer secret
+  inputChannelName  = "show"                   // Channel name for the input stream
+  inputUId          = 0                        // User ID for the input stream
+  inputToken        = "<your_token>"           // Token for the input stream user
+  outputChannelName = "show"                   // Channel name for the output stream
+  outputUId         = 0                        // User ID for the transcoder in the output channel
+  outputToken       = "<your_token>"           // Token for the transcoder in the output channel
+  instanceId        = "quickstart"             // Instance ID of the transcoder
+)
+
+func main() {
+  // Initialize Agora Config
+  config := &agora.Config{
+    AppID:      appId,
+    Credential: auth.NewBasicAuthCredential(username, password),
+    // Specify the region where the server is located. Options include CN, EU, AP, US.
+    // The client will automatically switch to use the best domain based on the configured region.
+    DomainArea: domain.CN,
+    // Specify the log output level. Options include DebugLevel, InfoLevel, WarningLevel, ErrLevel.
+    // To disable log output, set logger to DiscardLogger.
+    Logger: agoraLogger.NewDefaultLogger(agoraLogger.DebugLevel),
+  }
+
+  client, err := cloudtranscoder.NewClient(config)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  // Call the Acquire API of the cloud transcoder service client
+  acquireResp, err := client.Acquire(context.TODO(), &cloudTranscoderAPI.AcquireReqBody{
+    InstanceId: instanceId,
+  })
+  if err != nil {
+    log.Fatalln(err)
+  }
+  if acquireResp.IsSuccess() {
+    log.Printf("acquire success:%+v\n", acquireResp)
+  } else {
+    log.Fatalf("acquire failed:%+v\n", acquireResp)
+  }
+
+  tokenName := acquireResp.SuccessResp.TokenName
+
+  if tokenName == "" {
+    log.Fatalln("tokenName is empty")
+  }
+
+  log.Printf("tokenName:%s\n", tokenName)
+
+  // Create a cloud transcoding task and start cloud transcoding
+  createResp, err := client.Create(context.TODO(), tokenName, &cloudTranscoderAPI.CreateReqBody{
+    Services: &cloudTranscoderAPI.CreateReqServices{
+      CloudTranscoder: &cloudTranscoderAPI.CloudTranscoderPayload{
+        ServiceType: "cloudTranscoderV2",
+        Config: &cloudTranscoderAPI.CloudTranscoderConfig{
+          Transcoder: &cloudTranscoderAPI.CloudTranscoderConfigPayload{
+            IdleTimeout: 300,
+            AudioInputs: []cloudTranscoderAPI.CloudTranscoderAudioInput{
+              {
+                Rtc: &cloudTranscoderAPI.CloudTranscoderRtc{
+                  RtcChannel: inputChannelName,
+                  RtcUID:     inputUId,
+                  RtcToken:   inputToken,
+                },
+              },
+            },
+            Outputs: []cloudTranscoderAPI.CloudTranscoderOutput{
+              {
+                Rtc: &cloudTranscoderAPI.CloudTranscoderRtc{
+                  RtcChannel: outputChannelName,
+                  RtcUID:     outputUId,
+                  RtcToken:   outputToken,
+                },
+                AudioOption: &cloudTranscoderAPI.CloudTranscoderOutputAudioOption{
+                  ProfileType: "AUDIO_PROFILE_MUSIC_STANDARD",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+  if err != nil {
+    log.Fatalln(err)
+  }
+
+  if createResp.IsSuccess() {
+    log.Printf("create success:%+v\n", createResp)
+  } else {
+    log.Printf("create failed:%+v\n", createResp)
+    return
+  }
+
+  taskId := createResp.SuccessResp.TaskID
+
+  if taskId == "" {
+    log.Fatalln("taskId is empty")
+  }
+
+  log.Printf("taskId:%s\n", taskId)
+
+  // Wait for 10 seconds before stopping the cloud transcoding
+  time.Sleep(time.Second * 10)
+
+  // Stop the cloud transcoding
+  deleteResp, err := client.Delete(context.TODO(), taskId, tokenName)
+  if err != nil {
+    log.Println(err)
+    return
+  }
+  if deleteResp.IsSuccess() {
+    log.Printf("delete success:%+v\n", deleteResp)
+  } else {
+    log.Printf("delete failed:%+v\n", deleteResp)
+    return
+  }
+}
+```
+</details>
+
+## Test your implementation
+
+Follow these steps to test <Vpd k="NAME" />:
+
+1. In the project folder, run the Go project:
+
+    ```bash
+    go run main.go
+    ```
+
+2. Check the console output for successful execution:
+   - Look for "acquire success" followed by a tokenName
+   - Look for "create success" followed by a taskId  
+   - After 10 seconds, look for "delete success"
+
+3. To test the transcoded audio output:
+   - Open the [Agora Web Demo](https://webdemo-global.agora.io/index.html)
+   - Join the same channel you configured 
+   - You hear audio transcoded by your Go application
+
+If you see error messages, check that your App ID, tokens, and credentials are correct.
+
+## Reference
+
+This section contains content that completes the information on this page, or points you to documentation that explains other aspects to this product.
+
+- Refer to the [API documentation](../rest-api/acquire) for complete parameter details.
+- If you encounter any problems, refer to [Troubleshooting](../reference/troubleshooting).
+
+### Sample project
+
+For more <Vpd k="NAME" /> examples, see the [Sample project on GitHub](https://github.com/AgoraIO-Community/agora-rest-client-go/tree/main/examples/cloudtranscoder).
+
+
+

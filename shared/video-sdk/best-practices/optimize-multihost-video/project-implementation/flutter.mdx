@@ -1,0 +1,108 @@
+<PlatformWrapper platform="flutter">
+
+To implement a client-customized composite layout for the audience, follow these steps:
+
+1. Call `joinChannelEx` to join the channel where the composite stream is located.
+
+1. Register an `RtcEngineEventHandler` and listen for the `onTranscodedStreamLayoutInfo` callback triggered by the SDK. Use it to obtain the following information about the composite video stream:
+
+    - The width and height of the composite stream, and the user ID of the user publishing it.
+    - The user ID of each host publishing a sub-stream within the composite stream.
+    - The x and y coordinates of each sub-stream on the composite canvas.
+    - The width and height of each sub-stream.
+    - The rendering state of each sub-stream on the composite canvas:
+        - Normal rendering
+        - Displayed as a placeholder
+        - Displayed as a black image
+
+1. For each sub-stream in the layout list, create an `AgoraVideoView` widget using `VideoViewController.remote` and configure the `VideoCanvas` with the following key parameters:
+
+    - `sourceType`: Set to `VideoSourceType.videoSourceTranscoded`, indicating the video source is a transcoded composite stream.
+    - `uid`: The user ID of the user forwarding the composite stream to the current channel, obtained from the `onTranscodedStreamLayoutInfo` callback.
+    - `subviewUid`: The user ID corresponding to a specific sub-stream within the composite stream.
+    - `renderMode`: Set to `RenderModeType.renderModeFit`.
+
+    <Admonition type="info" title="Information">
+    - When `subviewUid` is not `0`, the default value of `setupMode` is `VideoViewSetupMode.videoViewSetupReplace` (add a view).
+    - If `subviewUid` is set, the setting of `cropArea` does not take effect.
+    </Admonition>
+
+    The following sample code demonstrates this in a multi-channel scenario. The usage in a single-channel scenario is similar.
+
+    ```dart
+    // Register the event handler
+    _engine.registerEventHandler(
+      RtcEngineEventHandler(
+        onTranscodedStreamLayoutInfo: (RtcConnection connection, int uid,
+            int width, int height, int layoutCount, List<VideoLayout> layoutlist) {
+          setState(() {
+            _compositeUid = uid;
+            _layoutList = layoutlist;
+          });
+        },
+      ),
+    );
+
+    // Join the channel containing the composite stream
+    await _engine.joinChannelEx(
+      token: token,
+      connection: RtcConnection(channelId: compositeChannelId, localUid: localUid),
+      options: const ChannelMediaOptions(
+        autoSubscribeVideo: true,
+        autoSubscribeAudio: true,
+        clientRoleType: ClientRoleType.clientRoleAudience,
+      ),
+    );
+
+    // Build AgoraVideoView widgets for each sub-stream
+    Widget _buildSubStreamViews() {
+      if (_layoutList == null || _compositeUid == null) {
+        return const SizedBox.shrink();
+      }
+      return Stack(
+        children: _layoutList!.map((layout) {
+          return AgoraVideoView(
+            controller: VideoViewController.remote(
+              rtcEngine: _engine,
+              canvas: VideoCanvas(
+                // User ID of the user forwarding the composite stream
+                uid: _compositeUid,
+                // User ID corresponding to a specific sub-stream
+                subviewUid: layout.uid,
+                sourceType: VideoSourceType.videoSourceTranscoded,
+                renderMode: RenderModeType.renderModeFit,
+              ),
+              connection: RtcConnection(channelId: compositeChannelId),
+            ),
+          );
+        }).toList(),
+      );
+    }
+
+    // To remove a specific sub-stream view, rebuild the widget tree
+    // without that sub-stream's AgoraVideoView, or use setupMode:
+    VideoCanvas(
+      uid: _compositeUid,
+      subviewUid: layout.uid,
+      setupMode: VideoViewSetupMode.videoViewSetupRemove,
+    )
+    ```
+
+1. When the layout of the composite stream changes, the `onTranscodedStreamLayoutInfo` callback fires again. Each time it fires, update your widget state with the new layout list and rebuild the `AgoraVideoView` widgets to reflect the updated layout.
+
+    <Admonition type="info" title="Information">
+    Layout changes can occur in the following situations:
+
+    - The coordinates of a sub-stream on the composite canvas change.
+    - The width or height of the composite stream or a sub-stream changes.
+    - The state of a sub-stream changes. When the host publishing a sub-stream leaves the channel, the `videoState` parameter for that sub-stream changes from `0` (normal) to `1` (no video available). Remove the corresponding `AgoraVideoView` from the widget tree to stop rendering that host's video.
+    </Admonition>
+
+1. Listen for the `onUserOffline` callback. When the user forwarding the composite stream leaves the channel, clear the layout list and stop rendering the composite stream.
+
+<Admonition type="caution" title="Note">
+- Client-customized composite layout is currently supported on mobile platforms only.
+- If a watermark is applied to the composite stream, the watermark renders within its designated region and may appear split across sub-stream boundaries.
+</Admonition>
+
+</PlatformWrapper>

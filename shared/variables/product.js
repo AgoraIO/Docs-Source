@@ -122,12 +122,13 @@ const data = {
     SDK: 'Conversational AI SDK',
     AGENT: 'Conversational AI agent',
     PRODUCT: 'Conversational AI Engine',
+    STUDIO: 'Agent Studio',
   },
 
   'convo-ai-device-kit': {
-    NAME: 'ConvoAI Device Kit R1',
+    NAME: 'Convo AI Device Kit R1',
     PATH: 'convo-ai-device-kit',
-    PRODUCT: 'ConvoAI Device Kit R1',
+    PRODUCT: 'Convo AI Device Kit R1',
   },
   
   'open-ai-integration': {

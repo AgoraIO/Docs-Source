@@ -1,0 +1,97 @@
+<PlatformWrapper platform="android">
+
+To implement a client-customized composite layout for the audience, follow these steps:
+
+1. Call `joinChannel` [2/2] to join the channel where the composite stream is located.
+
+1. Obtain the following information about the composite video stream through the `onTranscodedStreamLayoutInfo` callback triggered by the SDK:
+
+    - The width and height of the composite stream, and the user ID of the user publishing it.
+    - The user ID of each host publishing a sub-stream within the composite stream.
+    - The x and y coordinates of each sub-stream on the composite canvas.
+    - The width and height of each sub-stream.
+    - The rendering state of each sub-stream on the composite canvas:
+        - Normal rendering
+        - Displayed as a placeholder
+        - Displayed as a black image
+
+1. Call `setupRemoteVideo` to configure local rendering of the remote video stream. Set the following key parameters:
+
+    - `uid`: The user ID of the user forwarding the composite stream to the current channel, obtained from the `onTranscodedStreamLayoutInfo` callback.
+    - `view`: The remote video view displayed locally. Use this parameter to set the display position of each sub-stream in the local view.
+    - `subviewUid`: The user ID corresponding to a specific sub-stream within the composite stream.
+
+    <Admonition type="info" title="Information">
+    - When `subviewUid` is not `0`, the default value of `setupMode` is `VIEW_SETUP_MODE_REPLACE` (add a view).
+    - If `subviewUid` is set, the setting of `rect` does not take effect.
+    </Admonition>
+
+    Use the following sample code as a reference for calling `setupRemoteVideoEx` in a multi-channel scenario. Calling `setupRemoteVideo` in a single-channel scenario is similar.
+
+    ```java
+    mRtcEngine.joinChannelEx(null, connection, mediaOptions, new IRtcEngineEventHandler() {
+        @Override
+        public void onTranscodedStreamLayoutInfo(final int uid, final VideoLayoutInfo info) {
+            super.onTranscodedStreamLayoutInfo(uid, info);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    int size = info.layoutNumber;
+                    viewGrids.setChildCount(info.layoutNumber);
+                    for (int i = 0; i < size; i++) {
+                        if (mUserViews.containsKey(info.layoutList[i].uid)) {
+                            continue;
+                        }
+
+                        // Dynamically add the view
+                        TextureView textureView = new TextureView(VideoChatViewActivity.this);
+                        textureView.setLayoutParams(new ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT));
+                        users.add(info.layoutList[i].uid);
+                        views.add(textureView);
+                        mUserViews.put(info.layoutList[i].uid, textureView);
+                        viewGrids.addView(textureView);
+
+                        // Configure VideoCanvas; set uid and subviewUid as shown,
+                        // and configure other parameters as needed
+                        VideoCanvas canvas = new VideoCanvas(textureView);
+                        // User ID of the user forwarding the composite stream to the current channel
+                        canvas.uid = uid;
+                        // User ID corresponding to a specific sub-stream
+                        canvas.subviewUid = info.layoutList[i].uid;
+                        canvas.renderMode = Constants.RENDER_MODE_FIT;
+                        mRtcEngine.setupRemoteVideoEx(canvas, connection);
+
+                        // To remove a specific sub-stream, use the following code
+                        // Do not include this in the same flow as the add code above.
+                        VideoCanvas canvasToRemove = new VideoCanvas(textureView); // Set textureView to the view you want to remove
+                        canvasToRemove.uid = uid;
+                        canvasToRemove.subviewUid = info.layoutList[i].uid;
+                        canvasToRemove.setupMode = VideoCanvas.VIEW_SETUP_MODE_REMOVE;
+                        mRtcEngine.setupRemoteVideoEx(canvasToRemove);
+                    }
+                }
+            });
+        }
+    });
+    ```
+
+1. When the layout of the composite stream changes, the `onTranscodedStreamLayoutInfo` callback fires again. Each time it fires, call `setupRemoteVideo` with the updated information to adjust the local rendering layout.
+
+    <Admonition type="info" title="Information">
+    Layout changes can occur in the following situations:
+
+    - The coordinates of a sub-stream on the composite canvas change.
+    - The width or height of the composite stream or a sub-stream changes.
+    - The state of a sub-stream changes. When the host publishing a sub-stream leaves the channel, the `videoState` parameter for that sub-stream changes from `0` (normal) to `1` (no video available). To stop rendering that host's video, call `setupRemoteVideo` with `subviewUid` set to that host's user ID and `setupMode` set to `VIEW_SETUP_MODE_REMOVE`.
+    </Admonition>
+
+1. Listen for the `onUserOffline` callback. When the user forwarding the composite stream leaves the channel, stop rendering the composite stream on the receiving end.
+
+<Admonition type="caution" title="Note">
+- Client-customized composite layout is currently supported on mobile platforms only.
+- If a watermark is applied to the composite stream, the watermark renders within its designated region and may appear split across sub-stream boundaries.
+</Admonition>
+
+</PlatformWrapper>

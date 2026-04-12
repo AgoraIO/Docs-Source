@@ -68,7 +68,10 @@ Store credentials in a `.env` file. Never commit this file or expose its content
 ```bash
 AGORA_APP_ID=your_app_id
 AGORA_APP_CERT=your_app_certificate
+AGORA_REST_AUTH_TOKEN=your_rest_auth_token
+AGORA_RTC_JOIN_TOKEN=your_rtc_join_token
 
+# BYOK vendor keys (not needed if using presets)
 DEEPGRAM_API_KEY=your_deepgram_key
 OPENAI_API_KEY=your_openai_key
 ELEVENLABS_API_KEY=your_elevenlabs_key
@@ -178,36 +181,63 @@ Use the region closest to your users: `option.AreaUS`, `option.AreaEU`, `option.
 
 ### Define an agent
 
+
 `Agent` is a reusable configuration object. Define it once at startup and call `createSession()` on it for each user conversation.
+
+The SDK supports two approaches for configuring ASR, LLM, and TTS:
+
+- **Presets** — Agora manages the vendor credentials and endpoints. No vendor API keys required in your application code.
+- **BYOK** — You supply your own vendor API keys and configure vendors directly using typed classes.
+
+
 
 <Tabs groupId="language">
 <TabItem value="typescript" label="Node">
 
-```typescript
-import { Agent, OpenAI, ElevenLabsTTS, DeepgramSTT } from 'agora-agent-sdk';
+* **Presets**
 
-const agent = new Agent({
-  name: 'support-assistant',
-  instructions: 'You are a helpful voice assistant. Keep responses concise.', // LLM system prompt
-  greeting: 'Hello! How can I help you today?', // the first thing the agent says
-  maxHistory: 20,
-})
-  .withLlm(new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY!,
-    model: 'gpt-4o-mini',
-  }))
-  .withTts(new ElevenLabsTTS({
-    key: process.env.ELEVENLABS_API_KEY!,
-    modelId: 'eleven_flash_v2_5',
-    voiceId: process.env.ELEVENLABS_VOICE_ID!,
-    sampleRate: 24000,
-  }))
-  .withStt(new DeepgramSTT({
-    apiKey: process.env.DEEPGRAM_API_KEY!,
-    model: 'nova-2',
-    language: 'en-US',
-  }));
-```
+  With presets, `Agent` holds only the agent behavior. Vendor selection is handled at session creation time via `AgentPresets`.
+
+  ```typescript
+  import { Agent } from 'agora-agent-sdk';
+
+  const agent = new Agent({
+    name: 'support-assistant',
+    instructions: 'You are a helpful voice assistant. Keep responses concise.', // LLM system prompt
+    greeting: 'Hello! How can I help you today?', // first words spoken on session start
+    maxHistory: 20,
+  });
+  ```
+
+* **BYOK**
+
+  With BYOK, attach vendor classes using builder methods. Each vendor class takes your API keys and configuration directly.
+
+  ```typescript
+  import { Agent, OpenAI, ElevenLabsTTS, DeepgramSTT } from 'agora-agent-sdk';
+
+  const agent = new Agent({
+    name: 'support-assistant',
+    instructions: 'You are a helpful voice assistant. Keep responses concise.', // LLM system prompt
+    greeting: 'Hello! How can I help you today?', // the first thing the agent says
+    maxHistory: 20,
+  })
+    .withLlm(new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY!,
+      model: 'gpt-4o-mini',
+    }))
+    .withTts(new ElevenLabsTTS({
+      key: process.env.ELEVENLABS_API_KEY!,
+      modelId: 'eleven_flash_v2_5',
+      voiceId: process.env.ELEVENLABS_VOICE_ID!,
+      sampleRate: 24000,
+    }))
+    .withStt(new DeepgramSTT({
+      apiKey: process.env.DEEPGRAM_API_KEY!,
+      model: 'nova-2',
+      language: 'en-US',
+    }));
+  ```
 
 </TabItem>
 <TabItem value="python" label="Python">
@@ -278,32 +308,70 @@ Register listeners before starting the session. Otherwise you may miss the `star
 <Tabs groupId="language">
 <TabItem value="typescript" label="Node">
 
-```typescript
-import { ExpiresIn } from 'agora-agent-sdk';
+* **Presets**
+  
+  Pass `AgentPresets` values to the `preset` option to select Agora-managed ASR, LLM, and TTS. Pass your RTC join token to the `token` option.
 
-const session = agent.createSession(client, {
-  channel: 'your-channel-name',
-  agentUid: '1',
-  remoteUids: ['100'],
-  idleTimeout: 120,
-  expiresIn: ExpiresIn.hours(1),
-});
+  ```typescript
+  import { AgentPresets } from 'agora-agent-sdk';
 
-// Register before start()
-session.on('started', ({ agentId }) => {
-  console.log('Agent is live:', agentId);
-});
+  const session = agent.createSession(client, {
+    channel: 'your-channel-name',
+    agentUid: '1',
+    remoteUids: ['100'],
+    idleTimeout: 120,
+    token: process.env.AGORA_RTC_JOIN_TOKEN!,
+    preset: [
+      AgentPresets.asr.deepgramNova3,
+      AgentPresets.llm.openaiGpt5Mini,
+      AgentPresets.tts.openaiTts1,
+    ],
+  });
 
-session.on('stopped', ({ agentId }) => {
-  console.log('Agent has left:', agentId);
-});
+  // Register before start()
+  session.on('started', ({ agentId }) => {
+    console.log('Agent is live:', agentId);
+  });
 
-session.on('error', (err) => {
-  console.error('Session error:', err);
-});
+  session.on('stopped', ({ agentId }) => {
+    console.log('Agent has left:', agentId);
+  });
 
-const agentId = await session.start();
-```
+  session.on('error', (err) => {
+    console.error('Session error:', err);
+  });
+
+  const agentId = await session.start();
+  ```
+
+* **BYOK**
+
+  ```typescript
+  import { ExpiresIn } from 'agora-agent-sdk';
+
+  const session = agent.createSession(client, {
+    channel: 'your-channel-name',
+    agentUid: '1',
+    remoteUids: ['100'],
+    idleTimeout: 120,
+    expiresIn: ExpiresIn.hours(1),
+  });
+
+  // Register before start()
+  session.on('started', ({ agentId }) => {
+    console.log('Agent is live:', agentId);
+  });
+
+  session.on('stopped', ({ agentId }) => {
+    console.log('Agent has left:', agentId);
+  });
+
+  session.on('error', (err) => {
+    console.error('Session error:', err);
+  });
+
+  const agentId = await session.start();
+  ```
 
 `start()` transitions the session through `idle → starting → running` states and returns the `agentId`. The `agentId` is the same value as the `agent_id` returned by the REST API.
 
@@ -532,7 +600,98 @@ The following is a minimal server your client app can call to manage agent sessi
 <TabItem value="typescript" label="Node">
 
 <details>
-<summary>Express server example</summary>
+<summary>Presets example</summary>
+
+```typescript
+import 'dotenv/config';
+import express from 'express';
+import {
+  AgoraClient,
+  Area,
+  Agent,
+  AgentPresets,
+  AgoraError,
+} from 'agora-agent-sdk';
+
+const app = express();
+app.use(express.json());
+
+// Initialized once at startup; shared across all requests
+const client = new AgoraClient({
+  area: Area.US,
+  appId: process.env.AGORA_APP_ID!,
+  appCertificate: process.env.AGORA_APP_CERT!,
+  authToken: process.env.AGORA_REST_AUTH_TOKEN!,
+});
+
+// No vendor classes needed — presets supply ASR, LLM, and TTS
+const agent = new Agent({
+  name: 'support-assistant',
+  instructions: 'You are a helpful voice assistant. Keep responses concise.',
+  greeting: 'Hello! How can I help you today?',
+  maxHistory: 20,
+});
+
+const sessions = new Map<string, ReturnType<typeof agent.createSession>>();
+
+app.post('/sessions/start', async (req, res) => {
+  const { channel, userId } = req.body;
+
+  const session = agent.createSession(client, {
+    channel,
+    agentUid: '1',
+    remoteUids: [userId],
+    idleTimeout: 120,
+    token: process.env.AGORA_RTC_JOIN_TOKEN!,
+    preset: [
+      AgentPresets.asr.deepgramNova3,
+      AgentPresets.llm.openaiGpt5Mini,
+      AgentPresets.tts.openaiTts1,
+    ],
+  });
+
+  session.on('error', (err) => console.error(`Session error [${channel}]:`, err));
+
+  try {
+    const agentId = await session.start();
+    sessions.set(agentId, session);
+    res.json({ agentId });
+  } catch (err) {
+    if (err instanceof AgoraError) {
+      res.status(err.statusCode).json({ error: err.message });
+    } else {
+      res.status(500).json({ error: 'Failed to start agent' });
+    }
+  }
+});
+
+app.post('/sessions/stop', async (req, res) => {
+  const { agentId } = req.body;
+  const session = sessions.get(agentId);
+
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+
+  try {
+    await session.stop();
+    sessions.delete(agentId);
+    res.json({ status: 'stopped' });
+  } catch (err) {
+    if (err instanceof AgoraError) {
+      res.status(err.statusCode).json({ error: err.message });
+    } else {
+      res.status(500).json({ error: 'Failed to stop agent' });
+    }
+  }
+});
+
+app.listen(3000, () => console.log('Server listening on port 3000'));
+```
+</details>
+
+<details>
+<summary>BYOK example</summary>
 
 ```typescript
 import 'dotenv/config';

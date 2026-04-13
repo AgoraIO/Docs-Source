@@ -13,12 +13,12 @@ This page shows you how to build a server that starts and stops a voice AI agent
 
 ## Prerequisites
 
-Before you begin, make sure you have:
+Before you begin, make sure you have: 
 
 - [Enabled Agora Conversational AI](../get-started/manage-agora-account) for your project.
 - Completed the [Voice Calling](/voice-calling/get-started/get-started-sdk) or [Video Calling](/video-calling/get-started/get-started-sdk) quickstart. 
 - Your **App ID** and **App Certificate** from [Agora Console](https://console.agora.io). 
-- API keys for your chosen STT, LLM, and TTS providers. This guide uses Deepgram, OpenAI, and ElevenLabs as examples.
+- API keys for your chosen STT, LLM, and TTS providers. **Not required if using Agora-managed models.**
 
 <Tabs groupId="language">
 <TabItem value="typescript" label="Node">
@@ -44,12 +44,11 @@ Before you begin, make sure you have:
 npm install agora-agent-server-sdk
 ```
 
-The package name on npm is `agora-agent-server-sdk`. Imports use `agora-agent-sdk`.
 </TabItem>
 <TabItem value="python" label="Python">
 
 ```bash
-pip install agora-agent-sdk
+pip install agora-agent-server-sdk
 ```
 </TabItem>
 <TabItem value="go" label="Go">
@@ -62,17 +61,21 @@ go get github.com/AgoraIO-Conversational-AI/agent-server-sdk-go
 
 ## Set up environment variables
 
-Store credentials in a `.env` file. Never commit this file or expose its contents client-side; your App Certificate must stay on the server.
+Store credentials in a `.env` file. 
+
+<Admonition type="caution">
+Never commit your `.env` file or expose its contents client-side; your App Certificate must stay on the server.
+</Admonition>
 
 
 ```bash
 AGORA_APP_ID=your_app_id
 AGORA_APP_CERT=your_app_certificate
 
-DEEPGRAM_API_KEY=your_deepgram_key
-OPENAI_API_KEY=your_openai_key
-ELEVENLABS_API_KEY=your_elevenlabs_key
-ELEVENLABS_VOICE_ID=your_voice_id
+# Not required if using Agora-managed models
+# ASR_API_KEY=your_asr_api_key
+# LLM_API_KEY=your_llm_api_key
+# TTS_API_KEY=your_tts_api_key
 ```
 
 {/*
@@ -86,11 +89,10 @@ ELEVENLABS_VOICE_ID=your_voice_id
   customVariables={[
     // User-provided values (placeholders)
     { blank: true },
-    { envVar: 'DEEPGRAM_API_KEY', placeholder: '<your_deepgram_key>', comment: 'ASR,LLM and TTS vendor keys' },
-    { envVar: 'OPENAI_API_KEY', placeholder: '<your_openai_key>'},
-    { envVar: 'ELEVENLABS_API_KEY', placeholder: '<your_elevenlabs_key>' },
-    { envVar: 'ELEVENLABS_VOICE_ID', placeholder: '<your_voice_id>' },
-    
+    { envVar: 'ASR_API_KEY', placeholder: '<your_asr-API_key>', comment: 'ASR,LLM and TTS vendor keys' },
+    { envVar: 'LLM_API_KEY', placeholder: '<your_llm_api_key>'},
+    { envVar: 'TTS_API_KEY', placeholder: '<your_tts_api_key>' },
+        
     // Fixed values (pre-filled)
     // { envVar: 'MICROSOFT_TTS_REGION', value: 'eastus', comment: 'Azure region for TTS service' },
   ]}
@@ -106,13 +108,13 @@ The following steps set up a client, configure an agent, and manage session life
 <Tabs groupId="language">
 <TabItem value="typescript" label="Node">
 
-`AgoraClient` holds your credentials and handles authentication. Pass your App ID and App Certificate to use app-credentials mode. The SDK auto-generates a temporary token scoped to each channel before every request.
+`AgoraClient` holds your credentials and handles authentication. Pass your App ID and App Certificate. The SDK generates a channel-scoped token automatically before each session starts.
 
 ```typescript
-import { AgoraClient, Area } from 'agora-agent-sdk';
+import { AgoraClient, Area } from 'agora-agent-server-sdk';
 
 const client = new AgoraClient({
-  area: Area.US, // Sets the regional API endpoint
+  area: Area.US,
   appId: process.env.AGORA_APP_ID!,
   appCertificate: process.env.AGORA_APP_CERT!,
 });
@@ -122,34 +124,22 @@ Use the region closest to your users: `Area.US`, `Area.EU`, `Area.AP`, or `Area.
 </TabItem>
 <TabItem value="python" label="Python">
 
-The Python SDK supports both synchronous and asynchronous usage. 
-See [Sync vs. Async](./concepts/architecture) to choose the right approach for your application.
+`Agora` holds your credentials and handles authentication. Pass your App ID and App Certificate. The SDK generates a channel-scoped token automatically before each session starts.
 
-`Agora` (sync) and `AsyncAgora` (async) hold your credentials and handle authentication. Pass your App ID and App Certificate to use app-credentials mode. The SDK auto-generates a temporary token scoped to each channel before every request.
+<Admonition type="info">
+For async usage, use `AsyncAgora` in place of `Agora`. All session methods have equivalent async signatures. See the [Python SDK reference](/conversational-ai/reference/SDK/python) for details.
+</Admonition>
 
-- **Sync**
-  ```python
-  import os
-  from agora_agent import Agora, Area
+```python
+import os
+from agora_agent import Agora, Area
 
-  client = Agora(
-      area=Area.US,
-      app_id=os.environ['AGORA_APP_ID'],
-      app_certificate=os.environ['AGORA_APP_CERT'],
-  )
-  ```
-
-- **Async**
-  ```python
-  import os
-  from agora_agent import AsyncAgora, Area
-
-  client = AsyncAgora(
-      area=Area.US,
-      app_id=os.environ['AGORA_APP_ID'],
-      app_certificate=os.environ['AGORA_APP_CERT'],
-  )
-  ```
+client = Agora(
+    area=Area.US,
+    app_id=os.environ['AGORA_APP_ID'],
+    app_certificate=os.environ['AGORA_APP_CERT'],
+)
+```
 
 Use the region closest to your users: `Area.US`, `Area.EU`, `Area.AP`, or `Area.CN`.
 </TabItem>
@@ -159,8 +149,6 @@ In Go, the client handles authentication for REST API calls, while your App ID a
 
 ```go
 import (
-    "os"
-
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/client"
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/option"
 )
@@ -178,108 +166,125 @@ Use the region closest to your users: `option.AreaUS`, `option.AreaEU`, `option.
 
 ### Define an agent
 
-`Agent` is a reusable configuration object. Define it once at startup and call `createSession()` on it for each user conversation.
+The SDK supports two approaches for vendor configuration:
+
+- **Agora-managed models**: Agora provides the credentials automatically. You do not need to sign up for vendor accounts or provide API keys. To use Agora managed models, omit the vendor API key. 
+- **BYOK**: Supply your own vendor API keys to use any model with your own vendor accounts.
 
 <Tabs groupId="language">
 <TabItem value="typescript" label="Node">
 
 ```typescript
-import { Agent, OpenAI, ElevenLabsTTS, DeepgramSTT } from 'agora-agent-sdk';
+import { Agent, DeepgramSTT, OpenAI, MiniMaxTTS } from 'agora-agent-server-sdk';
 
 const agent = new Agent({
-  name: 'support-assistant',
-  instructions: 'You are a helpful voice assistant. Keep responses concise.', // LLM system prompt
-  greeting: 'Hello! How can I help you today?', // the first thing the agent says
-  maxHistory: 20,
+  instructions: 'You are a helpful voice assistant. Keep responses concise.',
+  greeting: 'Hello! How can I help you today?',
 })
+  .withStt(new DeepgramSTT({
+    // apiKey: process.env.ASR_API_KEY!, // Uncomment to use your own Deepgram key
+    model: 'nova-3',
+    language: 'en',
+  }))
   .withLlm(new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY!,
+    // apiKey: process.env.LLM_API_KEY!, // Uncomment to use your own OpenAI key
     model: 'gpt-4o-mini',
   }))
-  .withTts(new ElevenLabsTTS({
-    key: process.env.ELEVENLABS_API_KEY!,
-    modelId: 'eleven_flash_v2_5',
-    voiceId: process.env.ELEVENLABS_VOICE_ID!,
-    sampleRate: 24000,
-  }))
-  .withStt(new DeepgramSTT({
-    apiKey: process.env.DEEPGRAM_API_KEY!,
-    model: 'nova-2',
-    language: 'en-US',
+  .withTts(new MiniMaxTTS({
+    // key: process.env.TTS_API_KEY!,    // Uncomment to use your own MiniMax key
+    model: 'speech-2.6-turbo',
+    voiceId: 'English_captivating_female1',
   }));
 ```
+
+For the full list of `Agent` options and vendor classes, see the [SDK reference](/conversational-ai/reference/SDK/node).
+
 
 </TabItem>
 <TabItem value="python" label="Python">
 
-Vendor classes are imported from `agora_agent.agentkit.vendors`. Builder methods use snake_case.
-
 ```python
 import os
-from agora_agent.agentkit import Agent
-from agora_agent.agentkit.vendors import OpenAI, ElevenLabsTTS, DeepgramSTT
+from agora_agent import Agent
+from agora_agent.agentkit.vendors import DeepgramSTT, OpenAI, MiniMaxTTS
 
 agent = (
     Agent(
-      name='support-assistant', 
-      instructions='You are a helpful voice assistant.', # LLM system prompt
-      greeting='Hello! How can I help you today?', # first words spoken on session start
+        name='support-assistant',
+        instructions='You are a helpful voice assistant. Keep responses concise.',
+        greeting='Hello! How can I help you today?',
     )
-    .with_llm(OpenAI(api_key=os.environ['OPENAI_API_KEY'], model='gpt-4o-mini'))
-    .with_tts(ElevenLabsTTS(key=os.environ['ELEVENLABS_API_KEY'], model_id='eleven_flash_v2_5', voice_id=os.environ['ELEVENLABS_VOICE_ID']))
-    .with_stt(DeepgramSTT(api_key=os.environ['DEEPGRAM_API_KEY'], language='en-US'))
+    .with_stt(DeepgramSTT(
+        # api_key=os.environ['ASR_API_KEY'],  # Uncomment to use your own Deepgram key
+        model='nova-3',
+        language='en',
+    ))
+    .with_llm(OpenAI(
+        # api_key=os.environ['LLM_API_KEY'],  # Uncomment to use your own OpenAI key
+        model='gpt-4o-mini',
+    ))
+    .with_tts(MiniMaxTTS(
+        # key=os.environ['TTS_API_KEY'],       # Uncomment to use your own MiniMax key
+        model='speech-2.6-turbo',
+        voice_id='English_captivating_female1',
+    ))
 )
 ```
+
+For the full list of Agent options and vendor classes, see the [SDK reference](/conversational-ai/reference/SDK/python).
+
 </TabItem>
 
 <TabItem value="go" label="Go">
 
 Go uses functional options to configure the agent. Vendor classes are imported from `agentkit/vendors` and constructed with options structs.
+
 ```go
 import (
+    "os"
+
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/agentkit"
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/agentkit/vendors"
 )
 
 agent := agentkit.NewAgent(
     agentkit.WithName("support-assistant"),
-    agentkit.WithInstructions("You are a helpful voice assistant. Keep responses concise."), // LLM system prompt
-    agentkit.WithGreeting("Hello! How can I help you today?"), // the first thing the agent says
-    agentkit.WithMaxHistory(10),
+    agentkit.WithInstructions("You are a helpful voice assistant. Keep responses concise."),
+    agentkit.WithGreeting("Hello! How can I help you today?"),
+).WithStt(
+    vendors.NewDeepgramSTT(vendors.DeepgramSTTOptions{
+        APIKey:   os.Getenv("ASR_API_KEY"),
+        Model:    "nova-3",
+        Language: "en",
+    }),
 ).WithLlm(
     vendors.NewOpenAI(vendors.OpenAIOptions{
-        APIKey: os.Getenv("OPENAI_API_KEY"),
+        APIKey: os.Getenv("LLM_API_KEY"),
         Model:  "gpt-4o-mini",
     }),
 ).WithTts(
-    vendors.NewElevenLabsTTS(vendors.ElevenLabsTTSOptions{
-        Key:     os.Getenv("ELEVENLABS_API_KEY"),
-        ModelID: "eleven_flash_v2_5",
-        VoiceID: os.Getenv("ELEVENLABS_VOICE_ID"),
-    }),
-).WithStt(
-    vendors.NewDeepgramSTT(vendors.DeepgramSTTOptions{
-        APIKey: os.Getenv("DEEPGRAM_API_KEY"),
+    vendors.NewOpenAITTS(vendors.OpenAITTSOptions{
+        APIKey: os.Getenv("TTS_API_KEY"),
+        Voice:  "shimmer",
+        Model:  "tts-1",
     }),
 )
 ```
 
+For the full list of Agent options and vendor classes, see the [SDK reference](/conversational-ai/reference/SDK/go).
+
 </TabItem>
 </Tabs>
 
-For the full list of `Agent` options and vendor classes, see the SDK reference.
+### Start a session
 
-### Create and start a session
-
-Bind the agent to a specific RTC channel, register event listeners, then start the session.
-
-Register listeners before starting the session. Otherwise you may miss the `started` event.
+Bind the agent to a specific RTC channel and start the session. The SDK generates a channel-scoped token automatically from your App ID and App Certificate.
 
 <Tabs groupId="language">
 <TabItem value="typescript" label="Node">
 
 ```typescript
-import { ExpiresIn } from 'agora-agent-sdk';
+import { ExpiresIn } from 'agora-agent-server-sdk';
 
 const session = agent.createSession(client, {
   channel: 'your-channel-name',
@@ -289,62 +294,35 @@ const session = agent.createSession(client, {
   expiresIn: ExpiresIn.hours(1),
 });
 
-// Register before start()
-session.on('started', ({ agentId }) => {
-  console.log('Agent is live:', agentId);
-});
-
-session.on('stopped', ({ agentId }) => {
-  console.log('Agent has left:', agentId);
-});
-
-session.on('error', (err) => {
-  console.error('Session error:', err);
-});
-
 const agentId = await session.start();
+console.log('Agent started:', agentId);
 ```
 
-`start()` transitions the session through `idle → starting → running` states and returns the `agentId`. The `agentId` is the same value as the `agent_id` returned by the REST API.
-
-You can check the session state at any time with `session.status`.
+`start()` transitions the session through `idle → starting → running` states and returns the `agentId`. You can check the session state at any time with `session.status`.
 
 </TabItem>
 <TabItem value="python" label="Python">
 
-Event handlers receive a dict payload. Register them before calling `start()`.
+```python
+from agora_agent.agentkit import expires_in_hours
 
-- **Sync**
+session = agent.create_session(
+    client,
+    channel='your-channel-name',
+    agent_uid='1',
+    remote_uids=['100'],
+    idle_timeout=120,
+    expires_in=expires_in_hours(1),
+)
 
-  ```python
-  from agora_agent.agentkit import expires_in_hours
+session.on('started', lambda data: print('Agent is live:', data['agent_id']))
+session.on('stopped', lambda data: print('Agent has left:', data['agent_id']))
+session.on('error', lambda err: print('Session error:', err))
 
-  session = agent.create_session(
-      client,
-      channel='your-channel-name',
-      agent_uid='1',
-      remote_uids=['100'],
-      idle_timeout=120,
-      expires_in=expires_in_hours(1),
-  )
+agent_id = session.start()
+```
 
-  # Register before start()
-  session.on('started', lambda data: print('Agent is live:', data['agent_id']))
-  session.on('stopped', lambda data: print('Agent has left:', data['agent_id']))
-  session.on('error', lambda err: print('Session error:', err))
-
-  agent_id = session.start()
-  ```
-
-- **Async**
-
-  ```python
-  agent_id = await session.start()
-  ```
-
-`start()` transitions the session through `idle → starting → running` states and returns the `agentId`. The `agentId` is the same value as the `agent_id` returned by the REST API.
-
-You can check the session state at any time with `session.status`.
+Register event handlers before calling `start()`. The session state transitions through `idle → starting → running` and returns the agent ID. You can check the current session state at any time with `session.status`.
 
 </TabItem>
 <TabItem value="go" label="Go">
@@ -369,16 +347,13 @@ session := agentkit.NewAgentSession(agentkit.AgentSessionOptions{
     RemoteUIDs:     []string{"100"},
 })
 
-// Register before Start()
 session.On("started", func(data interface{}) {
     info := data.(map[string]string)
     fmt.Println("Agent is live:", info["agent_id"])
 })
-
 session.On("stopped", func(data interface{}) {
     fmt.Println("Agent has left")
 })
-
 session.On("error", func(data interface{}) {
     log.Println("Session error:", data)
 })
@@ -390,9 +365,7 @@ if err != nil {
 }
 ```
 
-`Start()` transitions the session through `idle → starting → running` states and returns the agent ID. The agent ID is the same value as the `agent_id` returned by the REST API.
-
-You can check the current session state at any time with `session.Status()`.
+Register event handlers before calling `Start()`. The session state transitions through `idle → starting → running` and returns the agent ID. You can check the current session state at any time with `session.Status()`.
 
 </TabItem>
 </Tabs>
@@ -423,35 +396,21 @@ await session.update({
 </TabItem>
 <TabItem value="python" label="Python">
 
-- **Sync**
+```python
+# Make the agent speak a specific message
+session.say('One moment while I look that up for you.')
 
-  ```python
-  # Make the agent speak a specific message
-  session.say('One moment while I look that up for you.')
+# Interrupt the agent mid-speech
+session.interrupt()
 
-  # Interrupt the agent mid-speech
-  session.interrupt()
-
-  # Update agent configuration without restarting the session.
-  # Accepts a partial properties object in REST API format.
-  session.update({
-      'llm': {
-          'system_messages': [{'role': 'system', 'content': 'You are now in concise mode.'}],
-      },
-  })
-  ```
-
-- **Async**
-
-  ```python
-  await session.say('One moment while I look that up for you.')
-  await session.interrupt()
-  await session.update({
-      'llm': {
-          'system_messages': [{'role': 'system', 'content': 'You are now in concise mode.'}],
-      },
-  })
-  ```
+# Update agent configuration without restarting the session.
+# Accepts a partial properties object in REST API format.
+session.update({
+    'llm': {
+        'system_messages': [{'role': 'system', 'content': 'You are now in concise mode.'}],
+    },
+})
+```
 
 </TabItem>
 <TabItem value="go" label="Go">
@@ -470,9 +429,10 @@ if err != nil {
 }
 
 // Update agent configuration without restarting the session.
+// Import agora "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go" for typed structs.
 // Accepts a partial UpdateAgentsRequestProperties struct in REST API format.
-err = session.Update(ctx, &Agora.UpdateAgentsRequestProperties{
-    Llm: &Agora.UpdateAgentsRequestPropertiesLlm{
+err = session.Update(ctx, &agora.UpdateAgentsRequestProperties{
+    Llm: &agora.UpdateAgentsRequestPropertiesLlm{
         SystemMessages: []map[string]any{
             {"role": "system", "content": "You are now in concise mode."},
         },
@@ -500,17 +460,10 @@ await session.stop();
 </TabItem>
 <TabItem value="python" label="Python">
 
-- **Sync**
 
-  ```python
-  session.stop()
-  ```
-
-- **Async**
-
-  ```python
-  await session.stop()
-  ```
+```python
+session.stop()
+```
 
 </TabItem>
 <TabItem value="go" label="Go">
@@ -539,48 +492,47 @@ import 'dotenv/config';
 import express from 'express';
 import {
   AgoraClient,
-  Area,
   Agent,
-  ExpiresIn,
-  OpenAI,
-  ElevenLabsTTS,
-  DeepgramSTT,
+  Area,
   AgoraError,
-} from 'agora-agent-sdk';
+  DeepgramSTT,
+  OpenAI,
+  MiniMaxTTS,
+  ExpiresIn,
+} from 'agora-agent-server-sdk';
 
 const app = express();
 app.use(express.json());
 
-// Initialized once at startup; shared across all requests
 const client = new AgoraClient({
   area: Area.US,
   appId: process.env.AGORA_APP_ID!,
   appCertificate: process.env.AGORA_APP_CERT!,
 });
 
+// Agora-managed models: Omit API keys for supported models and Agora provides
+// credentials automatically. To switch to BYOK, uncomment the API key lines.
 const agent = new Agent({
-  name: 'support-assistant',
   instructions: 'You are a helpful voice assistant. Keep responses concise.',
   greeting: 'Hello! How can I help you today?',
-  maxHistory: 20,
 })
-  .withLlm(new OpenAI({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-4o-mini' }))
-  .withTts(new ElevenLabsTTS({
-    key: process.env.ELEVENLABS_API_KEY!,
-    modelId: 'eleven_flash_v2_5',
-    voiceId: process.env.ELEVENLABS_VOICE_ID!,
-    sampleRate: 24000,
+  .withStt(new DeepgramSTT({
+    // apiKey: process.env.ASR_API_KEY!, // Uncomment to use your own Deepgram key
+    model: 'nova-3',
+    language: 'en',
   }))
-  .withStt(new DeepgramSTT({ apiKey: process.env.DEEPGRAM_API_KEY!, model: 'nova-2', language: 'en-US' }));
+  .withLlm(new OpenAI({
+    // apiKey: process.env.LLM_API_KEY!, // Uncomment to use your own OpenAI key
+    model: 'gpt-4o-mini',
+  }))
+  .withTts(new MiniMaxTTS({
+    // key: process.env.TTS_API_KEY!,    // Uncomment to use your own MiniMax key
+    model: 'speech-2.6-turbo',
+    voiceId: 'English_captivating_female1',
+  }));
 
-// Maps agentId → session object.
-// In production, use a database or Redis so any server process can stop any session.
 const sessions = new Map<string, ReturnType<typeof agent.createSession>>();
 
-// POST /sessions/start
-// Called by your client app after the user joins the Agora channel.
-// Body: { channel: string, userId: string }
-// Returns: { agentId: string }
 app.post('/sessions/start', async (req, res) => {
   const { channel, userId } = req.body;
 
@@ -607,15 +559,13 @@ app.post('/sessions/start', async (req, res) => {
   }
 });
 
-// POST /sessions/stop
-// Called by your client app when the user ends the conversation.
-// Body: { agentId: string }
 app.post('/sessions/stop', async (req, res) => {
   const { agentId } = req.body;
   const session = sessions.get(agentId);
 
   if (!session) {
-    return res.status(404).json({ error: 'Session not found' });
+    res.status(404).json({ error: 'Session not found' });
+    return;
   }
 
   try {
@@ -640,93 +590,93 @@ app.listen(3000, () => console.log('Server listening on port 3000'));
 <TabItem value="python" label="Python">
 
 <details>
-<summary>Python example</summary>
+<summary>Flask server example</summary>
 
-- **Sync**
+```python
+# Requires Flask: pip install flask
+import os
+from flask import Flask, request, jsonify
+from agora_agent import Agora, Agent, Area
+from agora_agent.agentkit import expires_in_hours
+from agora_agent.agentkit.vendors import DeepgramSTT, OpenAI, MiniMaxTTS
 
-  ```python
-  import os
-  from agora_agent import Agora, Area
-  from agora_agent.agentkit import Agent
-  from agora_agent.agentkit.vendors import OpenAI, ElevenLabsTTS, DeepgramSTT
+app = Flask(__name__)
 
-  client = Agora(
-      area=Area.US,
-      app_id=os.environ['AGORA_APP_ID'],
-      app_certificate=os.environ['AGORA_APP_CERT'],
-  )
+client = Agora(
+    area=Area.US,
+    app_id=os.environ['AGORA_APP_ID'],
+    app_certificate=os.environ['AGORA_APP_CERT'],
+)
 
-  agent = (
-      Agent(
-          name='support-assistant',
-          instructions='You are a helpful voice assistant.',  # LLM system prompt
-          greeting='Hello! How can I help you today?',       # first words spoken on session start
-      )
-      .with_llm(OpenAI(api_key=os.environ['OPENAI_API_KEY'], model='gpt-4o-mini'))
-      .with_tts(ElevenLabsTTS(
-          key=os.environ['ELEVENLABS_API_KEY'],
-          model_id='eleven_flash_v2_5',
-          voice_id=os.environ['ELEVENLABS_VOICE_ID'],
-      ))
-      .with_stt(DeepgramSTT(api_key=os.environ['DEEPGRAM_API_KEY'], language='en-US'))
-  )
+# Agora-managed models: Omit API keys for supported models and Agora provides
+# credentials automatically. To switch to BYOK, uncomment the API key lines.
+agent = (
+    Agent(
+        name='support-assistant',
+        instructions='You are a helpful voice assistant. Keep responses concise.',
+        greeting='Hello! How can I help you today?',
+    )
+    .with_stt(DeepgramSTT(
+        # api_key=os.environ['ASR_API_KEY'],  # Uncomment to use your own Deepgram key
+        model='nova-3',
+        language='en',
+    ))
+    .with_llm(OpenAI(
+        # api_key=os.environ['LLM_API_KEY'],  # Uncomment to use your own OpenAI key
+        model='gpt-4o-mini',
+    ))
+    .with_tts(MiniMaxTTS(
+        # key=os.environ['TTS_API_KEY'],       # Uncomment to use your own MiniMax key
+        model='speech-2.6-turbo',
+        voice_id='English_captivating_female1',
+    ))
+)
 
-  session = agent.create_session(
-      client,
-      channel='support-room-123',
-      agent_uid='1',
-      remote_uids=['100'],
-  )
-  agent_id = session.start()
+sessions = {}
 
-  session.say('Hello! How can I help you today?')
-  session.stop()
-  ```
+@app.post('/sessions/start')
+def start_session():
+    body = request.get_json()
+    channel = body['channel']
+    user_id = body['userId']
 
-- **Async**
+    session = agent.create_session(
+        client,
+        channel=channel,
+        agent_uid='1',
+        remote_uids=[user_id],
+        idle_timeout=120,
+        expires_in=expires_in_hours(1),
+    )
+    session.on('error', lambda err: print(f'Session error [{channel}]:', err))
 
-  ```python
-  import asyncio
-  import os
-  from agora_agent import AsyncAgora, Area
-  from agora_agent.agentkit import Agent
-  from agora_agent.agentkit.vendors import OpenAI, ElevenLabsTTS, DeepgramSTT
+    try:
+        agent_id = session.start()
+        sessions[agent_id] = session
+        return jsonify({'agentId': agent_id})
+    except Exception as err:
+        return jsonify({'error': str(err)}), 500
 
-  async def main():
-      client = AsyncAgora(
-          area=Area.US,
-          app_id=os.environ['AGORA_APP_ID'],
-          app_certificate=os.environ['AGORA_APP_CERT'],
-      )
+@app.post('/sessions/stop')
+def stop_session():
+    body = request.get_json()
+    agent_id = body['agentId']
+    session = sessions.get(agent_id)
 
-      agent = (
-          Agent(
-              name='support-assistant',
-              instructions='You are a helpful voice assistant.',  # LLM system prompt
-              greeting='Hello! How can I help you today?',       # first words spoken on session start
-          )
-          .with_llm(OpenAI(api_key=os.environ['OPENAI_API_KEY'], model='gpt-4o-mini'))
-          .with_tts(ElevenLabsTTS(
-              key=os.environ['ELEVENLABS_API_KEY'],
-              model_id='eleven_flash_v2_5',
-              voice_id=os.environ['ELEVENLABS_VOICE_ID'],
-          ))
-          .with_stt(DeepgramSTT(api_key=os.environ['DEEPGRAM_API_KEY'], language='en-US'))
-      )
+    if not session:
+        return jsonify({'error': 'Session not found'}), 404
 
-      session = agent.create_session(
-          client,
-          channel='support-room-123',
-          agent_uid='1',
-          remote_uids=['100'],
-      )
-      agent_id = await session.start()
+    try:
+        session.stop()
+        sessions.pop(agent_id)
+        return jsonify({'status': 'stopped'})
+    except Exception as err:
+        return jsonify({'error': str(err)}), 500
 
-      await session.say('Hello! How can I help you today?')
-      await session.stop()
+if __name__ == '__main__':
+    app.run(port=3000)
+```
 
-  asyncio.run(main())
-  ```
 </details>
 
 </TabItem>
@@ -734,90 +684,134 @@ app.listen(3000, () => console.log('Server listening on port 3000'));
 <TabItem value="go" label="Go">
 
 <details>
-<summary>Go example</summary>
+<summary>Go server example</summary>
 
 ```go
+// Requires: go get github.com/AgoraIO-Conversational-AI/agent-server-sdk-go
 package main
 
 import (
     "context"
+    "encoding/json"
     "fmt"
     "log"
+    "net/http"
     "os"
+    "sync"
 
-    // uncomment for typed structs and pointer helpers
-    // Agora "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go"
+    agora "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go"
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/agentkit"
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/agentkit/vendors"
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/client"
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/option"
 )
 
+var (
+    sessions   = make(map[string]*agentkit.AgentSession)
+    sessionsMu sync.Mutex
+)
+
 func main() {
-    // Initialized once at startup; shared across all requests
     c := client.NewClient(
         option.WithArea(option.AreaUS),
     )
 
+    // Use ASR_API_KEY, LLM_API_KEY, and TTS_API_KEY environment variables.
     agent := agentkit.NewAgent(
         agentkit.WithName("support-assistant"),
-        agentkit.WithInstructions("You are a helpful voice assistant. Keep responses concise."), // LLM system prompt
-        agentkit.WithGreeting("Hello! How can I help you today?"),                               // first words spoken on session start
-        agentkit.WithMaxHistory(10),
+        agentkit.WithInstructions("You are a helpful voice assistant. Keep responses concise."),
+        agentkit.WithGreeting("Hello! How can I help you today?"),
+    ).WithStt(
+        vendors.NewDeepgramSTT(vendors.DeepgramSTTOptions{
+            APIKey:   os.Getenv("ASR_API_KEY"),
+            Model:    "nova-3",
+            Language: "en",
+        }),
     ).WithLlm(
         vendors.NewOpenAI(vendors.OpenAIOptions{
-            APIKey: os.Getenv("OPENAI_API_KEY"),
+            APIKey: os.Getenv("LLM_API_KEY"),
             Model:  "gpt-4o-mini",
         }),
     ).WithTts(
-        vendors.NewElevenLabsTTS(vendors.ElevenLabsTTSOptions{
-            Key:     os.Getenv("ELEVENLABS_API_KEY"),
-            ModelID: "eleven_flash_v2_5",
-            VoiceID: os.Getenv("ELEVENLABS_VOICE_ID"),
-        }),
-    ).WithStt(
-        vendors.NewDeepgramSTT(vendors.DeepgramSTTOptions{
-            APIKey: os.Getenv("DEEPGRAM_API_KEY"),
+        vendors.NewOpenAITTS(vendors.OpenAITTSOptions{
+            APIKey: os.Getenv("TTS_API_KEY"),
+            Voice:  "shimmer",
+            Model:  "tts-1",
         }),
     )
 
-    session := agentkit.NewAgentSession(agentkit.AgentSessionOptions{
-        Client:         c.Agents,
-        Agent:          agent,
-        AppID:          os.Getenv("AGORA_APP_ID"),
-        AppCertificate: os.Getenv("AGORA_APP_CERT"),
-        Channel:        "support-room-123",
-        AgentUID:       "1",
-        RemoteUIDs:     []string{"100"},
+    http.HandleFunc("/sessions/start", func(w http.ResponseWriter, r *http.Request) {
+        var body struct {
+            Channel string `json:"channel"`
+            UserID  string `json:"userId"`
+        }
+        if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+            http.Error(w, `{"error":"invalid request"}`, http.StatusBadRequest)
+            return
+        }
+
+        session := agentkit.NewAgentSession(agentkit.AgentSessionOptions{
+            Client:         c.Agents,
+            Agent:          agent,
+            AppID:          os.Getenv("AGORA_APP_ID"),
+            AppCertificate: os.Getenv("AGORA_APP_CERT"),
+            Channel:        body.Channel,
+            AgentUID:       "1",
+            RemoteUIDs:     []string{body.UserID},
+            IdleTimeout:    agora.Int(120),
+            ExpiresIn:      3600,
+        })
+        session.On("error", func(data interface{}) {
+            log.Printf("Session error [%s]: %v", body.Channel, data)
+        })
+
+        agentId, err := session.Start(context.Background())
+        if err != nil {
+            http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+            return
+        }
+
+        sessionsMu.Lock()
+        sessions[agentId] = session
+        sessionsMu.Unlock()
+
+        w.Header().Set("Content-Type", "application/json")
+        fmt.Fprintf(w, `{"agentId":"%s"}`, agentId)
     })
 
-    session.On("started", func(data interface{}) {
-        info := data.(map[string]string)
-        fmt.Println("Agent is live:", info["agent_id"])
-    })
-    session.On("stopped", func(data interface{}) {
-        fmt.Println("Agent has left")
-    })
-    session.On("error", func(data interface{}) {
-        log.Println("Session error:", data)
+    http.HandleFunc("/sessions/stop", func(w http.ResponseWriter, r *http.Request) {
+        var body struct {
+            AgentID string `json:"agentId"`
+        }
+        if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+            http.Error(w, `{"error":"invalid request"}`, http.StatusBadRequest)
+            return
+        }
+
+        sessionsMu.Lock()
+        session, ok := sessions[body.AgentID]
+        sessionsMu.Unlock()
+
+        if !ok {
+            http.Error(w, `{"error":"session not found"}`, http.StatusNotFound)
+            return
+        }
+
+        if err := session.Stop(context.Background()); err != nil {
+            http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+            return
+        }
+
+        sessionsMu.Lock()
+        delete(sessions, body.AgentID)
+        sessionsMu.Unlock()
+
+        w.Header().Set("Content-Type", "application/json")
+        fmt.Fprint(w, `{"status":"stopped"}`)
     })
 
-    ctx := context.Background()
-    agentId, err := session.Start(ctx)
-    if err != nil {
-        log.Fatalf("Failed to start session: %v", err)
-    }
-    fmt.Println("Agent running with ID:", agentId)
-
-    err = session.Say(ctx, "Hello! How can I help you today?", nil, nil)
-    if err != nil {
-        log.Printf("Say failed: %v", err)
-    }
-
-    err = session.Stop(ctx)
-    if err != nil {
-        log.Fatalf("Failed to stop session: %v", err)
-    }
+    log.Println("Server listening on port 3000")
+    log.Fatal(http.ListenAndServe(":3000", nil))
 }
 ```
 </details>

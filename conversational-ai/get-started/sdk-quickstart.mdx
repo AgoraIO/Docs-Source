@@ -64,7 +64,7 @@ go get github.com/AgoraIO-Conversational-AI/agent-server-sdk-go
 Store credentials in a `.env` file. 
 
 <Admonition type="caution">
-Never commit you `.env` file or expose its contents client-side; your App Certificate must stay on the server.
+Never commit your `.env` file or expose its contents client-side; your App Certificate must stay on the server.
 </Admonition>
 
 
@@ -149,8 +149,6 @@ In Go, the client handles authentication for REST API calls, while your App ID a
 
 ```go
 import (
-    "os"
-
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/client"
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/option"
 )
@@ -240,34 +238,40 @@ For the full list of Agent options and vendor classes, see the [SDK reference](/
 <TabItem value="go" label="Go">
 
 Go uses functional options to configure the agent. Vendor classes are imported from `agentkit/vendors` and constructed with options structs.
+
 ```go
 import (
+    "os"
+
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/agentkit"
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/agentkit/vendors"
 )
 
 agent := agentkit.NewAgent(
     agentkit.WithName("support-assistant"),
-    agentkit.WithInstructions("You are a helpful voice assistant. Keep responses concise."), // LLM system prompt
-    agentkit.WithGreeting("Hello! How can I help you today?"), // the first thing the agent says
-    agentkit.WithMaxHistory(10),
+    agentkit.WithInstructions("You are a helpful voice assistant. Keep responses concise."),
+    agentkit.WithGreeting("Hello! How can I help you today?"),
+).WithStt(
+    vendors.NewDeepgramSTT(vendors.DeepgramSTTOptions{
+        APIKey:   os.Getenv("ASR_API_KEY"),
+        Model:    "nova-3",
+        Language: "en",
+    }),
 ).WithLlm(
     vendors.NewOpenAI(vendors.OpenAIOptions{
-        APIKey: os.Getenv("OPENAI_API_KEY"),
+        APIKey: os.Getenv("LLM_API_KEY"),
         Model:  "gpt-4o-mini",
     }),
 ).WithTts(
-    vendors.NewElevenLabsTTS(vendors.ElevenLabsTTSOptions{
-        Key:     os.Getenv("ELEVENLABS_API_KEY"),
-        ModelID: "eleven_flash_v2_5",
-        VoiceID: os.Getenv("ELEVENLABS_VOICE_ID"),
-    }),
-).WithStt(
-    vendors.NewDeepgramSTT(vendors.DeepgramSTTOptions{
-        APIKey: os.Getenv("DEEPGRAM_API_KEY"),
+    vendors.NewOpenAITTS(vendors.OpenAITTSOptions{
+        APIKey: os.Getenv("TTS_API_KEY"),
+        Voice:  "shimmer",
+        Model:  "tts-1",
     }),
 )
 ```
+
+For the full list of Agent options and vendor classes, see the [SDK reference](/conversational-ai/reference/SDK/go).
 
 </TabItem>
 </Tabs>
@@ -318,7 +322,7 @@ session.on('error', lambda err: print('Session error:', err))
 agent_id = session.start()
 ```
 
-Register event handlers before calling `start()`. The session state transitions through `idle → starting → running` and returns the agent ID. You can check the session state at any time with `session.status`.
+Register event handlers before calling `start()`. The session state transitions through `idle → starting → running` and returns the agent ID. You can check the current session state at any time with `session.status`.
 
 </TabItem>
 <TabItem value="go" label="Go">
@@ -343,16 +347,13 @@ session := agentkit.NewAgentSession(agentkit.AgentSessionOptions{
     RemoteUIDs:     []string{"100"},
 })
 
-// Register before Start()
 session.On("started", func(data interface{}) {
     info := data.(map[string]string)
     fmt.Println("Agent is live:", info["agent_id"])
 })
-
 session.On("stopped", func(data interface{}) {
     fmt.Println("Agent has left")
 })
-
 session.On("error", func(data interface{}) {
     log.Println("Session error:", data)
 })
@@ -364,9 +365,7 @@ if err != nil {
 }
 ```
 
-`Start()` transitions the session through `idle → starting → running` states and returns the agent ID. The agent ID is the same value as the `agent_id` returned by the REST API.
-
-You can check the current session state at any time with `session.Status()`.
+Register event handlers before calling `Start()`. The session state transitions through `idle → starting → running` and returns the agent ID. You can check the current session state at any time with `session.Status()`.
 
 </TabItem>
 </Tabs>
@@ -430,9 +429,10 @@ if err != nil {
 }
 
 // Update agent configuration without restarting the session.
+// Import agora "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go" for typed structs.
 // Accepts a partial UpdateAgentsRequestProperties struct in REST API format.
-err = session.Update(ctx, &Agora.UpdateAgentsRequestProperties{
-    Llm: &Agora.UpdateAgentsRequestPropertiesLlm{
+err = session.Update(ctx, &agora.UpdateAgentsRequestProperties{
+    Llm: &agora.UpdateAgentsRequestPropertiesLlm{
         SystemMessages: []map[string]any{
             {"role": "system", "content": "You are now in concise mode."},
         },
@@ -510,7 +510,7 @@ const client = new AgoraClient({
   appCertificate: process.env.AGORA_APP_CERT!,
 });
 
-// Agora-managed models — omit API keys for supported models and Agora provides
+// Agora-managed models: Omit API keys for supported models and Agora provides
 // credentials automatically. To switch to BYOK, uncomment the API key lines.
 const agent = new Agent({
   instructions: 'You are a helpful voice assistant. Keep responses concise.',
@@ -608,7 +608,7 @@ client = Agora(
     app_certificate=os.environ['AGORA_APP_CERT'],
 )
 
-# Agora-managed models — omit API keys for supported models and Agora provides
+# Agora-managed models: Omit API keys for supported models and Agora provides
 # credentials automatically. To switch to BYOK, uncomment the API key lines.
 agent = (
     Agent(
@@ -684,90 +684,134 @@ if __name__ == '__main__':
 <TabItem value="go" label="Go">
 
 <details>
-<summary>Go example</summary>
+<summary>Go server example</summary>
 
 ```go
+// Requires: go get github.com/AgoraIO-Conversational-AI/agent-server-sdk-go
 package main
 
 import (
     "context"
+    "encoding/json"
     "fmt"
     "log"
+    "net/http"
     "os"
+    "sync"
 
-    // uncomment for typed structs and pointer helpers
-    // Agora "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go"
+    agora "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go"
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/agentkit"
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/agentkit/vendors"
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/client"
     "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/option"
 )
 
+var (
+    sessions   = make(map[string]*agentkit.AgentSession)
+    sessionsMu sync.Mutex
+)
+
 func main() {
-    // Initialized once at startup; shared across all requests
     c := client.NewClient(
         option.WithArea(option.AreaUS),
     )
 
+    // Use ASR_API_KEY, LLM_API_KEY, and TTS_API_KEY environment variables.
     agent := agentkit.NewAgent(
         agentkit.WithName("support-assistant"),
-        agentkit.WithInstructions("You are a helpful voice assistant. Keep responses concise."), // LLM system prompt
-        agentkit.WithGreeting("Hello! How can I help you today?"),                               // first words spoken on session start
-        agentkit.WithMaxHistory(10),
+        agentkit.WithInstructions("You are a helpful voice assistant. Keep responses concise."),
+        agentkit.WithGreeting("Hello! How can I help you today?"),
+    ).WithStt(
+        vendors.NewDeepgramSTT(vendors.DeepgramSTTOptions{
+            APIKey:   os.Getenv("ASR_API_KEY"),
+            Model:    "nova-3",
+            Language: "en",
+        }),
     ).WithLlm(
         vendors.NewOpenAI(vendors.OpenAIOptions{
-            APIKey: os.Getenv("OPENAI_API_KEY"),
+            APIKey: os.Getenv("LLM_API_KEY"),
             Model:  "gpt-4o-mini",
         }),
     ).WithTts(
-        vendors.NewElevenLabsTTS(vendors.ElevenLabsTTSOptions{
-            Key:     os.Getenv("ELEVENLABS_API_KEY"),
-            ModelID: "eleven_flash_v2_5",
-            VoiceID: os.Getenv("ELEVENLABS_VOICE_ID"),
-        }),
-    ).WithStt(
-        vendors.NewDeepgramSTT(vendors.DeepgramSTTOptions{
-            APIKey: os.Getenv("DEEPGRAM_API_KEY"),
+        vendors.NewOpenAITTS(vendors.OpenAITTSOptions{
+            APIKey: os.Getenv("TTS_API_KEY"),
+            Voice:  "shimmer",
+            Model:  "tts-1",
         }),
     )
 
-    session := agentkit.NewAgentSession(agentkit.AgentSessionOptions{
-        Client:         c.Agents,
-        Agent:          agent,
-        AppID:          os.Getenv("AGORA_APP_ID"),
-        AppCertificate: os.Getenv("AGORA_APP_CERT"),
-        Channel:        "support-room-123",
-        AgentUID:       "1",
-        RemoteUIDs:     []string{"100"},
+    http.HandleFunc("/sessions/start", func(w http.ResponseWriter, r *http.Request) {
+        var body struct {
+            Channel string `json:"channel"`
+            UserID  string `json:"userId"`
+        }
+        if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+            http.Error(w, `{"error":"invalid request"}`, http.StatusBadRequest)
+            return
+        }
+
+        session := agentkit.NewAgentSession(agentkit.AgentSessionOptions{
+            Client:         c.Agents,
+            Agent:          agent,
+            AppID:          os.Getenv("AGORA_APP_ID"),
+            AppCertificate: os.Getenv("AGORA_APP_CERT"),
+            Channel:        body.Channel,
+            AgentUID:       "1",
+            RemoteUIDs:     []string{body.UserID},
+            IdleTimeout:    agora.Int(120),
+            ExpiresIn:      3600,
+        })
+        session.On("error", func(data interface{}) {
+            log.Printf("Session error [%s]: %v", body.Channel, data)
+        })
+
+        agentId, err := session.Start(context.Background())
+        if err != nil {
+            http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+            return
+        }
+
+        sessionsMu.Lock()
+        sessions[agentId] = session
+        sessionsMu.Unlock()
+
+        w.Header().Set("Content-Type", "application/json")
+        fmt.Fprintf(w, `{"agentId":"%s"}`, agentId)
     })
 
-    session.On("started", func(data interface{}) {
-        info := data.(map[string]string)
-        fmt.Println("Agent is live:", info["agent_id"])
-    })
-    session.On("stopped", func(data interface{}) {
-        fmt.Println("Agent has left")
-    })
-    session.On("error", func(data interface{}) {
-        log.Println("Session error:", data)
+    http.HandleFunc("/sessions/stop", func(w http.ResponseWriter, r *http.Request) {
+        var body struct {
+            AgentID string `json:"agentId"`
+        }
+        if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+            http.Error(w, `{"error":"invalid request"}`, http.StatusBadRequest)
+            return
+        }
+
+        sessionsMu.Lock()
+        session, ok := sessions[body.AgentID]
+        sessionsMu.Unlock()
+
+        if !ok {
+            http.Error(w, `{"error":"session not found"}`, http.StatusNotFound)
+            return
+        }
+
+        if err := session.Stop(context.Background()); err != nil {
+            http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+            return
+        }
+
+        sessionsMu.Lock()
+        delete(sessions, body.AgentID)
+        sessionsMu.Unlock()
+
+        w.Header().Set("Content-Type", "application/json")
+        fmt.Fprint(w, `{"status":"stopped"}`)
     })
 
-    ctx := context.Background()
-    agentId, err := session.Start(ctx)
-    if err != nil {
-        log.Fatalf("Failed to start session: %v", err)
-    }
-    fmt.Println("Agent running with ID:", agentId)
-
-    err = session.Say(ctx, "Hello! How can I help you today?", nil, nil)
-    if err != nil {
-        log.Printf("Say failed: %v", err)
-    }
-
-    err = session.Stop(ctx)
-    if err != nil {
-        log.Fatalf("Failed to stop session: %v", err)
-    }
+    log.Println("Server listening on port 3000")
+    log.Fatal(http.ListenAndServe(":3000", nil))
 }
 ```
 </details>

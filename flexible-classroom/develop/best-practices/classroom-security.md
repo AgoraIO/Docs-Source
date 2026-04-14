@@ -20,7 +20,7 @@ Agora Flexible Classroom is designed and built with multiple protection measures
 
 ## Classroom separation
 
-Agora creates independent and isolated classrooms for audio, video, or messaging data transmission with the room ID specified by the app developer. All classrooms are logically separated and only authenticated users from the same Agora [App ID](../reference/glossary#app-id) can join the same classroom.
+Agora creates independent and isolated classrooms for audio, video, or messaging data transmission with the room ID specified by the app developer. All classrooms are logically separated and only authenticated users from the same Agora [App ID](/flexible-classroom/reference/glossary#app-id) can join the same classroom.
 
 ## Token authentication
 
@@ -28,8 +28,8 @@ Agora Flexible Classroom uses the <Vg k="SIG"/> token for end user authenticatio
 
 The app developer can enable token authentication (App Certificate) in <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>. When enabled, all user’s request to join a classroom must be done with a valid <Vg k="SIG"/> token.
 
-- For more information on how to enable <Vg k="SIG"/> token authentication, see [Secure authentication with tokens](authentication-workflow).
-- For how to generate a <Vg k="SIG"/> token on the app backend, see [Secure authentication with tokens](authentication-workflow#token-generator-libraries).
+- For more information on how to enable <Vg k="SIG"/> token authentication, see [Secure authentication with tokens](/flexible-classroom/develop/integrate/authentication-workflow).
+- For how to generate a <Vg k="SIG"/> token on the app backend, see [Secure authentication with tokens](/flexible-classroom/develop/integrate/authentication-workflow).
 
 ## Data encryption and storage
 
@@ -61,7 +61,7 @@ Use this list to quickly check what measures you have or have not taken to best 
 1. Enable token authentication in <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>.
 2. Disable **No certificate** in your project management page. Once it is done your app authenticates users with tokens only.
    ![img](https://web-cdn.agora.io/docs-files/1614134532547)
-3. [Deploy an <Vg k="SIG"/> token server](/signaling/develop/authentication-workflow) in your backend services.
+3. [Deploy an <Vg k="SIG"/> token server](/flexible-classroom/develop/integrate/authentication-workflow) in your backend services.
 4. Protect the token server and only allow the app backend server to connect to the token server.
 5. For additional security, you can also do the following:
    - Set the classroom ID to a one-time random string managed by your app.

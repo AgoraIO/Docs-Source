@@ -24,7 +24,6 @@ This approach enables you to implement additional custom functionalities, includ
 - **Function Calling**: Enables the model to return structured data in the form of function calls.
 
 ## Prerequisites
-Before you begin, ensure that you have:
 
 - Implemented the basic logic for interacting with a <Vpd k="AGENT" /> by following the [REST Quickstart](../get-started/quickstart).
 - Set up access to a custom LLM service.
@@ -485,6 +484,30 @@ When calling the POST method to [Start a conversational AI agent](/conversationa
 If accessing your custom LLM service requires identity verification, provide the authentication information in the `api_key` field.
 </Admonition>
 
+
+### Configure Agora's Conversational AI Engine
+
+When you [Start a conversational AI agent](/conversational-ai/rest-api/agent/join), use the `llm` configuration to point your agent to the custom service:
+
+<Admonition type="info">
+If accessing your custom LLM service requires identity verification, provide the authentication information in the `api_key` field.
+</Admonition>
+
+```json
+{
+  "llm": {
+    "url": "https://your-custom-llm-service/chat/completions",
+    "api_key": "",
+    "system_messages": [
+      {
+        "role": "system",
+        "content": "You are a helpful assistant."
+      }
+    ]
+  }
+}
+```
+
 ## Advanced features
 
 To integrate advanced features such as Retrieval-Augmented Generation and generating outputs in multimodal forms, refer to the following sections.
@@ -870,7 +893,7 @@ If accessing your custom LLM service requires identity verification, provide the
 
 ### Multimodal capabilities
 
-<Vpd k="NAME" /> supports LLMs in generating output in multimodal formats, including text and audio. You can create dedicated multimodal interfaces to meet personalized requirements.
+<Vpd k="NAME" /> supports LLMs in generating output in multimodal formats, including text and audio. You can create dedicated multimodal interfaces to meet personalized requirements. For more information about using audio output, see [Audio output mode](audio-output).
 
 The following example demonstrates how to read text and audio files and send them to an LLM to generate an audio response.
 
@@ -1257,33 +1280,67 @@ When calling the POST method to [Start a conversational AI agent](/conversationa
 }
 ```
 
-### Configure LLM response interruption
+### Control agent behavior using first-packet metadata
 
-In Streaming Response (SSE) scenarios, a single LLM response is segmented into multiple chunks for transmission. Agora's conversational AI engine supports processing the first LLM chunk response where `object` is `chat.completion.custom_metadata`. The `metadata.interruptable` field configures whether the TTS broadcast of this LLM response can be interrupted by user speech. This capability ensures that the agent is not interrupted by user speech when delivering important information, such as regulations, policies, and product pricing.
+In Streaming Response (SSE) scenarios, a single LLM response is segmented into multiple chunks for transmission. Agora's Conversational AI Engine supports processing a special first-chunk response where `object` is `chat.completion.custom_metadata`, and uses the `metadata` field in that response to enable the following advanced features:
 
-To configure interruption behavior, modify your custom large model service to output the first chunk response with the following data structure:
+- [Configure whether the TTS broadcast can be interrupted](#configure-llm-response-interruption)
+- [Update TTS parameters in real time](#update-tts-parameters-in-real-time)
+
+To use these features, modify your custom LLM service to output a special first-chunk response that meets the Conversational AI Engine's requirements.
+
+![](/images/conversational-ai/custom-llm-metadata-flow.svg)
+
+<Admonition type="caution">
+The Conversational AI Engine only processes the first chunk response where `object` is `chat.completion.custom_metadata` and ignores the content in `choices`. Subsequent responses are treated as normal responses and do not support metadata configuration. Ensure that the content requiring TTS broadcast is generated in the second and subsequent responses.
+</Admonition>
+
+#### Configure LLM response interruption
+
+The Conversational AI Engine supports letting the custom LLM determine whether a response can be interrupted by the user, ensuring that the agent is not interrupted when delivering important information. This feature is useful when the agent must complete its response without interruption, for example when broadcasting regulations, policies, or product pricing.
+
+Modify your custom LLM service to output a first-chunk response with the following structure:
 
 ```json
 {
-    "id": "response-id",
-    "object": "chat.completion.custom_metadata",
-    "choices": [],
-    "metadata": {
-        "interruptable": true
-    }
+  "id": "response-id",
+  "object": "chat.completion.custom_metadata",
+  "choices": [],
+  "metadata": {
+    "interruptable": false
+  }
 }
 ```
 
-**Parameters**
+The `interruptable` field configures whether the TTS broadcast of this LLM response can be interrupted by user speech:
 
-- `interruptable`: Configures whether the TTS broadcast of this LLM response can be interrupted by user speech.
-  - `false`: The TTS broadcast cannot be interrupted.
-  - `true`: The TTS broadcast can be interrupted.
-  - If the field does not exist, is empty, or contains an invalid value, the original interruption mode remains unchanged.
+- If the field does not exist, is empty, or contains an invalid value, the original interruption mode remains unchanged.
+- `false`: The TTS broadcast cannot be interrupted.
+- `true`: The TTS broadcast can be interrupted.
 
-<Admonition type="info">
-The conversational AI engine only processes the first chunk response where `object` is `chat.completion.custom_metadata` and ignores the content in `choices`. Subsequent responses are treated as normal responses and do not support interruption control. Ensure that the content requiring TTS broadcast is generated in the second and subsequent responses.
-</Admonition>
+#### Update TTS parameters in real time
+
+The Conversational AI Engine supports real-time TTS parameter updates during a conversation, enabling a more immersive interactive experience. This feature is useful when the agent needs to adjust its voice dynamically based on user input, for example when a user requests a different voice or when the LLM detects a change in the user's mood and adjusts volume, pitch, or speech rate accordingly.
+
+When the LLM determines that TTS parameters need to be updated, modify your custom LLM service to output a first-chunk response with the following structure:
+
+```json
+{
+  "id": "response-id",
+  "object": "chat.completion.custom_metadata",
+  "choices": [],
+  "metadata": {
+    "tts_params": {
+      "params": {
+        "voice_type": "female_1",
+        "rate": 1.1
+      }
+    }
+  }
+}
+```
+
+The `tts_params.params` field specifies the TTS parameters to update. For the available parameters, refer to your TTS vendor's official documentation.
 
 ## Reference
 

@@ -1,0 +1,214 @@
+<PlatformWrapper platform="flutter">
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Starting from <Vg k="VSDK" /> v6.6.2, <Vg k="COMPANY" /> provides the <Link to="{{global.API_REF_FLUTTER_ROOT}}/class_agorapip.html">`AgoraPipController`</Link> and related configuration options for enabling and managing PiP on Android and iOS. This section describes how to implement PiP in your Flutter project.
+
+### Get the PiP controller and register a listener
+ 
+After initializing the RTC engine, call `createPipController()` to create a PiP controller, then register a state change listener:
+
+```dart
+late final RtcEngine _engine;
+late final AgoraPipController _pip;
+ 
+_engine = createAgoraRtcEngine();
+await _engine.initialize(RtcEngineContext(appId: appId));
+ 
+_pip = _engine.createPipController();
+await _pip.registerPipStateChangedObserver(
+  AgoraPipStateChangedObserver(
+    onPipStateChanged: (state, error) {
+      debugPrint('[PiP] state=$state error=$error');
+    },
+  ),
+);
+```
+ 
+### Check device support
+ 
+Check whether the current device and system support the required capabilities:
+ 
+```dart
+final pipSupported = await _pip.pipIsSupported();
+final pipAutoEnterSupported = await _pip.pipIsAutoEnterSupported();
+```
+ 
+- `pipIsSupported()` checks whether the current device supports PiP.
+- `pipIsAutoEnterSupported()` checks whether the current device and system support automatic PiP entry.
+
+### Configure PiP options
+ 
+Call `pipSetup()` to configure PiP options. Use <Link to="{{global.API_REF_FLUTTER_ROOT}}/class_agorapipoptions.html">`AgoraPipOptions`</Link> to set platform-specific options for Android and iOS.
+ 
+<Tabs groupId="platform">
+<TabItem value="android" label="Android">
+On Android, you typically need to configure the aspect ratio, the initial source region, and seamless resize:
+
+```dart
+final options = AgoraPipOptions(
+  autoEnterEnabled: pipAutoEnterSupported,
+  aspectRatioX: 16,
+  aspectRatioY: 9,
+  sourceRectHintLeft: 0,
+  sourceRectHintTop: 0,
+  sourceRectHintRight: 0,
+  sourceRectHintBottom: 0,
+  seamlessResizeEnabled: true,
+  useExternalStateMonitor: false,
+  externalStateMonitorInterval: 100,
+);
+
+await _pip.pipSetup(options);
+```
+
+<Admonition type="info" >
+If your `MainActivity` is configured for PiP as described, but PiP state callbacks are unreliable on certain devices or in certain scenarios, set `useExternalStateMonitor` to `true` and configure the polling interval using `externalStateMonitorInterval` to supplement PiP state synchronization.
+</Admonition>
+
+</TabItem>
+<TabItem value="ios" label="iOS">
+On iOS, you can configure the PiP window size, video stream layout, and system control style:
+
+```dart
+final options = AgoraPipOptions(
+  preferredContentWidth: 960,
+  preferredContentHeight: 540,
+  sourceContentView: 0,
+  contentView: 0,
+  contentViewLayout: const AgoraPipContentViewLayout(
+    padding: 0,
+    spacing: 2,
+    row: 1,
+    column: 2,
+  ),
+  videoStreams: [
+    AgoraPipVideoStream(
+      connection: RtcConnection(
+        channelId: channelId,
+        localUid: localUid,
+      ),
+      canvas: const VideoCanvas(
+        uid: 0,
+        sourceType: VideoSourceType.videoSourceCamera,
+        setupMode: VideoViewSetupMode.videoViewSetupAdd,
+        renderMode: RenderModeType.renderModeHidden,
+        mirrorMode: VideoMirrorModeType.videoMirrorModeEnabled,
+      ),
+    ),
+    ...remoteUsers.entries.map(
+      (entry) => AgoraPipVideoStream(
+        connection: entry.value,
+        canvas: VideoCanvas(
+          uid: entry.key,
+          sourceType: VideoSourceType.videoSourceRemote,
+          setupMode: VideoViewSetupMode.videoViewSetupAdd,
+          renderMode: RenderModeType.renderModeHidden,
+        ),
+      ),
+    ),
+  ],
+  controlStyle: 2,
+);
+
+await _pip.pipSetup(options);
+```
+
+In this example:
+
+- When `contentView` is set to `0`, the SDK manages the native views inside the PiP window. If you pass a non-zero value, you are responsible for managing the native view layout.
+- `videoStreams` defines the local and remote streams to display.
+- `contentViewLayout` configures the grid layout for video streams inside the PiP window. Streams are arranged from left to right, then top to bottom.
+- `controlStyle: 2` hides the play/pause button and progress bar, keeping only the essential window control buttons. This is recommended for real-time interactive scenarios.
+</TabItem>
+</Tabs>
+
+### Listen for PiP state changes
+ 
+Implement <Link to="{{global.API_REF_FLUTTER_ROOT}}/class_agorapipstatechangedobserver.html">`AgoraPipStateChangedObserver`</Link> to listen for PiP state changes. Use the <Link to="{{global.API_REF_FLUTTER_ROOT}}/enum_agorapipstate.html">`AgoraPipState`</Link> value to update the UI or handle errors:
+ 
+```dart
+await _pip.registerPipStateChangedObserver(
+  AgoraPipStateChangedObserver(
+    onPipStateChanged: (state, error) async {
+      if (state == AgoraPipState.pipStateFailed) {
+        await _pip.pipDispose();
+      }
+    },
+  ),
+);
+```
+ 
+`AgoraPipState` defines the following states:
+ 
+- `pipStateStarted`: PiP has started successfully.
+- `pipStateStopped`: PiP has stopped.
+- `pipStateFailed`: PiP failed to start or encountered an error while running.
+
+### Start, stop, and release PiP
+ 
+Call `pipStart()` to start PiP. The recommended approach for stopping and releasing PiP differs by platform:
+ 
+<Tabs groupId="platform">
+<TabItem value="android" label="Android">
+
+```dart
+// Start PiP
+await _pip.pipStart();
+
+// Release the current PiP session
+await _pip.pipDispose();
+
+// Destroy the controller
+await _pip.dispose();
+```
+
+<Admonition type="info" >
+On Android, `pipStop()` is not the standard path for exiting PiP and restoring the foreground page. If you no longer need the current PiP session, call `pipDispose()` to release resources. Restoring full-screen view is typically handled by the user through the system PiP window controls.
+
+</Admonition>
+</TabItem>
+<TabItem value="ios" label="iOS">
+On iOS, call `pipStop()` to stop PiP and restore the app interface. If the page is about to be destroyed or you no longer need PiP, call `pipDispose()` and `dispose()` to release resources.
+
+```dart
+// Start PiP
+await _pip.pipStart();
+
+// Stop PiP and restore the app interface
+await _pip.pipStop();
+
+// Release the current PiP session
+await _pip.pipDispose();
+
+// Destroy the controller
+await _pip.dispose();
+```
+
+</TabItem>
+</Tabs>
+
+### Development considerations
+ 
+<Tabs groupId="platform">
+<TabItem value="android" label="Android">
+
+- After entering PiP on Android, you typically need to update the app UI to match the PiP state. Many apps show only the video area while PiP is active.
+- Android 12 and later support automatic PiP entry when the app moves to the background. On earlier versions, you must trigger PiP entry explicitly, for example by calling `pipStart()` in response to a user action.
+- `pipStart()` does not guarantee success in all timing scenarios. Calling it when the app moves to the background is generally more reliable.
+- PiP does not bypass Android background restrictions. If you need to continue capturing or playing audio and video in the background, combine PiP with a foreground service. For details, see [Android background restrictions](/help/quality-issues/android_background).
+- On Android, `pipStop()` moves the task to the background rather than exiting PiP and restoring the foreground page. Full-screen restoration is typically handled by the user through the system PiP window controls.
+- Call `pipDispose()` or `dispose()` promptly when leaving a channel, destroying the page, or when PiP is no longer needed, to avoid resource leaks.
+</TabItem>
+
+<TabItem value="ios" label="iOS">
+- PiP must be triggered by explicit user action only, such as tapping a button or swiping up to the home screen. Triggering PiP programmatically without a user action may result in App Store review rejection.
+- The PiP window is managed by the system and the SDK. Your app does not need to render a custom floating window.
+To display multiple video streams in PiP mode, configure the layout explicitly using `videoStreams` and `contentViewLayout`. When remote users join or leave, call `pipSetup()` again with the updated `videoStreams`; you do not need to call `pipDispose()` first.
+- <Link to="{{global.API_REF_FLUTTER_ROOT}}/class_agorapipoptions.html">`AgoraPipOptions.controlStyle`</Link> supports four control styles. Style `2` is recommended for video call scenarios. Style `3` hides all controls, including the close and restore buttons.
+- Call `pipDispose()` or `dispose()` promptly when leaving a channel, destroying the page, or when PiP is no longer needed, to avoid resource leaks.
+</TabItem>
+</Tabs>
+
+</PlatformWrapper>

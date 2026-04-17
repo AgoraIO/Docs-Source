@@ -1,0 +1,230 @@
+<PlatformWrapper platform="react-native">
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Starting from <Vg k="VSDK" /> v4.6.2, <Vg k="COMPANY" /> provides the <Link to="{{global.API_REF_RN_ROOT}}/class_agorapip.html">`AgoraPip`</Link> controller and related configuration options for enabling and managing PiP on Android and iOS. This section describes how to implement Picture-in-Picture in your React Native project.
+
+### Get the PiP controller and register a listener
+ 
+After initializing the RTC engine, call `getAgoraPip` to get the PiP controller and register a state change listener:
+ 
+```typescript
+this.engine = createAgoraRtcEngine();
+this.engine.initialize({
+  appId,
+  channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+});
+ 
+const pip = this.engine.getAgoraPip();
+pip.registerPipStateChangedObserver(this);
+```
+ 
+### Check device support
+ 
+Check whether the current device and system support the required capabilities:
+ 
+```typescript
+const isPipSupported = pip.pipIsSupported();
+const isPipAutoEnterSupported = pip.pipIsAutoEnterSupported();
+```
+ 
+- `pipIsSupported` checks whether the current device supports PiP.
+- `pipIsAutoEnterSupported` checks whether the current device and system support automatic PiP entry.
+
+### Configure PiP options
+ 
+Call `pipSetup` to configure PiP options. Use <Link to="{{global.API_REF_RN_ROOT}}/class_agorapipoptions.html">`AgoraPipOptions`</Link> to set platform-specific options for Android and iOS.
+ 
+<Tabs groupId="platform">
+<TabItem value="android" label="Android">
+
+Pass the measured bounds of the video view to `sourceRectHint` to improve the transition animation when entering PiP.
+
+On Android, you typically need to configure the aspect ratio, the initial source region, and seamless resize:
+
+```typescript
+const videoViewBounds = {
+  left: measuredLeft,
+  top: measuredTop,
+  right: measuredRight,
+  bottom: measuredBottom,
+};
+
+const options: AgoraPipOptions = {
+  autoEnterEnabled: pip.pipIsAutoEnterSupported(),
+  aspectRatioX: 960,
+  aspectRatioY: 540,
+  sourceRectHintLeft: videoViewBounds.left,
+  sourceRectHintTop: videoViewBounds.top,
+  sourceRectHintRight: videoViewBounds.right,
+  sourceRectHintBottom: videoViewBounds.bottom,
+  seamlessResizeEnabled: true,
+  useExternalStateMonitor: true,
+  externalStateMonitorInterval: 100,
+};
+
+pip.pipSetup(options);
+```
+
+<Admonition type="info">
+`useExternalStateMonitor` defaults to `true`. The example above keeps this value explicit for clarity. Only set it to `false` if you have already extended `AgoraPIPActivity` and explicitly do not want polling-based state synchronization.
+</Admonition>
+
+</TabItem>
+<TabItem value="ios" label="iOS">
+On iOS, you can configure the PiP window size, video stream layout, and system control style:
+
+```typescript
+const options: AgoraPipOptions = {
+  autoEnterEnabled: pip.pipIsAutoEnterSupported(),
+  preferredContentWidth: 960,
+  preferredContentHeight: 540,
+  contentView: 0,
+  sourceContentView: 0,
+  contentViewLayout: {
+    padding: 0,
+    spacing: 2,
+    row: 1,
+    column: 2,
+  },
+  videoStreams: [
+    {
+      connection: {
+        channelId,
+        localUid: uid,
+      },
+      canvas: {
+        sourceType: VideoSourceType.VideoSourceCamera,
+        setupMode: VideoViewSetupMode.VideoViewSetupAdd,
+        renderMode: RenderModeType.RenderModeHidden,
+        mirrorMode: VideoMirrorModeType.VideoMirrorModeEnabled,
+      },
+    },
+    ...remoteUsers.map((userUid) => ({
+      connection: {
+        channelId,
+        localUid: userUid,
+      },
+      canvas: {
+        uid: userUid,
+        sourceType: VideoSourceType.VideoSourceRemote,
+        setupMode: VideoViewSetupMode.VideoViewSetupAdd,
+        renderMode: RenderModeType.RenderModeHidden,
+      },
+    })),
+  ],
+  controlStyle: 2,
+};
+
+pip.pipSetup(options);
+```
+
+In this example:
+
+- When `contentView` is set to `0`, the SDK manages the native views inside the PiP window. If you pass a non-zero value, you are responsible for managing the native view layout.
+- `videoStreams` defines the local and remote streams to display.
+- `contentViewLayout` configures the grid layout for video streams inside the PiP window. Streams are arranged from left to right, then top to bottom.
+- `controlStyle: 2` hides the play/pause button and progress bar, keeping only the essential window control buttons. This is recommended for real-time interactive scenarios.
+
+<Admonition type="info" title="Information">
+For standard React Native integrations, keep both `contentView` and `sourceContentView` set to `0`. This lets the SDK manage the native views, layout, and restore target inside the PiP window. Pass non-zero values only if you have already completed the corresponding native view integration.
+</Admonition>
+
+</TabItem>
+</Tabs>
+
+### Listen for PiP state changes
+ 
+Implement <Link to="{{global.API_REF_RN_ROOT}}/class_agorapipstatechangedobserver.html">`AgoraPipStateChangedObserver`</Link> to listen for PiP state changes. Use the <Link to="{{global.API_REF_RN_ROOT}}/enum_agorapipstate.html">`AgoraPipState`</Link> value to update the UI or handle errors:
+ 
+```typescript
+onPipStateChanged(state: AgoraPipState, error: string | null): void {
+  if (state === AgoraPipState.pipStateFailed) {
+    this.engine?.getAgoraPip().pipDispose();
+  }
+ 
+  this.setState({ pipState: state });
+}
+```
+ 
+`AgoraPipState` defines the following states:
+ 
+- `pipStateStarted`: PiP has started successfully.
+- `pipStateStopped`: PiP has stopped.
+- `pipStateFailed`: PiP failed to start or encountered an error while running.
+
+### Start, stop, and destroy PiP
+
+PiP-related calls operate at two lifecycle levels:
+
+- **Session level:** `pipStart`, `pipStop`, and `pipDispose` control the start, stop, and resource release of a single PiP session.
+- **Controller or page level:** `release` performs the final cleanup when the page or controller is no longer needed.
+
+After completing configuration, call `pipStart` to start PiP. Call `release` only when destroying the page or when the controller is no longer needed, to avoid redundant session-level calls during teardown.
+
+<Tabs groupId="platform">
+<TabItem value="android" label="Android">
+
+```typescript
+// Session level: start PiP
+pip.pipStart();
+
+// Session level: end the current PiP session
+pip.pipDispose();
+
+// Controller/page destroy level: final release
+pip.release();
+```
+
+<Admonition type="info">
+On Android, `pipStop` is not the standard path for exiting PiP and restoring the foreground page. If you no longer need the current PiP session, call `pipDispose` to release resources. Restoring full-screen view is typically handled by the user through the system PiP window controls.
+</Admonition>
+</TabItem>
+
+<TabItem value="ios" label="iOS">
+
+Call `pipStop` to stop PiP and restore the app interface, then call `pipDispose` to release the session resources. Call `release` only when destroying the page or when the controller is no longer needed.
+
+```typescript
+// Session level: start PiP
+pip.pipStart();
+
+// Session level: stop PiP and restore the app interface
+pip.pipStop();
+
+// Session level: release the current PiP session resources
+pip.pipDispose();
+
+// Controller/page destroy level: final release
+pip.release();
+```
+</TabItem>
+</Tabs>
+
+### Development considerations
+
+This section covers platform-specific behavior and best practices to keep in mind when integrating PiP.
+
+<Tabs groupId="platform">
+<TabItem value="android" label="Android">
+
+- After entering PiP on Android, you typically need to update the app UI to match the PiP state. 
+- Android 12 and later support automatic PiP entry when the app moves to the background. On earlier versions, you must trigger PiP entry explicitly, for example by calling `pipStart` in response to a user action. Extending `AgoraPIPActivity` simplifies this adaptation.
+- PiP does not bypass Android background restrictions. If you need to continue capturing or playing audio and video in the background, combine PiP with a foreground service. For details, see [Android background restrictions](/help/quality-issues/android_background).
+- On Android, `pipStop` moves the task to the background rather than exiting PiP and restoring the foreground page. Full-screen restoration is typically handled by the user through the system PiP window controls.
+- Distinguish between session-level and controller-level release: call `pipDispose` to end the current PiP session, and call `release` only when the page is destroyed or the controller is no longer needed.
+
+</TabItem>
+<TabItem value="ios" label="iOS">
+
+- PiP must be triggered by explicit user action only, such as tapping a button or swiping up to the home screen. Triggering PiP programmatically without a user action may result in App Store review rejection.
+- The PiP window is managed by the system and the SDK. Your app does not need to render a custom floating window.
+- To display multiple video streams in PiP mode, configure the layout explicitly using `videoStreams` and `contentViewLayout`. When remote users join or leave, call `pipSetup` again with the updated `videoStreams`. You do not need to call `pipDispose` first.
+- <Link to="{{global.API_REF_RN_ROOT}}/class_agorapipoptions.html">`AgoraPipOptions.controlStyle`</Link> accepts values `0` to `3`. Use `2` for video call scenarios, which hides the play/pause button and progress bar. Style `3` hides all controls, including the close and restore buttons.
+- Distinguish between session-level and controller-level release: call `pipStop` and `pipDispose` to end the current PiP session, and call `release` only when the page is destroyed or the controller is no longer needed.
+
+</TabItem>
+</Tabs>
+
+</PlatformWrapper>

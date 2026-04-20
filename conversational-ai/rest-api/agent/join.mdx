@@ -475,6 +475,10 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
       This object has no effect when `mllm.enable` is true. Use [mllm.turn_detection](#properties-mllm-turn-detection) instead.
       </Admonition>
 
+      <Admonition type="caution">
+      Starting with v2.6, `turn_detection` only handles Start of Speech (SoS) and End of Speech (EoS) detection. Interruption handling strategies, including keyword-based interruption and disabling interruption, have moved to the top-level [`interruption`](#properties-interruption) field.
+      </Admonition>
+
       This configuration supports multiple combinations of detection modes:
       - **Start of Speech (SoS)**: Supports three modes: VAD, Keyword, and Disable.
       - **End of Speech (EoS)**: Supports VAD and Semantic modes.
@@ -494,12 +498,12 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
         <Parameter name="start_of_speech" type="object" required={false}>
           Start of Speech (SoS) detection configuration. Determines when a user begins speaking.
           
-          <Parameter name="mode" type="string" required={true} possibleValues="vad, keywords, disabled">
-            Start of speech detection mode:
-            - `vad`: Based on VAD (Voice Activity Detection). Uses audio signal detection.
-            - `keywords`: (Beta) Based on keyword trigger. Conversation begins when the agent detects a specified keyword.
-            - `disabled`: Disables start of speech detection. Does not actively trigger new conversation turns.
-          </Parameter>
+        <Parameter name="mode" type="string" required={true} possibleValues="vad, keywords, disabled">
+          Start of speech detection mode:
+          - `vad`: Based on VAD (Voice Activity Detection). Uses audio signal detection.
+          - `keywords`: Deprecated. Use [`interruption.mode = "keywords"`](#properties-interruption-mode) instead.
+          - `disabled`: Deprecated. Use [`interruption.enable = false`](#properties-interruption-enable) with [`interruption.disabled_config.strategy`](#properties-interruption-disabled-config-strategy) to configure the handling strategy.
+        </Parameter>
           
           <Parameter name="{mode}_config" type="object" required={false}>
             Start of speech detection configuration parameters. The structure and supported fields vary depending on the detection mode.
@@ -609,12 +613,46 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
               Silence duration threshold in milliseconds. The minimum silence duration at the end of a speech segment,  to ensure that a brief pause does not prematurely end the speech segment.
             </Parameter>
             
-            <Parameter name="max_wait_ms" type="integer" defaultValue="1000" possibleValues="[500, 10000]" required={false}>
+            <Parameter name="max_wait_ms" type="integer" defaultValue="3000" possibleValues="[500, 10000]" required={false}>
               `-1` means forever.  
 
               Maximum wait time in milliseconds. The maximum time to wait for semantic determination. After timeout, the conversation end is determined based on the current state.
             </Parameter>
           </Parameter>
+        </Parameter>
+      </Parameter>
+    </Parameter>
+
+    <Parameter name="interruption" type="object" required={false}>
+      Interruption control configuration. Provides unified management of the agent's behavior when interrupted by the user.
+
+      <Parameter name="enable" type="boolean" defaultValue="true" required={false}>
+        Whether to enable agent interruption:
+        - `true`: Enable interruption.
+        - `false`: Disable interruption. When disabled, the agent cannot be interrupted mid-response.
+      </Parameter>
+
+      <Parameter name="mode" type="string" defaultValue="start_of_speech" possibleValues="start_of_speech, keywords" required={false}>
+        The interruption trigger mode:
+        - `start_of_speech`: Trigger interruption when the user starts speaking.
+        - `keywords`: Trigger interruption when the user speaks a specified keyword. Configure the trigger keywords in `keywords_config`.
+      </Parameter>
+
+      <Parameter name="keywords_config" type="object" required={false}>
+        Configuration for keyword-based interruption triggering. Applicable only when `mode` is `keywords`.
+
+        <Parameter name="trigger_keywords" type="array[string]" required={false}>
+          The list of keywords that trigger an interruption. A maximum of 128 keywords is supported.
+        </Parameter>
+      </Parameter>
+
+      <Parameter name="disabled_config" type="object" required={false}>
+        Configuration for agent behavior when interruption is disabled. Applicable only when `interruption.enable` is `false`.
+
+        <Parameter name="strategy" type="string" required={false} possibleValues="append, ignore">
+          The processing strategy when interruption is disabled:
+          - `append`: User speech does not interrupt the agent. The agent processes the user's input after the current interaction ends.
+          - `ignore`: The agent ignores user speech. If the agent receives user speech while speaking or thinking, it discards the input without storing it in context.
         </Parameter>
       </Parameter>
     </Parameter>
@@ -688,7 +726,7 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
       
       Filler word playback follows these rules:
       - **Playback order**: When multiple filler words or LLM responses are waiting to be played, they are played in the order they arrive.
-      - **Interruption control**: Inherits the interruption mode setting from global configuration in `turn_detection.config`.
+      - **Interruption control**: Inherits the interruption mode setting from the [`interruption`](#properties-interruption) field.
       
       <Parameter name="enable" type="boolean" required={false} defaultValue="false">
         Whether to enable filler words:
@@ -826,7 +864,7 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
       <Parameter name="enable_error_message" type="boolean" defaultValue="false" required={false}>
       Whether to receive agent error events:
       - `true`: Receive agent error events.
-      - `false`: (Default) Do not receive agent error events.
+      - `false`: Do not receive agent error events.
       
       This setting only takes effect when `advanced_features.enable_rtm` is `true`. See [Listen to agent events](/conversational-ai/develop/webhooks) to learn how to use client components to receive agent error events.
       </Parameter>      

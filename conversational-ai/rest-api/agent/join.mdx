@@ -113,7 +113,9 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
     <Parameter name="advanced_features" type="object" required={false}>
       Advanced features configuration.
 
-      <Parameter name="enable_mllm" type="boolean" defaultValue="false" required={false}>
+      <Parameter name="enable_mllm" type="boolean" deprecated defaultValue="false" required={false}>
+        Use [mllm.enable](#properties-mllm-enable) instead.
+
         Enable Multimodal Large Language Model for voice-to-voice processing. Enabling MLLM automatically disables ASR, LLM, and TTS since the MLLM handles end-to-end voice processing directly. See `turn_detection.type` for turn detection options available with MLLM.
       </Parameter>
 
@@ -338,6 +340,10 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
     <Parameter name="mllm" type="object" required={false}>
       Multimodal Large Language Model (MLLM) configuration for real-time audio and text processing. `mllm` is an exclusive alternative to the standard `asr` + `llm` + `tts` pipeline."
 
+      <Parameter name="enable" type="boolean" required={false}>
+        Enable Multimodal Large Language Model for voice-to-voice processing. Enabling MLLM automatically disables ASR, LLM, and TTS since the MLLM handles end-to-end voice processing directly. Replaces the deprecated `advanced_features.enable_mllm`.
+      </Parameter>
+
       <Parameter name="url" type="string" required={true}>
         The MLLM WebSocket URL for real-time communication.
       </Parameter>
@@ -353,7 +359,7 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
       <Parameter name="params" type="object" required={false}>
         Additional MLLM configuration parameters.
         - **Modalities override**: The `modalities` setting in params is overridden by `input_modalities` and `output_modalities`.
-        - **Turn detection override**: The `turn_detection` setting in params is overridden by the `turn_detection` section outside of `mllm`.
+        - **Turn detection override**: The `turn_detection` setting in `params` is overridden by `mllm.turn_detection`.
 
         See [MLLM Overview](/conversational-ai/models/mllm/overview) for details.
       </Parameter>
@@ -380,9 +386,66 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
         - `vertexai`: [Google Gemini Live (Vertex AI)](/conversational-ai/models/mllm/google-vertex-ai)
       </Parameter>
 
-      <Parameter name="style" type="string" defaultValue="openai" possibleValues="openai" required={false}>
-        The request style for MLLM completion:
-        - `openai`: For OpenAI Realtime API format 
+      <Parameter name="turn_detection" type="object" required={false}>
+        Turn detection configuration for the MLLM module.
+
+        <Admonition type="info">
+        When `mllm.turn_detection` is defined, the top-level `turn_detection` object has no effect.
+        </Admonition>
+
+        <Parameter name="mode" type="string" required={false} possibleValues="agora_vad, server_vad, semantic_vad">
+          - `agora_vad`: Agora VAD-based detection. 
+          - `server_vad`: Vendor-side VAD-based detection. Supported by OpenAI Realtime API and Gemini Live.
+          - `semantic_vad`: Semantic-based detection. Supported by OpenAI Realtime API only.
+        </Parameter>
+
+        <Parameter name="agora_vad_config" type="object" required={false}>
+          Configuration for Agora VAD-based turn detection. Applicable when `mode` is `agora_vad`.
+
+          <Parameter name="interrupt_duration_ms" type="integer" required={false}>
+            Minimum duration of speech in milliseconds required to trigger an interruption.
+          </Parameter>
+          <Parameter name="prefix_padding_ms" type="integer" required={false}>
+            Duration of audio in milliseconds to include before the detected speech start.
+          </Parameter>
+          <Parameter name="silence_duration_ms" type="integer" required={false}>
+            Duration of silence in milliseconds required to determine end of speech.
+          </Parameter>
+          <Parameter name="threshold" type="number" required={false}>
+            VAD sensitivity threshold. A higher value reduces false positives.
+          </Parameter>
+        </Parameter>
+
+        <Parameter name="server_vad_config" type="object" required={false}>
+          Configuration for vendor-side VAD-based turn detection. Applicable when `mode` is `server_vad`. Parameters are passed through to the vendor.
+
+          <Parameter name="prefix_padding_ms" type="integer" required={false}>
+            Duration of audio in milliseconds to include before the detected speech start.
+          </Parameter>
+          <Parameter name="silence_duration_ms" type="integer" required={false}>
+            Duration of silence in milliseconds required to determine end of speech.
+          </Parameter>
+          <Parameter name="threshold" type="number" required={false}>
+            VAD sensitivity threshold. Applicable to OpenAI Realtime API only.
+          </Parameter>
+          <Parameter name="idle_timeout_ms" type="integer" required={false}>
+            Idle timeout in milliseconds. Applicable to OpenAI Realtime API only.
+          </Parameter>
+          <Parameter name="start_of_speech_sensitivity" type="string" required={false} possibleValues="START_SENSITIVITY_HIGH,START_SENSITIVITY_LOW">
+            Sensitivity for start of speech detection. Applicable to Gemini Live only. 
+          </Parameter>
+          <Parameter name="end_of_speech_sensitivity" type="string" required={false} possibleValues="END_SENSITIVITY_HIGH,END_SENSITIVITY_LOW">
+            Sensitivity for end of speech detection. Applicable to Gemini Live only. 
+          </Parameter>
+        </Parameter>
+
+        <Parameter name="semantic_vad_config" type="object" required={false}>
+          Configuration for semantic-based turn detection. Applicable when `mode` is `semantic_vad`. Supported by OpenAI Realtime API only.
+
+          <Parameter name="eagerness" type="string" required={false} possibleValues="auto, low, medium, high">
+            Controls how eagerly the model ends its turn. 
+          </Parameter>
+        </Parameter>
       </Parameter>
     </Parameter>  
 
@@ -407,6 +470,10 @@ Use this endpoint to create and start a <Vpd k="AGENT" /> instance.
 
     <Parameter name="turn_detection" type="object" required={false} collapse={false}>
       Conversation turn detection settings. Controls the logic for voice activity detection and conversation turn determination. The previous version of `turn_detection` is deprecated. Refer to [Deprecated parameters](#deprecated-parameters) for details. Agora recommends switching to the latest parameters.
+
+      <Admonition type="info">
+      This object has no effect when `mllm.enable` is true. Use [mllm.turn_detection](#properties-mllm-turn-detection) instead.
+      </Admonition>
 
       This configuration supports multiple combinations of detection modes:
       - **Start of Speech (SoS)**: Supports three modes: VAD, Keyword, and Disable.
@@ -860,14 +927,6 @@ The following turn detection configuration is deprecated. To create more natural
 
     <Parameter name="threshold" type="number" defaultValue="0.5" possibleValues="(0.0, 1.0)" deprecated={true} required={false}>
       Identification sensitivity determines the level of sound in the audio signal that is considered voice activity. Lower values make it easier for the agent to detect speech, and higher values ignore weak sounds.
-    </Parameter>
-
-    <Parameter name="create_response" type="boolean" defaultValue="true" required={false}>
-      Whether to automatically generate a response when a VAD stop event occurs. Only available in `server_vad` and `semantic_vad` modes when using OpenAI Realtime API.
-    </Parameter>
-
-    <Parameter name="interrupt_response" type="boolean" defaultValue="true" required={false}>
-      Whether to automatically interrupt any ongoing response when a VAD start event occurs. Only available in `server_vad` and `semantic_vad` modes when using OpenAI Realtime API.
     </Parameter>
 
     <Parameter name="eagerness" type="string" defaultValue="auto" possibleValues="auto,low,high" required={false}>

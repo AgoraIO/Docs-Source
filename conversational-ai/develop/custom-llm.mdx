@@ -1282,24 +1282,22 @@ When calling the POST method to [Start a conversational AI agent](/conversationa
 
 ### Control agent behavior using first-packet metadata
 
-In Streaming Response (SSE) scenarios, a single LLM response is segmented into multiple chunks for transmission. Agora's Conversational AI Engine supports processing a special first-chunk response where `object` is `chat.completion.custom_metadata`, and uses the `metadata` field in that response to enable the following advanced features:
+In streaming response (SSE) scenarios, a single LLM response is segmented into multiple chunks for transmission. Agora's Conversational AI Engine supports processing a special first-chunk response where `object` is `chat.completion.custom_metadata`, and uses the `metadata` field in that response to control the following agent behaviors:
 
 - [Configure whether the TTS broadcast can be interrupted](#configure-llm-response-interruption)
 - [Update TTS parameters in real time](#update-tts-parameters-in-real-time)
 
-To use these features, modify your custom LLM service to output a special first-chunk response that meets the Conversational AI Engine's requirements.
+To use these features, modify your custom LLM service to output a special first-chunk response that meets the Conversational AI Engine's requirements. The diagram below shows how the engine processes this metadata chunk before handling the rest of the response.
 
 ![](/images/conversational-ai/custom-llm-metadata-flow.svg)
 
-<Admonition type="caution">
-The Conversational AI Engine only processes the first chunk response where `object` is `chat.completion.custom_metadata` and ignores the content in `choices`. Subsequent responses are treated as normal responses and do not support metadata configuration. Ensure that the content requiring TTS broadcast is generated in the second and subsequent responses.
-</Admonition>
-
 #### Configure LLM response interruption
 
-The Conversational AI Engine supports letting the custom LLM determine whether a response can be interrupted by the user, ensuring that the agent is not interrupted when delivering important information. This feature is useful when the agent must complete its response without interruption, for example when broadcasting regulations, policies, or product pricing.
+The Conversational AI Engine supports letting the custom LLM determine whether a response can be interrupted by the user. This is particularly useful for long-running tasks, such as querying a database or calling an external API, where the agent must remain responsive while the task completes in the background.
 
-Modify your custom LLM service to output a first-chunk response with the following structure:
+When the custom LLM initiates a long-running task, it sends a `custom_metadata` packet to the Conversational AI Engine with `interruptable` set to `false`, followed by a `chat.completion.chunk` response containing a filler phrase, for example "Just a moment, I'm processing your request". The Conversational AI Engine passes the filler phrase to TTS and plays it to the user while the task completes in the background. Setting `interruptable` to `false` prevents user speech from interrupting the TTS broadcast of the filler phrase.
+
+In your custom LLM service, output a first-chunk response with the following structure:
 
 ```json
 {
@@ -1312,11 +1310,18 @@ Modify your custom LLM service to output a first-chunk response with the followi
 }
 ```
 
-The `interruptable` field configures whether the TTS broadcast of this LLM response can be interrupted by user speech:
+The `interruptable` field configures whether the TTS broadcast of this LLM response can be interrupted by user speech. Set it to `false` to prevent interruption, `true` to allow it, or omit it to leave the current interruption mode unchanged.
 
-- If the field does not exist, is empty, or contains an invalid value, the original interruption mode remains unchanged.
-- `false`: The TTS broadcast cannot be interrupted.
-- `true`: The TTS broadcast can be interrupted.
+<Admonition type="caution">
+The Conversational AI Engine only processes the first chunk response where `object` is `chat.completion.custom_metadata` and ignores the content in `choices`. Subsequent responses are treated as normal responses and do not support metadata configuration. Ensure that the content requiring TTS broadcast is generated in the second and subsequent responses.
+</Admonition>
+
+**ASR behavior during non-interruptible responses**
+
+Setting `interruptable` to `false` does not disable automatic speech recognition (ASR). The engine continues to capture and transcribe user speech during TTS playback, but holds the transcript and does not process it until TTS finishes. This means:
+
+- If a user speaks during a non-interruptible TTS broadcast, their speech is not lost. It is queued and processed after playback ends.
+- For long-running tasks, you are responsible for managing the agent's state outside the response lifecycle. Consider how your application should handle queued speech: for example, whether to process it normally, discard it, or use it to cancel the background task.
 
 #### Update TTS parameters in real time
 

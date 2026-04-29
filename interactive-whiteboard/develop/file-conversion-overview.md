@@ -4,6 +4,8 @@ sidebar_position: 7
 type: docs
 description: >
   Deprecated methods for converting files. 
+last_update:
+  date: 2025-01-09
 ---
 
 <Vg k="WHITE" /> supports file conversion from PPT and PPTX files into dynamic HTML web pages. The generated web pages can be accessed directly or presented on the whiteboard.

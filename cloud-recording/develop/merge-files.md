@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Merge each user's audio and video files into one file.
+last_update:
+  date: 2024-12-20
 ---
 
 In individual recording mode, Agora Cloud Recording generates one audio and/or video file for each user ID. If you want to merge each user ID's audio and video files into one file, you can use Agora Format Converter Script.

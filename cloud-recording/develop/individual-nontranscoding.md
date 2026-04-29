@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description:
   Starting and stopping an individual audio non-transcoding recording
+last_update:
+  date: 2025-11-13
 ---
 
 When recording audio only (`streamTypes` is `0`) in [individual recording mode](../develop/individual-mode), you can choose whether to use transcoding recording or non-transcoding recording through simple parameter settings. The differences between the two are as follows:

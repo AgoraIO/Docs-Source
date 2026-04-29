@@ -4,6 +4,8 @@ sidebar_position: 3
 type: docs
 description: > 
    Write the guide used by developers to incorporate your extension into their app. 
+last_update:
+  date: 2022-10-06
 ---
 
 export const toc = [{}];

@@ -4,6 +4,8 @@ sidebar_position: 3
 type: docs
 description: >
   Sunset plans for Agora services.
+last_update:
+  date: 2025-10-06
 ---
 
 The <Vpd k="SDK" /> 4.x is the latest version that enables audio and video recording during real-time interactions. For a complete list of features and applicable use cases, refer to the [Product Overview](/on-premise-recording/overview/product-overview).

@@ -4,6 +4,8 @@ sidebar_position: 4
 type: docs
 description: >
   How to generate the signature that allows vendors to verify HTTP requests sent by Agora.
+last_update:
+  date: 2022-10-06
 ---
 
 export const toc = [{}];

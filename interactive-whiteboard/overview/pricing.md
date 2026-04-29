@@ -3,6 +3,8 @@ title: Pricing
 sidebar_position: 3
 description: >
     Provides you with information on billing, fee deductions, free-of-charge policy, and any suspension to your account based on the account type.
+last_update:
+  date: 2024-12-24
 ---
 
 

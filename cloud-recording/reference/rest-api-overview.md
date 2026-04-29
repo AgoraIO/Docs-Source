@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Notifies the Message Notification Service, and then the Message Notification Service notifies your server of that event through an HTTP request.
+last_update:
+  date: 2025-07-12
 ---
 
 import SignatureVerification from '@docs/shared/notification-center-service/signature-verification.mdx';

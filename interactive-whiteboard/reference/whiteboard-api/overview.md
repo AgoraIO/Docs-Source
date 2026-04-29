@@ -4,6 +4,8 @@ sidebar_position: 1
 type: docs
 description: >
     Basic information about the Interactive Whiteboard API.
+last_update:
+  date: 2025-02-06
 ---
 
 This article provides basic information about the <Vg k="WHITE_SDK" /> RESTful API.

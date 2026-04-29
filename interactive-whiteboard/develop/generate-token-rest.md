@@ -4,6 +4,8 @@ sidebar_position: 5
 type: docs
 description: >
     Call the Interactive Whiteboard RESTful API to generate tokens.
+last_update:
+  date: 2024-11-06
 ---
 
 <Vg k="WHITE" /> uses different types of tokens for user authentication. For details, see [<Vg k="WHITE" /> Token overview](../develop/authentication-workflow).

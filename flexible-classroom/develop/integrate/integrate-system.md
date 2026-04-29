@@ -4,6 +4,8 @@ sidebar_position: 5
 type: docs
 description: >
     Best practices to integrate user system and course scheduling system in Flexible Classroom
+last_update:
+  date: 2026-01-17
 ---
 
 <Vg k="FC"/> provides a real-time interactive experience in the classroom out of the box. This document shows you how to integrate a custom user system and a custom course scheduling system with <Vg k="FC"/>.

@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Supported platforms for Flexible Classroom
+last_update:
+  date: 2025-08-04
 ---
 
 This page introduces the platforms supported by Flexible Classroom, as well as the compatibility requirements and recommended devices for each platform.

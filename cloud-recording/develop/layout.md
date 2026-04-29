@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Explains the layout types you can choose in a composite recording.
+last_update:
+  date: 2024-12-20
 ---
 
 This page explains the layout types you can choose in a composite recording. See [Composite Recording](../develop/composite-mode) for more details about this recording mode

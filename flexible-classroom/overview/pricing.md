@@ -4,6 +4,8 @@ sidebar_position: 8
 platform_selector: false
 description: >
     Provides you with information on Flexible Classroom pricing
+last_update:
+  date: 2025-08-04
 ---
 
 export const toc = [{}]

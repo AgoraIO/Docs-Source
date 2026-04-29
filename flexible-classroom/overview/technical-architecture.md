@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Overview of the components in Flexible Classroom. 
+last_update:
+  date: 2025-08-04
 ---
 
 

@@ -4,6 +4,8 @@ sidebar_position: 6
 type: docs
 description: >
     Supply learning materials for a course. 
+last_update:
+  date: 2026-01-07
 ---
 
 

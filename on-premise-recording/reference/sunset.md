@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Sunset plans for older On-Premise Recording SDK versions.
+last_update:
+  date: 2025-09-30
 ---
 
 This page outlines the service sunset schedule for older versions of the <Vpd k="SDK" />. If you are using an affected version, prepare to upgrade in time to avoid service disruptions.

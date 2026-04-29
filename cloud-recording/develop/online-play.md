@@ -6,6 +6,8 @@ platform_selector: false
 description: >
    Get the URL of the M3U8 file and play it online.
 
+last_update:
+  date: 2025-07-12
 ---
 
 The Agora server automatically uploads the recorded files in TS format to the cloud storage that you set up, and generates an M3U8 file as a playlist pointing to all the recorded TS files. You can get the URL of the M3U8 file and play it online.

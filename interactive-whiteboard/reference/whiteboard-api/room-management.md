@@ -4,6 +4,8 @@ sidebar_position: 4
 type: docs
 description: >
     Create a live room.
+last_update:
+  date: 2024-11-06
 ---
 
 

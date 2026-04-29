@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Use the start timestamp of the recording, provided by Agora Cloud Recording, to achieve synchronized playbac
+last_update:
+  date: 2025-07-12
 ---
 
 Synchronizing the playback of recorded files with other stream files, such as online whiteboards, courseware, or messages, is essential for recreating real-time use-cases in various applications. Whether you're building educational platforms, hosting virtual training sessions, conducting business presentations, or enabling collaborative teamwork, synchronized playback helps deliver a seamless and engaging user experience. This guide explains how to achieve synchronized playback using the start timestamp provided by Agora Cloud Recording.

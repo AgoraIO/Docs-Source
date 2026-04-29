@@ -4,6 +4,8 @@ sidebar_position: 5
 type: docs
 description: >
     Provide the URLs to Agora in order to receive extension activation and deactivation information.
+last_update:
+  date: 2022-10-06
 ---
 
 When your extension is activated or deactivated on Agora Console, Agora passes relevant information to you so that you can take corresponding actions. For this purpose, you need to implement the provisioning API and provide the URLs to Agora.

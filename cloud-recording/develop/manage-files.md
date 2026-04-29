@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Know the naming conventions of the recorded files, how to parse the information in the M3U8 file, and when slicing occurs
+last_update:
+  date: 2025-04-10
 ---
 
 Agora <Vpd k="NAME" /> generates M3U8, TS/WebM, and MP4 files. To process these recorded files, such as [merging audio and video](../develop/merge-files), [converting file formats](../develop/convert-format), or [synchronizing playback](../develop/playback) with other streams, it is essential to understand the following key aspects of recorded files:

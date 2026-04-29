@@ -4,6 +4,8 @@ sidebar_position: 5
 type: docs
 description: >
     Create a scene.
+last_update:
+  date: 2024-11-06
 ---
 
 ## Get scene path list (GET)

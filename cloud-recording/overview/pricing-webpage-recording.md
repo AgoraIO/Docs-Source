@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Depending on the number of minutes you intend to record, estimate your monthly cost for Web Page Recording. 
+last_update:
+  date: 2024-12-24
 ---
 
 This page explains how <Vg k="COMPANY" /> calculates your monthly bill for 

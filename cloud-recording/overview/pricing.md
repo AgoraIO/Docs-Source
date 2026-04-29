@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
    Estimate your monthly Cloud Recording cost.
+last_update:
+  date: 2025-02-14
 ---
 
 {/* import PricingCalculator from '@site/src/components/PricingCalculator.jsx'; */}

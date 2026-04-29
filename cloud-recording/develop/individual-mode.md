@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Use the Cloud Recording RESTful API to make an individual recording
+last_update:
+  date: 2025-07-12
 ---
 
 This guide includes the key steps in using the Cloud Recording RESTful API to make an individual recording. For more information, see [Get started](../get-started/getstarted).

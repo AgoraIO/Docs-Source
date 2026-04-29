@@ -4,6 +4,8 @@ sidebar_position: 6
 type: docs
 description: >
     Take screenshots for a single scene or a scene directory.
+last_update:
+  date: 2025-12-20
 ---
 
 The screenshot-management feature is implemented by <Vg k="WHITE" />. You can take screenshots for a single scene or a scene directory, generate images in PNG format, and upload them to a third-party cloud storage space.

@@ -4,6 +4,8 @@ sidebar_position: 1
 type: docs
 description: >
   Enable and configure Interactive Whiteboard
+last_update:
+  date: 2024-12-01
 ---
 
 To use <Vg k="WHITE" />, you need to enable and configure it in <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link>.

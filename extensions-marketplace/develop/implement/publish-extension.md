@@ -4,6 +4,8 @@ sidebar_position: 8
 type: docs
 description:
   Publish your extension in the Marketplace.
+last_update:
+  date: 2022-10-06
 ---
 
 export const toc = [{}];

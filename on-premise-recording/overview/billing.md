@@ -4,6 +4,8 @@ sidebar_position: 2
 type: docs
 description: >
   Pricing information for On-Premise Recording.
+last_update:
+  date: 2025-09-30
 ---
 
 This article introduces the billing policy for the on-premise recording service provided by Agora.

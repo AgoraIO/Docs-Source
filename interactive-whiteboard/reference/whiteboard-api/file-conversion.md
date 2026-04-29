@@ -4,6 +4,8 @@ sidebar_position: 2
 type: docs
 description: >
     Basic information about the Interactive Whiteboard API.
+last_update:
+  date: 2026-01-16
 ---
 
 <Vg k="WHITE" /> supports file conversion from PPT, PPTX, DOC, DOCX, and PDF files into static images, as well as from PPT/PPTX files into dynamic HTML web pages. The generated images and web pages can be presented on the whiteboard. See [File Conversion Overview](/interactive-whiteboard/develop/file-conversion-overview).

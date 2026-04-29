@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
    Guidelines for integrating web page recording into your app.
+last_update:
+  date: 2024-11-30
 ---
 
 ## Overview

@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
     The key steps in using the Cloud Recording RESTful API to take screenshots of a video stream.
+last_update:
+  date: 2025-07-12
 ---
 
 

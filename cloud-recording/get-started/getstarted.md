@@ -4,6 +4,8 @@ sidebar_position: 1
 platform_selector: false
 description: >
   Start cloud recording, query cloud recording status, and stop cloud recording by sending a RESTful API request.
+last_update:
+  date: 2025-05-30
 ---
 import Prerequisites from '@docs/shared/cloud-recording/prerequisites.mdx'
 

@@ -4,6 +4,8 @@ sidebar_position: 9
 type: docs
 description: >
    Protect your classrooms against attacks. 
+last_update:
+  date: 2026-01-19
 ---
 
 

@@ -3,6 +3,8 @@ title: Security
 sidebar_position: 10
 description: >
     The security practices that Agora has implemented for Agora Interactive Whiteboard.
+last_update:
+  date: 2024-11-06
 ---
 
 Data security and user privacy are the top priorities for Agora. To provide safe and reliable services, Agora adopts industry-recognized security standards and security best practices at every layer for each product.

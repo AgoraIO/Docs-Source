@@ -4,6 +4,8 @@ sidebar_position: 6
 type: docs
 description: >
     Agora calls this API regularly to get the usage and billing information of a specified user
+last_update:
+  date: 2022-10-06
 ---
 
 Before publishing your extension in the Agora Extension Marketplace, you need to implement the usage and billing API and provide the URLs to Agora. Agora calls this API regularly to get the usage and billing information of a specified user in order to notify the user in Agora Console.

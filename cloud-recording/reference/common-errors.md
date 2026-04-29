@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Common error codes and status codes you may encounter when using the Cloud Recording RESTful APIs.
+last_update:
+  date: 2023-01-29
 ---
 
 This article lists the common errors, error codes and status codes you may encounter when using the Cloud Recording RESTful APIs. If you encounter other errors, contact [Agora technical support](mailto:support@agora.io).

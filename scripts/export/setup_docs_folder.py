@@ -149,13 +149,6 @@ def main():
     products_dest = os.path.join(products_dest_dir, "products.js")
     shutil.copy2(products_src, products_dest)
 
-    # Also copy dep-map.json if it exists in the repo
-    dep_map_src = os.path.join(repo_root, "data", "dep-map.json")
-    if os.path.isfile(dep_map_src):
-        data_dest_dir = os.path.join(temp_dir, "data")
-        os.makedirs(data_dest_dir, exist_ok=True)
-        shutil.copy2(dep_map_src, os.path.join(data_dest_dir, "dep-map.json"))
-
     # ------------------------------------------------------------------
     # Print the docs-folder path — this is what callers capture
     # ------------------------------------------------------------------

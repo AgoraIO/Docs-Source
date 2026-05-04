@@ -69,16 +69,23 @@ jobs:
         run: |
           pip install pyyaml beautifulsoup4
 
-      - name: Debug workspace structure
+      # ----------------------------------------------------------------
+      # 6. Set up docs-folder structure
+      #    Creates a temporary parent directory with:
+      #      <temp>/docs/        -> symlink to repo root
+      #      <temp>/data/v2/     -> products.js
+      #      <temp>/data/        -> dep-map.json (if present)
+      # ----------------------------------------------------------------
+      - name: Set up docs-folder structure
+        id: setup
         run: |
-          echo "Workspace: ${{ github.workspace }}"
-          ls ${{ github.workspace }}
-          ls ${{ github.workspace }}/docs || echo "no docs folder"
-          ls ${{ github.workspace }}/docs/scripts || echo "no scripts folder"
-          ls ${{ github.workspace }}/docs/scripts/export || echo "no export folder"
+          DOCS_FOLDER=$(python scripts/export/setup_docs_folder.py \
+            --products-file data/v2/products.js)
+          echo "docs_folder=$DOCS_FOLDER" >> $GITHUB_OUTPUT
+          echo "✅ docs-folder: $DOCS_FOLDER"
 
       # ----------------------------------------------------------------
-      # 6. Rebuild dep-map.json if missing or older than 7 days
+      # 7. Rebuild dep-map.json if missing or older than 7 days
       # ----------------------------------------------------------------
       - name: Check dep-map.json freshness
         id: depmap_check
@@ -106,12 +113,12 @@ jobs:
       - name: Rebuild dep-map.json
         if: steps.depmap_check.outputs.rebuild == 'true'
         run: |
-          python docs/scripts/export/build_dep_map.py \
-            --docs-folder ${{ github.workspace }}
+          python scripts/export/build_dep_map.py \
+            --docs-folder ${{ steps.setup.outputs.docs_folder }}
           echo "✅ dep-map.json rebuilt"
 
       # ----------------------------------------------------------------
-      # 7. Resolve from-commit
+      # 8. Resolve from-commit
       #    - workflow_dispatch with input: use provided commit
       #    - workflow_dispatch without input: use 1 day ago
       #    - push: use github.event.before
@@ -136,18 +143,18 @@ jobs:
           fi
 
       # ----------------------------------------------------------------
-      # 8. Run smart_export.py
+      # 9. Run smart_export.py
       # ----------------------------------------------------------------
       - name: Run smart_export.py
         run: |
-          python docs/scripts/export/smart_export.py \
-            --docs-folder ${{ github.workspace }} \
+          python scripts/export/smart_export.py \
+            --docs-folder ${{ steps.setup.outputs.docs_folder }} \
             --output-dir ${{ github.workspace }}/markdown-service/public/en \
             --from-commit ${{ steps.resolve_commits.outputs.from_commit }} \
             --to-commit ${{ github.sha }}
 
       # ----------------------------------------------------------------
-      # 9. Check if any markdown files were changed
+      # 10. Check if any markdown files were changed
       # ----------------------------------------------------------------
       - name: Check for changes
         id: changes
@@ -159,7 +166,7 @@ jobs:
             || echo "changed=true" >> $GITHUB_OUTPUT
 
       # ----------------------------------------------------------------
-      # 10. Create a PR in markdown-service if there are changes
+      # 11. Create a PR in markdown-service if there are changes
       # ----------------------------------------------------------------
       - name: Create pull request in markdown-service
         if: steps.changes.outputs.changed == 'true'
@@ -196,7 +203,7 @@ jobs:
           draft: false
 
       # ----------------------------------------------------------------
-      # 11. Report no changes
+      # 12. Report no changes
       # ----------------------------------------------------------------
       - name: No changes to export
         if: steps.changes.outputs.changed == 'false'

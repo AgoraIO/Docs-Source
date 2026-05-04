@@ -1,0 +1,195 @@
+name: Export docs to markdown
+
+on:
+  push:
+    branches:
+      - main
+      - workflow-test     # Remove after initial testing is complete
+  workflow_dispatch:
+    inputs:
+      from_commit:
+        description: 'Base commit hash for diff (leave empty to use previous HEAD)'
+        required: false
+        default: ''
+
+jobs:
+  export:
+    name: Incremental MDX → MD export
+    runs-on: ubuntu-latest
+    # Only run on Docs-Source — skip silently on Doc-Source-Private or any other fork
+    if: github.repository == 'AgoraIO/Docs-Source'
+
+    steps:
+      # ----------------------------------------------------------------
+      # 1. Check out Docs-Source (the repo this workflow lives in)
+      # ----------------------------------------------------------------
+      - name: Check out Docs-Source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # Full history needed for git diff
+          token: ${{ secrets.EXPORT_PAT }}
+
+      # ----------------------------------------------------------------
+      # 2. Check out markdown-service into a sibling directory
+      # ----------------------------------------------------------------
+      - name: Check out markdown-service
+        uses: actions/checkout@v4
+        with:
+          repository: AgoraIO/markdown-service
+          token: ${{ secrets.EXPORT_PAT }}
+          path: markdown-service
+          fetch-depth: 1
+
+      # ----------------------------------------------------------------
+      # 3. Fetch products.js from the private AgoraIO/Docs repo
+      # ----------------------------------------------------------------
+      - name: Fetch products.js from AgoraIO/Docs
+        run: |
+          mkdir -p data/v2
+          curl -f \
+            -H "Authorization: token ${{ secrets.EXPORT_PAT }}" \
+            -H "Accept: application/vnd.github.v3.raw" \
+            -o data/v2/products.js \
+            "https://api.github.com/repos/AgoraIO/Docs/contents/data/v2/products.js"
+          echo "✅ products.js fetched"
+
+      # ----------------------------------------------------------------
+      # 4. Set up Python
+      # ----------------------------------------------------------------
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
+      # ----------------------------------------------------------------
+      # 5. Install Python dependencies
+      # ----------------------------------------------------------------
+      - name: Install dependencies
+        run: |
+          pip install pyyaml beautifulsoup4
+
+      # ----------------------------------------------------------------
+      # 6. Rebuild dep-map.json if missing or older than 7 days
+      # ----------------------------------------------------------------
+      - name: Check dep-map.json freshness
+        id: depmap_check
+        run: |
+          DEP_MAP="data/dep-map.json"
+          if [ ! -f "$DEP_MAP" ]; then
+            echo "rebuild=true" >> $GITHUB_OUTPUT
+            echo "⚠️  dep-map.json missing — will rebuild"
+          else
+            # Use git log to get the commit date of dep-map.json
+            # This is more reliable than file mtime on a fresh checkout
+            LAST_COMMIT_DATE=$(git log -1 --format=%ct -- "$DEP_MAP")
+            NOW=$(date +%s)
+            MAX_AGE=$(( 7 * 24 * 3600 ))
+            AGE=$(( NOW - LAST_COMMIT_DATE ))
+            if [ "$AGE" -gt "$MAX_AGE" ]; then
+              echo "rebuild=true" >> $GITHUB_OUTPUT
+              echo "⚠️  dep-map.json last committed $((AGE / 86400)) days ago — will rebuild"
+            else
+              echo "rebuild=false" >> $GITHUB_OUTPUT
+              echo "✅ dep-map.json is fresh ($((AGE / 86400)) days old)"
+            fi
+          fi
+
+      - name: Rebuild dep-map.json
+        if: steps.depmap_check.outputs.rebuild == 'true'
+        run: |
+          python docs/scripts/export/build_dep_map.py \
+            --docs-folder ${{ github.workspace }}
+          echo "✅ dep-map.json rebuilt"
+
+      # ----------------------------------------------------------------
+      # 7. Resolve from-commit
+      #    - workflow_dispatch with input: use provided commit
+      #    - workflow_dispatch without input: use 1 day ago
+      #    - push: use github.event.before
+      # ----------------------------------------------------------------
+      - name: Resolve from-commit
+        id: resolve_commits
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            INPUT="${{ github.event.inputs.from_commit }}"
+            if [ -n "$INPUT" ]; then
+              echo "from_commit=$INPUT" >> $GITHUB_OUTPUT
+              echo "📌 Using provided from-commit: $INPUT"
+            else
+              # Fall back to the most recent commit older than 1 day
+              COMMIT=$(git rev-list -1 --before="1 day ago" HEAD || git rev-list --max-parents=0 HEAD)
+              echo "from_commit=$COMMIT" >> $GITHUB_OUTPUT
+              echo "📌 No from-commit provided — using: $COMMIT"
+            fi
+          else
+            echo "from_commit=${{ github.event.before }}" >> $GITHUB_OUTPUT
+            echo "📌 Push event — using github.event.before: ${{ github.event.before }}"
+          fi
+
+      # ----------------------------------------------------------------
+      # 8. Run smart_export.py
+      # ----------------------------------------------------------------
+      - name: Run smart_export.py
+        run: |
+          python docs/scripts/export/smart_export.py \
+            --docs-folder ${{ github.workspace }} \
+            --output-dir ${{ github.workspace }}/markdown-service/public/en \
+            --from-commit ${{ steps.resolve_commits.outputs.from_commit }} \
+            --to-commit ${{ github.sha }}
+
+      # ----------------------------------------------------------------
+      # 9. Check if any markdown files were changed
+      # ----------------------------------------------------------------
+      - name: Check for changes
+        id: changes
+        working-directory: markdown-service
+        run: |
+          git add -A
+          git diff --cached --quiet \
+            && echo "changed=false" >> $GITHUB_OUTPUT \
+            || echo "changed=true" >> $GITHUB_OUTPUT
+
+      # ----------------------------------------------------------------
+      # 10. Create a PR in markdown-service if there are changes
+      # ----------------------------------------------------------------
+      - name: Create pull request in markdown-service
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.EXPORT_PAT }}
+          path: markdown-service
+          branch: auto-export/${{ github.run_id }}-${{ github.sha }}
+          base: main
+          commit-message: |
+            chore: auto-export docs changes from ${{ github.sha }}
+
+            Triggered by push to Docs-Source main.
+            Source commit: ${{ github.sha }}
+            Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          title: "chore: auto-export docs changes from ${{ github.sha }}"
+          body: |
+            ## Automated docs export
+
+            This PR was generated automatically by the `export-docs` workflow in [Docs-Source](${{ github.server_url }}/${{ github.repository }}).
+
+            **Triggered by:** [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+            **Workflow run:** [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            ### What changed
+            Pages were re-exported because their source MDX files or shared dependencies changed in the commit above.
+
+            ### Review notes
+            - Check that all modified `.md` files look correct
+            - Verify image references resolve correctly
+            - Merge when satisfied — no further action needed
+
+          labels: automated,docs-export
+          draft: false
+
+      # ----------------------------------------------------------------
+      # 11. Report no changes
+      # ----------------------------------------------------------------
+      - name: No changes to export
+        if: steps.changes.outputs.changed == 'false'
+        run: echo "✅ No markdown files changed — no PR needed."

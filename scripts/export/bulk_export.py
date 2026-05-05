@@ -85,7 +85,7 @@ def main():
     output_base = os.path.abspath(args.output_dir)
 
     # Derive images output directory from output_base
-    images_dir = os.path.normpath(os.path.join(output_base, "..", "images"))
+    images_dir = os.path.normpath(os.path.join(output_base, ".."))
 
     # Resolve mdx2md.py location (same directory as this script)
     scripts_dir = os.path.dirname(os.path.abspath(__file__))

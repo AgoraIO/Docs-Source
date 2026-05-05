@@ -387,7 +387,7 @@ def main():
 
     # Derive images output directory from output_base
     # e.g. public/en -> public/images
-    images_dir = os.path.normpath(os.path.join(output_base, "..", "images"))
+    images_dir = os.path.normpath(os.path.join(output_base, ".."))
 
     # ------------------------------------------------------------------
     # Resolve from/to commits

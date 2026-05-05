@@ -1,0 +1,127 @@
+name: Inject last_update dates
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  inject:
+    name: Inject last_update dates into MDX frontmatter
+    runs-on: ubuntu-latest
+    # Only run on Docs-Source and only on human pushes — skip bot commits
+    if: |
+      github.repository == 'AgoraIO/Docs-Source' &&
+      github.actor != 'github-actions[bot]'
+
+    steps:
+      # ----------------------------------------------------------------
+      # 1. Check out Docs-Source with full history
+      # ----------------------------------------------------------------
+      - name: Check out Docs-Source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.EXPORT_PAT }}
+
+      # ----------------------------------------------------------------
+      # 2. Set up Python
+      # ----------------------------------------------------------------
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
+      # ----------------------------------------------------------------
+      # 3. Install Python dependencies
+      # ----------------------------------------------------------------
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      # ----------------------------------------------------------------
+      # 4. Set up docs-folder structure and rebuild dep-map.json
+      #    products.js is needed by build_dep_map.py
+      # ----------------------------------------------------------------
+      - name: Fetch products.js from AgoraIO/Docs
+        run: |
+          mkdir -p data/v2
+          curl -f \
+            -H "Authorization: token ${{ secrets.EXPORT_PAT }}" \
+            -H "Accept: application/vnd.github.v3.raw" \
+            -o data/v2/products.js \
+            "https://api.github.com/repos/AgoraIO/Docs/contents/data/v2/products.js"
+          echo "✅ products.js fetched"
+
+      - name: Set up docs-folder structure
+        id: setup
+        run: |
+          DOCS_FOLDER=$(python scripts/export/setup_docs_folder.py \
+            --products-file data/v2/products.js)
+          echo "docs_folder=$DOCS_FOLDER" >> $GITHUB_OUTPUT
+          echo "✅ docs-folder: $DOCS_FOLDER"
+
+      - name: Build dep-map.json
+        run: |
+          python scripts/export/build_dep_map.py \
+            --docs-folder ${{ steps.setup.outputs.docs_folder }}
+          echo "✅ dep-map.json built"
+
+      # ----------------------------------------------------------------
+      # 5. Resolve from-commit
+      #    On first push to staging, github.event.before is all zeros
+      #    so fall back to 1 day ago
+      # ----------------------------------------------------------------
+      - name: Resolve from-commit
+        id: resolve_commits
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            COMMIT=$(git rev-list -1 --before="1 day ago" HEAD || git rev-list --max-parents=0 HEAD)
+            echo "from_commit=$COMMIT" >> $GITHUB_OUTPUT
+            echo "📌 First push to branch — using: $COMMIT"
+          else
+            echo "from_commit=$BEFORE" >> $GITHUB_OUTPUT
+            echo "📌 Using github.event.before: $BEFORE"
+          fi
+
+      # ----------------------------------------------------------------
+      # 6. Run inject_last_updated.py
+      # ----------------------------------------------------------------
+      - name: Inject last_update dates
+        run: |
+          python scripts/inject_last_updated.py \
+            --repo-root ${{ github.workspace }} \
+            --dep-map ${{ steps.setup.outputs.docs_folder }}/data/dep-map.json \
+            --from-commit ${{ steps.resolve_commits.outputs.from_commit }} \
+            --to-commit ${{ github.sha }}
+
+      # ----------------------------------------------------------------
+      # 7. Check if any files were updated
+      # ----------------------------------------------------------------
+      - name: Check for changes
+        id: changes
+        run: |
+          git diff --quiet \
+            && echo "changed=false" >> $GITHUB_OUTPUT \
+            || echo "changed=true" >> $GITHUB_OUTPUT
+
+      # ----------------------------------------------------------------
+      # 8. Commit updated frontmatter back to staging
+      # ----------------------------------------------------------------
+      - name: Commit last_update dates
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: inject last_update dates"
+          git push origin staging
+          echo "✅ Committed last_update dates to staging"
+
+      # ----------------------------------------------------------------
+      # 9. Report no changes
+      # ----------------------------------------------------------------
+      - name: No changes
+        if: steps.changes.outputs.changed == 'false'
+        run: echo "✅ All last_update dates already current — nothing to commit."

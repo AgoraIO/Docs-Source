@@ -103,30 +103,29 @@ def get_latest_date_for_page(repo_root: str, page_path: str, deps: list) -> str:
     Returns date as YYYY-MM-DD string, or None if no commits found.
     """
     all_paths = [page_path] + deps
- 
-    # Filter to only paths that exist on disk
+
     existing_paths = [
         p for p in all_paths
         if os.path.isfile(os.path.join(repo_root, p))
     ]
- 
+
     if not existing_paths:
         return None
- 
+
     try:
         output = git(
-            ["log", "-1", "--format=%ci", "--"] + existing_paths,
+            ["log", "-1", "--format=%ci",
+             "--invert-grep",
+             "--grep=chore: inject last_update dates",
+             "--"] + existing_paths,
             cwd=repo_root,
         )
         if not output:
             return None
-        # Parse the date portion from the git log output
-        date_str = output.strip().split(" ")[0]
-        return date_str  # YYYY-MM-DD
+        return output.strip().split(" ")[0]
     except RuntimeError:
         return None
- 
- 
+  
 # ---------------------------------------------------------------------------
 # Dep map helpers
 # ---------------------------------------------------------------------------

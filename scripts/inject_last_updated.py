@@ -333,6 +333,7 @@ def main():
             continue
  
         existing = read_existing_date(content)
+        print(f"  DEBUG {page_rel}: existing={existing!r} git_date={date_str!r}")
         if existing == date_str:
             skipped += 1
             continue

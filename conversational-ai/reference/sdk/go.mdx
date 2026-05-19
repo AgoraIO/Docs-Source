@@ -29,7 +29,7 @@ Pass one or more request options to configure authentication, regional routing, 
 
 ```go
 c := client.NewClient(
-    option.WithArea(option.AreaUS),
+    option.WithToken("<your_rest_auth_token>"),
 )
 ```
 
@@ -39,6 +39,20 @@ When using the agentkit layer, your App ID and App Certificate are passed on `Ag
 
 Request options can be set at client creation time (applied to all requests) or passed to individual method calls.
 
+#### `option.WithToken`
+
+```go
+func WithToken(token string) *core.TokenOption
+```
+
+Sets a bearer token for authentication. This is the recommended option for new integrations and matches the onboarding guides.
+
+```go
+c := client.NewClient(
+    option.WithToken("<your_rest_auth_token>"),
+)
+```
+
 #### `option.WithBasicAuth`
 
 ```go
@@ -47,23 +61,11 @@ func WithBasicAuth(username, password string) *core.BasicAuthOption
 
 Sets `Authorization: Basic <base64>`. Use your Agora Customer ID and Customer Secret from Agora Console.
 
+Use this only when you explicitly want Basic Auth. It is still supported by the client, but token auth is the preferred path in the narrative docs and quick starts.
+
 ```go
 c := client.NewClient(
     option.WithBasicAuth("<customer_id>", "<customer_secret>"),
-)
-```
-
-#### `option.WithToken`
-
-```go
-func WithToken(token string) *core.TokenOption
-```
-
-Sets a token for authentication.
-
-```go
-c := client.NewClient(
-    option.WithToken("<your_api_token>"),
 )
 ```
 
@@ -73,15 +75,13 @@ c := client.NewClient(
 func WithArea(area core.Area) *core.AreaRequestOption
 ```
 
-Enables regional routing with automatic DNS-based domain selection. Use the region closest to your users.
+Enables regional routing with automatic DNS-based domain selection. 
 
 ```go
 c := client.NewClient(
     option.WithArea(option.AreaUS),
 )
 ```
-
-See [Area constants](#area-constants) for available values.
 
 #### `option.WithBaseURL`
 
@@ -105,7 +105,7 @@ c := client.NewClient(
 func WithHTTPClient(httpClient core.HTTPClient) *core.HTTPClientOption
 ```
 
-Provides a custom `*http.Client`. Recommended in production to configure timeouts.
+Provides a custom `*http.Client`. Recommended for production to set timeouts.
 
 ```go
 c := client.NewClient(
@@ -159,7 +159,7 @@ Adds query parameters to the request URL.
 func WithPool(pool *core.Pool) *core.AreaRequestOption
 ```
 
-Uses a pre-configured `Pool` for regional routing.
+Uses a pre-configured `Pool` for regional routing. 
 
 ### Sub-clients
 
@@ -167,11 +167,11 @@ Uses a pre-configured `Pool` for regional routing.
 
 | Field | Type | Description |
 |---|---|---|
-| `c.Agents` | `*agents.Client` | Start, stop, update, speak, interrupt, get, list agents |
-| `c.Telephony` | `*telephony.Client` | Telephony operations |
+| `c.Agents` | `*agents.Client` | Agent lifecycle (start, stop, speak, interrupt, update, get, getHistory) |
+| `c.Telephony` | `*telephony.Client` | Telephony operations (call, hangup) |
 | `c.PhoneNumbers` | `*phonenumbers.Client` | Phone number management |
 
-All sub-client methods take `context.Context` as their first argument. For full method signatures and request parameters, see the [REST API reference](/conversational-ai/rest-api/agent/join).
+All sub-client methods take `context.Context` as their first argument. See the [generated reference](https://github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/blob/HEAD/./reference.md) for full method signatures.
 
 ### Environments
 
@@ -194,7 +194,7 @@ import Agora "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go"
 
 | Function | Signature | Example |
 |---|---|---|
-| `Agora.Bool` | `func(bool) *bool` | `EnableMllm: Agora.Bool(true)` |
+| `Agora.Bool` | `func(bool) *bool` | `Enable: Agora.Bool(true)` |
 | `Agora.Int` | `func(int) *int` | `IdleTimeout: Agora.Int(120)` |
 | `Agora.String` | `func(string) *string` | `APIKey: Agora.String("<key>")` |
 | `Agora.Float64` | `func(float64) *float64` | `Threshold: Agora.Float64(0.5)` |
@@ -204,7 +204,6 @@ import Agora "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go"
 | `Agora.UUID` | `func(uuid.UUID) *uuid.UUID` | — |
 | `Agora.Time` | `func(time.Time) *time.Time` | — |
 
----
 
 ## agentkit.NewAgent
 
@@ -245,9 +244,11 @@ agent := agentkit.NewAgent(
 | `WithGreeting(greeting)` | `string` | First message the agent speaks |
 | `WithFailureMessage(msg)` | `string` | Message spoken when the LLM fails |
 | `WithMaxHistory(n)` | `int` | Maximum conversation turns to retain |
-| `WithTurnDetectionConfig(td)` | `*TurnDetectionConfig` | Voice activity detection settings. Use `Config.StartOfSpeech` and `Config.EndOfSpeech` for the SOS/EOS model |
+| `WithTurnDetectionConfig(td)` | `*TurnDetectionConfig` | Cascading-flow turn detection configuration. Use `Config.StartOfSpeech` and `Config.EndOfSpeech` for SOS/EOS detection. Use interruption config for interruption behavior and MLLM vendor `TurnDetection` for MLLM turn detection |
+| `WithInterruptionConfig(interruption)` | `*InterruptionConfig` | Unified interruption control using the top-level `interruption` object |
 | `WithSalConfig(sal)` | `*SalConfig` | Speech analytics configuration |
 | `WithAdvancedFeatures(af)` | `*AdvancedFeatures` | Advanced feature flags, for example `EnableMllm`, `EnableAivad` |
+| `WithTools(enabled)` | `bool` | Enable or disable MCP tool invocation |
 | `WithParameters(params)` | `*SessionParams` | Additional session parameters |
 | `WithGeofence(gf)` | `*GeofenceConfig` | Regional access restriction |
 | `WithLabels(labels)` | `map[string]string` | Custom key-value labels returned in notification callbacks |
@@ -284,7 +285,7 @@ func (a *Agent) WithStt(vendor vendors.STT) *Agent
 
 #### `WithMllm(vendor)`
 
-Sets the MLLM vendor for multimodal mode. Pass [`NewOpenAIRealtime`](#newopenairealtime) or [`NewVertexAI`](#newvertexai). Requires `AdvancedFeatures.EnableMllm = true`.
+Sets the MLLM vendor for multimodal mode. Pass [`NewOpenAIRealtime`](#newopenairealtime), [`NewGeminiLive`](#newgeminilive), or [`NewVertexAI`](#newvertexai). Requires `AdvancedFeatures.EnableMllm = true`.
 
 ```go
 func (a *Agent) WithMllm(vendor vendors.MLLM) *Agent
@@ -300,7 +301,7 @@ func (a *Agent) WithAvatar(vendor vendors.Avatar) *Agent
 
 #### `WithTurnDetection(config)`
 
-Overrides turn detection settings on a new `*Agent` instance. Use `Config.StartOfSpeech` and `Config.EndOfSpeech` for the SOS/EOS model.
+Configures cascading-flow turn detection. Use `Config.StartOfSpeech` and `Config.EndOfSpeech` for SOS/EOS detection. Use interruption config for interruption behavior and MLLM vendor `TurnDetection` for MLLM turn detection.
 
 ```go
 func (a *Agent) WithTurnDetection(td *TurnDetectionConfig) *Agent
@@ -317,6 +318,7 @@ The following methods follow the same pattern — each returns a new `*Agent` wi
 | `WithName(name)` | `string` | Override the agent name |
 | `WithSal(sal)` | `*SalConfig` | Set SAL configuration |
 | `WithAdvancedFeatures(af)` | `*AdvancedFeatures` | Set advanced features |
+| `WithTools(enabled)` | `bool` | Enable or disable MCP tool invocation |
 | `WithParameters(params)` | `*SessionParams` | Set session parameters |
 | `WithFailureMessage(msg)` | `string` | Set the failure message |
 | `WithMaxHistory(n)` | `int` | Set the maximum conversation history length |
@@ -379,8 +381,6 @@ Read-only methods available on any `*Agent` instance.
 | `Rtc()` | `*RtcConfig` | RTC configuration |
 | `FillerWords()` | `*FillerWordsConfig` | Filler words configuration |
 
----
-
 ## agentkit.NewAgentSession
 
 `AgentSession` manages the full lifecycle of a running agent. Create a session with `NewAgentSession` and call `Start()` to join the agent to the channel.
@@ -412,10 +412,17 @@ If `Name` is empty, defaults to `agent-<unix_timestamp>`. The session starts in 
 | `RemoteUIDs` | `[]string` | Yes | Remote participant UIDs |
 | `IdleTimeout` | `*int` | No | Idle timeout in seconds |
 | `EnableStringUID` | `*bool` | No | Enable string UID mode |
+| `ExpiresIn` | `int` | No | Auto-generated token lifetime in seconds |
+| `UseAppCredentialsForREST` | `bool` | No | Generate ConvoAI REST auth headers per request |
+| `Preset` | `[]string` | No | Preset IDs to send on session start |
+| `PipelineID` | `string` | No | Published pipeline ID to send on session start |
+| `Debug` | `bool` | No | Enable debug logging of the start request |
+| `Warn` | `func(string)` | No | Custom warning sink; defaults to logger |
 
 ### State machine
 
 A session progresses through the following states:
+
 ```
          Start()           API success
   ┌──────┐      ┌──────────┐      ┌─────────┐
@@ -462,6 +469,7 @@ func (s *AgentSession) Start(ctx context.Context) (string, error)
 - Valid from: `idle`, `stopped`, `error`
 - Transitions to: `starting` → `running` on success, `error` on failure
 - Emits: `"started"` on success, `"error"` on failure
+- Validates avatar config and avatar/TTS sample rate match before making the API call
 
 ```go
 agentID, err := session.Start(ctx)
@@ -538,6 +546,14 @@ Retrieves the conversation history. Requires a valid agent ID — `Start()` must
 func (s *AgentSession) GetHistory(ctx context.Context) (*Agora.GetHistoryAgentsResponse, error)
 ```
 
+#### `GetTurns(ctx)`
+
+Retrieves turn-by-turn analytics for the session. Requires a valid agent ID — `Start()` must have been called successfully.
+
+```go
+func (s *AgentSession) GetTurns(ctx context.Context) (*Agora.GetTurnsAgentsResponse, error)
+```
+
 #### `GetInfo(ctx)`
 
 Gets the current agent status from the API. Requires a valid agent ID.
@@ -548,7 +564,7 @@ func (s *AgentSession) GetInfo(ctx context.Context) (*Agora.GetAgentsResponse, e
 
 #### `On(event, handler)`
 
-Registers an event handler. Multiple handlers can be registered for the same event. Handlers run synchronously; panics in handlers are recovered and silently discarded.
+Registers an event handler. Multiple handlers can be registered for the same event. Handlers run synchronously; panics in handlers are recovered and reported through the session warning sink.
 
 ```go
 func (s *AgentSession) On(event string, handler EventHandler)
@@ -565,6 +581,14 @@ session.On("stopped", func(data interface{}) {
 session.On("error", func(data interface{}) {
     log.Println("Session error:", data)
 })
+```
+
+#### `Off(event, handler)`
+
+Unregisters a previously registered event handler.
+
+```go
+func (s *AgentSession) Off(event string, handler EventHandler)
 ```
 
 ### Events
@@ -601,14 +625,38 @@ response, err := session.Raw().List(ctx, &Agora.ListAgentsRequest{
 
 `AgentSession` is safe for concurrent use across goroutines. All state mutations are protected by `sync.RWMutex`. Multiple goroutines can safely call `Status()`, `ID()`, and other getters while another goroutine calls `Start()` or `Stop()`.
 
----
-
 ## Vendors
 
 All vendor constructors are in the `agentkit/vendors` package. **Constructors panic if required fields are empty** — this is Go-idiomatic behavior for programmer configuration errors.
 
 ```go
 import "github.com/AgoraIO-Conversational-AI/agent-server-sdk-go/agentkit/vendors"
+```
+
+### Interfaces
+
+```go
+type LLM interface {
+    ToConfig() map[string]interface{}
+}
+
+type TTS interface {
+    ToConfig() map[string]interface{}
+    GetSampleRate() *SampleRate
+}
+
+type STT interface {
+    ToConfig() map[string]interface{}
+}
+
+type MLLM interface {
+    ToConfig() map[string]interface{}
+}
+
+type Avatar interface {
+    ToConfig() map[string]interface{}
+    RequiredSampleRate() SampleRate
+}
 ```
 
 ### LLM vendors
@@ -621,11 +669,11 @@ Use with [`WithLlm()`](#withllmvendor).
 func NewOpenAI(opts OpenAIOptions) *OpenAI
 ```
 
-Panics if `APIKey` is empty.
+Panics if `APIKey` is empty unless `Model` is one of the supported preset-backed OpenAI models (`gpt-4o-mini`, `gpt-4.1-mini`, `gpt-5-nano`, `gpt-5-mini`) and `BaseURL` / `Vendor` are not set.
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `APIKey` | `string` | Yes | — | OpenAI API key |
+| `APIKey` | `string` | No | — | OpenAI API key. Optional for supported preset-backed OpenAI models |
 | `Model` | `string` | No | `"gpt-4o-mini"` | Model identifier |
 | `BaseURL` | `string` | No | `"https://api.openai.com/v1/chat/completions"` | API endpoint |
 | `Temperature` | `*float64` | No | — | Sampling temperature |
@@ -635,7 +683,11 @@ Panics if `APIKey` is empty.
 | `GreetingMessage` | `string` | No | — | Agent greeting message |
 | `FailureMessage` | `string` | No | — | Message spoken when LLM fails |
 | `InputModalities` | `[]string` | No | `["text"]` | Input modalities |
+| `OutputModalities` | `[]string` | No | — | Output modalities |
 | `Params` | `map[string]interface{}` | No | — | Additional model parameters |
+| `Headers` | `map[string]string` | No | — | Custom HTTP headers forwarded to the LLM provider |
+| `GreetingConfigs` | `map[string]interface{}` | No | — | Greeting playback configuration |
+| `TemplateVariables` | `map[string]string` | No | — | Template variables for messages |
 
 #### `NewAzureOpenAI`
 
@@ -658,6 +710,11 @@ Panics if `APIKey`, `Endpoint`, or `DeploymentName` is empty.
 | `GreetingMessage` | `string` | No | — | Agent greeting message |
 | `FailureMessage` | `string` | No | — | Message spoken when LLM fails |
 | `InputModalities` | `[]string` | No | `["text"]` | Input modalities |
+| `OutputModalities` | `[]string` | No | — | Output modalities |
+| `Params` | `map[string]interface{}` | No | — | Additional model parameters |
+| `Headers` | `map[string]string` | No | — | Custom HTTP headers forwarded to the LLM provider |
+| `GreetingConfigs` | `map[string]interface{}` | No | — | Greeting playback configuration |
+| `TemplateVariables` | `map[string]string` | No | — | Template variables for messages |
 
 #### `NewAnthropic`
 
@@ -678,6 +735,11 @@ Panics if `APIKey` is empty.
 | `GreetingMessage` | `string` | No | — | Agent greeting message |
 | `FailureMessage` | `string` | No | — | Message spoken when LLM fails |
 | `InputModalities` | `[]string` | No | `["text"]` | Input modalities |
+| `OutputModalities` | `[]string` | No | — | Output modalities |
+| `Params` | `map[string]interface{}` | No | — | Additional model parameters |
+| `Headers` | `map[string]string` | No | — | Custom HTTP headers forwarded to the LLM provider |
+| `GreetingConfigs` | `map[string]interface{}` | No | — | Greeting playback configuration |
+| `TemplateVariables` | `map[string]string` | No | — | Template variables for messages |
 
 #### `NewGemini`
 
@@ -699,8 +761,11 @@ Panics if `APIKey` is empty.
 | `GreetingMessage` | `string` | No | — | Agent greeting message |
 | `FailureMessage` | `string` | No | — | Message spoken when LLM fails |
 | `InputModalities` | `[]string` | No | `["text"]` | Input modalities |
-
----
+| `OutputModalities` | `[]string` | No | — | Output modalities |
+| `Params` | `map[string]interface{}` | No | — | Additional model parameters |
+| `Headers` | `map[string]string` | No | — | Custom HTTP headers forwarded to the LLM provider |
+| `GreetingConfigs` | `map[string]interface{}` | No | — | Greeting playback configuration |
+| `TemplateVariables` | `map[string]string` | No | — | Template variables for messages |
 
 ### TTS vendors
 
@@ -747,13 +812,15 @@ Fixed sample rate: `SampleRate24kHz`.
 func NewOpenAITTS(opts OpenAITTSOptions) *OpenAITTS
 ```
 
-Panics if `Key` or `Voice` is empty.
+Panics if `Voice` is empty. `APIKey` is optional for the preset-backed `tts-1` path.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `Key` | `string` | Yes | OpenAI API key |
+| `APIKey` | `string` | No | OpenAI API key. Optional for the preset-backed `tts-1` path |
 | `Voice` | `string` | Yes | Voice name: `"alloy"`, `"echo"`, `"fable"`, `"onyx"`, `"nova"`, or `"shimmer"` |
 | `Model` | `string` | No | Model identifier, for example `"tts-1"` or `"tts-1-hd"` |
+| `ResponseFormat` | `string` | No | Audio format, for example `"pcm"` |
+| `Speed` | `*float64` | No | Speech speed multiplier |
 | `SkipPatterns` | `[]int` | No | Patterns to skip |
 
 #### `NewCartesiaTTS`
@@ -762,12 +829,12 @@ Panics if `Key` or `Voice` is empty.
 func NewCartesiaTTS(opts CartesiaTTSOptions) *CartesiaTTS
 ```
 
-Panics if `Key` or `VoiceID` is empty.
+Panics if `APIKey` or `VoiceID` is empty.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `Key` | `string` | Yes | Cartesia API key |
-| `VoiceID` | `string` | Yes | Voice identifier |
+| `APIKey` | `string` | Yes | Cartesia API key |
+| `VoiceID` | `string` | Yes | Voice identifier (serialized as `{"mode":"id","id":"..."}`) |
 | `ModelID` | `string` | No | Model identifier |
 | `SampleRate` | `*SampleRate` | No | Output sample rate |
 | `SkipPatterns` | `[]int` | No | Patterns to skip |
@@ -803,6 +870,23 @@ Panics if `AccessKey`, `SecretKey`, `Region`, or `VoiceID` is empty.
 | `VoiceID` | `string` | Yes | Amazon Polly voice ID |
 | `SkipPatterns` | `[]int` | No | Patterns to skip |
 
+#### `NewDeepgramTTS`
+
+```go
+func NewDeepgramTTS(opts DeepgramTTSOptions) *DeepgramTTS
+```
+
+Panics if `APIKey` or `Model` is empty.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `APIKey` | `string` | Yes | Deepgram API key |
+| `Model` | `string` | Yes | Deepgram TTS model, for example `"aura-2-thalia-en"` |
+| `BaseURL` | `string` | No | WebSocket endpoint. Defaults server-side to `wss://api.deepgram.com/v1/speak` |
+| `SampleRate` | `*SampleRate` | No | Output sample rate |
+| `Params` | `map[string]interface{}` | No | Additional Deepgram TTS parameters |
+| `SkipPatterns` | `[]int` | No | Patterns to skip |
+
 #### `NewHumeAITTS`
 
 ```go
@@ -830,6 +914,9 @@ Panics if `Key` or `Speaker` is empty.
 | `Key` | `string` | Yes | Rime API key |
 | `Speaker` | `string` | Yes | Speaker identifier |
 | `ModelID` | `string` | No | Model identifier |
+| `Lang` | `string` | No | Language code |
+| `SamplingRate` | `*int` | No | Sampling rate in Hz (serialized as `samplingRate`) |
+| `SpeedAlpha` | `*float64` | No | Speed multiplier (serialized as `speedAlpha`) |
 | `SkipPatterns` | `[]int` | No | Patterns to skip |
 
 #### `NewFishAudioTTS`
@@ -852,15 +939,15 @@ Panics if `Key` or `ReferenceID` is empty.
 func NewMiniMaxTTS(opts MiniMaxTTSOptions) *MiniMaxTTS
 ```
 
-Panics if `Key`, `GroupID`, `Model`, `VoiceID`, or `URL` is empty.
+Panics if `Model` is empty. `Key` is optional for supported preset-backed MiniMax models (`speech-2.6-turbo`, `speech_2_6_turbo`, `speech-2.8-turbo`, `speech_2_8_turbo`). BYOK still requires `Key` and `GroupID`, and preset-backed mode must not set `GroupID`, `VoiceID`, or `URL`.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `Key` | `string` | Yes | MiniMax API key |
-| `GroupID` | `string` | Yes | MiniMax group ID |
+| `Key` | `string` | No | MiniMax API key. Optional for supported preset-backed MiniMax models |
+| `GroupID` | `string` | No | MiniMax group ID. Required for BYOK |
 | `Model` | `string` | Yes | Model name, for example `"speech-02-turbo"` |
-| `VoiceID` | `string` | Yes | Voice style identifier |
-| `URL` | `string` | Yes | WebSocket endpoint |
+| `VoiceID` | `string` | No | Voice style identifier. BYOK only |
+| `URL` | `string` | No | WebSocket endpoint. BYOK only |
 | `SkipPatterns` | `[]int` | No | Patterns to skip |
 
 #### `NewMurfTTS`
@@ -893,8 +980,6 @@ Panics if `Key`, `Speaker`, or `TargetLanguageCode` is empty.
 | `TargetLanguageCode` | `string` | Yes | Target language code |
 | `SkipPatterns` | `[]int` | No | Patterns to skip |
 
----
-
 ### STT vendors
 
 Use with [`WithStt()`](#withsttvendor).
@@ -912,6 +997,9 @@ Panics if `APIKey` is empty.
 | `APIKey` | `string` | Yes | Deepgram API key |
 | `Model` | `string` | No | Model, for example `"nova-2"` |
 | `Language` | `string` | No | Language code, for example `"en-US"` |
+| `SmartFormat` | `*bool` | No | Enable smart formatting |
+| `Punctuation` | `*bool` | No | Enable punctuation |
+| `AdditionalParams` | `map[string]interface{}` | No | Additional vendor parameters |
 
 #### `NewSpeechmaticsSTT`
 
@@ -1002,23 +1090,12 @@ Panics if `APIKey` is empty.
 func NewAresSTT(opts AresSTTOptions) *AresSTT
 ```
 
-Panics if `APIKey` is empty.
+Ares is an Agora built-in STT service — no external API key required.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `APIKey` | `string` | Yes | Ares API key |
-
-#### `NewSonioxSTT`
-
-```go
-func NewSonioxSTT(opts SonioxSTTOptions) *SonioxSTT
-```
-
-Panics if `APIKey` is empty.
-
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `APIKey` | `string` | Yes | Soniox API key |
+| `Language` | `string` | No | Language code |
+| `AdditionalParams` | `map[string]interface{}` | No | Additional vendor parameters |
 
 #### `NewSarvamSTT`
 
@@ -1033,8 +1110,6 @@ Panics if `APIKey` is empty.
 | `APIKey` | `string` | Yes | Sarvam API key |
 | `Language` | `string` | No | Language code |
 | `Model` | `string` | No | Model identifier |
-
----
 
 ### MLLM vendors
 
@@ -1052,10 +1127,41 @@ Panics if `APIKey` is empty.
 |---|---|---|---|---|
 | `APIKey` | `string` | Yes | — | OpenAI API key |
 | `Model` | `string` | No | `"gpt-4o-realtime-preview"` | Model identifier |
-| `Voice` | `string` | No | — | Voice name, for example `"alloy"` |
-| `Temperature` | `*float64` | No | — | Sampling temperature |
-| `MaxOutputTokens` | `*int` | No | — | Maximum output tokens |
-| `SystemMessage` | `string` | No | — | System instruction |
+| `URL` | `string` | No | — | Custom WebSocket URL |
+| `GreetingMessage` | `string` | No | — | Agent greeting message |
+| `FailureMessage` | `string` | No | — | Message played when the model call fails |
+| `MaxHistory` | `*int` | No | — | Maximum conversation history length |
+| `PredefinedTools` | `[]string` | No | — | Predefined tools, for example `["_publish_message"]` |
+| `InputModalities` | `[]string` | No | — | Input modalities |
+| `OutputModalities` | `[]string` | No | — | Output modalities |
+| `Messages` | `[]map[string]interface{}` | No | — | Conversation messages for short-term memory |
+| `Params` | `map[string]interface{}` | No | — | Additional parameters |
+| `TurnDetection` | `*Agora.StartAgentsRequestPropertiesMllmTurnDetection` | No | — | MLLM turn detection configuration; overrides top-level turn detection |
+
+#### `NewGeminiLive`
+
+```go
+func NewGeminiLive(opts GeminiLiveOptions) *GeminiLive
+```
+
+Panics if `APIKey` or `Model` is empty.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `APIKey` | `string` | Yes | — | Google AI API key |
+| `Model` | `string` | Yes | — | Gemini Live model identifier |
+| `URL` | `string` | No | — | Custom WebSocket URL |
+| `Instructions` | `string` | No | — | System instruction |
+| `Voice` | `string` | No | — | Voice name |
+| `GreetingMessage` | `string` | No | — | Agent greeting message |
+| `FailureMessage` | `string` | No | — | Message played when the model call fails |
+| `MaxHistory` | `*int` | No | — | Maximum conversation history length |
+| `PredefinedTools` | `[]string` | No | — | Predefined tools, for example `["_publish_message"]` |
+| `InputModalities` | `[]string` | No | — | Input modalities |
+| `OutputModalities` | `[]string` | No | — | Output modalities |
+| `Messages` | `[]map[string]interface{}` | No | — | Conversation messages for short-term memory |
+| `AdditionalParams` | `map[string]interface{}` | No | — | Additional parameters |
+| `TurnDetection` | `*Agora.StartAgentsRequestPropertiesMllmTurnDetection` | No | — | MLLM turn detection configuration; overrides top-level turn detection |
 
 #### `NewVertexAI`
 
@@ -1063,24 +1169,30 @@ Panics if `APIKey` is empty.
 func NewVertexAI(opts VertexAIOptions) *VertexAI
 ```
 
-Panics if `ProjectID` is empty.
+Panics if `ProjectID` or `ADCredentialsString` is empty.
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `ProjectID` | `string` | Yes | — | Google Cloud project ID |
+| `ADCredentialsString` | `string` | Yes | — | Application Default Credentials JSON string |
 | `Location` | `string` | No | `"us-central1"` | Google Cloud region |
 | `Model` | `string` | No | `"gemini-2.0-flash-exp"` | Model identifier |
+| `URL` | `string` | No | — | Custom WebSocket URL |
 | `Voice` | `string` | No | — | Voice name |
-| `Language` | `string` | No | — | Language code |
-| `SystemMessage` | `string` | No | — | System instruction |
-
----
+| `Instructions` | `string` | No | — | System instruction |
+| `GreetingMessage` | `string` | No | — | Agent greeting message |
+| `FailureMessage` | `string` | No | — | Message played when the model call fails |
+| `MaxHistory` | `*int` | No | — | Maximum conversation history length |
+| `PredefinedTools` | `[]string` | No | — | Predefined tools, for example `["_publish_message"]` |
+| `InputModalities` | `[]string` | No | — | Input modalities |
+| `OutputModalities` | `[]string` | No | — | Output modalities |
+| `Messages` | `[]map[string]interface{}` | No | — | Conversation messages for short-term memory |
+| `AdditionalParams` | `map[string]interface{}` | No | — | Additional parameters |
+| `TurnDetection` | `*Agora.StartAgentsRequestPropertiesMllmTurnDetection` | No | — | MLLM turn detection configuration; overrides top-level turn detection |
 
 ### Avatar vendors
 
 Use with [`WithAvatar()`](#withavatarvendor). Each avatar vendor requires a specific TTS sample rate — the constructor panics if the sample rate does not match.
-
-> ⚠️ **Note for reviewers:** The avatar vendor parameters differ between the Go/Python and Node SDKs. Please verify the correct option sets with the dev team before publishing.
 
 #### `NewHeyGenAvatar`
 
@@ -1097,10 +1209,11 @@ Panics if `APIKey` or `AgoraUID` is empty, or if `Quality` is not `"low"`, `"med
 | `APIKey` | `string` | Yes | HeyGen API key |
 | `Quality` | `string` | Yes | Video quality: `"low"`, `"medium"`, or `"high"` |
 | `AgoraUID` | `string` | Yes | UID for the avatar's video stream |
-| `AvatarName` | `string` | No | Avatar model name |
-| `VoiceID` | `string` | No | Override voice |
-| `Language` | `string` | No | Language code |
-| `Version` | `string` | No | API version |
+| `AgoraToken` | `string` | No | RTC token for avatar authentication |
+| `AvatarID` | `string` | No | HeyGen avatar ID |
+| `Enable` | `*bool` | No | Enable or disable the avatar. Default: `true` |
+| `DisableIdleTimeout` | `*bool` | No | Disable the idle timeout |
+| `ActivityIdleTimeout` | `*int` | No | Idle timeout in seconds. Default: 120 |
 
 #### `NewAkoolAvatar`
 
@@ -1115,8 +1228,27 @@ Panics if `APIKey` is empty.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `APIKey` | `string` | Yes | Akool API key |
+| `AvatarID` | `string` | No | Avatar ID |
+| `Enable` | `*bool` | No | Enable or disable the avatar |
+| `AdditionalParams` | `map[string]interface{}` | No | Additional vendor parameters |
 
----
+#### `NewLiveAvatarAvatar`
+
+Requires TTS at **24,000 Hz** (`SampleRate24kHz`).
+
+```go
+func NewLiveAvatarAvatar(opts LiveAvatarAvatarOptions) *LiveAvatarAvatar
+```
+
+Panics if `APIKey` or `AgoraUID` is empty, or if `Quality` is not `"low"`, `"medium"`, or `"high"`.
+
+#### `NewAnamAvatar`
+
+```go
+func NewAnamAvatar(opts AnamAvatarOptions) *AnamAvatar
+```
+
+Panics if `APIKey` is empty.
 
 ## Token utilities
 
@@ -1189,8 +1321,6 @@ session := agentkit.NewAgentSession(agentkit.AgentSessionOptions{
     ExpiresIn: expiresIn,
 })
 ```
-
----
 
 ## Types and constants
 

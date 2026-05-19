@@ -61,18 +61,6 @@ The following read-only properties are available on any `AgoraClient` instance.
 
 The following methods are available in addition to the Fern-generated sub-client methods.
 
-#### `stopAgent(agentSessionId)`
-
-Stops a running agent session by ID without requiring a reference to the `AgentSession` object. Use this in stateless server architectures where the stop handler runs in a different process from the one that called `start()`.
-
-```typescript
-await client.stopAgent(agentSessionId);
-```
-
-| Parameter | Type | Description |
-|---|---|---|
-| `agentSessionId` | `string` | The agent ID returned by [`session.start()`](#start) |
-
 #### `nextRegion()`
 
 Cycles to the next region prefix in the domain pool. Call this after a request failure to try a different regional endpoint.
@@ -95,7 +83,7 @@ await client.selectBestDomain();
 
 #### `getCurrentURL()`
 
-Returns the full API URL currently in use.
+Returns the full API URL currently in use as a `string`.
 
 ```typescript
 const url = client.getCurrentURL();
@@ -108,9 +96,11 @@ const url = client.getCurrentURL();
 
 | Property | Description |
 |---|---|
-| `client.agents` | Start, stop, update, speak, interrupt, get, list agents |
+| `client.agents` | Start, stop, update, speak, interrupt, get history, list agents |
 | `client.telephony` | Telephony operations |
 | `client.phoneNumbers` | Phone number management |
+
+Sub-clients are lazily initialized on first access. For most use cases, prefer the [`AgentSession`](#agentsession) API over calling `client.agents` directly.
 
 For full method signatures and request parameters, see the [REST API reference](/conversational-ai/rest-api/agent/join).
 
@@ -139,6 +129,7 @@ All options are optional. Use the [builder methods](#builder-methods) to set ven
 | `failureMessage` | `string` | `undefined` | Message spoken when an LLM call fails |
 | `maxHistory` | `number` | `undefined` | Maximum conversation turns kept in LLM context |
 | `turnDetection` | `TurnDetectionConfig` | `undefined` | Voice activity detection settings |
+| `interruption` | `InterruptionConfig` | `undefined` | Unified interruption control settings |
 | `sal` | `SalConfig` | `undefined` | Selective Attention Locking configuration |
 | `avatar` | `AvatarConfig` | `undefined` | Avatar configuration |
 | `advancedFeatures` | `AdvancedFeatures` | `undefined` | Enable MLLM mode, AI-VAD, and other advanced features |
@@ -178,7 +169,7 @@ withStt(vendor: BaseSTT): Agent<TTSSampleRate>
 
 #### `withMllm(vendor)`
 
-Sets the MLLM vendor for multimodal mode. Pass [`OpenAIRealtime`](#openairealtime) or [`VertexAI`](#vertexai). Requires `advancedFeatures: { enable_mllm: true }` in the constructor.
+Sets the MLLM vendor for multimodal mode. Pass [`OpenAIRealtime`](#openairealtime), [`GeminiLive`](#geminilive), or [`VertexAI`](#vertexai). Requires `advancedFeatures: { enable_mllm: true }` in the constructor. Calling `withMllm()` automatically sets `mllm.enable = true`.
 
 ```typescript
 withMllm(vendor: BaseMLLM): Agent<TTSSampleRate>
@@ -197,10 +188,18 @@ withAvatar<RequiredSR extends number>(
 
 #### `withTurnDetection(config)`
 
-Configures voice activity detection. Use `config.start_of_speech` and `config.end_of_speech` for the SOS/EOS model.
+Configures cascading-flow turn detection. Use `config.start_of_speech` and `config.end_of_speech` for SOS/EOS detection. Use `withInterruption()` for interruption behavior and MLLM vendor `turnDetection` for MLLM turn detection.
 
 ```typescript
 withTurnDetection(config: TurnDetectionConfig): Agent<TTSSampleRate>
+```
+
+#### `withInterruption(config)`
+
+Configures unified interruption behavior using the top-level `interruption` object. Use this for `start_of_speech` and `keywords` interruption modes.
+
+```typescript
+withInterruption(config: InterruptionConfig): Agent<TTSSampleRate>
 ```
 
 #### `withInstructions(text)`
@@ -235,6 +234,7 @@ The following methods follow the same pattern — each returns a new `Agent` ins
 |---|---|---|
 | `withSal(config)` | `SalConfig` | Set Selective Attention Locking configuration |
 | `withAdvancedFeatures(features)` | `AdvancedFeatures` | Set advanced features |
+| `withTools(enabled)` | `boolean` | Enable or disable MCP tool invocation |
 | `withParameters(parameters)` | `SessionParams` | Set session parameters |
 | `withFailureMessage(message)` | `string` | Set the message spoken when the LLM fails |
 | `withMaxHistory(n)` | `number` | Set the maximum conversation history length |
@@ -266,9 +266,20 @@ createSession(
 | `expiresIn` | `number` | No | Token lifetime in seconds. Only applies when the token is auto-generated. Valid range: 1–86400. Use [`ExpiresIn`](#expiresin) helpers for clarity |
 | `idleTimeout` | `number` | No | Seconds before the agent auto-exits when no audio is detected. `0` disables the timeout |
 | `enableStringUid` | `boolean` | No | Use string UIDs instead of numeric UIDs |
-| `preset` | `string` | `AgentPreset[]` | No | Session-level preset IDs to use as the base ASR/LLM/TTS configuration. Accepts a comma-separated string. |
+| `preset` | `string \| AgentPreset[]` | No | Session-level preset IDs to use as the base ASR/LLM/TTS configuration. Accepts a comma-separated string or an array of `AgentPresets.*` values |
 | `pipelineId` | `string` | No | Published AI Studio pipeline ID to use as the base configuration |
 | `debug` | `boolean` | No | Log API requests to the console |
+
+`preset` is session-scoped because the underlying Agora start/join API applies presets per session, not per reusable `Agent` definition.
+
+When you omit credentials for supported reseller-backed vendor models, AgentKit infers the matching session preset automatically:
+
+- Deepgram STT: `nova-2`, `nova-3`
+- OpenAI LLM: `gpt-4o-mini`, `gpt-4.1-mini`, `gpt-5-nano`, `gpt-5-mini`
+- OpenAI TTS: `tts-1`
+- MiniMax TTS: `speech-2.6-turbo`, `speech-2.8-turbo`
+
+If you provide your own vendor API key for those same models, AgentKit keeps the request in BYOK mode and does not infer a preset.
 
 ### Properties
 
@@ -287,6 +298,7 @@ Read-only properties available on any `Agent` instance.
 | `mllm` | `MllmConfig \| undefined` | MLLM configuration |
 | `avatar` | `AvatarConfig \| undefined` | Avatar configuration |
 | `turnDetection` | `TurnDetectionConfig \| undefined` | Turn detection configuration |
+| `interruption` | `InterruptionConfig \| undefined` | Interruption configuration |
 | `sal` | `SalConfig \| undefined` | SAL configuration |
 | `advancedFeatures` | `AdvancedFeatures \| undefined` | Advanced features |
 | `parameters` | `SessionParams \| undefined` | Session parameters |
@@ -295,6 +307,10 @@ Read-only properties available on any `Agent` instance.
 | `rtc` | `RtcConfig \| undefined` | RTC configuration |
 | `fillerWords` | `FillerWordsConfig \| undefined` | Filler words configuration |
 | `config` | `AgentOptions` | Full read-only configuration snapshot |
+
+### `toProperties()`
+
+Low-level method to convert the agent configuration to the Fern request format. Used internally by `AgentSession.start()`. You typically do not need to call this directly unless building custom request bodies.
 
 
 ## AgentSession
@@ -308,6 +324,7 @@ import { AgentSession } from 'agora-agent-sdk';
 ### State machine
 
 A session progresses through the following states:
+
 ```
 idle ──► starting ──► running ──► stopping ──► stopped
                          │
@@ -333,7 +350,7 @@ The following methods are available on an `AgentSession` instance.
 
 #### `start()`
 
-Starts the agent session. Generates tokens if not provided, sends the start request, and returns the agent ID.
+Starts the agent session. Generates tokens if not provided, sends the start request, and returns the agent ID. Resolves explicit `preset` values and also infers reseller presets from supported vendor configs when credentials are omitted.
 
 ```typescript
 start(): Promise<string>
@@ -398,6 +415,14 @@ Fetches the conversation history for this session. Requires a valid agent ID —
 getHistory(): Promise<ConversationHistory>
 ```
 
+#### `getTurns()`
+
+Fetches turn-by-turn analytics for this session, including start/end events and latency metrics. Requires a valid agent ID — `start()` must have been called successfully.
+
+```typescript
+getTurns(): Promise<ConversationTurns>
+```
+
 #### `getInfo()`
 
 Fetches current agent metadata from the API. Requires a valid agent ID.
@@ -455,6 +480,23 @@ await session.raw.someNewEndpoint({
 });
 ```
 
+### Presets and BYOK
+
+`preset` lives on the session because Agora applies presets when the agent joins a channel.
+
+AgentKit supports both explicit presets and BYOK:
+
+- Pass `preset` directly on `agent.createSession(...)` when you want to choose the base reseller configuration yourself.
+- Provide vendor credentials for preset-capable models when you want full BYOK behavior.
+- Omit credentials for supported reseller models when you want AgentKit to infer the matching preset automatically.
+
+Supported inferred preset models:
+
+- Deepgram STT: `nova-2`, `nova-3`
+- OpenAI LLM: `gpt-4o-mini`, `gpt-4.1-mini`, `gpt-5-nano`, `gpt-5-mini`
+- OpenAI TTS: `tts-1`
+- MiniMax TTS: `speech-2.6-turbo`, `speech-2.8-turbo`
+
 ## Vendors
 
 All vendor classes are imported from `agora-agent-sdk`. Pass vendor instances to the [Agent builder methods](#builder-methods).
@@ -471,7 +513,7 @@ new OpenAI(options: OpenAIOptions)
 
 | Option | Type | Required | Description |
 |---|---|---|---|
-| `apiKey` | `string` | Yes | OpenAI API key |
+| `apiKey` | `string` | Usually | OpenAI API key |
 | `model` | `string` | Yes | Model name, for example `'gpt-4o-mini'` |
 | `url` | `string` | No | API endpoint URL. Default: `https://api.openai.com/v1/chat/completions` |
 | `maxHistory` | `number` | No | Maximum conversation history to cache |
@@ -479,7 +521,13 @@ new OpenAI(options: OpenAIOptions)
 | `greetingMessage` | `string` | No | Agent greeting message |
 | `failureMessage` | `string` | No | Message spoken when the LLM call fails |
 | `inputModalities` | `string[]` | No | Input modalities. Default: `["text"]` |
+| `outputModalities` | `string[]` | No | Output modalities |
 | `params` | `Record<string, unknown>` | No | Additional LLM parameters passed to the model |
+| `headers` | `Record<string, string>` | No | Custom HTTP headers forwarded to the LLM provider |
+| `greetingConfigs` | `LlmGreetingConfigs` | No | Greeting playback configuration |
+| `templateVariables` | `Record<string, string>` | No | Template variables for messages |
+
+`apiKey` is optional for the following reseller preset models: `gpt-4o-mini`, `gpt-4.1-mini`, `gpt-5-nano`, `gpt-5-mini`. If `apiKey` is omitted for one of those models, AgentKit infers the matching session preset. This no-key branch is only available with the default OpenAI endpoint and without a custom vendor hint. If `apiKey` is provided, AgentKit uses standard BYOK behavior instead.
 
 #### AzureOpenAI
 
@@ -499,7 +547,11 @@ new AzureOpenAI(options: AzureOpenAIOptions)
 | `greetingMessage` | `string` | No | Agent greeting message |
 | `failureMessage` | `string` | No | Message spoken when the LLM call fails |
 | `inputModalities` | `string[]` | No | Input modalities. Default: `["text"]` |
+| `outputModalities` | `string[]` | No | Output modalities |
 | `params` | `Record<string, unknown>` | No | Additional LLM parameters |
+| `headers` | `Record<string, string>` | No | Custom HTTP headers forwarded to the LLM provider |
+| `greetingConfigs` | `LlmGreetingConfigs` | No | Greeting playback configuration |
+| `templateVariables` | `Record<string, string>` | No | Template variables for messages |
 
 #### Anthropic
 
@@ -517,7 +569,11 @@ new Anthropic(options: AnthropicOptions)
 | `greetingMessage` | `string` | No | Agent greeting message |
 | `failureMessage` | `string` | No | Message spoken when the LLM call fails |
 | `inputModalities` | `string[]` | No | Input modalities. Default: `["text"]` |
+| `outputModalities` | `string[]` | No | Output modalities |
 | `params` | `Record<string, unknown>` | No | Additional LLM parameters |
+| `headers` | `Record<string, string>` | No | Custom HTTP headers forwarded to the LLM provider |
+| `greetingConfigs` | `LlmGreetingConfigs` | No | Greeting playback configuration |
+| `templateVariables` | `Record<string, string>` | No | Template variables for messages |
 
 #### Gemini
 
@@ -535,9 +591,11 @@ new Gemini(options: GeminiOptions)
 | `greetingMessage` | `string` | No | Agent greeting message |
 | `failureMessage` | `string` | No | Message spoken when the LLM call fails |
 | `inputModalities` | `string[]` | No | Input modalities. Default: `["text"]` |
+| `outputModalities` | `string[]` | No | Output modalities |
 | `params` | `Record<string, unknown>` | No | Additional LLM parameters |
-
----
+| `headers` | `Record<string, string>` | No | Custom HTTP headers forwarded to the LLM provider |
+| `greetingConfigs` | `LlmGreetingConfigs` | No | Greeting playback configuration |
+| `templateVariables` | `Record<string, string>` | No | Template variables for messages |
 
 ### TTS vendors
 
@@ -582,10 +640,14 @@ new OpenAITTS(options: OpenAITTSOptions)
 
 | Option | Type | Required | Description |
 |---|---|---|---|
-| `key` | `string` | Yes | OpenAI API key |
+| `apiKey` | `string` | Usually | OpenAI API key |
 | `voice` | `string` | Yes | Voice name: `'alloy'`, `'echo'`, `'fable'`, `'onyx'`, `'nova'`, or `'shimmer'` |
 | `model` | `string` | No | Model name, for example `'tts-1'` or `'tts-1-hd'` |
+| `responseFormat` | `string` | No | Audio format, for example `'pcm'` |
+| `speed` | `number` | No | Speech speed multiplier |
 | `skipPatterns` | `number[]` | No | Skip patterns for bracketed content |
+
+`apiKey` is optional only for the reseller-backed `tts-1` preset path. If omitted with `model: 'tts-1'` or no explicit model, AgentKit infers `openai_tts_1`. If provided, the request stays in BYOK mode.
 
 #### CartesiaTTS
 
@@ -595,8 +657,8 @@ new CartesiaTTS<SR extends CartesiaSampleRate>(options: CartesiaTTSOptions<SR>)
 
 | Option | Type | Required | Description |
 |---|---|---|---|
-| `key` | `string` | Yes | Cartesia API key |
-| `voiceId` | `string` | Yes | Voice ID |
+| `apiKey` | `string` | Yes | Cartesia API key |
+| `voiceId` | `string` | Yes | Voice ID (serialized as `{"mode": "id", "id": "..."}`) |
 | `modelId` | `string` | No | Model ID |
 | `sampleRate` | `8000 \| 16000 \| 22050 \| 24000 \| 44100 \| 48000` | No | Audio sample rate in Hz |
 | `skipPatterns` | `number[]` | No | Skip patterns for bracketed content |
@@ -607,14 +669,15 @@ new CartesiaTTS<SR extends CartesiaSampleRate>(options: CartesiaTTSOptions<SR>)
 |---|---|
 | `GoogleTTS` | `key`, `voiceName`, `languageCode?` |
 | `AmazonTTS` | `accessKey`, `secretKey`, `region`, `voiceId` |
+| `DeepgramTTS` | `apiKey`, `model`, `baseUrl?`, `sampleRate?`, `params?` |
 | `HumeAITTS` | `key`, `configId?` |
-| `RimeTTS` | `key`, `speaker`, `modelId?` |
+| `RimeTTS` | `key`, `speaker`, `modelId?`, `lang?`, `samplingRate?`, `speedAlpha?` |
 | `FishAudioTTS` | `key`, `referenceId` |
-| `MiniMaxTTS` | `key`, `groupId`, `model`, `voiceId`, `url` |
+| `MiniMaxTTS` | `key?`, `groupId?`, `model`, `voiceId?`, `url?` |
 | `MurfTTS` | `key`, `voiceId`, `style?` |
 | `SarvamTTS` | `key`, `speaker`, `targetLanguageCode` |
 
----
+For `MiniMaxTTS`, `key` is optional only for reseller-backed models: `speech-2.6-turbo`, `speech-2.8-turbo`. If `key` is omitted for one of those models, AgentKit infers the matching session preset. In that preset-backed path, `groupId`, `voiceId`, and `url` are optional overrides rather than required fields. If `key` is provided, AgentKit uses BYOK.
 
 ### STT vendors
 
@@ -630,12 +693,14 @@ All options are optional.
 
 | Option | Type | Description |
 |---|---|---|
-| `apiKey` | `string` | Deepgram API key |
+| `apiKey` | `string` | Deepgram API key. Optional for `nova-2` and `nova-3` reseller preset usage |
 | `model` | `string` | Model name, for example `'nova-2'` or `'enhanced'` |
 | `language` | `string` | Language code, for example `'en-US'` |
 | `smartFormat` | `boolean` | Enable smart formatting |
 | `punctuation` | `boolean` | Enable punctuation |
 | `additionalParams` | `Record<string, unknown>` | Additional vendor parameters |
+
+If `apiKey` is omitted for `nova-2` or `nova-3`, AgentKit infers the matching Deepgram reseller preset. For all other Deepgram models, TypeScript requires `apiKey`.
 
 #### Other STT vendors
 
@@ -649,8 +714,6 @@ All options are optional.
 | `AssemblyAISTT` | `apiKey`, `language?` |
 | `AresSTT` | `language?` |
 | `SarvamSTT` | `apiKey`, `language` |
-
----
 
 ### MLLM vendors
 
@@ -668,10 +731,37 @@ new OpenAIRealtime(options: OpenAIRealtimeOptions)
 | `model` | `string` | No | Model name, for example `'gpt-4o-realtime-preview'` |
 | `url` | `string` | No | WebSocket URL |
 | `greetingMessage` | `string` | No | Agent greeting message |
+| `failureMessage` | `string` | No | Message played when the model call fails |
+| `maxHistory` | `number` | No | Maximum conversation history length |
+| `predefinedTools` | `string[]` | No | Predefined tools, for example `['_publish_message']` |
 | `inputModalities` | `string[]` | No | Input modalities, for example `['audio']` |
 | `outputModalities` | `string[]` | No | Output modalities, for example `['text', 'audio']` |
 | `messages` | `Record<string, unknown>[]` | No | Conversation messages for short-term memory |
 | `params` | `Record<string, unknown>` | No | Additional MLLM parameters |
+| `turnDetection` | `MllmTurnDetectionConfig` | No | MLLM turn detection configuration; overrides top-level `turnDetection` |
+
+#### GeminiLive
+
+```typescript
+new GeminiLive(options: GeminiLiveOptions)
+```
+
+| Option | Type | Required | Description |
+|---|---|---|---|
+| `apiKey` | `string` | Yes | Google API key |
+| `model` | `string` | Yes | Model name, for example `'gemini-live-2.5-flash'` |
+| `url` | `string` | No | WebSocket URL |
+| `instructions` | `string` | No | System instructions for the model |
+| `voice` | `string` | No | Voice name, for example `'Aoede'` or `'Charon'` |
+| `greetingMessage` | `string` | No | Agent greeting message |
+| `failureMessage` | `string` | No | Message played when the model call fails |
+| `maxHistory` | `number` | No | Maximum conversation history length |
+| `predefinedTools` | `string[]` | No | Predefined tools, for example `['_publish_message']` |
+| `inputModalities` | `string[]` | No | Input modalities |
+| `outputModalities` | `string[]` | No | Output modalities |
+| `messages` | `Record<string, unknown>[]` | No | Conversation messages for short-term memory |
+| `additionalParams` | `Record<string, unknown>` | No | Additional parameters |
+| `turnDetection` | `MllmTurnDetectionConfig` | No | MLLM turn detection configuration; overrides top-level `turnDetection` |
 
 #### VertexAI
 
@@ -685,15 +775,18 @@ new VertexAI(options: VertexAIOptions)
 | `projectId` | `string` | Yes | Google Cloud project ID |
 | `location` | `string` | Yes | Google Cloud location or region |
 | `adcCredentialsString` | `string` | Yes | Application Default Credentials JSON string |
+| `url` | `string` | No | WebSocket URL |
 | `instructions` | `string` | No | System instructions for the model |
 | `voice` | `string` | No | Voice name, for example `'Aoede'` or `'Charon'` |
 | `greetingMessage` | `string` | No | Agent greeting message |
+| `failureMessage` | `string` | No | Message played when the model call fails |
+| `maxHistory` | `number` | No | Maximum conversation history length |
+| `predefinedTools` | `string[]` | No | Predefined tools, for example `['_publish_message']` |
 | `inputModalities` | `string[]` | No | Input modalities |
 | `outputModalities` | `string[]` | No | Output modalities |
 | `messages` | `Record<string, unknown>[]` | No | Conversation messages for short-term memory |
 | `additionalParams` | `Record<string, unknown>` | No | Additional parameters |
-
----
+| `turnDetection` | `MllmTurnDetectionConfig` | No | MLLM turn detection configuration; overrides top-level `turnDetection` |
 
 ### Avatar vendors
 

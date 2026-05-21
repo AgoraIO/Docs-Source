@@ -1955,21 +1955,24 @@ def cleanup_html_tags(text):
     Clean up HTML tags in markdown content:
     - Replace <code></code> with backticks
     - Remove <span> tags but keep enclosed text
+    - Remove <sup> and <sub> tags but keep enclosed text
     """
     
     # Replace <code></code> with backticks
-    # Handle both single-line and multi-line code tags
     code_pattern = r'<code[^>]*>(.*?)</code>'
     text = re.sub(code_pattern, r'`\1`', text, flags=re.DOTALL)
     
     # Remove <span> tags but keep the text content
-    # This handles both self-closing and regular span tags
     span_pattern = r'<span[^>]*>(.*?)</span>'
     text = re.sub(span_pattern, r'\1', text, flags=re.DOTALL)
     
-    # Also handle self-closing span tags (though they shouldn't contain text)
+    # Also handle self-closing span tags
     span_self_closing = r'<span[^>]*/>'
     text = re.sub(span_self_closing, '', text)
+
+    # Remove <sup> and <sub> tags but keep the text content
+    text = re.sub(r'<sup[^>]*>(.*?)</sup>', r'\1', text, flags=re.DOTALL)
+    text = re.sub(r'<sub[^>]*>(.*?)</sub>', r'\1', text, flags=re.DOTALL)
     
     return text
 

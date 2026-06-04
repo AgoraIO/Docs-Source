@@ -8,7 +8,6 @@ description: >
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import CodeBlock from '@theme/CodeBlock';
 
 In <Vpd k="NAME" /> interaction scenarios, your use case may require a custom large language model (Custom LLM). This document explains how to integrate a custom LLM into Agora's <Vpd k="NAME" />.
 
@@ -25,7 +24,7 @@ This approach enables you to implement additional custom functionalities, includ
 
 ## Prerequisites
 
-- Implemented the basic logic for interacting with a <Vpd k="AGENT" /> by following the [REST Quickstart](../get-started/quickstart).
+- Implemented the basic logic for interacting with a <Vpd k="AGENT" />.
 - Set up access to a custom LLM service.
 - Prepared a vector database or retrieval system if using Retrieval-Augmented Generation (RAG).
 
@@ -46,8 +45,8 @@ The following example demonstrates how to implement an OpenAI API-compliant inte
 <Tabs groupId="language">
 <TabItem value="python" label="Python">
 
-<CodeBlock showLineNumbers language="python">
-{`class TextContent(BaseModel):
+```python
+class TextContent(BaseModel):
     type: str = "text"
     text: str
 
@@ -137,8 +136,8 @@ async def create_chat_completion(request: ChatCompletionRequest):
             try:
                 async for chunk in response:
                     logger.debug(f"Received chunk: {chunk}")
-                    yield f"data: {json.dumps(chunk.to_dict())}\\n\\n"
-                yield "data: [DONE]\\n\\n"
+                    yield f"data: {json.dumps(chunk.to_dict())}\n\n"
+                yield "data: [DONE]\n\n"
             except asyncio.CancelledError:
                 logger.info("Request was cancelled")
                 raise
@@ -149,84 +148,179 @@ async def create_chat_completion(request: ChatCompletionRequest):
         raise HTTPException(status_code=499, detail="Request was cancelled")
     except Exception as e:
         traceback_str = "".join(traceback.format_tb(e.__traceback__))
-        error_message = f"{str(e)}\\n{traceback_str}"
+        error_message = f"{str(e)}\n{traceback_str}"
         logger.error(error_message)
-        raise HTTPException(status_code=500, detail=error_message)`}
-</CodeBlock>
+        raise HTTPException(status_code=500, detail=error_message)
+```
+</TabItem>
+
+<TabItem value="typescript" label="Node.js">
+
+```js
+const express = require('express');
+const OpenAI = require('openai');
+
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.YOUR_LLM_API_KEY,
+});
+
+// Initialize Express app
+const app = express();
+app.use(express.json());
+
+// Configure logging
+const logger = {
+  info: (message) => console.log('INFO: ' + message),
+  debug: (message) => console.log('DEBUG: ' + message),
+  error: (message, error) => console.error('ERROR: ' + message, error),
+};
+
+// Chat Completions endpoint
+app.post('/chat/completions', async (req, res) => {
+  try {
+    logger.info('Received request: ' + JSON.stringify(req.body));
+
+    const {
+      model,
+      messages,
+      modalities = ['text'],
+      tools,
+      tool_choice,
+      response_format,
+      audio,
+      stream = true,
+      stream_options,
+    } = req.body;
+
+    if (!stream) {
+      return res
+        .status(400)
+        .json({ detail: 'chat completions require streaming' });
+    }
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Create OpenAI streaming completion
+    const completion = await openai.chat.completions.create({
+      model,
+      messages,
+      tools: tools ? tools : undefined,
+      tool_choice: tools && tool_choice ? tool_choice : undefined,
+      modalities,
+      audio,
+      response_format,
+      stream: true,
+      stream_options,
+    });
+
+    // Stream the response
+    for await (const chunk of completion) {
+      logger.debug('Received chunk: ' + JSON.stringify(chunk));
+      res.write('data: ' + JSON.stringify(chunk) + '\n\n');
+    }
+
+    // End the stream
+    res.write('data: [DONE]\n\n');
+    res.end();
+  } catch (error) {
+    logger.error('Chat completion error:', error);
+
+    if (!res.headersSent) {
+      const errorDetail = error.message + '\n' + (error.stack || '');
+      return res.status(500).json({ detail: errorDetail });
+    }
+
+    res.write('data: ' + JSON.stringify({ error: error.message }) + '\n\n');
+    res.write('data: [DONE]\n\n');
+    res.end();
+  }
+});
+
+// Start server
+const PORT = process.env.PORT || 8000;
+app.listen(PORT, () => {
+  logger.info('Server running on port ' + PORT);
+});
+```
 </TabItem>
 
 <TabItem value="go" label="Go">
-<CodeBlock showLineNumbers language="go">
-{`type (
+
+```go
+type (
 	AudioContent struct {
-		InputAudio map[string]string \`json:"input_audio"\`
-		Type       string            \`json:"type"\`
+		InputAudio map[string]string `json:"input_audio"`
+		Type       string            `json:"type"`
 	}
 
 	// Complete request format
 	ChatCompletionRequest struct {
 		// Assistant's audio reply
-		Audio map[string]string \`json:"audio,omitempty"\`
+		Audio map[string]string `json:"audio,omitempty"`
 		// Context information
-		Context map[string]any \`json:"context,omitempty"\`
+		Context map[string]any `json:"context,omitempty"`
 		// Message list
-		Messages []Message \`json:"messages"\`
+		Messages []Message `json:"messages"`
 		// Default uses text modality
-		Modalities []string \`json:"modalities"\`
+		Modalities []string `json:"modalities"`
 		// Model name to use
-		Model string \`json:"model,omitempty"\`
+		Model string `json:"model,omitempty"`
 		// Whether to call tools in parallel
-		ParallelToolCalls bool \`json:"parallel_tool_calls"\`
+		ParallelToolCalls bool `json:"parallel_tool_calls"`
 		// Response format
-		ResponseFormat *ResponseFormat \`json:"response_format,omitempty"\`
+		ResponseFormat *ResponseFormat `json:"response_format,omitempty"`
 		// Whether to use streaming response
-		Stream bool \`json:"stream"\`
+		Stream bool `json:"stream"`
 		// Streaming options
-		StreamOptions map[string]any \`json:"stream_options,omitempty"\`
+		StreamOptions map[string]any `json:"stream_options,omitempty"`
 		// Tool selection strategy, default value is "auto"
-		ToolChoice any \`json:"tool_choice,omitempty"\`
+		ToolChoice any `json:"tool_choice,omitempty"`
 		// Tool list
-		Tools []Tool \`json:"tools,omitempty"\`
+		Tools []Tool `json:"tools,omitempty"`
 	}
 
 	ImageContent struct {
-		ImageURL string \`json:"image_url"\`
-		Type     string \`json:"type"\`
+		ImageURL string `json:"image_url"`
+		Type     string `json:"type"`
 	}
 
 	Message struct {
-		Audio      map[string]string \`json:"audio,omitempty"\`
-		Content    any               \`json:"content"\`
-		Role       string            \`json:"role"\`
-		ToolCallID string            \`json:"tool_call_id,omitempty"\`
-		ToolCalls  []map[string]any  \`json:"tool_calls,omitempty"\`
+		Audio      map[string]string `json:"audio,omitempty"`
+		Content    any               `json:"content"`
+		Role       string            `json:"role"`
+		ToolCallID string            `json:"tool_call_id,omitempty"`
+		ToolCalls  []map[string]any  `json:"tool_calls,omitempty"`
 	}
 
 	ResponseFormat struct {
-		JSONSchema map[string]string \`json:"json_schema,omitempty"\`
-		Type       string            \`json:"type"\`
+		JSONSchema map[string]string `json:"json_schema,omitempty"`
+		Type       string            `json:"type"`
 	}
 
 	TextContent struct {
-		Text string \`json:"text"\`
-		Type string \`json:"type"\`
+		Text string `json:"text"`
+		Type string `json:"type"`
 	}
 
 	Tool struct {
-		Function ToolFunction \`json:"function"\`
-		Type     string       \`json:"type"\`
+		Function ToolFunction `json:"function"`
+		Type     string       `json:"type"`
 	}
 
 	ToolChoice struct {
-		Function map[string]any \`json:"function,omitempty"\`
-		Type     string         \`json:"type"\`
+		Function map[string]any `json:"function,omitempty"`
+		Type     string         `json:"type"`
 	}
 
 	ToolFunction struct {
-		Description string         \`json:"description,omitempty"\`
-		Name        string         \`json:"name"\`
-		Parameters  map[string]any \`json:"parameters,omitempty"\`
-		Strict      bool           \`json:"strict"\`
+		Description string         `json:"description,omitempty"`
+		Name        string         `json:"name"`
+		Parameters  map[string]any `json:"parameters,omitempty"`
+		Strict      bool           `json:"strict"`
 	}
 )
 
@@ -364,149 +458,91 @@ func main() {
 
 	// Start server
 	r.Run(":8000")
-}`}
-
-</CodeBlock>
+}
+```
 </TabItem>
-<TabItem value="node" label="Node.js">
 
-<CodeBlock showLineNumbers language="js">
-{`const express = require('express');
-const OpenAI = require('openai');
+</Tabs>
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.YOUR_LLM_API_KEY,
-});
+### Configure Conversational AI Engine
 
-// Initialize Express app
-const app = express();
-app.use(express.json());
+To configure the agent to use your custom LLM service, update the LLM configuration as follows:
 
-// Configure logging
-const logger = {
-  info: (message) => console.log('INFO: ' + message),
-  debug: (message) => console.log('DEBUG: ' + message),
-  error: (message, error) => console.error('ERROR: ' + message, error),
-};
+<Tabs groupId="language">
+<TabItem value="python" label="Python SDK">
 
-// Chat Completions endpoint
-app.post('/chat/completions', async (req, res) => {
-  try {
-    logger.info('Received request: ' + JSON.stringify(req.body));
+```python
+from agora_agent import CustomLLM
 
-    const {
-      model,
-      messages,
-      modalities = ['text'],
-      tools,
-      tool_choice,
-      response_format,
-      audio,
-      stream = true,
-      stream_options,
-    } = req.body;
+# ... other agent configuration ...
+.with_llm(CustomLLM(
+    api_key='your-llm-api-key',
+    base_url='https://your-custom-llm-service/chat/completions',
+    model='your-model-name',
+    system_messages=[{'role': 'system', 'content': 'You are a helpful assistant.'}],
+))
+# ... continue with .with_tts() and .create_session() ...
+```
 
-    if (!stream) {
-      return res
-        .status(400)
-        .json({ detail: 'chat completions require streaming' });
-    }
+</TabItem>
+<TabItem value="typescript" label="TypeScript SDK">
 
-    // Set SSE headers
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
+```typescript
+import { CustomLLM } from 'agora-agents';
 
-    // Create OpenAI streaming completion
-    const completion = await openai.chat.completions.create({
-      model,
-      messages,
-      tools: tools ? tools : undefined,
-      tool_choice: tools && tool_choice ? tool_choice : undefined,
-      modalities,
-      audio,
-      response_format,
-      stream: true,
-      stream_options,
-    });
+// ... other agent configuration ...
+.withLlm(new CustomLLM({
+  apiKey: 'your-llm-api-key',
+  url: 'https://your-custom-llm-service/chat/completions',
+  model: 'your-model-name',
+  systemMessages: [{ role: 'system', content: 'You are a helpful assistant.' }],
+}))
+// ... continue with .withTts() and .createSession() ...
+```
 
-    // Stream the response
-    for await (const chunk of completion) {
-      logger.debug('Received chunk: ' + JSON.stringify(chunk));
-      res.write('data: ' + JSON.stringify(chunk) + '\\n\\n');
-    }
+</TabItem>
+<TabItem value="go" label="Go SDK">
 
-    // End the stream
-    res.write('data: [DONE]\\n\\n');
-    res.end();
-  } catch (error) {
-    logger.error('Chat completion error:', error);
+```go
+// ... other agent configuration ...
+.WithLlm(
+    vendors.NewCustomLLM(vendors.CustomLLMOptions{
+        APIKey:  "your-llm-api-key",
+        BaseURL: "https://your-custom-llm-service/chat/completions",
+        Model:   "your-model-name",
+        SystemMessages: []map[string]interface{}{
+            {"role": "system", "content": "You are a helpful assistant."},
+        },
+    }),
+)
+// ... continue with .WithTts() and .CreateSession() ...
+```
 
-    if (!res.headersSent) {
-      const errorDetail = error.message + '\\n' + (error.stack || '');
-      return res.status(500).json({ detail: errorDetail });
-    }
+</TabItem>
+<TabItem value="json" label="JSON">
 
-    res.write('data: ' + JSON.stringify({ error: error.message }) + '\\n\\n');
-    res.write('data: [DONE]\\n\\n');
-    res.end();
+```json
+{
+  "llm": {
+    "url": "https://your-custom-llm-service/chat/completions",
+    "api_key": "your-llm-api-key",
+    "system_messages": [
+      {
+        "role": "system",
+        "content": "You are a helpful assistant."
+      }
+    ]
   }
-});
+}
+```
 
-// Start server
-const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => {
-  logger.info('Server running on port ' + PORT);
-});`}
-</CodeBlock>
 </TabItem>
 </Tabs>
 
-When calling the POST method to [Start a conversational AI agent](/conversational-ai/rest-api/agent/join), use the LLM configuration to point your agent to the custom service:
-
-```json
-{
-  "llm": {
-    "url": "https://your-custom-llm-service/chat/completions",
-    "api_key": "",
-    "system_messages": [
-      {
-        "role": "system",
-        "content": "You are a helpful assistant."
-      }
-    ]
-  }
-}
-```
 
 <Admonition type="info">
 If accessing your custom LLM service requires identity verification, provide the authentication information in the `api_key` field.
 </Admonition>
-
-
-### Configure Agora's Conversational AI Engine
-
-When you [Start a conversational AI agent](/conversational-ai/rest-api/agent/join), use the `llm` configuration to point your agent to the custom service:
-
-<Admonition type="info">
-If accessing your custom LLM service requires identity verification, provide the authentication information in the `api_key` field.
-</Admonition>
-
-```json
-{
-  "llm": {
-    "url": "https://your-custom-llm-service/chat/completions",
-    "api_key": "",
-    "system_messages": [
-      {
-        "role": "system",
-        "content": "You are a helpful assistant."
-      }
-    ]
-  }
-}
-```
 
 ## Advanced features
 
@@ -521,8 +557,8 @@ The following example simulates the process of retrieving and returning content 
 <Tabs groupId="language">
 <TabItem value="python" label="Python">
 
-<CodeBlock showLineNumbers language="python">
-{`async def perform_rag_retrieval(messages: Optional[Dict]) -> str:
+```python
+async def perform_rag_retrieval(messages: Optional[Dict]) -> str:
     """
     Retrieve relevant content from the knowledge base using the RAG model.
 
@@ -590,7 +626,7 @@ async def create_rag_chat_completion(request: ChatCompletionRequest):
                     }
                 ],
             }
-            yield f"data: {json.dumps(waiting_message)}\\n\\n"
+            yield f"data: {json.dumps(waiting_message)}\n\n"
 
             # Perform RAG retrieval.
             retrieved_context = await perform_rag_retrieval(request.messages)
@@ -619,8 +655,8 @@ async def create_rag_chat_completion(request: ChatCompletionRequest):
             try:
                 async for chunk in response:
                     logger.debug(f"Received RAG chunk: {chunk}")
-                    yield f"data: {json.dumps(chunk.to_dict())}\\n\\n"
-                yield "data: [DONE]\\n\\n"
+                    yield f"data: {json.dumps(chunk.to_dict())}\n\n"
+                yield "data: [DONE]\n\n"
             except asyncio.CancelledError:
                 logger.info("RAG stream was cancelled")
                 raise
@@ -632,15 +668,146 @@ async def create_rag_chat_completion(request: ChatCompletionRequest):
         raise HTTPException(status_code=499, detail="Request was cancelled")
     except Exception as e:
         traceback_str = "".join(traceback.format_tb(e.__traceback__))
-        error_message = f"{str(e)}\\n{traceback_str}"
+        error_message = f"{str(e)}\n{traceback_str}"
         logger.error(error_message)
-        raise HTTPException(status_code=500, detail=error_message)`}
-</CodeBlock>
+        raise HTTPException(status_code=500, detail=error_message)
+```
 </TabItem>
 
+<TabItem value="typescript" label="Node.js">
+
+```js
+/**
+ * Retrieve relevant content from the knowledge base using the RAG model.
+ *
+ * @param {Array} messages - The original message list.
+ * @returns {Promise<string>} The retrieved text content.
+ */
+async function performRagRetrieval(messages) {
+  // TODO: Implement the actual RAG retrieval logic.
+  // You can choose the first or last message from the message list as the query,
+  // then send the query to the RAG model to retrieve relevant content.
+
+  // Return the retrieval result.
+  return 'This is relevant content retrieved from the knowledge base.';
+}
+
+/**
+ * Modify the message list by adding the retrieved context to the original messages.
+ *
+ * @param {string} context - The retrieved context.
+ * @param {Array} messages - The original message list.
+ * @returns {Array} The modified message list.
+ */
+function refactMessages(context, messages) {
+  // TODO: Implement the actual message modification logic.
+  // This should add the retrieved context to the original message list.
+
+  return messages;
+}
+
+// Random waiting messages
+const waitingMessages = [
+  "Just a moment, I'm thinking...",
+  'Let me think about that for a second...',
+  'Good question, let me find out...',
+];
+
+// RAG Chat Completions endpoint
+app.post('/rag/chat/completions', async (req, res) => {
+  try {
+    logger.info('Received RAG request: ' + JSON.stringify(req.body));
+
+    const {
+      model,
+      messages,
+      modalities = ['text'],
+      tools,
+      tool_choice,
+      response_format,
+      audio,
+      stream = true,
+      stream_options,
+    } = req.body;
+
+    if (!stream) {
+      return res
+        .status(400)
+        .json({ detail: 'chat completions require streaming' });
+    }
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // First, send a "please wait" prompt
+    const waitingMessage = {
+      id: 'waiting_msg',
+      choices: [
+        {
+          index: 0,
+          delta: {
+            role: 'assistant',
+            content:
+              waitingMessages[
+                Math.floor(Math.random() * waitingMessages.length)
+              ],
+          },
+          finish_reason: null,
+        },
+      ],
+    };
+
+    res.write('data: ' + JSON.stringify(waitingMessage) + '\n\n');
+
+    // Perform RAG retrieval
+    const retrievedContext = await performRagRetrieval(messages);
+
+    // Modify messages
+    const refactedMessages = refactMessages(retrievedContext, messages);
+
+    // Request LLM completion
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: refactedMessages,
+      tools: tools ? tools : undefined,
+      tool_choice: tools && tool_choice ? tool_choice : undefined,
+      modalities,
+      audio,
+      response_format,
+      stream: true,
+      stream_options,
+    });
+
+    // Stream the response
+    for await (const chunk of completion) {
+      logger.debug('Received RAG chunk: ' + JSON.stringify(chunk));
+      res.write('data: ' + JSON.stringify(chunk) + '\n\n');
+    }
+
+    // End the stream
+    res.write('data: [DONE]\n\n');
+    res.end();
+  } catch (error) {
+    logger.error('RAG chat completion error:', error);
+
+    if (!res.headersSent) {
+      const errorDetail = error.message + '\n' + (error.stack || '');
+      return res.status(500).json({ detail: errorDetail });
+    }
+
+    res.write('data: ' + JSON.stringify({ error: error.message }) + '\n\n');
+    res.write('data: [DONE]\n\n');
+    res.end();
+  }
+});
+```
+</TabItem>
 <TabItem value="go" label="Go">
-<CodeBlock showLineNumbers language="go">
-{`// Handle RAG Chat Completion endpoint
+
+```go
+// Handle RAG Chat Completion endpoint
 func (s *Server) handleRAGChatCompletion(c *gin.Context) {
 	var request ChatCompletionRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -735,161 +902,10 @@ func (s *Server) refactMessages(context string, messages []Message) []Message {
 	// This should add the retrieved context to the original message list
 	// Only return original messages
 	return messages
-}`}
-</CodeBlock>
-</TabItem>
-<TabItem value="node" label="Node.js">
-
-<CodeBlock showLineNumbers language="js">
-{`/**
- * Retrieve relevant content from the knowledge base using the RAG model.
- *
- * @param {Array} messages - The original message list.
- * @returns {Promise<string>} The retrieved text content.
- */
-async function performRagRetrieval(messages) {
-  // TODO: Implement the actual RAG retrieval logic.
-  // You can choose the first or last message from the message list as the query,
-  // then send the query to the RAG model to retrieve relevant content.
-
-  // Return the retrieval result.
-  return 'This is relevant content retrieved from the knowledge base.';
-}
-
-/**
- * Modify the message list by adding the retrieved context to the original messages.
- *
- * @param {string} context - The retrieved context.
- * @param {Array} messages - The original message list.
- * @returns {Array} The modified message list.
- */
-function refactMessages(context, messages) {
-  // TODO: Implement the actual message modification logic.
-  // This should add the retrieved context to the original message list.
-
-  return messages;
-}
-
-// Random waiting messages
-const waitingMessages = [
-  "Just a moment, I'm thinking...",
-  'Let me think about that for a second...',
-  'Good question, let me find out...',
-];
-
-// RAG Chat Completions endpoint
-app.post('/rag/chat/completions', async (req, res) => {
-  try {
-    logger.info('Received RAG request: ' + JSON.stringify(req.body));
-
-    const {
-      model,
-      messages,
-      modalities = ['text'],
-      tools,
-      tool_choice,
-      response_format,
-      audio,
-      stream = true,
-      stream_options,
-    } = req.body;
-
-    if (!stream) {
-      return res
-        .status(400)
-        .json({ detail: 'chat completions require streaming' });
-    }
-
-    // Set SSE headers
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-
-    // First, send a "please wait" prompt
-    const waitingMessage = {
-      id: 'waiting_msg',
-      choices: [
-        {
-          index: 0,
-          delta: {
-            role: 'assistant',
-            content:
-              waitingMessages[
-                Math.floor(Math.random() * waitingMessages.length)
-              ],
-          },
-          finish_reason: null,
-        },
-      ],
-    };
-
-    res.write('data: ' + JSON.stringify(waitingMessage) + '\\n\\n');
-
-    // Perform RAG retrieval
-    const retrievedContext = await performRagRetrieval(messages);
-
-    // Modify messages
-    const refactedMessages = refactMessages(retrievedContext, messages);
-
-    // Request LLM completion
-    const completion = await openai.chat.completions.create({
-      model,
-      messages: refactedMessages,
-      tools: tools ? tools : undefined,
-      tool_choice: tools && tool_choice ? tool_choice : undefined,
-      modalities,
-      audio,
-      response_format,
-      stream: true,
-      stream_options,
-    });
-
-    // Stream the response
-    for await (const chunk of completion) {
-      logger.debug('Received RAG chunk: ' + JSON.stringify(chunk));
-      res.write('data: ' + JSON.stringify(chunk) + '\\n\\n');
-    }
-
-    // End the stream
-    res.write('data: [DONE]\\n\\n');
-    res.end();
-  } catch (error) {
-    logger.error('RAG chat completion error:', error);
-
-    if (!res.headersSent) {
-      const errorDetail = error.message + '\\n' + (error.stack || '');
-      return res.status(500).json({ detail: errorDetail });
-    }
-
-    res.write('data: ' + JSON.stringify({ error: error.message }) + '\\n\\n');
-    res.write('data: [DONE]\\n\\n');
-    res.end();
-  }
-});`}
-</CodeBlock>
-</TabItem>
-</Tabs>
-
-When calling the POST method to [Start a conversational AI agent](/conversational-ai/rest-api/agent/join), simply point the LLM URL to your RAG interface:
-
-```json
-{
-  "llm": {
-    "url": "http://your-custom-llm-service/rag/chat/completions",
-    "api_key": ""
-    "system_messages": [
-      {
-        "role": "system",
-        "content": "Please answer the user's question based on the following retrieved information: ..."
-      }
-    ]
-  }
 }
 ```
-
-<Admonition type="info">
-If accessing your custom LLM service requires identity verification, provide the authentication information in the `api_key` field.
-</Admonition>
+</TabItem>
+</Tabs>
 
 ### Multimodal capabilities
 
@@ -900,8 +916,8 @@ The following example demonstrates how to read text and audio files and send the
 <Tabs groupId="language">
 <TabItem value="python" label="Python">
 
-<CodeBlock showLineNumbers language="python">
-{`async def read_text_file(file_path: str) -> str:
+```python
+async def read_text_file(file_path: str) -> str:
     """
     Read a text file and return its content
     Args:
@@ -969,7 +985,7 @@ async def create_audio_chat_completion(request: ChatCompletionRequest):
                         }
                     ],
                 }
-                yield f"data: {json.dumps(text_message)}\\n\\n"
+                yield f"data: {json.dumps(text_message)}\n\n"
                 # Send audio chunks
                 for chunk in audio_chunks:
                     audio_message = {
@@ -987,9 +1003,9 @@ async def create_audio_chat_completion(request: ChatCompletionRequest):
                             }
                         ],
                     }
-                    yield f"data: {json.dumps(audio_message)}\\n\\n"
+                    yield f"data: {json.dumps(audio_message)}\n\n"
 
-                yield "data: [DONE]\\n\\n"
+                yield "data: [DONE]\n\n"
 
             except asyncio.CancelledError:
                 logger.info("Audio stream was cancelled")
@@ -1001,15 +1017,151 @@ async def create_audio_chat_completion(request: ChatCompletionRequest):
         raise HTTPException(status_code=499, detail="Request was cancelled")
     except Exception as e:
         traceback_str = "".join(traceback.format_tb(e.__traceback__))
-        error_message = f"{str(e)}\\n{traceback_str}"
+        error_message = f"{str(e)}\n{traceback_str}"
         logger.error(error_message)
-        raise HTTPException(status_code=500, detail=error_message)`}
-</CodeBlock>
+        raise HTTPException(status_code=500, detail=error_message)
+```
+
+</TabItem>
+<TabItem value="typescript" label="Node.js">
+
+```js
+const fs = require('fs').promises;
+const { randomUUID } = require('crypto');
+
+/**
+ * Read a text file and return its content
+ * @param {string} filePath - Path to the text file
+ * @returns {Promise<string>} Content of the text file
+ */
+async function readTextFile(filePath) {
+  const content = await fs.readFile(filePath, 'utf8');
+  return content;
+}
+
+/**
+ * Read a PCM file and return a list of audio chunks
+ * @param {string} filePath - Path to the PCM file
+ * @param {number} sampleRate - Sampling rate of the audio
+ * @param {number} durationMs - Duration of each audio chunk in milliseconds
+ * @returns {Promise<Buffer[]>} List of audio chunks
+ */
+async function readPCMFile(filePath, sampleRate, durationMs) {
+  const content = await fs.readFile(filePath);
+  const chunkSize = Math.floor(sampleRate * 2 * (durationMs / 1000));
+  const chunks = [];
+
+  for (let i = 0; i < content.length; i += chunkSize) {
+    chunks.push(content.slice(i, i + chunkSize));
+  }
+
+  return chunks;
+}
+
+// Audio Chat Completions endpoint
+app.post('/audio/chat/completions', async (req, res) => {
+  try {
+    logger.info('Received audio request: ' + JSON.stringify(req.body));
+
+    const {
+      model,
+      messages,
+      modalities = ['text'],
+      tools,
+      tool_choice,
+      response_format,
+      audio,
+      stream = true,
+      stream_options,
+    } = req.body;
+
+    if (!stream) {
+      return res
+        .status(400)
+        .json({ detail: 'chat completions require streaming' });
+    }
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Example usage, reading text and audio files
+    // Please replace with your actual logic
+    const textFilePath = './file.txt';
+    const pcmFilePath = './file.pcm';
+
+    const sampleRate = 16000; // Example sampling rate
+    const durationMs = 40; // 40ms audio chunk
+
+    const textContent = await readTextFile(textFilePath);
+    const audioChunks = await readPCMFile(pcmFilePath, sampleRate, durationMs);
+
+    // Generate audio ID for this response
+    const audioId = randomUUID();
+
+    // Send text content
+    const textMessage = {
+      id: randomUUID(),
+      choices: [
+        {
+          index: 0,
+          delta: {
+            audio: {
+              id: audioId,
+              transcript: textContent,
+            },
+          },
+          finish_reason: null,
+        },
+      ],
+    };
+
+    res.write('data: ' + JSON.stringify(textMessage) + '\n\n');
+
+    // Send audio chunks
+    for (const chunk of audioChunks) {
+      const audioMessage = {
+        id: randomUUID(),
+        choices: [
+          {
+            index: 0,
+            delta: {
+              audio: {
+                id: audioId,
+                data: chunk.toString('base64'),
+              },
+            },
+            finish_reason: null,
+          },
+        ],
+      };
+
+      res.write('data: ' + JSON.stringify(audioMessage) + '\n\n');
+    }
+
+    res.write('data: [DONE]\n\n');
+    res.end();
+  } catch (error) {
+    logger.error('Audio chat completion error:', error);
+
+    if (!res.headersSent) {
+      const errorDetail = error.message + '\n' + (error.stack || '');
+      return res.status(500).json({ detail: errorDetail });
+    }
+
+    res.write('data: ' + JSON.stringify({ error: error.message }) + '\n\n');
+    res.write('data: [DONE]\n\n');
+    res.end();
+  }
+});
+```
+
 </TabItem>
 <TabItem value="go" label="Go">
 
-<CodeBlock showLineNumbers language="go">
-{`// Handle Audio Chat Completion endpoint
+```go
+// Handle Audio Chat Completion endpoint
 func (s *Server) handleAudioChatCompletion(c *gin.Context) {
    var request ChatCompletionRequest
    if err := c.ShouldBindJSON(&request); err != nil {
@@ -1122,154 +1274,80 @@ func (s *Server) readTextFile(filePath string) (string, error) {
    	return "", fmt.Errorf("failed to read text file: %w", err)
    }
    return string(data), nil
-}`}
-</CodeBlock>
-</TabItem>
-<TabItem value="node" label="Node.js">
-
-<CodeBlock showLineNumbers language="js">
-{`const fs = require('fs').promises;
-const { randomUUID } = require('crypto');
-
-/**
- * Read a text file and return its content
- * @param {string} filePath - Path to the text file
- * @returns {Promise<string>} Content of the text file
- */
-async function readTextFile(filePath) {
-  const content = await fs.readFile(filePath, 'utf8');
-  return content;
 }
-
-/**
- * Read a PCM file and return a list of audio chunks
- * @param {string} filePath - Path to the PCM file
- * @param {number} sampleRate - Sampling rate of the audio
- * @param {number} durationMs - Duration of each audio chunk in milliseconds
- * @returns {Promise<Buffer[]>} List of audio chunks
- */
-async function readPCMFile(filePath, sampleRate, durationMs) {
-  const content = await fs.readFile(filePath);
-  const chunkSize = Math.floor(sampleRate * 2 * (durationMs / 1000));
-  const chunks = [];
-
-  for (let i = 0; i < content.length; i += chunkSize) {
-    chunks.push(content.slice(i, i + chunkSize));
-  }
-
-  return chunks;
-}
-
-// Audio Chat Completions endpoint
-app.post('/audio/chat/completions', async (req, res) => {
-  try {
-    logger.info('Received audio request: ' + JSON.stringify(req.body));
-
-    const {
-      model,
-      messages,
-      modalities = ['text'],
-      tools,
-      tool_choice,
-      response_format,
-      audio,
-      stream = true,
-      stream_options,
-    } = req.body;
-
-    if (!stream) {
-      return res
-        .status(400)
-        .json({ detail: 'chat completions require streaming' });
-    }
-
-    // Set SSE headers
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-
-    // Example usage, reading text and audio files
-    // Please replace with your actual logic
-    const textFilePath = './file.txt';
-    const pcmFilePath = './file.pcm';
-
-    const sampleRate = 16000; // Example sampling rate
-    const durationMs = 40; // 40ms audio chunk
-
-    const textContent = await readTextFile(textFilePath);
-    const audioChunks = await readPCMFile(pcmFilePath, sampleRate, durationMs);
-
-    // Generate audio ID for this response
-    const audioId = randomUUID();
-
-    // Send text content
-    const textMessage = {
-      id: randomUUID(),
-      choices: [
-        {
-          index: 0,
-          delta: {
-            audio: {
-              id: audioId,
-              transcript: textContent,
-            },
-          },
-          finish_reason: null,
-        },
-      ],
-    };
-
-    res.write('data: ' + JSON.stringify(textMessage) + '\\n\\n');
-
-    // Send audio chunks
-    for (const chunk of audioChunks) {
-      const audioMessage = {
-        id: randomUUID(),
-        choices: [
-          {
-            index: 0,
-            delta: {
-              audio: {
-                id: audioId,
-                data: chunk.toString('base64'),
-              },
-            },
-            finish_reason: null,
-          },
-        ],
-      };
-
-      res.write('data: ' + JSON.stringify(audioMessage) + '\\n\\n');
-    }
-
-    res.write('data: [DONE]\\n\\n');
-    res.end();
-  } catch (error) {
-    logger.error('Audio chat completion error:', error);
-
-    if (!res.headersSent) {
-      const errorDetail = error.message + '\\n' + (error.stack || '');
-      return res.status(500).json({ detail: errorDetail });
-    }
-
-    res.write('data: ' + JSON.stringify({ error: error.message }) + '\\n\\n');
-    res.write('data: [DONE]\\n\\n');
-    res.end();
-  }
-});`}
-</CodeBlock>
+```
 </TabItem>
+
 </Tabs>
 
-When calling the POST method to [Start a conversational AI agent](/conversational-ai/rest-api/agent/join), use the following configuration to specify the `output_modalities`:
+To configure the agent to use your audio endpoint, update the LLM configuration as follows:
+
+<Tabs groupId="language">
+<TabItem value="python" label="Python SDK">
+
+```python
+from agora_agent import CustomLLM
+
+# ... other agent configuration ...
+.with_llm(CustomLLM(
+    api_key='your-llm-api-key',
+    base_url='https://your-custom-llm-service/audio/chat/completions',
+    model='your-model-name',
+    input_modalities=['text'],
+    output_modalities=['text', 'audio'],
+    system_messages=[{'role': 'system', 'content': 'You are a helpful assistant.'}],
+))
+# ... continue with .with_tts() and .create_session() ...
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript SDK">
+
+```typescript
+import { CustomLLM } from 'agora-agents';
+
+// ... other agent configuration ...
+.withLlm(new CustomLLM({
+  apiKey: 'your-llm-api-key',
+  url: 'https://your-custom-llm-service/audio/chat/completions',
+  model: 'your-model-name',
+  inputModalities: ['text'],
+  outputModalities: ['text', 'audio'],
+  systemMessages: [{ role: 'system', content: 'You are a helpful assistant.' }],
+}))
+// ... continue with .withTts() and .createSession() ...
+```
+
+</TabItem>
+<TabItem value="go" label="Go SDK">
+
+```go
+// ... other agent configuration ...
+.WithLlm(
+    vendors.NewCustomLLM(vendors.CustomLLMOptions{
+        APIKey:           "your-llm-api-key",
+        BaseURL:          "https://your-custom-llm-service/audio/chat/completions",
+        Model:            "your-model-name",
+        InputModalities:  []string{"text"},
+        OutputModalities: []string{"text", "audio"},
+        SystemMessages: []map[string]interface{}{
+            {"role": "system", "content": "You are a helpful assistant."},
+        },
+    }),
+)
+// ... continue with .WithTts() and .CreateSession() ...
+```
+
+</TabItem>
+<TabItem value="json" label="JSON">
 
 ```json
 {
   "llm": {
-    "url": "http://your-custom-llm-service/audio/chat/completions",
-    "api_key": "your_api_key",
+    "url": "https://your-custom-llm-service/audio/chat/completions",
+    "api_key": "your-llm-api-key",
     "input_modalities": ["text"],
-    "output_modalities": ["text", "audio"]
+    "output_modalities": ["text", "audio"],
     "system_messages": [
       {
         "role": "system",
@@ -1279,6 +1357,9 @@ When calling the POST method to [Start a conversational AI agent](/conversationa
   }
 }
 ```
+
+</TabItem>
+</Tabs>
 
 ### Control agent behavior using first-packet metadata
 

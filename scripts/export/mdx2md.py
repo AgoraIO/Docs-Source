@@ -317,9 +317,15 @@ def process_parameter_recursively(param_element, indent_level):
     description = get_direct_text_content(param_element)
     
     # Build parameter type info with possible values if present
-    type_info = f"({param_type}"
+    required_attr = param_element.get('required', 'false')
+    required = required_attr in ('{true}', 'true', True)
+    default_value = param_element.get('defaultvalue', param_element.get('defaultValue'))
+
+    status = 'required' if required else 'optional'
+    type_info = f"({param_type}, {status}"
+    if default_value:
+        type_info += f", default: `{default_value}`"
     if possible_values:
-        # Split values and wrap each in backticks
         values_list = [f"`{val.strip()}`" for val in possible_values.split(',')]
         values_str = ', '.join(values_list)
         type_info += f", possible values: {values_str}"

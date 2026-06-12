@@ -1,0 +1,186 @@
+name: Export docs to markdown
+
+on:
+  push:
+    branches:
+      - main
+      - workflow-test     # Remove after initial testing is complete
+  workflow_dispatch:
+    inputs:
+      from_commit:
+        description: 'Base commit hash for diff (leave empty to use previous HEAD)'
+        required: false
+        default: ''
+
+jobs:
+  export:
+    name: Incremental MDX → MD export
+    runs-on: ubuntu-latest
+    # Only run on Docs-Source — skip silently on Doc-Source-Private or any other fork
+    if: github.repository == 'AgoraIO/Docs-Source'
+
+    steps:
+      # ----------------------------------------------------------------
+      # 1. Check out Docs-Source (the repo this workflow lives in)
+      # ----------------------------------------------------------------
+      - name: Check out Docs-Source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # Full history needed for git diff
+          token: ${{ secrets.EXPORT_PAT }}
+
+      # ----------------------------------------------------------------
+      # 2. Check out markdown-service into a sibling directory
+      # ----------------------------------------------------------------
+      - name: Check out markdown-service
+        uses: actions/checkout@v4
+        with:
+          repository: AgoraIO/markdown-service
+          token: ${{ secrets.EXPORT_PAT }}
+          path: markdown-service
+          fetch-depth: 1
+
+      # ----------------------------------------------------------------
+      # 3. Fetch products.js from the private AgoraIO/Docs repo
+      # ----------------------------------------------------------------
+      - name: Fetch products.js from AgoraIO/Docs
+        run: |
+          mkdir -p data/v2
+          curl -f \
+            -H "Authorization: token ${{ secrets.EXPORT_PAT }}" \
+            -H "Accept: application/vnd.github.v3.raw" \
+            -o data/v2/products.js \
+            "https://api.github.com/repos/AgoraIO/Docs/contents/data/v2/products.js"
+          echo "✅ products.js fetched"
+
+      # ----------------------------------------------------------------
+      # 4. Set up Python
+      # ----------------------------------------------------------------
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
+      # ----------------------------------------------------------------
+      # 5. Install Python dependencies
+      # ----------------------------------------------------------------
+      - name: Install dependencies
+        run: |
+          pip install pyyaml beautifulsoup4
+
+      # ----------------------------------------------------------------
+      # 6. Set up docs-folder structure
+      #    Creates a temporary parent directory with:
+      #      <temp>/docs/        -> symlink to repo root
+      #      <temp>/data/v2/     -> products.js
+      #      <temp>/data/        -> dep-map.json (if present)
+      # ----------------------------------------------------------------
+      - name: Set up docs-folder structure
+        id: setup
+        run: |
+          DOCS_FOLDER=$(python scripts/export/setup_docs_folder.py \
+            --products-file data/v2/products.js)
+          echo "docs_folder=$DOCS_FOLDER" >> $GITHUB_OUTPUT
+          echo "✅ docs-folder: $DOCS_FOLDER"
+
+      # ----------------------------------------------------------------
+      # 7. Rebuild dep-map.json
+      # ----------------------------------------------------------------
+      - name: Rebuild dep-map.json
+        run: |
+          python scripts/export/build_dep_map.py \
+            --docs-folder ${{ steps.setup.outputs.docs_folder }}
+          echo "✅ dep-map.json rebuilt"
+
+      # ----------------------------------------------------------------
+      # 8. Resolve from-commit
+      #    - workflow_dispatch with input: use provided commit
+      #    - workflow_dispatch without input: use 1 day ago
+      #    - push: use github.event.before
+      # ----------------------------------------------------------------
+      - name: Resolve from-commit
+        id: resolve_commits
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            INPUT="${{ github.event.inputs.from_commit }}"
+            if [ -n "$INPUT" ]; then
+              echo "from_commit=$INPUT" >> $GITHUB_OUTPUT
+              echo "📌 Using provided from-commit: $INPUT"
+            else
+              # Fall back to the most recent commit older than 1 day
+              COMMIT=$(git rev-list -1 --before="1 day ago" HEAD || git rev-list --max-parents=0 HEAD)
+              echo "from_commit=$COMMIT" >> $GITHUB_OUTPUT
+              echo "📌 No from-commit provided — using: $COMMIT"
+            fi
+          else
+            echo "from_commit=${{ github.event.before }}" >> $GITHUB_OUTPUT
+            echo "📌 Push event — using github.event.before: ${{ github.event.before }}"
+          fi
+
+      # ----------------------------------------------------------------
+      # 9. Run smart_export.py
+      # ----------------------------------------------------------------
+      - name: Run smart_export.py
+        run: |
+          python scripts/export/smart_export.py \
+            --docs-folder ${{ steps.setup.outputs.docs_folder }} \
+            --output-dir ${{ github.workspace }}/markdown-service/public/en \
+            --from-commit ${{ steps.resolve_commits.outputs.from_commit }} \
+            --to-commit ${{ github.sha }}
+
+      # ----------------------------------------------------------------
+      # 10. Check if any markdown files were changed
+      # ----------------------------------------------------------------
+      - name: Check for changes
+        id: changes
+        working-directory: markdown-service
+        run: |
+          git add -A
+          git diff --cached --quiet \
+            && echo "changed=false" >> $GITHUB_OUTPUT \
+            || echo "changed=true" >> $GITHUB_OUTPUT
+
+      # ----------------------------------------------------------------
+      # 11. Create a PR in markdown-service if there are changes
+      # ----------------------------------------------------------------
+      - name: Create pull request in markdown-service
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.EXPORT_PAT }}
+          path: markdown-service
+          branch: auto-export/latest
+          base: main
+          commit-message: |
+            chore: auto-export docs changes from ${{ github.sha }}
+
+            Triggered by push to Docs-Source main.
+            Source commit: ${{ github.sha }}
+            Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          title: "chore: auto-export docs changes from ${{ github.sha }}"
+          body: |
+            ## Automated docs export
+
+            This PR was generated automatically by the `export-docs` workflow in [Docs-Source](${{ github.server_url }}/${{ github.repository }}).
+
+            **Triggered by:** [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+            **Workflow run:** [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            ### What changed
+            Pages were re-exported because their source MDX files or shared dependencies changed in the commit above.
+
+            ### Review notes
+            - Check that all modified `.md` files look correct
+            - Verify image references resolve correctly
+            - Merge when satisfied — no further action needed
+
+          labels: automated,docs-export
+          draft: false
+
+      # ----------------------------------------------------------------
+      # 12. Report no changes
+      # ----------------------------------------------------------------
+      - name: No changes to export
+        if: steps.changes.outputs.changed == 'false'
+        run: echo "✅ No markdown files changed — no PR needed."

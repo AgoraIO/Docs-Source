@@ -1,100 +1,161 @@
-import Authorization from '@docs/shared/common/channel-management-api/authorization.mdx';
+import RestAPILayout from '@site/src/components/rest-api/RestAPILayout';
+import LeftColumn from '@site/src/components/rest-api/LeftColumn';
+import RightColumn, { Section } from '@site/src/components/rest-api/RightColumn';
+import ParameterList, { Parameter } from '@site/src/components/rest-api/ParameterList';
+import { Tabs, TabItem } from '@site/src/components/rest-api/Tabs';
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import CodeBlock from '@theme/CodeBlock';
+<RestAPILayout>
+  <LeftColumn
+    method="POST"
+    endpoint="https://api.agora.io/dev/v1/kicking-rule"
+  >
 
+Use this endpoint to create a rule for banning specified user privileges.
 
-This method creates a rule for banning specified user privileges.
+## Request
 
-### Prototype
+The request URL and request body is case-sensitive. All requests must use HTTPS.
 
-- Method: `POST`
-- Endpoint: `https://api.agora.io/dev/v1/kicking-rule`
+### Request header
 
-The user `privileges` that can be banned include:
+- `Content-Type`: `application/json`
+- The request header must contain the `Authorization` field. For details, see [RESTful authentication](/video-calling/channel-management-api/restful-authentication).
 
-- `join_channel`: Joining a channel.
+### Request body
 
-- `publish_audio`: Publishing audio.
+<div className="api-mime-type">APPLICATION/JSON</div>
 
-- `publish_video`: Publishing video.
+<ParameterList title="BODY" required={true}>
+  <Parameter name="appid" type="string" required={true}>
+    The App ID of the project. You can get it through one of the following methods:
+    - Copy from the [Agora Console](https://console.agora.io)
+    - Call the [Get all projects](../../agora-console-rest-api#get-all-projects) API, and read the value of the `vendor_key` field in the response body.
+  </Parameter>
 
-The banning rule works based on the following three fields: `cname`, `uid`, and `ip`.
+  <Parameter name="cname" type="string" required={false}>
+    The channel name.
+  </Parameter>
 
-When you set `privileges` as `join_channel`, the rule works as follows:
+  <Parameter name="uid" type="number" required={false}>
+    The user ID. Do not set it to `0`.
+  </Parameter>
 
-|`ip`|`cname`|`UID`|Rule|
-|:----:|:---:|:---:|:-----|
-|✔|✘|✘|All users with this `ip` cannot join any channel in the app. Using `ip` as a filter field may incorrectly block users who should not be blocked, for example, in a use-case where multiple users share an IP address.|
-|✘|✔|✘|No one can join the channel specified by the `cname` field. Using `cname` as a filter field directly blocks the channel with the `cname`.|
-|✘|✘|✔|The user with the `UID` cannot join any channel in the app.|
-|✘|✔|✔|The user with the `UID` cannot join the channel specified by the `cname` field.|
+  <Parameter name="ip" type="string" required={false}>
+    The IP address of the user. Do not set it to `0`.
+  </Parameter>
 
-When you set `privileges` as `publish_audio` or `publish_video`, the rule works as follows:
+  <Parameter name="time" type="number" required={false} possibleValues="[1,1440]">
+    The time duration (in minutes) to ban the user. Values outside the range [1,1440] are clamped to the nearest bound. Setting this to `0` disables the rule: users are set offline but can rejoin immediately.
+  </Parameter>
 
-|`ip`|`cname`|`UID`|Rule|
-|:-----:|:----:|:----:|:-----|
-|✔|✘|✘|The users with this `ip` cannot publish audio or video in any channel of the app.|
-|✘|✔|✘|No one can publish audio or video in the channel specified by the `cname` field.|
-|✘|✘|✔|The user with the `UID` cannot publish audio or video in any channel of the app.|
-|✘|✔|✔|The user with the `UID` cannot publish audio or video in the channel specified by the `cname` field.|
+  <Parameter name="time_in_seconds" type="number" required={false} possibleValues="[10,86430]">
+    The time duration (in seconds) to ban the user. Values outside the range [10,86430] are clamped to the nearest bound. Setting this to `0` disables the rule: users are set offline but can rejoin immediately.
 
-A user who is kicked out of a channel when you set `privileges` as `join_channel` receives one of the following callbacks based on their platform:
+    <Admonition type="info">
+    Use either `time` or `time_in_seconds`, not both. If both are set, `time_in_seconds` takes effect. If neither is set, the default ban duration is 60 minutes (3600 seconds).
+    </Admonition>
+  </Parameter>
 
-- Android: The `onConnectionStateChanged` callback reports `CONNECTION_CHANGED_BANNED_BY_SERVER(3)`.
-- iOS/macOS: The `connectionChangedToState` callback reports `AgoraConnectionChangedBannedByServer(3)`.
-- Web (3.x): The `Client.on("client-banned")` callback.
-- Web (4.x): The `Client.on("connection-state-change")` callback.
-- Windows:The  `onConnectionStateChanged` callback reports `CONNECTION_CHANGED_BANNED_BY_SERVER(3)`.
-- Electron: The `AgoraRtcEngine.on("connectionStateChanged")` callback reports `3`.
-- Unity: The `OnConnectionStateChangedHandler` callback reports `CONNECTION_CHANGED_BANNED_BY_SERVER(3)`.
-- React Native: The `ConnectionStateChanged` callback reports `BannedByServer(3)`.
-- Flutter: The `ConnectionStateChanged` callback reports `BannedByServer(3)`.
-- Cocos Creator: The `onConnectionStateChanged` callback reports `CONNECTION_CHANGED_BANNED_BY_SERVER(3)`.
-- Applets: `on(event: "client-banned")`.
+  <Parameter name="privileges" type="array" required={true}>
+    The user privileges you want to block. Possible values:
+    - `join_channel`: Bans a user from joining a channel or kicks a user out of a channel.
+    - `publish_audio`: Bans a user from publishing audio.
+    - `publish_video`: Bans a user from publishing video.
 
-<Admonition type="info" title="Note">
+    To ban a user from both publishing audio and video, specify both `publish_audio` and `publish_video`.
 
-To maximize the success rate of core functions, create (POST), update (PUT), and delete (DELETE), the success rate and accuracy of the query (GET) method is degraded to a certain extent when the quality of the public network is abnormally low. Some request records may be missing in the returned results of the query (GET). When calling POST to create a rule (`time` is not set to 0), which you need to update or delete later, best practice is to:
+    The effect of the banning rule depends on the combination of `cname`, `uid`, and `ip` you set. See [Banning rule behavior](#banning-rule-behavior) for details.
 
-* Save the rule ID returned in the POST request on your server, and rely on this ID for subsequent update and delete operations.
-* To ensure that you can still obtain the rule ID returned in the POST request under poor network connections, set the timeout for the POST request to 20 seconds or higher. Make sure that the timeout is set to no less than 5 seconds.
-* In case the POST request times out or returns a `504` error, use the response of the GET method to obtain the rule ID. If the rule exists, it indicates that the POST request is successful, and you can save the rule ID on your server.
+    When `privileges` is set to `join_channel`, a kicked user receives a connection state change callback on their platform. See [Client callbacks for `join_channel` bans](#client-callbacks-for-join_channel-bans) for details.
+  </Parameter>
+</ParameterList>
 
-</Admonition>
+## Response
 
-### Request parameters
+A `200` status code indicates success. The response body contains the following parameters:
 
-**Request header**
+<ParameterList title="OK">
+  <Parameter name="status" type="string">
+    The status of this request. `success` means the request succeeds.
+  </Parameter>
+  <Parameter name="id" type="number">
+    The rule ID. Save the rule ID to update or delete this rule later.
+  </Parameter>
+</ParameterList>
 
-<Authorization/>
+If the status code is not `200`, the request fails. See the `message` field in the response body for the reason for this failure. Refer to [Response status codes](../../response-status-code) for details.
 
-**Request body**
+## Reference
 
-Pass in the following parameters in the request body:
+### Banning rule behavior
 
-| Parameter | Data type | Required/Optional | Description         |
-| :------ | :-----  |:----- | :---------------------- |
-| `appid` | String | Required |The App ID of the project. You can get it through one of the following methods:<ul><li>Copy from the <Link to="{{Global.AGORA_CONSOLE_URL}}"><Vg k="CONSOLE" /></Link></li><li> Call the [Get all projects](/interactive-live-streaming/reference/agora-console-rest-api#get-all-projects) API, and read the value of the `vendor_key` field in the response body.</li></ul>|
-| `cname` | String | Optional |The channel name.              |
-| `uid` | Number | Optional |The user ID. Do not set it as `0`.              |
-| `ip` | String  | Optional |The IP address of the user. Do not set it as `0`.             |
-| `time` | Number | Required |The time duration (in minutes) to ban the user. The value range is [1,1440].<br/> <ul><li>If the set value is between `0` and `1`, Agora automatically sets the value to `1`.</li><li>If the set value is greater than `1440`, Agora automatically sets the value to `1440`.</li><li>If the set value is `0`, the banning rule does not take effect. The server sets all users that conform to the rule offline, and users can log in again to rejoin the channel.</li><li>Use either `time` or `time_in_seconds`. If you set both parameters, the `time_in_seconds` parameter takes effect; if you set neither of these parameters, the Agora server automatically sets the banning time duration to 60 minutes, that is, 3600 seconds.</li></ul> |
-| `time_in_seconds` | Number | Required |The time duration (in seconds) to ban the user. The value range is [10,86430].<br/><ul><li>If the set value is between `0` and `10`, Agora automatically sets the value to `10`.</li><li>If the set value is greater than `86430`, Agora automatically sets the value to `86430`.</li><li>If the set value is `0`, the banning rule does not take effect. The server sets all users that conform to the rule offline, and users can log in again to rejoin the channel.</li><li>Use either `time` or `time_in_seconds`. If you set both parameters, the `time_in_seconds` parameter takes effect; if you set neither of these parameters, the Agora server automatically sets the banning time duration to 60 minutes, that is, 3600 seconds.</li></ul> |
-| `privileges` | Array | Required |The user privileges you want to block. You can choose the following values: <ul><li> `join_channel`: String. Bans a user from joining a channel or kicks a user out of a channel.</li><li> `publish_audio`: String. Bans a user from publishing audio. </li><li> `publish_video`: Bans a user from publishing video. </li></ul> You can pass in both `publish_audio` and `publish_video` to ban a user from publishing audio and video. |
+The banning rule behavior depends on which combination of `cname`, `uid`, and `ip` fields you set.
 
-### Request examples
+**When `privileges` is `join_channel`:**
+
+| `ip` | `cname` | `uid` | Rule |
+|:----:|:-------:|:-----:|:-----|
+| ✔ | ✘ | ✘ | All users with this `ip` cannot join any channel in the app. Using `ip` as a filter field may incorrectly block users who should not be blocked, for example, in a use-case where multiple users share an IP address. |
+| ✘ | ✔ | ✘ | No one can join the channel specified by the `cname` field. Using `cname` as a filter field directly blocks the named channel. |
+| ✘ | ✘ | ✔ | The user with the `uid` cannot join any channel in the app. |
+| ✘ | ✔ | ✔ | The user with the `uid` cannot join the channel specified by the `cname` field. |
+
+**When `privileges` is `publish_audio` or `publish_video`:**
+
+| `ip` | `cname` | `uid` | Rule |
+|:----:|:-------:|:-----:|:-----|
+| ✔ | ✘ | ✘ | The users with this `ip` cannot publish audio or video in any channel of the app. |
+| ✘ | ✔ | ✘ | No one can publish audio or video in the channel specified by the `cname` field. |
+| ✘ | ✘ | ✔ | The user with the `uid` cannot publish audio or video in any channel of the app. |
+| ✘ | ✔ | ✔ | The user with the `uid` cannot publish audio or video in the channel specified by the `cname` field. |
+
+### Client callbacks for `join_channel` bans
+
+A user who is kicked out of a channel when `privileges` is set to `join_channel` receives one of the following callbacks based on their platform:
+
+- **Android**: The `onConnectionStateChanged` callback reports `CONNECTION_CHANGED_BANNED_BY_SERVER(3)`.
+- **iOS/macOS**: The `connectionChangedToState` callback reports `AgoraConnectionChangedBannedByServer(3)`.
+- **Web (3.x)**: The `Client.on("client-banned")` callback.
+- **Web (4.x)**: The `Client.on("connection-state-change")` callback.
+- **Windows**: The `onConnectionStateChanged` callback reports `CONNECTION_CHANGED_BANNED_BY_SERVER(3)`.
+- **Electron**: The `AgoraRtcEngine.on("connectionStateChanged")` callback reports `3`.
+- **Unity**: The `OnConnectionStateChangedHandler` callback reports `CONNECTION_CHANGED_BANNED_BY_SERVER(3)`.
+- **React Native**: The `ConnectionStateChanged` callback reports `BannedByServer(3)`.
+- **Flutter**: The `ConnectionStateChanged` callback reports `BannedByServer(3)`.
+- **Cocos Creator**: The `onConnectionStateChanged` callback reports `CONNECTION_CHANGED_BANNED_BY_SERVER(3)`.
+- **Applets**: `on(event: "client-banned")`.
+
+### Best practices for rule management
+
+To maximize the success rate of create, update, and delete operations, query requests are assigned a lower priority. Under poor network conditions, the success rate and accuracy of GET requests may degrade and some request records may be missing from the results.
+
+When you call POST to create a rule where `time` is not set to `0`, use the following best practices to update or delete it later:
+
+- Save the rule ID returned in the POST request on your server, and rely on this ID for subsequent update and delete operations.
+- To ensure that you can still obtain the rule ID under poor network conditions, set the timeout for the POST request to 20 seconds or higher. Make sure that the timeout is set to no less than 5 seconds.
+- In case the POST request times out or returns a `504` error, use the response of the GET method to obtain the rule ID. If the rule exists, it indicates that the POST request was successful, and you can save the rule ID on your server.
+
+</LeftColumn>
+
+<RightColumn>
+
+<Section title="Authorization">
+  This endpoint requires [Basic authentication](/video-calling/channel-management-api/restful-authentication).
+</Section>
+
+<Section title="Request example">
 
 Test this request in [Postman](https://documenter.getpostman.com/view/6319646/SVSLr9AM#cb2fe3df-76be-4e1c-9297-09eceacd341a) or use one of the following code examples:
 
-<Tabs groupId="language">
+<Tabs>
 <TabItem value="curl" label="Curl" default>
-<CodeBlock language="bash" >{`curl --request POST \\
-  --url https://api.sd-rtn.com/dev/v1/kicking-rule \\
-  --header 'Accept: application/json' \\
-  --header 'Authorization: ' \\
-  --header 'Content-Type: application/json' \\
+
+```bash
+curl --request POST \
+  --url https://api.sd-rtn.com/dev/v1/kicking-rule \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Basic <your_base64_encoded_credentials>' \
+  --header 'Content-Type: application/json' \
   --data '{
   "appid": "4855xxxxxxxxxxxxxxxxxxxxxxxxeae2",
   "cname": "channel1",
@@ -104,32 +165,39 @@ Test this request in [Postman](https://documenter.getpostman.com/view/6319646/SV
   "privileges": [
     "join_channel"
   ]
-}'`}</CodeBlock>
-</TabItem>
+}'
+```
 
+</TabItem>
 <TabItem value="node" label="Node.js">
-  <CodeBlock language="js" >{`const http = require('http');
+
+```js
+const https = require('https');
+
 const options = {
   method: 'POST',
   hostname: 'api.sd-rtn.com',
   port: null,
   path: '/dev/v1/kicking-rule',
   headers: {
-    Authorization: '',
+    Authorization: 'Basic <your_base64_encoded_credentials>',
     'Content-Type': 'application/json',
     Accept: 'application/json'
   }
-};\n
-const req = http.request(options, function (res) {
+};
+
+const req = https.request(options, function (res) {
   const chunks = [];
   res.on('data', function (chunk) {
     chunks.push(chunk);
-  });\n
+  });
+
   res.on('end', function () {
     const body = Buffer.concat(chunks);
     console.log(body.toString());
   });
-});\n
+});
+
 req.write(JSON.stringify({
   appid: '4855xxxxxxxxxxxxxxxxxxxxxxxxeae2',
   cname: 'channel1',
@@ -138,13 +206,18 @@ req.write(JSON.stringify({
   time: 60,
   privileges: ['join_channel']
 }));
-req.end();`}</CodeBlock>
-</TabItem>
+req.end();
+```
 
+</TabItem>
 <TabItem value="python" label="Python">
-  <CodeBlock language="python">{`import http.client
+
+```python
+import http.client
 import json
-conn = http.client.HTTPConnection("api.sd-rtn.com")\n
+
+conn = http.client.HTTPSConnection("api.sd-rtn.com")
+
 payload = {
     "appid": "4855xxxxxxxxxxxxxxxxxxxxxxxxeae2",
     "cname": "channel1",
@@ -154,37 +227,27 @@ payload = {
     "privileges": [
         "join_channel"
     ]
-}\n
+}
+
 headers = {
-    'Authorization': "",
+    'Authorization': "Basic <your_base64_encoded_credentials>",
     'Content-Type': "application/json",
     'Accept': "application/json"
-}\n
-conn.request("POST", "/dev/v1/kicking-rule", json.dumps(payload), headers)\n
+}
+
+conn.request("POST", "/dev/v1/kicking-rule", json.dumps(payload), headers)
+
 res = conn.getresponse()
-data = res.read()\n
-print(data.decode("utf-8"))`}</CodeBlock>
+data = res.read()
+print(data.decode("utf-8"))
+```
 
 </TabItem>
 </Tabs>
 
+</Section>
 
-### Response parameters
-
-For details about possible response status codes, see [Response status codes](../../response-status-code).
-
-If the status code is not `200`, the request fails. See the `message` field in the response body for the reason for this failure.
-
-If the status code is `200`, the request succeeds, and the response body includes the following parameters:
-
-| Parameter      | Type | Description                                               |
-| :----------------- | :----- | :----------------------------------------------------------- |
-| `status`               | String | The status of this request. `success` means the request succeeds. |
-| `id`             | Number | The rule ID. Save the rule ID to update or delete this rule later. |
-
-### Response example
-
-The following is a response example for a successful request:
+<Section title="Response example">
 
 ```json
 {
@@ -192,3 +255,7 @@ The following is a response example for a successful request:
   "id": 1953
 }
 ```
+
+</Section>
+</RightColumn>
+</RestAPILayout>

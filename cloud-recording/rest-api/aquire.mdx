@@ -1,0 +1,660 @@
+---
+title: 'Acquire a builder token'
+sidebar_position: 1
+type: docs
+platform_selector: false
+hide_table_of_contents: true
+description: >
+   Acquire a builder token to start a cloud recording task.
+---
+
+import RestAPILayout from '@site/src/components/rest-api/RestAPILayout';
+import LeftColumn from '@site/src/components/rest-api/LeftColumn';
+import RightColumn, { Section } from '@site/src/components/rest-api/RightColumn';
+import ParameterList, { Parameter } from '@site/src/components/rest-api/ParameterList';
+import PathParameter from '@site/src/components/rest-api/PathParameter';
+import { Tabs, TabItem } from '@site/src/components/rest-api/Tabs';
+
+<RestAPILayout>
+  <LeftColumn
+    method="POST"
+    endpoint="https://api.sd-rtn.com/v1/apps/{appid}/cloud_recording/acquire"
+  >
+
+Before starting cloud recording, call this endpoint to get a resource ID. One resource ID can be used for only one recording session.
+
+<Admonition type="info">
+- Call `acquire` and `start` requests in pairs.
+- Call [`start`](./start) within two seconds of receiving the resource ID. Batch fetching resource IDs followed by batch `start` requests may cause failures.
+- The resource ID is valid for five minutes and should be used as soon as possible.
+</Admonition>
+
+## Request
+
+### Path parameters
+
+<PathParameter name="appid" type="string" required={true}>
+The App ID of your project.
+
+- For web page recording mode, enter the App ID for which the cloud recording service is enabled.
+- For individual and composite recording modes, use the same App ID as the channel to be recorded. Ensure that the cloud recording service has been enabled for this App ID.
+</PathParameter>
+
+### Request body
+
+<div className="api-mime-type">APPLICATION/JSON</div>
+
+<ParameterList title="BODY" required={true}>
+
+  <Parameter name="cname" type="string" required={true}>
+  The channel name.
+
+  - In individual recording and composite recording modes, this is the name of the channel to be recorded.
+  - In web page recording mode, this field differentiates the recording process. The string length cannot exceed 1024 bytes.
+
+  A unique recording instance is identified by `appid`, `cname`, and `uid`. To record the same channel multiple times, use the same `appId` and `cname` but different `uid` values.
+  </Parameter>
+
+  <Parameter name="uid" type="string" required={true}>
+  The UID used by the cloud recording service in the channel to identify itself. For example, `"527841"`. The value must meet these conditions:
+
+  - In the range from 1 to (2³²−1), and cannot be `0`.
+  - Must not duplicate any UID already in the channel.
+  - Must be an integer value enclosed in quotes; all users in the channel must use integer UIDs.
+  </Parameter>
+
+  <Parameter name="clientRequest" type="object" required={true}>
+
+    <Parameter name="scene" type="number" required={false} defaultValue="0">
+    The use case for the cloud recording resource:
+
+    - `0`: Real-time audio and video recording.
+    - `1`: Web page recording.
+    </Parameter>
+
+    <Parameter name="resourceExpiredHour" type="number" required={false} defaultValue="72" possibleValues="[1,720]">
+    The validity period (hours) for calling the cloud recording RESTful API. The countdown starts after the cloud recording service starts and the `sid` (recording ID) is obtained.
+
+    After timeout, you cannot call the `query`, `update`, `updateLayout`, or `stop` methods.
+    </Parameter>
+
+    <Parameter name="excludeResourceIds" type="array[string]" required={false}>
+    The `resourceId` values of other recording tasks to exclude, so that the new task uses resources from a different region. Used for cross-regional multi-stream recording. See [Multi-channel task assurance](../best-practices/integration-best-practices#multi-channel-task-assurance).
+    </Parameter>
+
+    <Parameter name="region" type="string" required={false}>
+    Restricts the cloud recording service to a specific region. By default, the service uses the region of the server where the request originates. Once set, the service does not access servers outside this region.
+
+    - `"CN"`: Mainland China.
+    - `"AP"`: Asia excluding Mainland China.
+    - `"EU"`: Europe.
+    - `"NA"`: North America.
+
+    When calling `start`, the `region` of the third-party cloud storage must match this value.
+    </Parameter>    
+
+    <Parameter name="startParameter" type="object" required={false}>
+    Set this field to improve availability and optimize load balancing.
+
+    <Admonition type="info">
+    Values must be valid and consistent with the `clientRequest` in the subsequent [`start`](./start) request body; otherwise the `start` request returns an error.
+    </Admonition>
+
+      <Parameter name="token" type="string" required={false}>
+      A dynamic key used for authentication. Required if your project has enabled the App Certificate. See [Token authentication](../develop/authentication-workflow) for details.
+
+      - Only required in individual recording and composite recording modes.
+      - Cloud recording does not support token updates. Ensure the token validity period is longer than your expected recording duration to prevent the recording task from exiting the channel.
+      </Parameter>
+
+      <Parameter name="storageConfig" type="object" required={true}>
+      Configuration for third-party cloud storage.
+
+        <Parameter name="vendor" type="number" required={true}>
+        Third-party cloud storage platform:
+
+        - `1`: Amazon S3
+        - `2`: Alibaba Cloud
+        - `3`: Tencent Cloud
+        - `5`: Microsoft Azure
+        - `6`: Google Cloud
+        - `7`: Huawei Cloud
+        - `8`: Baidu IntelligentCloud
+        - `11`: S3-compatible storage. Specify the domain name in `extensionParams.endpoint`.
+        </Parameter>
+
+        <Parameter name="region" type="number" required={true}>
+        The region of the third-party cloud storage.
+
+        <Admonition type="info">
+        To ensure upload success and real-time performance, the cloud storage region must match the region of the server where you initiate the request. See [Third-party cloud storage regions](../reference/region-vendor).
+        </Admonition>
+        </Parameter>
+
+        <Parameter name="bucket" type="string" required={true}>
+        The cloud storage bucket name. Must comply with the naming rules of the corresponding cloud storage service.
+        </Parameter>
+
+        <Parameter name="accessKey" type="string" required={true}>
+        The access key for the third-party cloud storage.
+        </Parameter>
+
+        <Parameter name="secretKey" type="string" required={true}>
+        The secret key for the third-party cloud storage.
+        </Parameter>
+
+        <Parameter name="stsToken" type="string" required={false}>
+        A temporary security token issued by the cloud provider's Security Token Service (STS), granting limited access to cloud storage resources.
+
+        Currently supported only for Amazon S3 (`1`), Alibaba Cloud (`2`), and Tencent Cloud (`3`).
+        </Parameter>
+
+        <Parameter name="stsExpiration" type="number" required={false}>
+        The `stsToken` expiration time as a Unix timestamp in seconds.
+
+        - Use Uint64 storage to avoid timestamp overflow.
+        - Set the longest possible validity period when applying the token. The minimum validity period is 4 hours.
+        - If the recording task runs longer than 1 hour, reapply a new `stsToken` every 60 minutes and call `update` to refresh the `storageConfig`.
+        </Parameter>
+
+        <Parameter name="fileNamePrefix" type="array[string]" required={false}>
+        The storage path prefix for recorded files. For example, setting `["directory1","directory2"]` results in a file name prefix of `directory1/directory2/`. The total prefix length, including slashes, cannot exceed 128 characters. Supported characters: lowercase letters `a-z`, uppercase letters `A-Z`, digits `0-9`.
+        </Parameter>
+
+        <Parameter name="extensionParams" type="object" required={false}>
+        Encryption and tagging settings applied to uploaded recording files by the cloud storage service.
+
+          <Parameter name="sse" type="string" required={true}>
+          The encryption mode for uploaded files. Applicable to Amazon S3 only. See the [Amazon S3 documentation](https://docs.aws.amazon.com/en_us/AmazonS3/latest/userguide/UsingEncryption.html).
+
+          - `kms`: KMS encryption.
+          - `aes256`: AES256 encryption.
+          </Parameter>
+
+          <Parameter name="tag" type="string" required={true}>
+          Tag content applied to uploaded files. Applicable to Alibaba Cloud and Amazon S3 only.
+          </Parameter>
+        </Parameter>
+      </Parameter>
+
+      <Parameter name="recordingConfig" type="object" required={false}>
+      Configuration for recorded audio and video streams. Only required in individual recording and composite recording modes.
+
+        <Parameter name="channelType" type="number" required={true} defaultValue="0">
+        The channel profile:
+
+        - `0`: Communication.
+        - `1`: Live streaming.
+
+        Must match the channel profile set in the Agora RTC SDK.
+        </Parameter>
+
+        <Parameter name="decryptionMode" type="number" required={false} defaultValue="0">
+        The decryption mode, required if channel encryption is enabled in the SDK client:
+
+        - `0`: No encryption.
+        - `1`: AES_128_XTS.
+        - `2`: AES_128_ECB.
+        - `3`: AES_256_XTS.
+        - `4`: SM4_128_ECB.
+        - `5`: AES_128_GCM.
+        - `6`: AES_256_GCM.
+        - `7`: AES_128_GCM2. Requires setting `secret` and `salt`.
+        - `8`: AES_256_GCM2. Requires setting `secret` and `salt`.
+        </Parameter>
+
+        <Parameter name="secret" type="string" required={false}>
+        The encryption key. Required when `decryptionMode` is not `0`.
+        </Parameter>
+
+        <Parameter name="salt" type="string" required={false}>
+        The encryption salt. Base64-encoded, 32 bytes. Required when `decryptionMode` is `7` or `8`.
+        </Parameter>
+
+        <Parameter name="maxIdleTime" type="number" required={false} defaultValue="30" possibleValues="[5,2592000]">
+        Maximum channel idle time in seconds. Cannot exceed 30 days. The recording service exits automatically when this duration is exceeded. If you restart recording after it exits, a new recording file is created.
+
+        A channel is considered idle when there are no hosts in a live channel, or no users in a communication channel.
+        </Parameter>
+
+        <Parameter name="streamTypes" type="number" required={false} defaultValue="2">
+        The type of media stream to subscribe to:
+
+        - `0`: Audio only.
+        - `1`: Video only.
+        - `2`: Audio and video.
+        </Parameter>
+
+        <Parameter name="videoStreamType" type="number" required={false} defaultValue="0">
+        The remote video stream type to subscribe to when dual-stream mode is enabled:
+
+        - `0`: High-quality video stream (high resolution and high bitrate).
+        - `1`: Low-quality video stream (low resolution and low bitrate).
+        </Parameter>
+
+        <Parameter name="subscribeAudioUids" type="array[string]" required={false}>
+        Audio streams to subscribe to. The array length cannot exceed 32. Set to `["#allstream#"]` to subscribe to all UIDs. Cannot be set together with `unsubscribeAudioUids`.
+
+        Only applicable when `streamTypes` is `0` or `2`. If a subscription list is set for only one media type, the service will not subscribe to the other type.
+        </Parameter>
+
+        <Parameter name="unsubscribeAudioUids" type="array[string]" required={false}>
+        Audio streams to exclude. The service subscribes to all other UIDs. The array length cannot exceed 32. Cannot be set together with `subscribeAudioUids`.
+        </Parameter>
+
+        <Parameter name="subscribeVideoUids" type="array[string]" required={false}>
+        Video streams to subscribe to. The array length cannot exceed 32. Set to `["#allstream#"]` to subscribe to all UIDs. Cannot be set together with `unsubscribeVideoUids`.
+
+        Only applicable when `streamTypes` is `1` or `2`. If a subscription list is set for only one media type, the service will not subscribe to the other type.
+        </Parameter>
+
+        <Parameter name="unsubscribeVideoUids" type="array[string]" required={false}>
+        Video streams to exclude. The service subscribes to all other UIDs. The array length cannot exceed 32. Cannot be set together with `subscribeVideoUids`.
+        </Parameter>
+
+        <Parameter name="subscribeUidGroup" type="number" required={false}>
+        Estimated peak number of subscribed UIDs. Required in individual recording mode.
+
+        - `0`: 1–2 UIDs.
+        - `1`: 3–7 UIDs.
+        - `2`: 8–12 UIDs.
+        - `3`: 13–17 UIDs.
+        - `4`: 18–32 UIDs.
+        - `5`: 33–49 UIDs.
+
+        For example, if `subscribeVideoUids` is `["100","101","102"]` and `subscribeAudioUids` is `["101","102","103"]`, the subscriber count is 4.
+        </Parameter>
+
+        <Parameter name="streamMode" type="string" required={false} defaultValue='"default"' possibleValues="default,standard,original">
+        Output mode of the media stream. Only applicable in individual recording mode. See [Media streaming output modes](../reference/stream-mode).
+
+        - `"default"`: Audio transcoding generates separate M3U8 audio and video index files.
+        - `"standard"`: Generates separate M3U8 audio and video index files, plus a merged audio-and-video index file. If VP8 encoding is used on the Web client, a merged MPD file is generated instead.
+        - `"original"`: Original encoding mode for individual non-transcoding audio recording. Only takes effect when `streamTypes` is `0`. No transcoding occurs; generates an M3U8 audio index file.
+        </Parameter>
+
+        <Parameter name="audioProfile" type="number" required={false} defaultValue="0">
+        Audio output sampling rate, bitrate, encoding mode, and channel count. Only applicable in composite recording mode.
+
+        - `0`: 48 kHz, music encoding, mono, ~48 Kbps.
+        - `1`: 48 kHz, music encoding, mono, ~128 Kbps.
+        - `2`: 48 kHz, music encoding, stereo, ~192 Kbps.
+        </Parameter>
+
+        <Parameter name="transcodingConfig" type="object" required={false}>
+        Transcoded video output settings. Only applicable in composite recording mode. See [Set the video profile](../develop/recording-video-profile).
+
+          <Parameter name="width" type="number" required={false} defaultValue="360">
+          Video width in pixels. `width` × `height` cannot exceed 1920 × 1080.
+          </Parameter>
+
+          <Parameter name="height" type="number" required={false} defaultValue="640">
+          Video height in pixels. `width` × `height` cannot exceed 1920 × 1080.
+          </Parameter>
+
+          <Parameter name="fps" type="number" required={false} defaultValue="15">
+          Video frame rate in fps.
+          </Parameter>
+
+          <Parameter name="bitrate" type="number" required={false} defaultValue="500">
+          Video bitrate in Kbps.
+          </Parameter>
+
+          <Parameter name="maxResolutionUid" type="string" required={false}>
+          The UID of the large video window in vertical layout. Must be an integer from 1 to (2³²−1), cannot be `0`. Only required in vertical layout.
+          </Parameter>
+
+          <Parameter name="mixedVideoLayout" type="number" required={false} defaultValue="0">
+          Composite video layout:
+
+          - `0`: Floating layout. The first user to join fills the entire canvas; other users appear as small windows arranged horizontally from bottom to top, up to 4 rows of 4 windows (17 windows total).
+          - `1`: Adaptive layout. All user windows are equal in size, automatically adjusted based on user count. Supports up to 17 windows.
+          - `2`: Vertical layout. The `maxResolutionUid` user appears in a large window on the left; other users are arranged in up to two columns on the right, 8 windows per column (17 windows total).
+          - `3`: Custom layout. Configure positions using `layoutConfig`.
+          </Parameter>
+
+          <Parameter name="backgroundColor" type="string" required={false} defaultValue='"#000000"'>
+          Canvas background color as an RGB hex string (e.g., `"#FF0000"` for red).
+          </Parameter>
+
+          <Parameter name="backgroundImage" type="string" required={false}>
+          URL of the canvas background image. Displayed in cropped mode: the image is scaled proportionally until the canvas is filled, and excess edges are cropped.
+          </Parameter>
+
+          <Parameter name="defaultUserBackgroundImage" type="string" required={false}>
+          URL of the default background image shown when a user stops sending video for more than 3.5 seconds. Overridden if a per-UID background image is set.
+          </Parameter>
+
+          <Parameter name="layoutConfig" type="array[object]" required={false}>
+          Per-user screen layout settings for custom layout. Supports up to 17 users. Only applicable when `mixedVideoLayout` is `3`.
+
+            <Parameter name="uid" type="string" required={false}>
+            The UID of the user assigned to this layout region. If not specified, layout regions are assigned in the order users join the channel.
+            </Parameter>
+
+            <Parameter name="x_axis" type="number (float)" required={true} possibleValues="[0,1]">
+            Horizontal coordinate of the region's upper-left corner as a relative value (6 decimal places). `0.0` is the far left, `1.0` is the far right.
+            </Parameter>
+
+            <Parameter name="y_axis" type="number (float)" required={true} possibleValues="[0,1]">
+            Vertical coordinate of the region's upper-left corner as a relative value (6 decimal places). `0.0` is the top, `1.0` is the bottom.
+            </Parameter>
+
+            <Parameter name="width" type="number (float)" required={true} possibleValues="[0,1]">
+            Relative width of the region (6 decimal places).
+            </Parameter>
+
+            <Parameter name="height" type="number (float)" required={true} possibleValues="[0,1]">
+            Relative height of the region (6 decimal places).
+            </Parameter>
+
+            <Parameter name="alpha" type="number (float)" required={false} defaultValue="1" possibleValues="[0,1]">
+            Transparency of the user's video window. `0.0` is fully transparent, `1.0` is fully opaque.
+            </Parameter>
+
+            <Parameter name="render_mode" type="number" required={false} defaultValue="0">
+            Display mode for the user's video window:
+
+            - `0`: Cropped mode. The window is filled; video is scaled proportionally and cropped at the edges if the aspect ratio differs.
+            - `1`: Fit mode. All video content is visible; the video is scaled proportionally and black borders may appear.
+            </Parameter>
+          </Parameter>
+
+          <Parameter name="backgroundConfig" type="array[object]" required={false}>
+          Per-user background image settings.
+
+            <Parameter name="uid" type="string" required={true}>
+            The UID of the user.
+            </Parameter>
+
+            <Parameter name="image_url" type="string" required={true}>
+            The URL of the user's background image, shown when the user stops sending video for more than 3.5 seconds. Supports HTTPS, JPG and BMP formats, maximum 6 MB. Settings take effect only after the image is successfully downloaded.
+            </Parameter>
+
+            <Parameter name="render_mode" type="number" required={false} defaultValue="0">
+            Display mode for the background image:
+
+            - `0`: Cropped mode. The window is filled; image is scaled proportionally and cropped at the edges if the aspect ratio differs.
+            - `1`: Fit mode. All image content is visible; the image is scaled proportionally and black borders may appear.
+            </Parameter>
+          </Parameter>
+        </Parameter>
+      </Parameter>
+
+      <Parameter name="recordingFileConfig" type="object" required={false}>
+      Configuration for recorded files.
+
+      <Admonition type="info">
+      Cannot be set when taking screenshots only. Required in all other cases including individual recording (without transcoding, with transcoding, or simultaneous recording and screenshots), composite recording, and web page recording.
+      </Admonition>
+
+        <Parameter name="avFileType" type="array[string]" required={false} defaultValue='["hls"]'>
+        The type of recorded video files:
+
+        - `"hls"`: M3U8 and TS files.
+        - `"mp4"`: MP4 files.
+
+        **Note**:
+        - In individual recording mode (non-screenshot-only), use the default value.
+        - In composite recording and web page recording modes, set to `["hls","mp4"]` to generate MP4 files. Setting to `["mp4"]` alone causes an error.
+        - In composite recording mode, a new MP4 file is created when the current file exceeds ~2 hours or ~2 GB.
+        - In web page recording mode, a new MP4 file is created when the current file exceeds `maxVideoDuration`.
+        </Parameter>
+      </Parameter>
+
+      <Parameter name="snapshotConfig" type="object" required={false}>
+      Screenshot capture settings. Only applicable in individual recording mode.
+
+         - Screenshots can be taken separately or simultaneously with recording. See [Capture screenshots](../develop/screen-capture).
+         - If the recording service or the recording upload service malfunctions, the screenshot may fail. Recording is not affected if the screenshot malfunctions.
+         - `streamTypes` must be `1` or `2`. If `subscribeAudioUid` is set, `subscribeVideoUids` must also be set.
+
+        <Parameter name="captureInterval" type="number" required={false} defaultValue="10" possibleValues="[5,3600]">
+        Screenshot capture interval in seconds.
+        </Parameter>
+
+        <Parameter name="fileType" type="array[string]" required={true}>
+        Screenshot file format. Currently only `["jpg"]` is supported.
+        </Parameter>
+      </Parameter>
+
+      <Parameter name="extensionServiceConfig" type="object" required={false}>
+      Configuration for extended services. Only applicable in web page recording mode.
+
+        <Parameter name="errorHandlePolicy" type="string" required={false} defaultValue='"error_abort"'>
+        Error handling policy. Currently only `"error_abort"` is supported: when an error occurs in an extension service, all other non-extension services (such as stream subscription) also stop.
+        </Parameter>
+
+        <Parameter name="extensionServices" type="array[object]" required={true}>
+
+          <Parameter name="serviceName" type="string" required={true}>
+          Name of the extension service:
+
+          - `"web_recorder_service"`: Web page recording.
+          - `"rtmp_publish_service"`: Push web page recording to CDN.
+          </Parameter>
+
+          <Parameter name="errorHandlePolicy" type="string" required={false}>
+          Error handling policy within the extension service:
+
+          - `"error_abort"`: Default for web page recording. Stops other extension services when this service encounters an error.
+          - `"error_ignore"`: Default for CDN push. Other extension services are unaffected when this service encounters an error.
+
+          Errors in the page recording service will cause CDN push to fail, but errors in the CDN push service do not affect page recording
+          </Parameter>
+
+          <Parameter name="serviceParam" type="object" required={true}>
+          Specific configuration for the extension service.
+
+            <Parameter name="url" type="string" required={true}>
+            The URL of the page to record.
+            </Parameter>
+
+            <Parameter name="audioProfile" type="number" required={true}>
+            Audio output sampling rate, bitrate, encoding mode, and channel count:
+
+            - `0`: 48 kHz, music encoding, mono, ~48 Kbps.
+            - `1`: 48 kHz, music encoding, mono, ~128 Kbps.
+            - `2`: 48 kHz, music encoding, stereo, ~192 Kbps.
+            </Parameter>
+
+            <Parameter name="videoWidth" type="number" required={true}>
+            Output video width in pixels. `videoWidth` × `videoHeight` must not exceed 1920 × 1080.
+            </Parameter>
+
+            <Parameter name="videoHeight" type="number" required={true}>
+            Output video height in pixels. `videoWidth` × `videoHeight` must not exceed 1920 × 1080.
+            </Parameter>
+
+            <Parameter name="maxRecordingHour" type="number" required={true} possibleValues="1 to 720">
+            Maximum web page recording duration in hours. Recording stops automatically when this limit is exceeded.
+
+            The recommended value should not exceed the `resourceExpiredHour` value set in this request. Charges continue until recording stops, so set this value according to your business needs or stop recording manually.
+            </Parameter>
+
+            <Parameter name="videoBitrate" type="number" required={false}>
+            Output video bitrate in Kbps. Default values by resolution:
+
+            - Resolution ≥ 1280 × 720: `2000`
+            - Resolution < 1280 × 720: `1500`
+            </Parameter>
+
+            <Parameter name="videoFps" type="number" required={false} defaultValue="15" possibleValues="5 to 60">
+            Output video frame rate in fps.
+            </Parameter>
+
+            <Parameter name="mobile" type="boolean" required={false} defaultValue="false">
+            Whether to enable mobile web mode:
+
+            - `true`: The recording service uses mobile web rendering mode.
+            - `false`: Uses standard rendering mode.
+            </Parameter>
+
+            <Parameter name="maxVideoDuration" type="number" required={false} defaultValue="120" possibleValues="30 to 240">
+            Maximum MP4 file duration in minutes. A new MP4 file is created when the current file exceeds this duration.
+            </Parameter>
+
+            <Parameter name="onhold" type="boolean" required={false} defaultValue="false">
+            Whether to start the recording in a paused state:
+
+            - `true`: The service opens and renders the page but does not generate slice files. Call `update` with `onhold: false` to resume.
+            - `false`: Recording starts immediately.
+            </Parameter>
+
+            <Parameter name="readyTimeout" type="number" required={false} defaultValue="0" possibleValues="0 to 60">
+            Page load timeout in seconds. See [Page load timeout detection](../develop/webpage-load-timeout).
+
+            - `0`: Page loading status is not detected.
+            - `1`–`60`: Recording stops if the page does not load within this duration.
+            </Parameter>
+          </Parameter>
+        </Parameter>
+      </Parameter>
+    </Parameter>
+  </Parameter>
+
+</ParameterList>
+
+## Response
+
+### Response body
+
+- If the returned status code is `200`, the request was successful.
+
+  <ParameterList title="OK">
+    <Parameter name="cname" type="string">
+    The name of the channel to be recorded.
+    </Parameter>
+
+    <Parameter name="uid" type="string">
+    The UID used by the cloud recording service in the RTC channel.
+    </Parameter>
+
+    <Parameter name="resourceId" type="string">
+    The cloud recording resource ID. Use this to start a cloud recording session. Valid for five minutes; re-request if expired.
+    </Parameter>
+  </ParameterList>
+
+- If the returned status code is not `200`, the request failed. See [Response status codes](../reference/common-errors#status-codes) for troubleshooting.
+
+</LeftColumn>
+
+<RightColumn>
+
+<Section title="Authorization">
+This endpoint requires [Basic Auth](../reference/restful-authentication).
+</Section>
+
+<Section title="Request example">
+
+<Tabs groupId="code-examples">
+  <TabItem value="curl" label="curl" default>
+
+  ```bash
+  curl --request POST \
+    --url https://api.sd-rtn.com/v1/apps/{appid}/cloud_recording/acquire \
+    --header 'Authorization: Basic <credentials>' \
+    --header 'Content-Type: application/json' \
+    --data '{
+    "cname": "httpClient463224",
+    "uid": "527841",
+    "clientRequest": {
+      "scene": 0,
+      "resourceExpiredHour": 24
+    }
+  }'
+  ```
+
+  </TabItem>
+  <TabItem value="python" label="Python">
+
+  ```python
+  import requests
+  import json
+
+  url = "https://api.sd-rtn.com/v1/apps/{appid}/cloud_recording/acquire"
+  headers = {
+      "Authorization": "Basic <credentials>",
+      "Content-Type": "application/json"
+  }
+
+  data = {
+      "cname": "httpClient463224",
+      "uid": "527841",
+      "clientRequest": {
+          "scene": 0,
+          "resourceExpiredHour": 24
+      }
+  }
+
+  response = requests.post(url, headers=headers, data=json.dumps(data))
+
+  print(response.status_code)
+  print(response.json())
+  ```
+
+  </TabItem>
+  <TabItem value="node" label="Node.js">
+
+  ```js
+  const axios = require('axios');
+
+  const url = 'https://api.sd-rtn.com/v1/apps/{appid}/cloud_recording/acquire';
+  const headers = {
+    'Authorization': 'Basic <credentials>',
+    'Content-Type': 'application/json'
+  };
+
+  const data = {
+    cname: "httpClient463224",
+    uid: "527841",
+    clientRequest: {
+      scene: 0,
+      resourceExpiredHour: 24
+    }
+  };
+
+  axios.post(url, data, { headers })
+    .then(response => {
+      console.log('Status:', response.status);
+      console.log('Data:', response.data);
+    })
+    .catch(error => {
+      console.error('Error:', error.response ? error.response.data : error.message);
+    });
+  ```
+
+  </TabItem>
+</Tabs>
+
+</Section>
+
+<Section title="Response example">
+
+<Tabs groupId="response">
+  <TabItem value="ok" label="200" default>
+
+  ```json
+  {
+    "cname": "httpClient463224",
+    "uid": "527841",
+    "resourceId": "JyvK8nXHuV1BE....."
+  }
+  ```
+
+  </TabItem>
+  <TabItem value="error" label="Non-200">
+
+  ```json
+  {
+    "message": "Describes why the request failed."
+  }
+  ```
+
+  </TabItem>
+</Tabs>
+
+</Section>
+
+</RightColumn>
+</RestAPILayout>

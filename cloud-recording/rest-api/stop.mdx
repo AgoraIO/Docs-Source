@@ -5,5 +5,332 @@ type: docs
 platform_selector: false
 hide_table_of_contents: true
 description: >
-   Stop a cloud recording task.
+  Stop an active cloud recording task.
 ---
+
+import RestAPILayout from '@site/src/components/rest-api/RestAPILayout';
+import LeftColumn from '@site/src/components/rest-api/LeftColumn';
+import RightColumn, { Section } from '@site/src/components/rest-api/RightColumn';
+import ParameterList, { Parameter } from '@site/src/components/rest-api/ParameterList';
+import PathParameter from '@site/src/components/rest-api/PathParameter';
+import { Tabs, TabItem } from '@site/src/components/rest-api/Tabs';
+
+<RestAPILayout>
+  <LeftColumn
+    method="POST"
+    endpoint="https://api.sd-rtn.com/v1/apps/{appid}/cloud_recording/resourceid/{resourceid}/sid/{sid}/mode/{mode}/stop"
+  >
+
+Call this endpoint to leave the channel and stop cloud recording. To start recording again after stopping, call [`acquire`](acquire) to get a new resource ID.
+
+<Admonition type="info">
+- This endpoint is only valid within an active recording session. If the recording was not started successfully or has already ended, the request returns `404`.
+- In non-web page recording modes, if the channel is idle for longer than the `maxIdleTime` value set in [`start`](start) (default 30 seconds), cloud recording automatically leaves the channel and stops.
+</Admonition>
+
+## Request
+
+### Path parameters
+
+<PathParameter name="appid" type="string" required={true}>
+The App ID of your project.
+
+- For web page recording mode, enter the App ID for which the cloud recording service is enabled.
+- For individual and composite recording modes, use the same App ID as the channel to be recorded. Ensure that the cloud recording service has been enabled for this App ID.
+</PathParameter>
+
+<PathParameter name="resourceid" type="string" required={true}>
+The resource ID obtained from the [`acquire`](acquire) endpoint.
+</PathParameter>
+
+<PathParameter name="sid" type="string" required={true}>
+The recording ID obtained from the [`start`](start) endpoint.
+</PathParameter>
+
+<PathParameter name="mode" type="string" required={true}>
+The recording mode:
+
+- `individual`: [Individual recording mode](../develop/individual-mode).
+- `mix`: [Composite recording mode](../develop/composite-mode).
+- `web`: [Web page recording mode](../develop/webpage-mode).
+</PathParameter>
+
+### Request body
+
+<div className="api-mime-type">APPLICATION/JSON</div>
+
+<ParameterList title="BODY" required={true}>
+
+  <Parameter name="cname" type="string" required={true}>
+  The name of the channel being recorded. Must match the `cname` used in the [`acquire`](acquire) request.
+  </Parameter>
+
+  <Parameter name="uid" type="string" required={true}>
+  The UID used by the cloud recording service in the channel. Must match the `uid` used in the [`acquire`](acquire) request.
+  </Parameter>
+
+  <Parameter name="clientRequest" type="object" required={true}>
+
+    <Parameter name="async_stop" type="boolean" required={false} defaultValue="false">
+    The response mechanism for the `stop` request:
+
+    - `true`: Asynchronous. Returns a response immediately after the request is received, without waiting for the recording files to finish uploading.
+    - `false`: Synchronous. Returns a response only after all recorded files have been uploaded to third-party cloud storage. Agora expects the upload to complete within 20 seconds. If it exceeds this limit, the response returns error code `50`.
+    </Parameter>
+
+  </Parameter>
+
+</ParameterList>
+
+## Response
+
+### Response body
+
+- If the returned status code is `200`, the request was successful.
+
+  <ParameterList title="OK">
+    <Parameter name="cname" type="string">
+    The name of the channel being recorded.
+    </Parameter>
+
+    <Parameter name="uid" type="string">
+    The UID used by the cloud recording service in the RTC channel.
+    </Parameter>
+
+    <Parameter name="resourceId" type="string">
+    The resource ID used by cloud recording.
+    </Parameter>
+
+    <Parameter name="sid" type="string">
+    The recording ID, identifying the current recording session.
+    </Parameter>
+
+    <Parameter name="serverResponse" type="object">
+    The recording stop status. The fields returned vary depending on the recording mode and whether screenshot capture is enabled.
+
+      <Parameter name="extensionServiceState" type="array[object]">
+      State of each extension service at the time of stopping. Only returned in web page recording mode.
+
+        <Parameter name="serviceName" type="string">
+        Extension service name:
+
+        - `"upload_service"`: Upload service.
+        - `"web_recorder_service"`: Web page recording service.
+        </Parameter>
+
+        <Parameter name="payload" type="object">
+        Service-specific state at the time of stopping.
+
+          <Parameter name="uploadingStatus" type="string">
+          Upload status of the recording files. Only returned by `upload_service`.
+
+          - `"uploaded"`: All recording files have been uploaded to the specified third-party cloud storage.
+          - `"backuped"`: All files have been uploaded, but at least one TS file was uploaded to Agora backup cloud. The Agora server will automatically continue uploading to the designated third-party cloud storage.
+          - `"unknown"`: Unknown status.
+          </Parameter>
+
+          <Parameter name="fileList" type="array[object]">
+          Files generated during recording. Only returned by `web_recorder_service`.
+
+            <Parameter name="filename" type="string">
+            Name of the M3U8 or MP4 file.
+            </Parameter>
+
+            <Parameter name="sliceStartTime" type="number">
+            Recording start time of the file, Unix timestamp in seconds.
+            </Parameter>
+          </Parameter>
+
+          <Parameter name="onhold" type="boolean">
+          Whether recording was paused at the time of stopping. `true` if paused, `false` if running. Only returned by `web_recorder_service`.
+          </Parameter>
+
+          <Parameter name="state" type="string">
+          Upload status of the extension service. Only returned by `web_recorder_service`.
+
+          - `"init"`: Initializing.
+          - `"inProgress"`: Running.
+          - `"exit"`: Stopped.
+          </Parameter>
+        </Parameter>
+      </Parameter>
+
+      <Parameter name="uploadingStatus" type="string">
+      Upload status of the recording files. Only returned in individual recording mode when screenshot capture is enabled, and in individual and composite recording modes when screenshot capture is not enabled.
+
+      - `"uploaded"`: All recording files have been uploaded to the specified third-party cloud storage.
+      - `"backuped"`: All files have been uploaded, but at least one TS file was uploaded to Agora backup cloud. The Agora server will automatically continue uploading to the designated third-party cloud storage.
+      - `"unknown"`: Unknown status.
+      </Parameter>
+
+      <Parameter name="fileListMode" type="string">
+      Data format of `fileList`. Only returned in individual and composite recording modes when screenshot capture is not enabled.
+
+      - `"string"`: In composite recording mode when `avFileType` is `["hls"]`.
+      - `"json"`: When `avFileType` is `["hls","mp4"]` in individual or composite recording mode.
+      </Parameter>
+
+      <Parameter name="fileList" type="string or array[object]">
+      The recorded files. Only returned in individual and composite recording modes when screenshot capture is not enabled. When `fileListMode` is `"string"`, this is the filename of the M3U8 file. When `fileListMode` is `"json"`, this is an array of objects with the following fields:
+
+        <Parameter name="fileName" type="string">
+        Name of the M3U8 or MP4 file.
+        </Parameter>
+
+        <Parameter name="trackType" type="string">
+        File type:
+
+        - `"audio"`: Audio only.
+        - `"video"`: Video only.
+        - `"audio_and_video"`: Audio and video.
+        </Parameter>
+
+        <Parameter name="uid" type="string">
+        The UID whose stream is recorded. In composite recording mode, this is `"0"`.
+        </Parameter>
+
+        <Parameter name="mixedAllUser" type="boolean">
+        `true` if all users are recorded in a single file; `false` if each user is recorded separately.
+        </Parameter>
+
+        <Parameter name="isPlayable" type="boolean">
+        `true` if the file can be played online; `false` if it cannot.
+        </Parameter>
+
+        <Parameter name="sliceStartTime" type="number">
+        Recording start time of the file, Unix timestamp in seconds.
+        </Parameter>
+      </Parameter>
+
+    </Parameter>
+  </ParameterList>
+
+- If the returned status code is not `200`, the request failed. See [Response status codes](../reference/common-errors#status-codes) for troubleshooting.
+
+</LeftColumn>
+
+<RightColumn>
+
+<Section title="Authorization">
+This endpoint requires [Basic Auth](../reference/restful-authentication).
+</Section>
+
+<Section title="Request example">
+
+<Tabs groupId="code-examples">
+  <TabItem value="curl" label="curl" default>
+
+  ```bash
+  curl --request POST \
+    --url https://api.sd-rtn.com/v1/apps/{appid}/cloud_recording/resourceid/{resourceid}/sid/{sid}/mode/{mode}/stop \
+    --header 'Authorization: Basic <credentials>' \
+    --header 'Content-Type: application/json' \
+    --data '{
+    "cname": "httpClient463224",
+    "uid": "527841",
+    "clientRequest": {
+      "async_stop": false
+    }
+  }'
+  ```
+
+  </TabItem>
+  <TabItem value="python" label="Python">
+
+  ```python
+  import requests
+  import json
+
+  url = "https://api.sd-rtn.com/v1/apps/{appid}/cloud_recording/resourceid/{resourceid}/sid/{sid}/mode/{mode}/stop"
+  headers = {
+      "Authorization": "Basic <credentials>",
+      "Content-Type": "application/json"
+  }
+
+  data = {
+      "cname": "httpClient463224",
+      "uid": "527841",
+      "clientRequest": {
+          "async_stop": False
+      }
+  }
+
+  response = requests.post(url, headers=headers, data=json.dumps(data))
+
+  print(response.status_code)
+  print(response.json())
+  ```
+
+  </TabItem>
+  <TabItem value="node" label="Node.js">
+
+  ```js
+  const axios = require('axios');
+
+  const url = 'https://api.sd-rtn.com/v1/apps/{appid}/cloud_recording/resourceid/{resourceid}/sid/{sid}/mode/{mode}/stop';
+  const headers = {
+    'Authorization': 'Basic <credentials>',
+    'Content-Type': 'application/json'
+  };
+
+  const data = {
+    cname: "httpClient463224",
+    uid: "527841",
+    clientRequest: {
+      async_stop: false
+    }
+  };
+
+  axios.post(url, data, { headers })
+    .then(response => {
+      console.log('Status:', response.status);
+      console.log('Data:', response.data);
+    })
+    .catch(error => {
+      console.error('Error:', error.response ? error.response.data : error.message);
+    });
+  ```
+
+  </TabItem>
+</Tabs>
+
+</Section>
+
+<Section title="Response example">
+
+<Tabs groupId="response">
+  <TabItem value="ok" label="200" default>
+
+   ```json
+  {
+    "resourceId": "JyvK8nXHuV1BE.....",
+    "sid": "38f8e3cfdc474cd56fc1ceba380d7e1a",
+    "serverResponse": {
+      "extensionServiceState": [
+        {
+          "payload": {
+            "uploadingStatus": "uploaded"
+          },
+          "serviceName": "upload_service"
+        }
+      ]
+    },
+    "cname": "httpClient463224",
+    "uid": "527841"
+  }
+   ```
+  </TabItem>
+  <TabItem value="error" label="Non-200">
+
+   ```json
+   {
+    "code": 62,
+    "reason": "request timeout"
+   }
+   ```
+  </TabItem>
+</Tabs> 
+</Section>
+
+</RightColumn>
+</RestAPILayout>

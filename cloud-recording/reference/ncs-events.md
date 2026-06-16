@@ -1,5 +1,5 @@
 ---
-title: "Cloud Recording API callback service"
+title: "Receive event notifications"
 sidebar_position: 5
 type: docs
 platform_selector: false
@@ -95,10 +95,10 @@ The related fields of the Agora Cloud Recording callback events are listed below
   - `4`: Major
   - `5`: Fatal. A fatal error may cause the recording to exit. If you receive a message of this level, call `query` to check the current status and process the error according to the error notifications.
 - `errorCode`: Number. The error code. 
-  - If the error occurs in the recorder module (`0`), see [common errors](../common-errors).
+  - If the error occurs in the recorder module (`0`), see [error codes](/cloud-recording/reference/rest-api-overview#error-codes-for-the-agora-cloud-recording-service).
   - If the error occurs in the uploader (`1`), see [upload error code](#uploaderr). 
   - If the error occurs in the Agora Cloud Recording Service (`2`), see [cloud recording service error code](#clouderr).
-  - If the error occurs in the other modules, see [common errors](../common-errors).
+  - If the error occurs in the other modules, see [common errors](/cloud-recording/reference/rest-api-overview#error-codes-for-the-agora-cloud-recording-service).
   If you do not find any error code in the above-mentioned pages, contact our technical support.
 
 - `stat`: Number. The event status. 0 indicates normal status; other values indicate abnormal status.

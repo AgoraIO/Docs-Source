@@ -64,7 +64,7 @@ Take the following steps to ensure that the recording service starts successfull
 
 Before starting web page recording, you need to complete the page detection logic of the JavaScript of the web page to be recorded to implement the following solutions:
 
-1. When calling [`start`](../reference/restful-api#start) to start web page recording, the web page recording browser accesses and loads the web page to be recorded.
+1. When calling [`start`](../rest-api/start) to start web page recording, the web page recording browser accesses and loads the web page to be recorded.
 2. The web page recording service executes the page detection logic of the JavaScript of the web page to be recorded. When a web page element is loaded in line with your expectations, the recording ID (`sid`) associated with the web page recording service callback informs the business server that the recording service has started successfully.
 3. The web page server reports its status at regular intervals to notify the business server of any content changes.
 

@@ -36,7 +36,7 @@ The basic process of implementing Cloud Recording is as follows:
 
 5. Upload the recording file
 
-    After the recording ends, the cloud recording service uploads the recording file to the [third-party cloud storage](../reference/restful-api#storageconfig) you specify.
+    After the recording ends, the cloud recording service uploads the recording file to the [third-party cloud storage](../rest-api/acquire#clientrequest-startparameter-storageconfig) you specify.
 
 ## Prerequisites
 
@@ -57,12 +57,12 @@ The following APIs are optional and can be called multiple times. However, they 
 
 ### Use basic HTTP authentication
 
-The <Vpd k="NAME" /> RESTful APIs require basic HTTP authentication. You need to set the `Authorization` parameter in every HTTP request header. For details, see [Basic HTTP authentication](../reference/restful-authentication).
+The <Vpd k="NAME" /> RESTful APIs require basic HTTP authentication. You need to set the `Authorization` parameter in every HTTP request header. For details, see [Basic HTTP authentication](../rest-api/restful-authentication).
 
 <a name="acquire"></a>
 ### Get a resource ID
 
-Call the [`acquire`](../reference/restful-api#acquire) method to request a resource ID for <Vpd k="NAME" />.
+Call the [`acquire`](../rest-api/acquire) method to request a resource ID for <Vpd k="NAME" />.
 
 After calling this method successfully, you receive a resource ID in the response body. The resource ID is valid for five minutes. Start recording with this resource ID within the validity period. One resource ID can only be used for a single recording session.
 
@@ -92,7 +92,7 @@ curl --location --request POST 'https://api.agora.io/v1/apps/<appid>/cloud_recor
 <a name="start"></a>
 ### Start recording
 
-Call the [`start`](../reference/restful-api#start) method within five minutes of getting a resource ID to join a channel and start recording. You can choose either [individual recording](../develop/individual-mode) or [composite recording](../develop/composite-mode) as the recording mode.
+Call the [`start`](../rest-api/start) method within five minutes of getting a resource ID to join a channel and start recording. You can choose either [individual recording](../develop/individual-mode) or [composite recording](../develop/composite-mode) as the recording mode.
 
 If this method call succeeds, you receive a recording ID (sid) in the HTTP response body. This ID identifies the current recording.
 
@@ -141,7 +141,7 @@ curl --location --request POST  'https://api.agora.io/v1/apps/<appid>/cloud_reco
 <a name="query"></a>
 ### Query recording status
 
-During a recording session, can call the [`query`](../reference/restful-api#query) method to query the recording status. You can call this API multiple times.
+During a recording session, can call the [`query`](../rest-api/query) method to query the recording status. You can call this API multiple times.
 
 When you call this method successfully, you receive the current recording status and related information about the recording file in the response body. See [Best Practices in Integrating Cloud Recording](../best-practices/integration-best-practices) for details about how to [Monitor service status during a recording](../best-practices/integration-best-practices#monitor-service-status-during-a-recording) and[ Obtain the M3U8 file name](../best-practices/integration-best-practices#obtain-the-m3u8-file-name).
 
@@ -163,7 +163,7 @@ curl --location --request GET 'https://api.agora.io/v1/apps/<appid>/cloud_record
 <a name="stop"></a>
 ### Stop recording
 
-Call the [`stop`](../reference/restful-api#stop) API to end the recording session.
+Call the [`stop`](../rest-api/stop) API to end the recording session.
 
 When you call this method successfully, you receive the status of the recording file upload and information about the recording file in the response body.
 
@@ -216,10 +216,10 @@ You can also use Postman to generate code snippets written in various programmin
 [Quickstart using middleware](../get-started/middleware-quickstart). The community middleware project provides RESTful APIs for tasks such as token generation and cloud recording management.
 
 <a name="update"></a>
-- To update the subscription lists during the recording, call [`update`](../reference/restful-api#update). You can call this method multiple times. See [Set up subscription lists](../develop/subscription) for details.
+- To update the subscription lists during the recording, call [`update`](../rest-api/update). You can call this method multiple times. See [Set up subscription lists](../develop/subscription) for details.
 
 <a name="updateLayout"></a>
-- To set or update the video layout during the recording, call the [`updateLayout`](../reference/restful-api#updatelayout) method. See [Set Video Layout](../develop/layout) for details.
+- To set or update the video layout during the recording, call the [`updateLayout`](../rest-api/update-layout) method. See [Set Video Layout](../develop/layout) for details.
 
 - [Common errors in cloud recording](../reference/common-errors) lists common error codes and error messages in the response body.
 

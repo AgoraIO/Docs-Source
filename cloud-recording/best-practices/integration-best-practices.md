@@ -128,7 +128,7 @@ Network failures and potential risks may occur due to factors such as cloud and 
 
 To guarantee high availability of important scenes with a large audience, best practice is to:
 
-1. Monitor recording tasks with calls to the [query](/en/cloud-recording/reference/restful-api#query) method.
+1. Monitor recording tasks with calls to the [query](/en/cloud-recording/rest-api/query) method.
 
    If the call returns a `404` error, create a new recording task with a different UID.
 

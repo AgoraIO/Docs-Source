@@ -61,7 +61,7 @@ Before recording, call the [`acquire`](../rest-api/acquire) method to apply for 
 
 ### Start recording
 
-To enable individual recording mode, set `mode` to `individual` when calling [`start`](../rest-api/start). Use `recordingConfig` to configure individual recording, and use `storageConfig` to configure your third-party cloud storage.
+To enable individual recording mode, set `mode` to `raw` when calling [`start`](../rest-api/start). Use `recordingConfig` to configure individual recording, and use `storageConfig` to configure your third-party cloud storage.
 
 Agora recommends that you use the standard mode when you start recording, that is, set the `streamMode` field in the `recordingConfig` parameter to `standard` to generate combined audio and video files that can be played directly.
 
@@ -79,8 +79,8 @@ In individual recording mode, you can configure the following parameters in `cli
 
 -   Request URL:
 
-  ```json
-  https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/individual/start
+  ```
+  https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/mode/raw/start
   ```
 -   `Content-type`: `application/json;charset=utf-8`
 
@@ -135,7 +135,7 @@ When a recording finishes, call [`stop`](../rest-api/stop) to leave the channel 
 -   The request URL is:
 
   ```json
-    https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/individual/stop
+    https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/raw/stop
   ```
 -   `Content-type`: `application/json;charset=utf-8`
 

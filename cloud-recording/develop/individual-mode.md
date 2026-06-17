@@ -31,7 +31,7 @@ For example, if a channel has two users and you choose to record both audio and 
 
 ### Get a resource ID
 
-Before recording, call the [`acquire`](../reference/restful-api#acquire) method to apply for a resource ID.
+Before recording, call the [`acquire`](../rest-api/acquire) method to apply for a resource ID.
 
 #### Example `acquire` request over HTTPS
 
@@ -42,7 +42,7 @@ Before recording, call the [`acquire`](../reference/restful-api#acquire) method 
   ``` 
 -   `Content-type`: `application/json;charset=utf-8`
 
--   `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
+-   `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../rest-api/restful-authentication).
 
 -   Request body:
 
@@ -59,7 +59,7 @@ Before recording, call the [`acquire`](../reference/restful-api#acquire) method 
 
 ### Start recording
 
-To enable individual recording mode, set `mode` to `individual` when calling [`start`](../reference/restful-api#start). Use `recordingConfig` to configure individual recording, and use `storageConfig` to configure your third-party cloud storage.
+To enable individual recording mode, set `mode` to `individual` when calling [`start`](../rest-api/start). Use `recordingConfig` to configure individual recording, and use `storageConfig` to configure your third-party cloud storage.
 
 Agora recommends that you use the standard mode when you start recording, that is, set the `streamMode` field in the `recordingConfig` parameter to `standard` to generate combined audio and video files that can be played directly.
 
@@ -68,10 +68,10 @@ In individual recording mode, you can configure the following parameters in `cli
 | Parameter                                                                                       | Description                                                                                       | Note                                       |
 |-------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|--------------------------------------------|
 | [`token`](../reference/glossary#token)                                                     | String. The dynamic key used for the channel to record.                                           | JSON. Required if the channel uses a token |
-| [`recordingConfig`](../reference/restful-api#recordingconfig)                   | JSON. Configures stream subscription, transcoding, and the profile of the output audio and video. | Required                                   |
-| [`recordingConfig.streamMode`](../reference/restful-api#recordingconfig)        | String. The output mode of the media stream in individual recording mode.                         | Required                                   |
-| [`recordingFileConfig`](../reference/restful-api#recordingfileconfig) | JSON. Configures the recorded files.                                                              | Optional                                   |
-| [`storageConfig`](../reference/restful-api#storageconfig)                 | JSON. Configures the third-party cloud storage.                                                   | Required                                   |
+| [`recordingConfig`](../rest-api/acquire#clientrequest-startparameter-recordingconfig)                   | JSON. Configures stream subscription, transcoding, and the profile of the output audio and video. | Required                                   |
+| [`recordingConfig.streamMode`](../rest-api/acquire#clientrequest-startparameter-recordingconfig)        | String. The output mode of the media stream in individual recording mode.                         | Required                                   |
+| [`recordingFileConfig`](../rest-api/acquire#clientrequest-startparameter-recordingfileconfig) | JSON. Configures the recorded files.                                                              | Optional                                   |
+| [`storageConfig`](../rest-api/acquire#clientrequest-startparameter-storageconfig)                 | JSON. Configures the third-party cloud storage.                                                   | Required                                   |
 
 #### Example `start` request over HTTPS
 
@@ -82,7 +82,7 @@ In individual recording mode, you can configure the following parameters in `cli
   ```
 -   `Content-type`: `application/json;charset=utf-8`
 
--   `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
+-   `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../rest-api/restful-authentication).
 
 -   Request body:
 
@@ -126,7 +126,7 @@ In individual recording mode, you can configure the following parameters in `cli
 
 ### Stop recording
 
-When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the [`acquire`](../reference/restful-api#acquire) method for a new resource ID.
+When a recording finishes, call [`stop`](../rest-api/stop) to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the [`acquire`](../rest-api/acquire) method for a new resource ID.
 
 #### Example `stop` request over HTTPS
 
@@ -137,7 +137,7 @@ When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave
   ```
 -   `Content-type`: `application/json;charset=utf-8`
 
--   `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
+-   `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../rest-api/restful-authentication).
 
 
 -   Request body:
@@ -163,9 +163,9 @@ The recorded files vary according to the recorded content. See the table below.
 
 | Recorded content                   | Settings                                                                                                              | Recorded files                                                                                                                                                                                                                                                                                                                                           |
 |------------------------------------|-----------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Audio only                         | Set [`streamTypes`](../reference/restful-api#recordingconfig) to `0`                                  | One M3U8 file and several TS files for each user ID. The TS files store the audio.                                                                                                                                                                                                                                                                       |
-| Video only                         | Set [`streamTypes`](../reference/restful-api#recordingconfig) to `1`                                  | One M3U8 file and several TS/WebM files for each user ID. The TS/WebM files store the video.                                                                                                                                                                                                                                                             |
-| Audio and video, and standard mode | Set [`streamTypes`](../reference/restful-api#recordingconfig) to `2` and `streamMode` to `standard`。 | One M3U8 audio index file, one M3U8 video index file, a combined M3U8 audio and video index file, multiple TS audio slice files and multiple TS video slice files are generated per user ID. If VP9 encoding is used on the web side, a combined MPD audio and video index file and multiple WebM video slice files are generated per user ID. |
+| Audio only                         | Set [`streamTypes`](../rest-api/acquire#clientrequest-startparameter-recordingconfig) to `0`                                  | One M3U8 file and several TS files for each user ID. The TS files store the audio.                                                                                                                                                                                                                                                                       |
+| Video only                         | Set [`streamTypes`](../rest-api/acquire#clientrequest-startparameter-recordingconfig) to `1`                                  | One M3U8 file and several TS/WebM files for each user ID. The TS/WebM files store the video.                                                                                                                                                                                                                                                             |
+| Audio and video, and standard mode | Set [`streamTypes`](../rest-api/acquire#clientrequest-startparameter-recordingconfig) to `2` and `streamMode` to `standard`。 | One M3U8 audio index file, one M3U8 video index file, a combined M3U8 audio and video index file, multiple TS audio slice files and multiple TS video slice files are generated per user ID. If VP9 encoding is used on the web side, a combined MPD audio and video index file and multiple WebM video slice files are generated per user ID. |
 
 For detailed information about the naming conventions of the recorded files, see [Manage Recorded Files](../develop/manage-files).
 

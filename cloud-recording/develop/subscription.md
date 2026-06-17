@@ -11,7 +11,7 @@ By default, Agora Cloud Recording subscribes to all published audio and video st
 
 ## Implementation
 
-When the recording starts, set the parameters in [`start`](../reference/restful-api#start) to create subscription lists. During the recording, set the `streamSubscribe` parameter in [`update`](../reference/restful-api#update) to update the subscription lists.
+When the recording starts, set the parameters in [`start`](../rest-api/start) to create subscription lists. During the recording, set the `streamSubscribe` parameter in [`update`](../rest-api/update) to update the subscription lists.
 
 If you set up a subscription list for audio, but not for video, then Agora Cloud Recording will not subscribe to any video streams. If you set up a subscription list for video, but not for audio, then Agora Cloud Recording will not subscribe to any audio streams.
 

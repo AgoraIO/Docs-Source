@@ -1,5 +1,5 @@
 ---
-title: "Best practice in integrating Cloud Recording"
+title: "Cloud Recording integration"
 sidebar_position: 1
 type: docs
 platform_selector: false
@@ -9,7 +9,7 @@ description: >
 
 import SwitchDomainName from '@docs/shared/common/_switch-domain-name.mdx';
 
-To improve application robustness, Agora recommends that you do the following when integrating Cloud Recording RESTful APIs:
+To improve application robustness, Agora recommends that you implement the following when integrating Cloud Recording RESTful APIs.
 
 ## Failover
 In response to network failures, as well as risks that arise from factors such as non-Agora cloud services, non-Agora software, infrastructure, and force majeure, Agora cloud recording provides high-availability automatic task migration services. When the fault is confirmed, the migration is completed in the shortest possible time (estimated to be within 90 seconds). During this period, there are risks such as recording interruption and recording file loss.
@@ -128,7 +128,7 @@ Network failures and potential risks may occur due to factors such as cloud and 
 
 To guarantee high availability of important scenes with a large audience, best practice is to:
 
-1. Monitor recording tasks with calls to the [query](/en/cloud-recording/reference/restful-api#query) method.
+1. Monitor recording tasks with calls to the [query](/en/cloud-recording/rest-api/query) method.
 
    If the call returns a `404` error, create a new recording task with a different UID.
 

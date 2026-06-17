@@ -38,7 +38,7 @@ In web page recording mode, you can also convert the content and audio of the pa
 
 ### Get a resource ID
 
-Before recording, call the [`acquire`](../reference/restful-api#acquire) method to apply for a resource ID. Note that you must set `scene` as `1`.
+Before recording, call the [`acquire`](../rest-api/acquire) method to apply for a resource ID. Note that you must set `scene` as `1`.
 
 #### Example `acquire` request over HTTPS
 
@@ -49,7 +49,7 @@ Before recording, call the [`acquire`](../reference/restful-api#acquire) method 
     ```
 
 - `Content-type`: `application/json;charset=utf-8`
-- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
+- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../rest-api/restful-authentication).
 
 - Request body:
 
@@ -66,7 +66,7 @@ Before recording, call the [`acquire`](../reference/restful-api#acquire) method 
 
 ### Start recording
 
-To enable [web page recording mode](../develop/webpage-mode), set `mode` to `web` when calling  [`start`](../reference/restful-api#start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
+To enable [web page recording mode](../develop/webpage-mode), set `mode` to `web` when calling  [`start`](../rest-api/start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
 
 You cannot switch to a different recording mode once you start recording.
 
@@ -87,7 +87,7 @@ In web page recording mode, you can configure the following parameters in `clien
     ```
 
 - `Content-type:` `application/json;charset=utf-8`
-- `Authorization:` Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
+- `Authorization:` Basic authorization. For more information, see [How to pass the basic HTTP authentication](../rest-api/restful-authentication).
 - Request body:
 
     ```json
@@ -137,7 +137,7 @@ In web page recording mode, you can configure the following parameters in `clien
 
 The charging will continue until the web page recording stops. You should set a reasonable `maxRecordingHour` based on the actual business use-case or actively stop the web page recording.
 
-When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the [`acquire`](../reference/restful-api#acquire) method for a new resource ID.
+When a recording finishes, call [`stop`](../rest-api/stop) to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the [`acquire`](../rest-api/acquire) method for a new resource ID.
 
 #### Example `stop` request over HTTPS
 
@@ -149,7 +149,7 @@ When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave
 
 - `Content-type`: `application/json;charset=utf-8`
 
-- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
+- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../rest-api/restful-authentication).
 
 - Request body:
 
@@ -165,7 +165,7 @@ When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave
 
 ### Get a resource ID
 
-Before starting the process, call the [`acquire`](../reference/restful-api#acquire) method to apply for a resource ID. Note that you must set `scene` as `1`.
+Before starting the process, call the [`acquire`](../rest-api/acquire) method to apply for a resource ID. Note that you must set `scene` as `1`.
 
 #### Example `acquire` request over HTTPS
 
@@ -176,7 +176,7 @@ Before starting the process, call the [`acquire`](../reference/restful-api#acqui
     ```
 
 - `Content-type`: `application/json;charset=utf-8`
-- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
+- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../rest-api/restful-authentication).
 
 - Request body:
 
@@ -193,7 +193,7 @@ Before starting the process, call the [`acquire`](../reference/restful-api#acqui
 
 ### Start a process
 
-To enable [web page recording mode](../develop/webpage-mode), set `mode` to `web` when calling  [`start`](../reference/restful-api#start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
+To enable [web page recording mode](../develop/webpage-mode), set `mode` to `web` when calling  [`start`](../rest-api/start). Use `extensionServiceConfig` to configure web page recording, and use `storageConfig` to configure your third-party cloud storage.
 
 You cannot switch to a different recording mode once you start recording.
 
@@ -214,7 +214,7 @@ In web page recording mode, you can configure the following parameters in `clien
     ```
 
 - `Content-type:` `application/json;charset=utf-8`
-- `Authorization:` Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
+- `Authorization:` Basic authorization. For more information, see [How to pass the basic HTTP authentication](../rest-api/restful-authentication).
 
 - Request body:
 
@@ -274,7 +274,7 @@ In web page recording mode, you can configure the following parameters in `clien
 
 ### Stop the process    
 
-When a recording and stream pushing finishes, call [`stop`](../reference/restful-api#stop) to leave the channel and stop recording. To use Agora Cloud Web Page Recording again, you need to call the [`acquire`](../reference/restful-api#acquire) method for a new resource ID.
+When a recording and stream pushing finishes, call [`stop`](../rest-api/stop) to leave the channel and stop recording. To use Agora Cloud Web Page Recording again, you need to call the [`acquire`](../rest-api/acquire) method for a new resource ID.
 
 #### An HTTP request example of `stop`
 
@@ -285,7 +285,7 @@ When a recording and stream pushing finishes, call [`stop`](../reference/restful
     ```
 - `Content-type`: `application/json;charset=utf-8`
 
-- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
+- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../rest-api/restful-authentication).
 
 - Request body:
 

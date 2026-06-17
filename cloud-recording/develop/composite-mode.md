@@ -19,7 +19,7 @@ For example, if a channel has two users, and you choose to record both audio and
 
 ![](/images/cloud-recording/composite-mode.svg)
 
-The recording service generates one M3U8 file and multiple TS files. If you set `avFileType` as `["hls","mp4"]` when calling the [`start`](../reference/restful-api#start) method, the recording service also generates MP4 files, which include the audio and video of all users in the channel.
+The recording service generates one M3U8 file and multiple TS files. If you set `avFileType` as `["hls","mp4"]` when calling the [`start`](../rest-api/start) method, the recording service also generates MP4 files, which include the audio and video of all users in the channel.
 
 This guide explains how to implement composite recording using Cloud Recording REST API.
 
@@ -27,7 +27,7 @@ This guide explains how to implement composite recording using Cloud Recording R
 
 ### Get a resource ID
 
-Before recording, call the [`acquire`](../reference/restful-api#acquire) method to apply for a resource ID.
+Before recording, call the [`acquire`](../rest-api/acquire) method to apply for a resource ID.
 
 #### Example `acquire` request over HTTPS
 
@@ -38,7 +38,7 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
 ```
 
 - `Content-type`: `application/json;charset=utf-8`
-- `Authorization`: Basic authorization. For more information, see [Authenticate REST calls](../reference/restful-authentication).
+- `Authorization`: Basic authorization. For more information, see [Authenticate REST calls](../rest-api/restful-authentication).
 - Request body:
 
 ```json
@@ -54,7 +54,7 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
 
 ### Start recording
 
-To enable composite recording mode, set `mode` to `mix` when calling  [`start`](../reference/restful-api#start). Use `recordingConfig` to configure composite recording, and use `storageConfig` to configure your third-party cloud storage.
+To enable composite recording mode, set `mode` to `mix` when calling  [`start`](../rest-api/start). Use `recordingConfig` to configure composite recording, and use `storageConfig` to configure your third-party cloud storage.
 
 You cannot switch to a different recording mode once you start recording.
 
@@ -64,9 +64,9 @@ In composite recording mode, you can configure the following parameters in `clie
 | Parameter             | Description                                                  | Note                                 |
 | :-------------------- | :----------------------------------------------------------- | :----------------------------------- |
 | [`token`](../reference/glossary#token)               | The dynamic key used for the channel to record. | Required if the channel uses a token |
-| [`recordingConfig`](../reference/restful-api#recordingconfig)     | Configures stream subscription, transcoding, and the profile of the output audio and video. | Required                             |
-| [`recordingFileConfig`](../reference/restful-api#recordingfileconfig) | Configures the recorded files.                               | Optional                             |
-|  [`storageConfig`](../reference/restful-api#storageconfig)       | Configures the third-party cloud storage.                    | Required                             |
+| [`recordingConfig`](../rest-api/acquire#clientrequest-startparameter-recordingconfig)     | Configures stream subscription, transcoding, and the profile of the output audio and video. | Required                             |
+| [`recordingFileConfig`](../rest-api/acquire#clientrequest-startparameter-recordingfileconfig) | Configures the recorded files.                               | Optional                             |
+|  [`storageConfig`](../rest-api/acquire#clientrequest-startparameter-storageconfig)       | Configures the third-party cloud storage.                    | Required                             |
 
 #### Example `start` request over HTTPS
 
@@ -77,7 +77,7 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>
 ```
 
 - `Content-type`: `application/json;charset=utf-8`
-- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
+- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../rest-api/restful-authentication).
 - Request body:
 
 ```json
@@ -127,7 +127,7 @@ https://api.agora.io/v1/apps/<yourappid>/cloud_recording/resourceid/<resourceid>
 
 ### Stop recording    
 
-When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the [`acquire`](../reference/restful-api#acquire) method for a new resource ID.
+When a recording finishes, call [`stop`](../rest-api/stop) to leave the channel and stop recording. To use Agora Cloud Recording again, you need to call the [`acquire`](../rest-api/acquire) method for a new resource ID.
 
 #### Example `stop` request over HTTPS
 
@@ -138,7 +138,7 @@ When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave
  ```
 - `Content-type`: `application/json;charset=utf-8`
 
-- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
+- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../rest-api/restful-authentication).
 
 - Request body:
 
@@ -156,9 +156,9 @@ The content of the recorded files varies according to the setting of `streamType
 
 | Recorded content | Settings                           | Recorded files                                               |
 | :--------------- | :--------------------------------- | :----------------------------------------------------------- |
-| Audio only       | Set [`streamTypes`](../reference/restful-api#recordingconfig) as `0`           | One M3U8 file, several TS files, and one or more MP4 files if you set avFileType as `["hls","mp4"]`. The TS files and MP4 files store the audio. |
-| Video only       | Set [`streamTypes`](../reference/restful-api#recordingconfig) as `1`           | One M3U8 file, several TS files, and one or more MP4 files if you set avFileType as `["hls","mp4"]`. The TS files and MP4 files store the video. |
-| Audio and video  | Set [`streamTypes`](../reference/restful-api#recordingconfig) as `2` (default) | One M3U8 file, several TS files, and one or more MP4 files if you set avFileType as `["hls","mp4"]`. The TS files and MP4 files store the audio and video. |
+| Audio only       | Set [`streamTypes`](../rest-api/acquire#clientrequest-startparameter-recordingconfig) as `0`           | One M3U8 file, several TS files, and one or more MP4 files if you set avFileType as `["hls","mp4"]`. The TS files and MP4 files store the audio. |
+| Video only       | Set [`streamTypes`](../rest-api/acquire#clientrequest-startparameter-recordingconfig) as `1`           | One M3U8 file, several TS files, and one or more MP4 files if you set avFileType as `["hls","mp4"]`. The TS files and MP4 files store the video. |
+| Audio and video  | Set [`streamTypes`](../rest-api/acquire#clientrequest-startparameter-recordingconfig) as `2` (default) | One M3U8 file, several TS files, and one or more MP4 files if you set avFileType as `["hls","mp4"]`. The TS files and MP4 files store the audio and video. |
 
 
 For detailed information about the naming conventions of the recorded files, see [Manage Recorded Files](../develop/manage-files).

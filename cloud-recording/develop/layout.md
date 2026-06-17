@@ -36,7 +36,7 @@ The Agora Cloud Recording Service provides the following predefined layout types
 
 ### Implementation
 
-Set the `mixedVideoLayout` parameter in `transcodingConfig` as 0 (floating layout), 1 (best fit layout), or 2 (vertical layout) when calling the [`start`](../reference/restful-api#start) or [`updateLayout`](../reference/restful-api#updatelayout) method.
+Set the `mixedVideoLayout` parameter in `transcodingConfig` as 0 (floating layout), 1 (best fit layout), or 2 (vertical layout) when calling the [`start`](../rest-api/start) or [`updateLayout`](../rest-api/update-layout) method.
 
 <Admonition type="info">
  If you set the `mixedVideoLayout` parameter as 0, 1, or 2, do not pass in the `layoutConfig` parameter.
@@ -95,7 +95,7 @@ In this layout, one large region is displayed on the left edge of the screen, an
 
 Therefore, when you start cloud recording, you must specify a uid, whose region is displayed on the left edge of the screen in a large size.  
 
-To specify a uid, set the `maxResolutionUid` parameter when calling the [`start`](../reference/restful-api#start) or [`updateLayout`](../reference/restful-api#updatelayout) method.
+To specify a uid, set the `maxResolutionUid` parameter when calling the [`start`](../rest-api/start) or [`updateLayout`](../rest-api/update-layout) method.
 
 Sample code:
 ```json
@@ -140,7 +140,7 @@ Regardless of the number of users displaying in the canvas, the Cloud Recording 
 
 #### Customize the video layout when starting recording
 
-Set `mixedVideoLayout` as 3 (customized layout) and pass in the `layoutConfig` parameter when calling the [`start`](../reference/restful-api#start) method to start the recording.
+Set `mixedVideoLayout` as 3 (customized layout) and pass in the `layoutConfig` parameter when calling the [`start`](../rest-api/start) method to start the recording.
 
 ```json
 Body:
@@ -225,7 +225,7 @@ The following figure shows the layout of the sample code:
 
 #### Update the customized layout during a recording
 
-During a recording, you can call the [`updateLayout`](../reference/restful-api#updatelayout) method to update the video mixing layout multiple times.
+During a recording, you can call the [`updateLayout`](../rest-api/update-layout) method to update the video mixing layout multiple times.
 
 To update a customized layout, set the `mixedVideoLayout` parameter as 3 (customized layout), and populate `layoutConfig`.
 

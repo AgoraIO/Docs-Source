@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
    Use the Cloud Recording RESTful API to make a composite recording.
+last_update:
+  date: 2026-06-17
 ---
 
 Agora Cloud Recording supports three recording modes:

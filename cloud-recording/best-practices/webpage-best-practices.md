@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
    Guidelines for integrating web page recording into your app.
+last_update:
+  date: 2026-06-17
 ---
 
 External factors can cause problems with web page recording, including the following:

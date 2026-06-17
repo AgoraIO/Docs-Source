@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
    Guidelines for integrating cloud recording into your app.
+last_update:
+  date: 2026-06-17
 ---
 
 import SwitchDomainName from '@docs/shared/common/_switch-domain-name.mdx';

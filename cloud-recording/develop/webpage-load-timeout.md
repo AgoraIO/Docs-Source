@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Call the specified interface to notify the browser that the web page has been loaded
+last_update:
+  date: 2026-06-17
 ---
 
 ## Introduction

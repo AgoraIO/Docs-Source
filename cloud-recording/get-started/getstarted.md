@@ -106,7 +106,7 @@ For testing purposes, use the following command in the terminal to call the `sta
 ``` bash
 # Replace <appid> with the App ID of your Agora project
 # Replace <resourceid> with the resource ID obtained through the acquire method
-# Replace "<mode>" with "individual" for individual recording or "composite" for composite recording
+# Replace "<mode>" with "raw" for individual recording or "composite" for composite recording
 curl --location --request POST  'https://api.agora.io/v1/apps/<appid>/cloud_recording/resourceid/<resourceid>/mode/<mode>/start' \
 # Replace <Authorization> with the Base64-encoded credential in basic HTTP authentication
 --header 'Authorization: Basic <Authorization>' \
@@ -150,7 +150,7 @@ For testing purposes, use the following command in the terminal to call the `que
 # Replace <appid> with the App ID of your Agora project
 # Replace <resourceid> with the resource ID obtained through the acquire method
 # Replace <sid> with the sid obtained through the start method
-# Replace "<mode>" with "individual" for individual recording or "composite" for composite recording
+# Replace "<mode>" with "raw" for individual recording or "composite" for composite recording
 curl --location --request GET 'https://api.agora.io/v1/apps/<appid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/<mode>/query' \
 # Replace <Authorization> with the Base64-encoded credential in basic HTTP authentication
 --header 'Authorization: Basic <Authorization>' \
@@ -171,7 +171,7 @@ For testing purposes, use the following command in the terminal to call the `sto
 # Replace <appid> with the App ID of your Agora project
 # Replace <resourceid> with the resource ID obtained through the acquire method
 # Replace <sid> with the sid obtained through the start method
-# Replace "<mode>" with "individual" for individual recording or "composite" for composite recording 
+# Replace "<mode>" with "raw" for individual recording or "composite" for composite recording 
 curl --location --request POST 
 'https://api.agora.io/v1/apps/<appid>/cloud_recording/resourceid/<resourceid>/sid/<sid>/mode/<mode>/stop' \
 --header 'Content-Type: application/json;charset=utf-8' \

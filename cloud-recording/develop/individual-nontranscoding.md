@@ -50,7 +50,7 @@ Before recording, call the [`acquire`](../rest-api/acquire) method to apply for 
 
 ### Start recording
 
-To enable individual recording mode, set `mode` to `individual` when calling [`start`](../rest-api/start). 
+To enable individual recording mode, set `mode` to `raw` when calling [`start`](../rest-api/start). 
 
 Configure the following parameters in `clientRequest` for audio individual non-transcoding recording:
 

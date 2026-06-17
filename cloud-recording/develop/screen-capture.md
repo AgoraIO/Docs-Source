@@ -51,7 +51,7 @@ Before recording, call the [`acquire`](../rest-api/acquire) method to apply for 
 
 ### Start recording
 
-Set `mode` to `individual` when calling [`start`](../rest-api/start) to enable [individual recording mode](../develop/individual-mode).
+Set `mode` to `raw` when calling [`start`](../rest-api/start) to enable [individual recording mode](../develop/individual-mode).
 
 You cannot switch to a different recording mode once you start recording.
 
@@ -167,7 +167,7 @@ When [a cloud recording server is disconnected or the process killed](../overvie
 
 Pay attention to the following parameters as incorrect settings result in errors and failure to capture screenshots:
 
-- In the URL of your request, you must set `mode` as `individual`.
+- In the URL of your request, you must set `mode` to `raw`.
 - Do not set `recordingFileConfig`.
 - `streamTypes` must be `1` or `2`.
 - If you set `subscribeAudioUid`, you must also set `subscribeVideoUids`.

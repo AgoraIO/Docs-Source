@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Depending on the number of minutes you intend to record, estimate your monthly cost for Web Page Recording. 
+last_update:
+  date: 2026-06-17
 ---
 
 This page explains how <Vg k="COMPANY" /> calculates your monthly bill for 
@@ -103,7 +105,7 @@ If two web page recording processes are started for the same web page, Agora cha
 ### Charge duration
 
 The charging will continue until the web page recording stops. 
-You should set a reasonable [maxRecordingHour](../reference/restful-api#extensionserviceconfig) based on the 
+You should set a reasonable [maxRecordingHour](../rest-api/acquire#clientrequest-startparameter-extensionserviceconfig-extensionservices-serviceparam-maxrecordinghour) based on the 
 actual business use-case or actively stop the web page recording. 
 
 ## See also

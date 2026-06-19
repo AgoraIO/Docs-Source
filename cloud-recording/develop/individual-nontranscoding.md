@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description:
   Starting and stopping an individual audio non-transcoding recording
+last_update:
+  date: 2026-06-17
 ---
 
 When recording audio only (`streamTypes` is `0`) in [individual recording mode](../develop/individual-mode), you can choose whether to use transcoding recording or non-transcoding recording through simple parameter settings. The differences between the two are as follows:
@@ -12,16 +14,16 @@ When recording audio only (`streamTypes` is `0`) in [individual recording mode](
 |     | Individual audio recording  | Individual audio non-transcoding recording  |
 | :-- | :-------------------------- | :------------------------------------------ |
 | Whether to transcode when encoding audio | Yes.     | No.|
-| Audio profile     | The sample rate, number of audio channels, and bitrate are fixed at 48 kHz, mono, and 48 Kbps, respectively. | The sample rate, number of audio channels, and bitrate are determined by the [AudioProfile](../reference/restful-api#transcodingconfig) configuration of the streaming sender. |
-| Audio codec | LC-AAC.  | Determined by the [AudioProfile](../reference/restful-api#transcodingconfig) configuration set by the streaming sender. |
+| Audio profile     | The sample rate, number of audio channels, and bitrate are fixed at 48 kHz, mono, and 48 Kbps, respectively. | The sample rate, number of audio channels, and bitrate are determined by the [AudioProfile](../rest-api/acquire#clientrequest-startparameter-recordingconfig-transcodingconfig) configuration of the streaming sender. |
+| Audio codec | LC-AAC.  | Determined by the [AudioProfile](../rest-api/acquire#clientrequest-startparameter-recordingconfig-transcodingconfig) configuration set by the streaming sender. |
 | Recorded files    | One M3U8 file and several TS files are generated per user ID. | The same as Individual transcoding recording. However, when the user calls `mute`, `disable`, or `leaveChannel`, the audio recording is stopped immediately, and there is no recorded data for silenced audio frames. |
-| Player compatibility| Use a player that supports the HLS protocol to play recorded files. | The audio codec format is determined by the [AudioProfile](../reference/restful-api#transcodingconfig) configured by the streaming sender, and player compatibility varies by audio codec. |
+| Player compatibility| Use a player that supports the HLS protocol to play recorded files. | The audio codec format is determined by the [AudioProfile](../rest-api/acquire#clientrequest-startparameter-recordingconfig-transcodingconfig) configured by the streaming sender, and player compatibility varies by audio codec. |
 
 ## Implement audio individual non-transcoding recording 
 
 ### Get a resource ID
 
-Before recording, call the [`acquire`](../reference/restful-api#acquire) method to apply for a resource ID.
+Before recording, call the [`acquire`](../rest-api/acquire) method to apply for a resource ID.
 
 #### `acquire` request over HTTPS
 
@@ -33,7 +35,7 @@ Before recording, call the [`acquire`](../reference/restful-api#acquire) method 
 
 - `Content-type`: `application/json;charset=utf-8`
 
-- `Authorization`: Basic authorization. For more information, see [Authenticate REST calls](../reference/restful-authentication).
+- `Authorization`: Basic authorization. For more information, see [Authenticate REST calls](../rest-api/restful-authentication).
 
 - Request body:
 
@@ -50,17 +52,17 @@ Before recording, call the [`acquire`](../reference/restful-api#acquire) method 
 
 ### Start recording
 
-To enable individual recording mode, set `mode` to `individual` when calling [`start`](../reference/restful-api#start). 
+To enable individual recording mode, set `mode` to `raw` when calling [`start`](../rest-api/start). 
 
 Configure the following parameters in `clientRequest` for audio individual non-transcoding recording:
 
 | Parameter| Description    | Note  |
 | :------ | :--------------- | :-------------- |
 | [`token`](../reference/glossary#token)| String. The dynamic key used for the channel to record. | Required if the channel uses a token |
-| [`recordingConfig`](../reference/restful-api#recordingconfig)    | JSON. Configures stream subscription, transcoding, and the profile of the output audio and video. | Required|
-| [`recordingConfig.streamTypes`](../reference/restful-api#recordingconfig) | Number. The type of the media stream to subscribe to. Set this to `0` for audio individual non-transcoding recording. | Required|
-| [`recordingConfig.streamMode`](../reference/restful-api#recordingconfig)  | String. The output mode of the media stream in individual mode. Set this to `original` for audio individual non-transcoding recording. | Required|
-| [`storageConfig`](../reference/restful-api#storageconfig)| JSON. Configures the third-party cloud storage.     | Required|
+| [`recordingConfig`](../rest-api/acquire#clientrequest-startparameter-recordingconfig)    | JSON. Configures stream subscription, transcoding, and the profile of the output audio and video. | Required|
+| [`recordingConfig.streamTypes`](../rest-api/acquire#clientrequest-startparameter-recordingconfig) | Number. The type of the media stream to subscribe to. Set this to `0` for audio individual non-transcoding recording. | Required|
+| [`recordingConfig.streamMode`](../rest-api/acquire#clientrequest-startparameter-recordingconfig)  | String. The output mode of the media stream in individual mode. Set this to `original` for audio individual non-transcoding recording. | Required|
+| [`storageConfig`](../rest-api/acquire#clientrequest-startparameter-storageconfig)| JSON. Configures the third-party cloud storage.     | Required|
 
 #### `start` request over HTTPS
 
@@ -71,7 +73,7 @@ Configure the following parameters in `clientRequest` for audio individual non-t
     ```
 
 - `Content-type`: `application/json;charset=utf-8`
-- `Authorization`: Basic authorization. For more information, see [Authenticate REST calls](../reference/restful-authentication).
+- `Authorization`: Basic authorization. For more information, see [Authenticate REST calls](../rest-api/restful-authentication).
 - Request body:
 
   ```json
@@ -114,7 +116,7 @@ When the user who publishes the stream mutes or leaves the channel, the recordin
 
 ### Stop recording
 
-When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave the channel and stop recording. To use Agora Cloud Recording again, call the `acquire` method for a new resource ID.
+When a recording finishes, call [`stop`](../rest-api/stop) to leave the channel and stop recording. To use Agora Cloud Recording again, call the `acquire` method for a new resource ID.
 
 #### `stop` request over HTTPS
 
@@ -125,7 +127,7 @@ When a recording finishes, call [`stop`](../reference/restful-api#stop) to leave
     ```
 
 - `Content-type`: `application/json;charset=utf-8`
-- `Authorization`: Basic authorization. For more information, see [Authenticate REST calls](../reference/restful-authentication).
+- `Authorization`: Basic authorization. For more information, see [Authenticate REST calls](../rest-api/restful-authentication).
 
 - Request body:
 

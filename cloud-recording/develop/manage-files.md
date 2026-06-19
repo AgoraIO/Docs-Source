@@ -6,7 +6,7 @@ platform_selector: false
 description: >
   Know the naming conventions of the recorded files, how to parse the information in the M3U8 file, and when slicing occurs
 last_update:
-  date: 2026-05-22
+  date: 2026-06-17
 ---
 
 Agora <Vpd k="NAME" /> generates M3U8, TS/WebM, and MP4 files. To process these recorded files, such as [merging audio and video](../develop/merge-files), [converting file formats](../develop/convert-format), or [synchronizing playback](../develop/playback) with other streams, it is essential to understand the following key aspects of recorded files:
@@ -187,7 +187,7 @@ sid713476478245_cnameagora__uid_s_123__uid_e_video_20190920125142485.ts
 The sample M3U8 file above contains the file name of a TS file and three descriptive symbols, which indicates that the TS file is the first slice file after the video stream starts or restarts after an interruption, the video rotates by 90 degrees anticlockwise, and the TS file lasts for 6.332 seconds.
 
 <Admonition type="info">
-If you face compatibility issues in some M3U8 players due to the missing comma after `#EXTINF:<length>`, set `privateParams` in `recordingConfig` in the [start](../reference/restful-api#start) request as follows: `"recordingConfig": {"privateParams":"{\"correctEXTINF\":true}", ...}`.
+If you face compatibility issues in some M3U8 players due to the missing comma after `#EXTINF:<length>`, set `privateParams` in `recordingConfig` in the [start](../rest-api/start) request as follows: `"recordingConfig": {"privateParams":"{\"correctEXTINF\":true}", ...}`.
 </Admonition>
 
 ## Slicing

@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Merge each user's audio and video files into one file.
+last_update:
+  date: 2026-06-17
 ---
 
 In individual recording mode, Agora Cloud Recording generates one audio and/or video file for each user ID. If you want to merge each user ID's audio and video files into one file, you can use Agora Format Converter Script.
@@ -86,7 +88,7 @@ It is assumed that each user ID in the channel generates several audio files and
 
 - If the transcoding mode is `-m 0`, and the `-b` parameter and `-t` parameter are used, the `-m` parameter is forced to 1, and the slice transcoding configuration is invalid. 
 - If the `-b` parameter and `-t` parameter are used, the time period is added to the file name after transcoding. For example: The file name of `python convert.py -f <path of the file to be transcoded> -m 1 -b 10.5 -t 5.5`  is convertered to `123_0_merge_10.500_5.500_av.mp4` after transcoding.
-- Switching between different [AudioProfile](../reference/restful-api#transcodingconfig) configuration at the streaming sender during a recording is not supported.
+- Switching between different [AudioProfile](../rest-api/acquire#clientrequest-startparameter-recordingconfig-transcodingconfig) configuration at the streaming sender during a recording is not supported.
 
 ### <a name="example"></a>Example
 

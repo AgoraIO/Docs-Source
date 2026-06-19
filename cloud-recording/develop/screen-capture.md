@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
     The key steps in using the Cloud Recording RESTful API to take screenshots of a video stream.
+last_update:
+  date: 2026-06-17
 ---
 
 
@@ -16,7 +18,7 @@ The following two screenshot methods are supported:
 - Capture screenshots and recording during a recording process. Agora only charges recording fees.
 
 For pricing details, see [Pricing](../overview/pricing).
-To implement client-side screen capture, see [Screenshot Upload](../../video-calling/advanced/screenshot-upload).
+To implement client-side screen capture, see [Local screenshot upload](/video-calling/advanced-features/screenshot-upload).
 
 
 ## Implementation
@@ -25,7 +27,7 @@ To implement client-side screen capture, see [Screenshot Upload](../../video-cal
 
 ### Get a resource ID
 
-Before recording, call the [`acquire`](../reference/restful-api#acquire) method to apply for a resource ID.
+Before recording, call the [`acquire`](../rest-api/acquire) method to apply for a resource ID.
 
 #### Example `acquire` request over HTTPS
 
@@ -35,7 +37,7 @@ Before recording, call the [`acquire`](../reference/restful-api#acquire) method 
     https://api.agora.io/v1/apps/<yourappid>/cloud_recording/acquire
     ```
 - `Content-type`: `application/json;charset=utf-8`
-- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
+- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../rest-api/restful-authentication).
 - Request body:
 
     ```json
@@ -51,7 +53,7 @@ Before recording, call the [`acquire`](../reference/restful-api#acquire) method 
 
 ### Start recording
 
-Set `mode` to `individual` when calling [`start`](../reference/restful-api#start) to enable [individual recording mode](../develop/individual-mode).
+Set `mode` to `raw` when calling [`start`](../rest-api/start) to enable [individual recording mode](../develop/individual-mode).
 
 You cannot switch to a different recording mode once you start recording.
 
@@ -60,10 +62,10 @@ To capture screenshots, you need to configure the following parameters in `clien
 | Parameter         | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Note                                                                                                                                                                                          |
 | :---------------- |:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`token`](../reference/glossary#token)           | The dynamic key used for the channel to record.                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Required if the channel uses a token                                                                                                                                                          |
-| [`recordingConfig`](../reference/restful-api#recordingconfig) | Configures stream subscription, transcoding, and the profile of the output audio and video.                                                                                                                                                                                                                                                                                                                                                                                                      | Required                                                                                                                                                                                      |
-| [`snapshotConfig`](../reference/restful-api#snapshotconfig)  | Configures the time interval between two successive screenshots and the file format of the screenshots. `snapshotConfig` includes the following fields:<li>`captureInterval`: (Optional) Integer. The time interval (in seconds) between two successive screenshots. captureInterval should be within the range [1, 3600]. The default value is `10`.</li><li>`fileType`: JSONArray. File format of the screenshots. fileType can only take ["jpg"], setting screenshots to the JPG format.</li> | Required                                                                                                                                                                                      |
-| [`storageConfig`](../reference/restful-api#storageconfig)   | Configures the third-party cloud storage.                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Required                                                                                                                                                                                      |
-| [`recordingFileConfig`](../reference/restful-api#recordingfileconfig)   | Configurations for the recorded files.                                                                                                                                                                                                                                                                                                                                                                                                                                                           | If you are recording and taking screenshots in a recording process, this parameter is required; if you are only taking screenshots in a recording process, you cannot fill in this parameter. |
+| [`recordingConfig`](../rest-api/acquire#clientrequest-startparameter-recordingconfig) | Configures stream subscription, transcoding, and the profile of the output audio and video.                                                                                                                                                                                                                                                                                                                                                                                                      | Required                                                                                                                                                                                      |
+| [`snapshotConfig`](../rest-api/acquire#clientrequest-startparameter-snapshotconfig)  | Configures the time interval between two successive screenshots and the file format of the screenshots. `snapshotConfig` includes the following fields:<li>`captureInterval`: (Optional) Integer. The time interval (in seconds) between two successive screenshots. captureInterval should be within the range [1, 3600]. The default value is `10`.</li><li>`fileType`: JSONArray. File format of the screenshots. fileType can only take ["jpg"], setting screenshots to the JPG format.</li> | Required                                                                                                                                                                                      |
+| [`storageConfig`](../rest-api/acquire#clientrequest-startparameter-storageconfig)   | Configures the third-party cloud storage.                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Required                                                                                                                                                                                      |
+| [`recordingFileConfig`](../rest-api/acquire#clientrequest-startparameter-recordingfileconfig)   | Configurations for the recorded files.                                                                                                                                                                                                                                                                                                                                                                                                                                                           | If you are recording and taking screenshots in a recording process, this parameter is required; if you are only taking screenshots in a recording process, you cannot fill in this parameter. |
 
 
 
@@ -76,7 +78,7 @@ To capture screenshots, you need to configure the following parameters in `clien
     ```
 
 - `Content-type`: `application/json;charset=utf-8`
-- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../reference/restful-authentication).
+- `Authorization`: Basic authorization. For more information, see [How to pass the basic HTTP authentication](../rest-api/restful-authentication).
 - Request body:
 
 **Capture screenshots only**
@@ -167,7 +169,7 @@ When [a cloud recording server is disconnected or the process killed](../overvie
 
 Pay attention to the following parameters as incorrect settings result in errors and failure to capture screenshots:
 
-- In the URL of your request, you must set `mode` as `individual`.
+- In the URL of your request, you must set `mode` to `raw`.
 - Do not set `recordingFileConfig`.
 - `streamTypes` must be `1` or `2`.
 - If you set `subscribeAudioUid`, you must also set `subscribeVideoUids`.

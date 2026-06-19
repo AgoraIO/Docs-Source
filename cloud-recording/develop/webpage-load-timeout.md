@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Call the specified interface to notify the browser that the web page has been loaded
+last_update:
+  date: 2026-06-17
 ---
 
 ## Introduction
@@ -25,7 +27,7 @@ The Agora web page load timeout detection function can only ensure that page ele
 
 You need to implement the web page load timeout detection function in two steps:
 
-1. When calling the [`start`](../reference/restful-api#start) method, set the web page load timeout limit through the `readyTimeout` parameter.
+1. When calling the [`start`](../rest-api/start) method, set the web page load timeout limit through the `readyTimeout` parameter.
 2. Judge for yourself whether the web page is loaded, and call the specified interface of the browser to notify the browser when the web page is loaded.
  - If the web page loads before the set timeout limit, call the specified interface of the browser to notify the browser that the web page has been loaded.
  - If the web page fails to load completely before the set timeout limit, the browser reloads the web page. The `reason` field received in the [`web_recorder_reload`](../reference/rest-api-overview#73-web_recorder_reload) callback is `page_load_timeout`.
@@ -33,7 +35,7 @@ You need to implement the web page load timeout detection function in two steps:
 
 ### Set the web page load timeout limit
 
-You need to set the web page load timeout limit through the `readyTimeout` parameter when calling the [`start`](../reference/restful-api#start) method. The parameter settings are as follows:
+You need to set the web page load timeout limit through the `readyTimeout` parameter when calling the [`start`](../rest-api/start) method. The parameter settings are as follows:
 
 `readyTimeout`: (optional) Number, set the web page loading timeout limit, in seconds.The value range is [0,60].
 
@@ -60,7 +62,7 @@ If you record other URL pages, you need to set the `notifyReady` interface on th
 
 ### API reference
 
-- [`start`](../reference/restful-api#start) 
+- [`start`](../rest-api/start) 
 - [`web_recorder_started`](../reference/rest-api-overview#70-web_recorder_started-web_recorder_started)
 - [`web_recorder_reload`](../reference/rest-api-overview#73-web_recorder_reload)
 

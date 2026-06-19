@@ -1,0 +1,231 @@
+---
+title: 'Individual recording migration guide'
+sidebar_position: 0.5
+type: docs
+platform_selector: false
+description: >
+  Migrate from using individual mode to raw mode
+---
+
+If you currently use Agora Individual Recording v1 (`mode=individual`), Agora recommends migrating your services to Individual Recording v2 (`mode=raw`). 
+
+Compared to v1, Individual Recording v2 updates API paths, output file structures, and specific request parameters. It also introduces new capabilities, including MP4 and MP3 output formatting and automated screenshots. This guide helps existing customers understand the impact of the migration, follow step-by-step instructions, and identify key verification points.
+
+<Admonition type="info">
+If you are integrating Agora Individual Recording for the first time, bypass this guide and integrate Individual Recording v2 directly. For basic recording workflows, see [REST quickstart](/cloud-recording/get-started/getstarted).
+</Admonition>
+
+## Scope of Migration
+
+You need to evaluate and implement this migration if your application meets any of the following criteria:
+
+* **API Paths:** Your requests to `start`, `update`, `query`, or `stop` include `/mode/individual/` in the URL path.
+* **Request Parameters:** Your `start` request explicitly configures `recordingConfig.streamMode`.
+* **Output Processing:** Your post-recording logic processes two HTTP Live Streaming (HLS) index files per User ID (UID)—one `.m3u8` file for audio and one `.m3u8` file for video.
+* **Notification Handling:** Your backend identifies legacy individual recording tasks through the Notification Center Service (NCS) using the event field `serviceScene=rtc_record`.
+* **File Parser & Status Automation:** Your workflow depends on legacy file-naming conventions or upload status fields for file parsing, task status evaluation, or automation logic.
+
+## Core Changes
+
+The following table summarizes the primary differences between Individual Recording v1 and Individual Recording v2:
+
+| Feature / Change Item | v1 (`mode=individual`) | v2 (`mode=raw`) | Migration Impact |
+| :--- | :--- | :--- | :--- |
+| **API Path** | `/mode/individual/*` | `/mode/raw/*` | Update the request URLs for the `start`, `update`, `query`, and `stop` methods. |
+| **HLS Output** | Separated audio and video streams (typically two `.m3u8` files). | Combined audio and video streams into a single `.m3u8` file. | You need to adjust your media player configuration, file parsing logic, and downstream processing workflows. |
+| **MP4 Output** | Not supported. | Supported. | You can now explicitly specify MP4 output formatting in the `avFileType` parameter. |
+| **MP3 Output** | Not supported. | Supported. | For audio-only scenarios, you can now directly generate MP3 files. |
+| **`streamMode`** | Supports `standard`, `default`, and `original`. | Removed. | Remove this parameter from your request body during migration. |
+| **`extensionServiceConfig`** | Allowed in legacy request templates. | Not supported (the API rejects the request). | Remove this configuration block from your requests. |
+| **Webhook `serviceScene`** | `rtc_record` | `rtsc/raw-recording` | You need to update your backend webhook consumption and parsing logic. |
+| **`uploadingStatus`** | Does not include `stranded`. | Includes `stranded`. | Add fallback branch handling to manage this new status code. |
+
+## Migration steps
+
+This section describes how to migrate your applications from Individual Recording v1 to v2. 
+
+### Update API request paths
+
+With the exception of the `acquire` method, change the `mode` parameter in all Individual Recording endpoint URLs from `individual` to `raw`.
+
+<Admonition type="info">
+The prefix path `/v1/` remains unchanged in Individual Recording v2. You only need to modify the structural identifier component of the URL string, swapping `/mode/individual/` directly out for `/mode/raw/`. 
+</Admonition>
+
+* **Acquire**
+  * **v1 endpoint:** `POST /v1/apps/{appId}/cloud_recording/acquire`
+  * **v2 endpoint:** *Unchanged*
+  * **Description:** The endpoint remains the same, but the `scene` parameter no longer takes effect. Agora recommends removing `scene` from your request body.
+* **Start**
+  * **v1 endpoint:** `POST /v1/apps/{appId}/cloud_recording/resourceid/{resourceId}/mode/individual/start`
+  * **v2 endpoint:** `POST /v1/apps/{appId}/cloud_recording/resourceid/{resourceId}/mode/raw/start`
+  * **Description:** **Required.** Update this path.
+* **Update**
+  * **v1 endpoint:** `POST /v1/apps/{appId}/cloud_recording/resourceid/{resourceId}/sid/{sid}/mode/individual/update`
+  * **v2 endpoint:** `POST /v1/apps/{appId}/cloud_recording/resourceid/{resourceId}/sid/{sid}/mode/raw/update`
+  * **Description:** **Required.** Features are backward-compatible, but you must update the URL path.
+* **Query**
+  * **v1 endpoint:** `GET /v1/apps/{appId}/cloud_recording/resourceid/{resourceId}/sid/{sid}/mode/individual/query`
+  * **v2 endpoint:** `GET /v1/apps/{appId}/cloud_recording/resourceid/{resourceId}/sid/{sid}/mode/raw/query`
+  * **Description:** **Required.** Features are backward-compatible, but you must update the URL path.
+* **Stop**
+  * **v1 endpoint:** `POST /v1/apps/{appId}/cloud_recording/resourceid/{resourceId}/sid/{sid}/mode/individual/stop`
+  * **v2 endpoint:** `POST /v1/apps/{appId}/cloud_recording/resourceid/{resourceId}/sid/{sid}/mode/raw/stop`
+  * **Description:** **Required.** Features are mostly backward-compatible, but you must update the URL path. Note that the response may contain new status values.
+
+### Update the start request body
+
+The `start` request is the most critical part of this migration. Remove incompatible parameter fields from your request payload and update configurations to match the new output structures.
+
+The following sample shows a valid Individual Recording v2 `start` request body payload:
+
+```bash
+curl --request POST \
+  --url https://api.sd-rtn.com/v1/apps/{appId}/cloud_recording/resourceid/{resourceId}/mode/raw/start \
+  --header 'Authorization: Basic <credentials>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+  "cname": "<your_channel_name>",
+  "uid": "<unique_user_id>",
+  "clientRequest": {
+    "recordingConfig": {
+      "channelType": 1,
+      "streamTypes": 2,
+      "videoStreamType": 0,
+      "maxIdleTime": 30,
+      "subscribeAudioUids": [
+        "#allstream#"
+      ],
+      "subscribeVideoUids": [
+        "#allstream#"
+      ],
+      "subscribeUidGroup": 5
+    },
+    "recordingFileConfig": {
+      "avFileType": [
+        "hls",
+        "mp4"
+      ]
+    },
+    "storageConfig": {
+      "vendor": 2,
+      "region": 3,
+      "bucket": "<your_storage_bucket>",
+      "accessKey": "<your_storage_access_key>",
+      "secretKey": "<your_storage_secret_key>",
+      "fileNamePrefix": [
+        "quickstart"
+      ],
+      "extensionParams": {
+        "tag": "RETENTION_DAYS=30"
+      }
+    }
+  }
+}'
+```
+
+When updating your payload, ensure that you address the following field differences:
+
+* **Remove `recordingConfig.streamMode`:** Individual Recording v2 completely removes this parameter. You must omit it from your configuration object.
+* **Remove `extensionServiceConfig`:** Individual Recording v2 does not support this parameter. Including this object causes the API gateway to reject the entire request.
+* **Configure MP4 output:** To generate MP4 recordings, explicitly pass both values as `["hls", "mp4"]` within the `recordingFileConfig.avFileType` array.
+* **Configure audio-only MP3 output:** For audio-only use cases, you can set `recordingFileConfig.avFileType` to `["mp3"]` to output audio files directly.
+
+### Adjust recording file and playback logic
+
+The storage output modifications in Individual Recording v2 represent the most significant update in this release. This is the area where existing customers are most likely to introduce regressions if their downstream pipelines are not fully audited.
+
+* **HLS Audio/Video Output**
+  * **v1 behavior:** Generates two distinct `.m3u8` index files per User ID (UID)—one containing the audio stream and one containing the video stream.
+  * **v2 behavior:** Merges the audio and video tracks into a single, cohesive `.m3u8` master file per UID.
+  * **Migration action:** Update your media player integration, file discovery crawlers, and any downstream post-processing pipelines to read from a single manifest source.
+* **MP4 Output**
+  * **v1 behavior:** Not supported.
+  * **v2 behavior:** Supported.
+  * **Migration action:** If your product requirements mandate direct browser playback or simplified long-term cold storage archiving, pass the `"mp4"` value in your initialization config and audit the storage output bucket for confirmation.
+* **MP3 Output**
+  * **v1 behavior:** Not supported.
+  * **v2 behavior:** Supported.
+  * **Migration action:** For audio-only channel implementations, evaluate whether switching directly to native MP3 rendering simplifies your downstream storage requirements.
+* **Screenshots**
+  * **v1 behavior:** Supported.
+  * **v2 behavior:** Supported.
+  * **Migration action:** No changes required. The screenshot extraction mechanism and logic remain backward-compatible.
+* **VP8 / VP9 Video Codecs**
+  * **v1 behavior:** Automatically falls back to Dynamic Adaptive Streaming over HTTP (DASH).
+  * **v2 behavior:** Automatically falls back to Dynamic Adaptive Streaming over HTTP (DASH).
+  * **Migration action:** No changes required. Keep your current media player or fallback media transcoding pipelines intact if you stream using VP8 or VP9 client codecs.
+
+Individual Recording v2 supports the following output formats and media codecs:
+
+| Output Format | Video Codecs | Audio Codecs |
+| :--- | :--- | :--- |
+| **MP4** | H.264, H.265 | AAC |
+| **HLS** | H.264, H.265, AV1 | AAC |
+| **DASH** | VP8, VP9 | Opus |
+| **MP3** | *None* | MP3 |
+
+<Admonition type="caution">
+When the cloud recording service joins a channel, it processes recordings using the H.264 video codec by default. If your application requires recording in AV1 or H.265, verify your private parameter configuration (`privateParameters`) and complete end-to-end integration testing before migrating production traffic.
+</Admonition>
+
+### Update webhooks and task status processing
+
+If you use the Agora Notification Center Service (NCS), you must update your backend webhook consumption and routing logic to handle new payload fields.
+
+#### Update `serviceScene` identifiers
+
+The identifier used to distinguish recording types changes as follows:
+* **v1 value:** `rtc_record`
+* **v2 value:** `rtsc/raw-recording`
+
+If your backend logic uses the `serviceScene` field to differentiate recording types or route callback handling to specific microservices, you must add `rtsc/raw-recording` to your router whitelist.
+
+#### Handle the new `stranded` upload status
+
+The payload returned by the `stop` method and upload callback events introduces a new `stranded` value within the `uploadingStatus` field. This status indicates that a file is temporarily stalled on the recording server. Stalled files are uploaded later via offline sync tasks, which may extend the processing duration.
+
+When implementing handling logic for this status, apply the following strategies:
+* **Do not flag as a permanent failure:** Avoid treating the `stranded` status as a terminal upload error.
+* **Implement asynchronous polling:** If your business logic requires verification that files are downloadable before notifying your end-users, implement an asynchronous retry or a compensation query mechanism.
+* **Create a dedicated conditional branch:** If your application determines that a recording task has ended by evaluating webhook events or the `stop` API response, add a dedicated conditional branch to catch and manage the `stranded` value cleanly.
+
+Aside from these changes, other common event types and event names remain backward-compatible with v1. For more details, see [Receive notifications](/cloud-recording/develop/receive-notifications).
+
+### Update file name parsing logic
+
+If your downstream applications rely on parsing file names to extract User IDs (UIDs), file formats, slice sequences, or media codec data, you must update your regex or string parsing rules to match the updated naming patterns.
+
+Individual Recording v2 uses the following file-naming conventions:
+
+* **HLS index files:** `{sid}_{cname}__uid_s_{uid}__uid_e_{video codec}.m3u8`
+* **TS segment files:** `{sid}_{cname}__uid_s_{uid}__uid_e_{utc}_{video codec}.ts`
+* **MP4 files:** `{sid}_{cname}__uid_s_{uid}__uid_e_{index}_{video codec}.mp4`
+* **DASH index files:** `{sid}_{cname}__uid_s_{uid}__uid_e_{video codec}.mpd`
+* **WebM segment files:** `{sid}_{cname}__uid_s_{uid}__uid_e_{stream index}_{segment index}_{video codec}.webm`
+* **Screenshot files:** `{sid}_{cname}__uid_s_{uid}__uid_e_{utc}.jpg`
+
+When updating your parsing engine, audit your codebase for the following potential breaking assumptions:
+* Check if your filters search for legacy `_audio` or `_video` string suffixes to identify HLS index paths.
+* Check if your workflow expects two distinct `.m3u8` manifests for a single UID.
+* Check if your backend uses hardcoded index offsets or string positions from legacy names to group, sort, play, or transcode recording chunks.
+
+For more details on recorded outputs, see [Manage recorded files](/cloud-recording/develop/manage-files).
+
+## Pre-launch checklist
+
+After completing your migration changes, verify that your implementation satisfies the following requirements before pushing traffic to production:
+
+* **API paths:** Ensure that the entire lifecycle request flow (`acquire`, `start`, `update`, `query`, and `stop`) routes exclusively through the updated feature endpoints.
+* **Payload cleanup:** Verify that `streamMode` and `extensionServiceConfig` have been deleted from all request objects.
+* **MP4 validation:** If your application requires MP4 output, verify that the `avFileType` parameter array contains both values as `["hls", "mp4"]`.
+* **HLS consumption:** Confirm that a single unified `.m3u8` manifest file is generated per UID and that your target media players and downstream pipelines consume it without error.
+* **Webhook processing:** Verify that your webhook consumer handles events containing `serviceScene=rtsc/raw-recording` and includes logic to process `uploadingStatus=stranded`.
+* **Downstream compatibility:** Confirm that your string parsers, storage archiving microservices, and media processing code blocks are adapted to the updated filename schemas.
+* **Advanced codec validation:** If your architecture involves AV1, H.265, VP8, or VP9 streaming profiles, conduct comprehensive integration tests to verify container generation and playback decoding stability.
+
+## Related documentation
+
+* [REST quickstart](/cloud-recording/get-started/getstarted)
+* [Receive notifications](/cloud-recording/develop/receive-notifications)
+* [Manage recorded files](/cloud-recording/develop/manage-files)

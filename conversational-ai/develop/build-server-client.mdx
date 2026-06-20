@@ -101,10 +101,10 @@ For TypeScript, the backend and frontend live in the same Next.js app.
     ```bash
     pnpm dlx create-next-app@latest conv-ai-tutorial --typescript --app --tailwind --eslint --src-dir=false --import-alias='@/*'
     cd conv-ai-tutorial
-    pnpm add agora-agent-server-sdk agora-rtc-sdk-ng agora-rtm-sdk agora-token
+    pnpm add agora-agents agora-rtc-sdk-ng agora-rtm-sdk agora-token
     ```
 
-    - `agora-agent-server-sdk`: Starts and stops agent sessions from the backend
+    - `agora-agents`: Starts and stops agent sessions from the backend
     - `agora-rtc-sdk-ng`: Handles mic capture and RTC channel joining in the browser
     - `agora-rtm-sdk`: Receives live transcript messages from the agent
     - `agora-token`: Generates RTC and RTM tokens
@@ -139,7 +139,7 @@ For Python, the backend and frontend are separate apps in a single monorepo.
     mkdir server-python && cd server-python
     python -m venv .venv
     source .venv/bin/activate      # Windows: .venv\Scripts\activate
-    pip install fastapi 'uvicorn[standard]' agora-agent-server-sdk agora-token-builder python-dotenv
+    pip install fastapi 'uvicorn[standard]' agora-agents agora-token-builder python-dotenv
     cd ..
 
     # Frontend
@@ -149,7 +149,7 @@ For Python, the backend and frontend are separate apps in a single monorepo.
     cd ..
     ```
 
-    - `agora-agent-server-sdk`: Starts and stops agent sessions from the backend
+    - `agora-agents`: Starts and stops agent sessions from the backend
     - `agora-token-builder`: Generates RTC and RTM tokens
     - `agora-rtc-sdk-ng`: Handles mic capture and RTC channel joining in the browser
     - `agora-rtm-sdk`: Receives live transcript messages from the agent    
@@ -253,7 +253,7 @@ This endpoint uses the Agent Server SDK to configure an agent and start a sessio
 import { NextRequest, NextResponse } from 'next/server';
 import {
   AgoraClient, Agent, Area, DeepgramSTT, MiniMaxTTS, OpenAI, ExpiresIn,
-} from 'agora-agent-server-sdk';
+} from 'agora-agents';
 
 const client = new AgoraClient({
   area: Area.US,
@@ -270,7 +270,7 @@ export async function POST(req: NextRequest) {
   }
 
   const agent = new Agent({
-    name: 'support-agent',
+    client,
     instructions: 'You are a friendly support agent for Acme Corp. Keep answers under 30 seconds.',
     greeting: 'Hi there! How can I help you today?',
     failureMessage: 'Sorry, I had trouble hearing that. Could you repeat?',
@@ -282,10 +282,11 @@ export async function POST(req: NextRequest) {
     .withLlm(new OpenAI({ model: 'gpt-4o-mini', maxHistory: 15 }))
     .withTts(new MiniMaxTTS({ model: 'speech_2_6_turbo', voiceId: 'English_captivating_female1' }));
 
-  const session = agent.createSession(client, {
+  const session = agent.createSession({
     channel,
     agentUid: AGENT_UID,
     remoteUids: ['*'],
+    name: 'support-agent',
     idleTimeout: 30,
     expiresIn: ExpiresIn.hours(1),
   });
@@ -309,7 +310,7 @@ This endpoint stops a running agent session by ID.
 ```ts
 // app/api/stop-conversation/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { AgoraClient, Area } from 'agora-agent-server-sdk';
+import { AgoraClient, Area } from 'agora-agents';
 
 const client = new AgoraClient({
   area: Area.US,
@@ -397,11 +398,11 @@ therefore do not require an `api_key`.
 Add the following to `main.py`:
 
 ```python
-from agora_agent_server_sdk import (
-    AgoraClient, Agent, Area, DeepgramSTT, MiniMaxTTS, OpenAI, ExpiresIn,
+from agora_agent import (
+    Agora, Agent, Area, DeepgramSTT, MiniMaxTTS, OpenAI, expires_in_hours,
 )
 
-agora_client = AgoraClient(
+agora_client = Agora(
     area=Area.US,
     app_id=APP_ID,
     app_certificate=APP_CERTIFICATE,
@@ -415,7 +416,7 @@ class InviteRequest(BaseModel):
 def invite_agent(body: InviteRequest):
     agent = (
         Agent(
-            name="support-agent",
+            agora_client,
             instructions="You are a friendly support agent for Acme Corp. Keep answers under 30 seconds.",
             greeting="Hi there! How can I help you today?",
             failure_message="Sorry, I had trouble hearing that. Could you repeat?",
@@ -429,12 +430,12 @@ def invite_agent(body: InviteRequest):
     )
 
     session = agent.create_session(
-        agora_client,
         channel=body.channel,
         agent_uid=AGENT_UID,
         remote_uids=["*"],
+        name="support-agent",
         idle_timeout=30,
-        expires_in=ExpiresIn.hours(1),
+        expires_in=expires_in_hours(1),
     )
 
     try:

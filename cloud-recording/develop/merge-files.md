@@ -5,6 +5,8 @@ type: docs
 platform_selector: false
 description: >
   Use Agora's transcoding script to merge and convert raw recorded files.
+last_update:
+  date: 2026-06-22
 ---
 
 import Tabs from '@theme/Tabs';

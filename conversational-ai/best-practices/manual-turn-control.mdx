@@ -1,0 +1,508 @@
+---
+title: Manually control start and end of speech
+sidebar_position: 8
+platform_selector: false
+description: >
+  Explicitly control when a user's speech starts and ends by sending manual SoS and EoS requests over RTM.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+When interacting with a conversational AI agent, you may need to explicitly control when a user's speech starts and ends on the client side. This supports scenarios with strict turn-boundary requirements, such as AI interviews, interactive quizzes, or walkie-talkie style push-to-talk. This guide explains how to send manual Start of Speech (SoS) and End of Speech (EoS) requests directly through raw Signaling (RTM) messages, without integrating the Conversational AI client components, and how to handle the results returned by the server.
+
+This approach is suitable when:
+
+- You want to implement your own RTM send and receive logic instead of relying on client components.
+- Your business already has an independent RTM message dispatch layer and needs to integrate Conversational AI events into that existing pipeline.
+- You need to explicitly control when a user's speech starts and ends. 
+
+## Understand the tech
+
+Manual turn control consists of two independent capabilities:
+
+- **Manual SoS**: The client explicitly declares that the user has started speaking.
+- **Manual EoS**: The client explicitly declares that the user has finished speaking.
+
+You can enable either capability independently:
+
+- Set only [`end_of_speech.mode`](/conversational-ai/rest-api/agent/join#properties-turn-detection-config-end-of-speech-mode) to `manual`: Suitable when start of speech is still determined by VAD or semantic detection, but end of speech is submitted explicitly by the user.
+- Set both [`start_of_speech.mode`](/conversational-ai/rest-api/agent/join#properties-turn-detection-config-start-of-speech-mode) and `end_of_speech.mode` to `manual`: Suitable for a complete push-to-talk experience.
+
+## Prerequisites
+
+Before you begin, ensure that you have:
+
+- Completed the basic steps for interacting with an agent. See [Quickstart](/conversational-ai/get-started/quickstart).
+- Integrated the RTM SDK and implemented basic RTM login, subscription, and message listening logic. See [RTM quickstart](/signaling/get-started/sdk-quickstart).
+- Set `advanced_features.enable_rtm = true` when creating the agent.
+
+## Implement manual control
+
+### Enable manual turn control when starting the agent
+
+When calling [Start a conversational AI agent](/conversational-ai/rest-api/agent/join), first enable RTM, then decide whether to manually control SoS, EoS, or both, depending on your use case.
+
+The following `curl` examples show two common configurations:
+
+<Tabs>
+<TabItem value="eos" label="Manual EoS only">
+
+```shell
+curl --request POST \
+  --url https://api.agora.io/api/conversational-ai-agent/v2/projects/<your_app_id>/join \
+  --header 'Authorization: agora token="007abcxxxxxxx123"' \
+  --data '
+{
+  "name": "manual-eos-agent",
+  "properties": {
+    "channel": "channel_name",
+    "token": "token",
+    "agent_rtc_uid": "0",
+    "remote_rtc_uids": [
+      "123"
+    ],
+    "advanced_features": {
+      "enable_rtm": true
+    },
+    "asr": {
+      "language": "en-US"
+    },
+    "llm": {
+      "url": "https://api.xxxx/v1/xxxx",
+      "api_key": "xxx",
+      "system_messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful chatbot."
+        }
+      ],
+      "greeting_message": "Hello, how can I help you?",
+      "failure_message": "Sorry, I am unable to answer that question.",
+      "max_history": 10,
+      "params": {
+        "model": "xxxx"
+      }
+    },
+    "tts": {
+      "vendor": "minimax",
+      "params": {
+        "key": "your-minimax-key",
+        "model": "speech-01-turbo",
+        "voice_setting": {
+          "voice_id": "female-shaonv",
+          "speed": 1,
+          "vol": 1,
+          "pitch": 0,
+          "emotion": "happy"
+        },
+        "audio_setting": {
+          "sample_rate": 16000
+        }
+      }
+    },
+    "turn_detection": {
+      "mode": "default",
+      "config": {
+        "start_of_speech": {
+          "mode": "vad"
+        },
+        "end_of_speech": {
+          "mode": "manual"
+        }
+      }
+    }
+  }
+}
+'
+```
+
+</TabItem>
+<TabItem value="sos-eos" label="Manual SoS + EoS">
+
+```shell
+curl --request POST \
+  --url https://api.agora.io/api/conversational-ai-agent/v2/projects/<your_app_id>/join \
+  --header 'Authorization: agora token="007abcxxxxxxx123"' \
+  --data '
+{
+  "name": "manual-sos-eos-agent",
+  "properties": {
+    "channel": "channel_name",
+    "token": "token",
+    "agent_rtc_uid": "0",
+    "remote_rtc_uids": [
+      "123"
+    ],
+    "advanced_features": {
+      "enable_rtm": true
+    },
+    "asr": {
+      "language": "en-US"
+    },
+    "llm": {
+      "url": "https://api.xxxx/v1/xxxx",
+      "api_key": "xxx",
+      "system_messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful chatbot."
+        }
+      ],
+      "greeting_message": "Hello, how can I help you?",
+      "failure_message": "Sorry, I am unable to answer that question.",
+      "max_history": 10,
+      "params": {
+        "model": "xxxx"
+      }
+    },
+    "tts": {
+      "vendor": "minimax",
+      "params": {
+        "key": "your-minimax-key",
+        "model": "speech-01-turbo",
+        "voice_setting": {
+          "voice_id": "female-shaonv",
+          "speed": 1,
+          "vol": 1,
+          "pitch": 0,
+          "emotion": "happy"
+        },
+        "audio_setting": {
+          "sample_rate": 16000
+        }
+      }
+    },
+    "turn_detection": {
+      "mode": "default",
+      "config": {
+        "start_of_speech": {
+          "mode": "manual"
+        },
+        "end_of_speech": {
+          "mode": "manual"
+        }
+      }
+    }
+  }
+}
+'
+```
+
+</TabItem>
+</Tabs>
+
+After you start the agent, save the following information for use in later steps:
+
+- `channelName`: The name of the channel used for this session.
+- `userId`: The RTM login ID of the current user.
+- `agentUserId`: The RTM user ID of the agent, which typically matches `agent_rtc_uid`.
+
+### Log in to RTM and subscribe to channel messages
+
+Before sending manual SoS/EoS requests, the client must complete RTM login and subscribe to `channelName`. This ensures you receive the agent's processing results promptly.
+
+<Tabs groupId="platform">
+<TabItem value="android" label="Android">
+
+```kotlin
+val rtmConfig = RtmConfig.Builder(appId, userId.toString()).build()
+val rtmClient = RtmClient.create(rtmConfig)
+
+rtmClient.addEventListener(object : RtmEventListener {
+    override fun onMessageEvent(event: MessageEvent?) {
+        event ?: return
+
+        val message = event.message ?: return
+        val rawJson = when (message.type) {
+            RtmConstants.RtmMessageType.BINARY -> {
+                val bytes = message.data as? ByteArray ?: return
+                String(bytes, Charsets.UTF_8)
+            }
+            else -> message.data as? String ?: return
+        }
+
+        handleAgentRtmMessage(
+            publisherId = event.publisherId.orEmpty(),
+            channelName = event.channelName.orEmpty(),
+            customType = event.customType.orEmpty(),
+            rawJson = rawJson
+        )
+    }
+})
+
+rtmClient.login(rtmToken, object : ResultCallback<Void> {
+    override fun onSuccess(responseInfo: Void?) {
+        val options = SubscribeOptions().apply {
+            withMessage = true
+            withPresence = true
+        }
+
+        rtmClient.subscribe(channelName, options, object : ResultCallback<Void> {
+            override fun onSuccess(responseInfo: Void?) {
+                // RTM subscription succeeded.
+            }
+
+            override fun onFailure(errorInfo: ErrorInfo) {
+                // Handle subscription failure.
+            }
+        })
+    }
+
+    override fun onFailure(errorInfo: ErrorInfo) {
+        // Handle RTM login failure.
+    }
+})
+```
+
+</TabItem>
+</Tabs>
+
+<Admonition type="info">
+Login to RTM and subscribe to the channel before starting the agent to avoid missing callback messages sent during the agent's startup phase.
+</Admonition>
+
+### Send manual SoS when the user starts speaking
+
+When your business logic determines that the user has started speaking, send an RTM USER peer-to-peer message to `agentUserId`. Use `RtmConstants.RtmChannelType.USER` as the channel type, and set `customType` to `user.manual_sos`.
+
+<Tabs groupId="platform">
+<TabItem value="android" label="Android">
+
+```kotlin
+fun publishManualSos(
+    rtmClient: RtmClient,
+    agentUserId: String,
+    completion: (String, ErrorInfo?) -> Unit
+) {
+    val requestId = "sos-req-${System.currentTimeMillis()}-${UUID.randomUUID()}"
+    val body = JSONObject(mapOf("request_id" to requestId)).toString()
+    val options = PublishOptions().apply {
+        setChannelType(RtmConstants.RtmChannelType.USER)
+        setCustomType("user.manual_sos")
+    }
+
+    rtmClient.publish(agentUserId, body, options, object : ResultCallback<Void> {
+        override fun onSuccess(responseInfo: Void?) {
+            completion(requestId, null)
+        }
+
+        override fun onFailure(errorInfo: ErrorInfo) {
+            completion(requestId, errorInfo)
+        }
+    })
+}
+```
+
+</TabItem>
+</Tabs>
+
+The `publish` call sends the following RTM message to the agent. 
+
+```json
+{
+  "customType": "user.manual_sos",
+  "publisher": "123",
+  "message": "{\"request_id\":\"sos-req-20260612-001\"}"
+}
+```
+
+<Admonition type="info">
+- A successful RTM `publish` call only confirms that the message was sent.
+- Whether the agent actually accepted the SoS request is confirmed by the `user.manual_sos.result` callback.
+</Admonition>
+
+### Send manual EoS when the user finishes speaking
+
+When your business logic determines that the user has finished speaking, send an RTM USER peer-to-peer message to `agentUserId`. Use `RtmConstants.RtmChannelType.USER` as the channel type, and set `customType` to `user.manual_eos`.
+
+<Tabs groupId="platform">
+<TabItem value="android" label="Android">
+
+```kotlin
+fun publishManualEos(
+    rtmClient: RtmClient,
+    agentUserId: String,
+    completion: (String, ErrorInfo?) -> Unit
+) {
+    val requestId = "eos-req-${System.currentTimeMillis()}-${UUID.randomUUID()}"
+    val body = JSONObject(mapOf("request_id" to requestId)).toString()
+    val options = PublishOptions().apply {
+        setChannelType(RtmConstants.RtmChannelType.USER)
+        setCustomType("user.manual_eos")
+    }
+
+    rtmClient.publish(agentUserId, body, options, object : ResultCallback<Void> {
+        override fun onSuccess(responseInfo: Void?) {
+            completion(requestId, null)
+        }
+
+        override fun onFailure(errorInfo: ErrorInfo) {
+            completion(requestId, errorInfo)
+        }
+    })
+}
+```
+
+</TabItem>
+</Tabs>
+
+The `publish` call sends the following RTM message to the agent. 
+
+```json
+{
+  "customType": "user.manual_eos",
+  "publisher": "123",
+  "message": "{\"request_id\":\"eos-req-20260612-001\"}"
+}
+```
+
+<Admonition type="info">
+- A successful RTM `publish` call only confirms that the message was sent.
+- Whether the agent actually accepted the EoS request is confirmed by the `user.manual_eos.result` callback.
+</Admonition>
+
+### Listen for and handle callback messages
+
+The results of manual SoS/EoS requests are returned as RTM channel messages. After receiving a message, parse the message body as JSON, then use the `event_type` field in the inner `message` to distinguish the event type.
+
+#### Identify callback message types
+
+Common callback types include:
+
+- `user.manual_sos.result`: The server's processing result for a client manual SoS request.
+- `user.manual_eos.result`: The server's processing result for a client manual EoS request.
+- `assistant.manual_eos.result`: In manual mode, the server automatically triggers EoS due to a protective policy, such as a maximum speaking duration limit.
+
+<Tabs>
+<TabItem value="sos-result" label="user.manual_sos.result">
+
+```json
+{
+  "event_type": "user.manual_sos.result",
+  "event_id": "evt_xxx",
+  "event_ms": 1773901235435,
+  "payload": {
+    "success": true,
+    "request_id": "sos-req-1773901235000-a1b2c3d4",
+    "turn_id": 12
+  }
+}
+```
+
+</TabItem>
+<TabItem value="eos-result" label="user.manual_eos.result">
+
+```json
+{
+  "event_type": "user.manual_eos.result",
+  "event_id": "evt_xxx",
+  "event_ms": 1773901240000,
+  "payload": {
+    "success": true,
+    "request_id": "eos-req-1773901240000-b2c3d4e5",
+    "turn_id": 12
+  }
+}
+```
+
+</TabItem>
+<TabItem value="assistant-eos-result" label="assistant.manual_eos.result">
+
+```json
+{
+  "event_type": "assistant.manual_eos.result",
+  "event_id": "evt_xxx",
+  "event_ms": 1773901250000,
+  "payload": {
+    "reason": "max_duration_reached",
+    "max_duration_ms": 60000,
+    "turn_id": 12
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+#### Handle result callbacks using `request_id`
+
+In your RTM message callback, Agora recommends consistently parsing the `event_type`, `request_id`, `success`, and `turn_id` fields, and updating your app state based on the result.
+
+<Tabs groupId="platform">
+<TabItem value="android" label="Android">
+
+```kotlin
+data class ManualResult(
+    val type: String,
+    val requestId: String,
+    val success: Boolean,
+    val turnId: Long?,
+    val errorMessage: String?
+)
+
+fun handleAgentRtmMessage(
+    publisherId: String,
+    channelName: String,
+    customType: String,
+    rawJson: String
+) {
+    val json = JSONObject(rawJson)
+    val type = json.optString("event_type").ifEmpty {
+        json.optString("object")
+    }
+    val payload = json.optJSONObject("payload")
+
+    when (type) {
+        "user.manual_sos.result",
+        "user.manual_eos.result" -> {
+            if (payload == null) return
+
+            val result = ManualResult(
+                type = type,
+                requestId = payload.optString("request_id"),
+                success = payload.optBoolean("success", false),
+                turnId = payload.optLongOrNull("turn_id"),
+                errorMessage = payload.optString("error_message").ifEmpty { null }
+            )
+
+            onUserManualResult(publisherId, result)
+        }
+
+        "assistant.manual_eos.result" -> {
+            if (payload == null) return
+
+            val reason = payload.optString("reason")
+            val maxDurationMs = payload.optLong("max_duration_ms")
+            val turnId = payload.optLong("turn_id")
+
+            onAgentManualEos(
+                agentUserId = publisherId,
+                reason = reason,
+                maxDurationMs = maxDurationMs,
+                turnId = turnId
+            )
+        }
+    }
+}
+
+fun JSONObject.optLongOrNull(name: String): Long? {
+    return if (has(name) && !isNull(name)) optLong(name) else null
+}
+```
+
+</TabItem>
+</Tabs>
+
+Pay particular attention to the following when implementing this logic:
+
+- Use `request_id` to correlate the result with the SoS/EoS request you previously sent.
+- Use `publisherId` to identify the agent's RTM user ID.
+- Use the `event_type` field in the message body to distinguish event types. Do not rely on the outer RTM message's `customType`.
+
+## See also
+
+- [Get agent state](/conversational-ai/best-practices/get-agent-state)
+- [Interrupt agent](/conversational-ai/develop/interrupt-agent)
+- [Receive webhook notifications](/conversational-ai/develop/webhooks)
+- [Start a conversational AI agent](/conversational-ai/rest-api/agent/join)

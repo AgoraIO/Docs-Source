@@ -1,0 +1,241 @@
+---
+title: Get agent state
+sidebar_position: 6
+platform_selector: false
+description: >
+  Monitor agent state changes in real time using RTM Message events.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+If you need to track agent state changes in your client app, you can use either Signaling (RTM) Message or RTM Presence. This guide explains how to get agent state using RTM Message and describes [how the two approaches differ](#rtm-message-vs-rtm-presence).
+
+<Admonition type="info">
+- To monitor state changes using client components, see [Listen to agent events](/conversational-ai/develop/webhooks).
+- To get agent state through RTM Presence, continue using your existing Presence implementation.
+</Admonition>
+
+## Understand the tech
+
+The <Vpd k="NAME" /> pushes agent state change events to the client as individual RTM messages through the `onMessageEvent` callback. Unlike RTM Presence, which synchronizes state as key-value pairs, RTM Message wraps each state change in a separate event message. This makes it easier to record state change timestamps, process events sequentially, or consume state events together with other RTM Message events.
+
+The inner `message` field of each RTM message is a JSON string that requires a second parse to access the state event data. Use the `event_type` field in the inner message to identify the event type.
+
+The following agent states are pushed through RTM Message:
+
+- `state.listening`
+- `state.thinking`
+- `state.speaking`
+
+The flow works as follows:
+
+```text
+Agent state change
+  ├─ listening -> true / false
+  ├─ thinking  -> true / false
+  └─ speaking  -> true / false
+        ↓
+    RTM Message
+        ↓
+  Client parses inner payload and identifies event by event_type
+```
+
+### State event types
+
+The <Vpd k="NAME" /> sends an RTM Message each time the agent state changes. Each message corresponds to a single state change event.
+
+| `event_type` | Description |
+|:---|:---|
+| `state.listening` | The agent starts or stops listening for user input. |
+| `state.thinking` | The agent starts or stops processing user input. |
+| `state.speaking` | The agent starts or stops speaking. |
+
+### Message structure
+
+The inner `message` field is a JSON string. After deserialization, the structure is as follows:
+
+```json
+{
+  "event_id": "xxxx",
+  "event_type": "state.listening",
+  "event_ms": 1611566412672,
+  "payload": {
+    "value": true,
+    "timestamp": 1611566412600
+  }
+}
+```
+
+| Field | Type | Description |
+|:---|:---|:---|
+| `event_id` | string | Unique event ID. |
+| `event_type` | string | State event type. One of `state.listening`, `state.thinking`, or `state.speaking`. |
+| `event_ms` | integer | Timestamp when the event was sent, in milliseconds. |
+| `payload.value` | boolean | Current state value. `true` means the agent entered the state; `false` means it exited. |
+| `payload.timestamp` | integer | Timestamp when the state change actually occurred, in milliseconds. |
+
+## Prerequisites
+
+Before you begin, ensure that you have:
+
+- Completed the basic agent integration. See [Quickstart](/conversational-ai/get-started/quickstart).
+- Integrated the RTM SDK and implemented message listener logic. See [RTM quickstart](https://docs.agora.io/en/signaling/get-started/sdk-quickstart).
+- Enabled the RTM service and set `data_channel` to `rtm` when starting the agent.
+
+## Implementation
+
+### Enable RTM when starting the agent
+
+When calling [Start a conversational AI agent](/conversational-ai/rest-api/agent/join), include the following configuration:
+
+```json
+{
+  "properties": {
+    "advanced_features": {
+      "enable_rtm": true
+    },
+    "parameters": {
+      "data_channel": "rtm"
+    }
+  }
+}
+```
+
+### Listen for and parse state messages
+
+After logging in to RTM and subscribing to the channel with the same name as the agent, parse state messages in the RTM message callback. The handling logic consists of the following steps:
+
+1. Deserialize the RTM `message` field into a state event object.
+2. Check that the deserialized result contains `event_type` and `payload`.
+3. Dispatch handling based on `event_type`, and use `payload.value` to update your app state.
+
+In the following examples:
+ 
+- The inner `message` field is a JSON string and must be deserialized again to obtain `event_type` and `payload`.
+- `event_type` identifies the specific state type.
+- `payload.value` indicates whether the agent is entering (`true`) or exiting (`false`) the state.
+- `payload.timestamp` can be used for precise ordering or logging.
+
+<Tabs>
+<TabItem value="android" label="Android">
+
+```kotlin
+val rtmConfig = RtmConfig()
+rtmConfig.eventListener = object : RtmEventListener {
+    override fun onMessageEvent(event: MessageEvent) {
+        // 1. Deserialize the inner message (JSON string)
+        val payload = JSONObject(event.message.data)
+        if (!payload.has("event_type") || !payload.has("payload")) {
+            return
+        }
+        val eventType = payload.getString("event_type")
+        val statePayload = payload.getJSONObject("payload")
+        val value = statePayload.getBoolean("value")
+        val timestamp = statePayload.getLong("timestamp")
+
+        // 2. Dispatch based on event_type
+        when (eventType) {
+            "state.listening" -> handleListeningChanged(value, timestamp)
+            "state.thinking"  -> handleThinkingChanged(value, timestamp)
+            "state.speaking"  -> handleSpeakingChanged(value, timestamp)
+        }
+    }
+}
+mRtmClient = RtmClient.create(rtmConfig)
+```
+
+</TabItem>
+<TabItem value="ios" label="iOS">
+
+```swift
+func rtmKit(_ rtmKit: AgoraRtmClientKit, didReceiveMessageEvent event: AgoraRtmMessageEvent) {
+    // 1. Deserialize the inner message (JSON string)
+    guard let jsonString = event.message.stringData,
+          let data = jsonString.data(using: .utf8),
+          let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let eventType = payload["event_type"] as? String,
+          let statePayload = payload["payload"] as? [String: Any] else {
+        return
+    }
+    let value = statePayload["value"] as? Bool ?? false
+    let timestamp = statePayload["timestamp"] as? Int ?? 0
+
+    // 2. Dispatch based on event_type
+    switch eventType {
+    case "state.listening":
+        handleListeningChanged(value, timestamp)
+    case "state.thinking":
+        handleThinkingChanged(value, timestamp)
+    case "state.speaking":
+        handleSpeakingChanged(value, timestamp)
+    default:
+        break
+    }
+}
+```
+
+</TabItem>
+<TabItem value="web" label="Web">
+
+```typescript
+rtm.addEventListener("message", (event) => {
+    // 1. Deserialize the inner message (JSON string)
+    const payload = JSON.parse(event.message as string);
+    if (!payload.event_type || !payload.payload) {
+        return;
+    }
+    const { event_type, payload: statePayload } = payload;
+
+    // 2. Dispatch based on event_type
+    switch (event_type) {
+        case "state.listening":
+            handleListeningChanged(statePayload.value, statePayload.timestamp);
+            break;
+        case "state.thinking":
+            handleThinkingChanged(statePayload.value, statePayload.timestamp);
+            break;
+        case "state.speaking":
+            handleSpeakingChanged(statePayload.value, statePayload.timestamp);
+            break;
+    }
+});
+```
+
+</TabItem>
+</Tabs>
+
+
+### Update app state
+
+Use the received events to update your UI or internal state machine. For example:
+
+- When `state.listening` with `payload.value = true` is received, display "Listening".
+- When `state.thinking` with `payload.value = true` is received, display "Thinking".
+- When `state.speaking` with `payload.value = true` is received, display "Speaking".
+
+## RTM Message vs RTM Presence
+
+The <Vpd k="NAME" /> supports getting agent state through both RTM Message and RTM Presence. The key differences are:
+
+| | RTM Presence | RTM Message |
+|:---|:---|:---|
+| Return form | State key-value pairs | State event messages |
+| Granularity | Better for reading current state | Better for handling each state change |
+| Timing info | Relies on message arrival time | Includes explicit `event_ms` and `payload.timestamp` |
+| Use case | Simple UI state display | Event-driven logic, logging, unified message consumption |
+
+Choose based on your needs:
+
+- If you only need to update the UI based on whether the agent is currently `listening`, `thinking`, or `speaking`, RTM Presence is simpler to integrate.
+- If you want to process state changes together with captions, interruptions, or performance metrics in a unified RTM Message handler, use RTM Message.
+- If you need to record the timestamp of each state change or analyze state transitions in sequence, use RTM Message.
+
+## Considerations
+
+Keep the following in mind when implementing this feature:
+
+- **Double deserialization**: The inner `message` field is a JSON string and must be deserialized a second time to access `event_type` and `payload`.
+- **Avoid duplicate UI updates**: If you are already driving UI state through RTM Presence, avoid having both implementations update the same UI state simultaneously, as this can cause redundant updates or state flickering.
+- **`state.speaking` end timing**: A `state.speaking` value of `false` does not guarantee that the client has finished playing audio. The server estimates the speaking end time based on TTS audio length, so there may be a delay between the state switching to `false` and the client completing playback.
+- **Scope of state messages**: State messages cover only `listening`, `thinking`, and `speaking` agent state events. Manual SoS and EoS signals and their callbacks are not included.
